@@ -8,6 +8,8 @@ import { blockName, blockRange, launchModules, MODULE_LABELS } from './dayMeta';
 
 interface NowCardProps {
   activeBlock: TimeTrackerBlock | null;
+  /** Real end instant of the active block (computeLiveSchedule). */
+  activeBlockEndMs: number;
   nextBlock: TimeTrackerBlock | null;
   progressPercent: number;
   currentMinutes: number;
@@ -22,6 +24,7 @@ interface NowCardProps {
 /** Today only: the block happening now with its time left, or the free time until the next one. */
 export function NowCard({
   activeBlock,
+  activeBlockEndMs,
   nextBlock,
   progressPercent,
   currentMinutes,
@@ -51,7 +54,7 @@ export function NowCard({
             <h2 className="section-title truncate">{blockName(activeBlock, activity)}</h2>
             <p className="text-xs text-content-muted">
               <span className="figure">{blockRange(activeBlock)}</span> ·{' '}
-              <LiveCountdown endTime={activeBlock.endTime} className="font-mono text-content-secondary" />
+              <LiveCountdown endMs={activeBlockEndMs} className="font-mono text-content-secondary" />
             </p>
           </div>
         </div>

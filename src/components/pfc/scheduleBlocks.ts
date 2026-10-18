@@ -1,14 +1,15 @@
 import type { TimeTrackerActivity, TimeTrackerBlock } from '@/types';
-import { computeLiveSchedule, getBlockTimingAt, timeStringToMinutes } from '@/lib/timeTracker';
+import { computeLiveSchedule, getBlockTimingAt, liveBlocksAt, timeStringToMinutes } from '@/lib/timeTracker';
 import { todayKey } from '@/lib/dates';
 
 /**
  * Which of today's time blocks Follow schedule shows right now. Everything that decides "the
  * block at this moment" lives here, so it can be swapped in one place.
  *
- * "Now", "over" and "upcoming" come from getBlockTimingAt, so blocks ending at midnight (24:00),
- * the split halves of a block across midnight, and old unsplit overnight blocks (23:00–07:00)
- * are judged on their real start and end instants.
+ * "Now", "over" and "upcoming" come from liveBlocksAt (getBlockTimingAt), the same rule the Time
+ * Tracker page uses, so blocks ending at midnight (24:00), the split halves of a block across
+ * midnight, and old unsplit overnight blocks (23:00–07:00) are judged on their real start and end
+ * instants on both pages.
  */
 export interface CurrentScheduleBlock {
   activeBlock: TimeTrackerBlock | null;
@@ -35,18 +36,12 @@ export function currentScheduleBlock(
   activities: TimeTrackerActivity[],
   now: Date
 ): CurrentScheduleBlock {
-  const live = computeLiveSchedule(todayBlocks, activities, now);
   const day = todayKey(now);
+  const live = computeLiveSchedule(todayBlocks, activities, now, day);
   const nowMinutes = now.getHours() * 60 + now.getMinutes();
-  const timing = (b: TimeTrackerBlock) => getBlockTimingAt(b, day, now);
-  const unresolved = todayBlocks
-    .filter((b) => !b.completed && !b.skipped)
-    .sort((a, b) => timeStringToMinutes(a.startTime) - timeStringToMinutes(b.startTime));
-
-  const activeBlock = unresolved.find((b) => timing(b) === 'current') ?? null;
-  const nextBlock = unresolved.find((b) => timing(b) === 'upcoming') ?? null;
+  const { activeBlock, nextBlock, overdueBlock: overdue } = liveBlocksAt(todayBlocks, day, now);
   const activeBlockActivity = activeBlock ? activities.find((a) => a.id === activeBlock.activityId) ?? null : null;
-  const overdueBlock = unresolved.find((b) => timing(b) === 'over');
+  const overdueBlock = overdue ?? undefined;
 
   // Most recently resolved first: the block the user just acted on.
   const currentResolvedBlock = todayBlocks

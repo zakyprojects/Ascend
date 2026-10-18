@@ -517,10 +517,37 @@ export function templateSignature(blocks: Pick<TimeTrackerBlock, 'startTime' | '
     .join('|');
 }
 
+export interface LiveBlocks {
+  /** The first unresolved block (by start) that is current at `at`. */
+  activeBlock: TimeTrackerBlock | null;
+  /** The first unresolved block (by start) that hasn't started yet. */
+  nextBlock: TimeTrackerBlock | null;
+  /** The first unresolved block (by start) whose end has passed. */
+  overdueBlock: TimeTrackerBlock | null;
+}
+
+/**
+ * The one rule for "which block is now / next / overdue", shared by the Time Tracker page
+ * (computeLiveSchedule) and PFC Follow schedule (currentScheduleBlock). Done and skipped blocks
+ * are left out. Each block is judged by getBlockTimingAt on its own day `dateKey`, so blocks ending
+ * at 24:00, split halves and old unsplit overnight blocks (23:00–07:00) are read the same way on
+ * both pages.
+ */
+export function liveBlocksAt(blocks: TimeTrackerBlock[], dateKey: string, at: Date | number): LiveBlocks {
+  const unresolved = blocks.filter((b) => !b.completed && !b.skipped).sort(byStart);
+  const timing = (b: TimeTrackerBlock) => getBlockTimingAt(b, dateKey, at);
+  return {
+    activeBlock: unresolved.find((b) => timing(b) === 'current') ?? null,
+    nextBlock: unresolved.find((b) => timing(b) === 'upcoming') ?? null,
+    overdueBlock: unresolved.find((b) => timing(b) === 'over') ?? null,
+  };
+}
+
 /**
  * Live UI Computations:
  * Calculates active block, remaining time, progress percentage, etc.
- * Always computed against the given time (default getNow()); blocks are today's.
+ * Always computed against the given time (default getNow()) for blocks of day `dateKey`
+ * (default: the local day of `now`).
  */
 export interface LiveScheduleComputation {
   currentMinutes: number;
@@ -528,6 +555,8 @@ export interface LiveScheduleComputation {
   activeBlock: TimeTrackerBlock | null;
   nextBlock: TimeTrackerBlock | null;
   activeBlockActivity: TimeTrackerActivity | null;
+  /** Real end instant of the active block (an old overnight block ends the next morning); 0 when none. */
+  activeBlockEndMs: number;
   remainingMinutesInActiveBlock: number;
   elapsedMinutesInActiveBlock: number;
   activeBlockProgressPercent: number;
@@ -542,26 +571,15 @@ export interface LiveScheduleComputation {
 export function computeLiveSchedule(
   blocks: TimeTrackerBlock[] = [],
   activities: TimeTrackerActivity[] = [],
-  now: Date = getNow()
+  now: Date = getNow(),
+  dateKey: string = todayKey(now)
 ): LiveScheduleComputation {
   const currentMinutes = now.getHours() * 60 + now.getMinutes() + now.getSeconds() / 60;
   const currentTimeString = minutesToTimeString(Math.floor(currentMinutes));
 
   const sortedBlocks = [...blocks].sort(byStart);
 
-  let activeBlock: TimeTrackerBlock | null = null;
-  let nextBlock: TimeTrackerBlock | null = null;
-
-  for (const block of sortedBlocks) {
-    const start = timeStringToMinutes(block.startTime);
-    const end = endMinutesOf(block.startTime, block.endTime);
-    if (block.completed || block.skipped) continue;
-    if (currentMinutes >= start && currentMinutes < end) {
-      activeBlock = block;
-    } else if (currentMinutes < start && (!nextBlock || start < timeStringToMinutes(nextBlock.startTime))) {
-      nextBlock = block;
-    }
-  }
+  const { activeBlock, nextBlock } = liveBlocksAt(blocks, dateKey, now);
 
   const activityMap = new Map<string, TimeTrackerActivity>();
   for (const act of activities) activityMap.set(act.id, act);
@@ -571,13 +589,16 @@ export function computeLiveSchedule(
   let remainingMinutesInActiveBlock = 0;
   let elapsedMinutesInActiveBlock = 0;
   let activeBlockProgressPercent = 0;
+  let activeBlockEndMs = 0;
 
   if (activeBlock) {
-    const start = timeStringToMinutes(activeBlock.startTime);
-    const end = endMinutesOf(activeBlock.startTime, activeBlock.endTime);
-    const duration = Math.max(1, end - start);
-    elapsedMinutesInActiveBlock = Math.max(0, currentMinutes - start);
-    remainingMinutesInActiveBlock = Math.max(0, Math.ceil(end - currentMinutes));
+    // Real instants, so a block that runs past midnight (old unsplit 23:00–07:00) counts right.
+    const { startMs, endMs } = blockIntervalMs(activeBlock, dateKey);
+    const nowMs = now.getTime();
+    const duration = Math.max(1, (endMs - startMs) / 60_000);
+    activeBlockEndMs = endMs;
+    elapsedMinutesInActiveBlock = Math.max(0, (nowMs - startMs) / 60_000);
+    remainingMinutesInActiveBlock = Math.max(0, Math.ceil((endMs - nowMs) / 60_000));
     activeBlockProgressPercent = Math.min(100, Math.max(0, (elapsedMinutesInActiveBlock / duration) * 100));
   }
 
@@ -610,6 +631,7 @@ export function computeLiveSchedule(
     activeBlock,
     nextBlock,
     activeBlockActivity,
+    activeBlockEndMs,
     remainingMinutesInActiveBlock,
     elapsedMinutesInActiveBlock,
     activeBlockProgressPercent,

@@ -1,28 +1,27 @@
 import { useState, useEffect } from 'react';
-import { trustedNow } from '@/lib/clock';
-import { timeStringToMinutes } from '@/lib/timeTracker';
+import { trustedNowMs } from '@/lib/clock';
 
 interface LiveCountdownProps {
-  endTime: string; // "HH:mm" (24h); "24:00" = midnight
+  /** Real end instant of the block (computeLiveSchedule's activeBlockEndMs): a block ending at
+   * 24:00 or an old overnight block ending 07:00 the next morning counts down correctly. */
+  endMs: number;
   className?: string;
 }
 
-function secondsUntil(endTime: string): number {
-  if (!endTime) return 0;
-  const now = trustedNow();
-  const nowSeconds = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
-  return Math.max(0, timeStringToMinutes(endTime) * 60 - nowSeconds);
+function secondsUntil(endMs: number): number {
+  if (!endMs) return 0;
+  return Math.max(0, Math.ceil((endMs - trustedNowMs()) / 1000));
 }
 
 /** Time left in today's block: "1h 12m left", seconds only in its last minute. */
-export function LiveCountdown({ endTime, className = '' }: LiveCountdownProps) {
-  const [seconds, setSeconds] = useState<number>(() => secondsUntil(endTime));
+export function LiveCountdown({ endMs, className = '' }: LiveCountdownProps) {
+  const [seconds, setSeconds] = useState<number>(() => secondsUntil(endMs));
 
   useEffect(() => {
-    setSeconds(secondsUntil(endTime));
-    const interval = setInterval(() => setSeconds(secondsUntil(endTime)), 1000);
+    setSeconds(secondsUntil(endMs));
+    const interval = setInterval(() => setSeconds(secondsUntil(endMs)), 1000);
     return () => clearInterval(interval);
-  }, [endTime]);
+  }, [endMs]);
 
   const hours = Math.floor(seconds / 3600);
   const minutes = Math.floor((seconds % 3600) / 60);

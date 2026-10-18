@@ -83,7 +83,11 @@ export function DayTab({
   const isPreview = planned.source === 'template' && mode === 'future';
 
   const activityMap = useMemo(() => new Map(activities.map((a) => [a.id, a])), [activities]);
-  const live = useMemo(() => computeLiveSchedule(blocks, activities, now), [blocks, activities, now]);
+  // Same now/next rule as PFC Follow schedule (liveBlocksAt), judged on the shown day.
+  const live = useMemo(
+    () => computeLiveSchedule(blocks, activities, now, selectedDateKey),
+    [blocks, activities, now, selectedDateKey]
+  );
   const score = calculateTimeTrackerDailyPoints(blocks);
   const points = ledgerDayPoints(store.state, selectedDateKey);
   const doneCount = blocks.filter((b) => b.completed).length;
@@ -227,6 +231,7 @@ export function DayTab({
       {mode === 'today' && (
         <NowCard
           activeBlock={live.activeBlock}
+          activeBlockEndMs={live.activeBlockEndMs}
           nextBlock={live.nextBlock}
           progressPercent={live.activeBlockProgressPercent}
           currentMinutes={live.currentMinutes}
