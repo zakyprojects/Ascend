@@ -10,6 +10,8 @@ export interface ProgressRingProps {
   /** Accessible name, e.g. "Pact streak progress". */
   label: string;
   tone?: ChartTone;
+  /** A data-driven stroke colour (CSS colour, e.g. a rank's var); overrides the tone. */
+  color?: string;
   /** Outer size in px. */
   size?: number;
   /** Stroke width in px at that size. */
@@ -28,6 +30,7 @@ export function ProgressRing({
   max = 100,
   label,
   tone = 'brand',
+  color,
   size = 80,
   thickness = 7,
   children,
@@ -74,8 +77,9 @@ export function ProgressRing({
           strokeLinecap={shown > 0 ? 'round' : 'butt'}
           className={cx(
             'stroke-current transition-[stroke-dashoffset] duration-slow ease-emphasized motion-reduce:transition-none',
-            toneText[tone]
+            !color && toneText[tone]
           )}
+          style={color ? { color } : undefined}
         />
       </svg>
       {children && <div className="absolute inset-0 flex flex-col items-center justify-center text-center">{children}</div>}

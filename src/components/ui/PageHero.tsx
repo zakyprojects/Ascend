@@ -17,7 +17,7 @@ export interface PageHeroStat {
 
 export interface PageHeroProps {
   /** Optional progress ring before the headline number (today's share, a weekly target). */
-  ring?: { value: number; max: number; label: string; center: ReactNode; caption?: string; tone?: ChartTone };
+  ring?: { value: number; max: number; label: string; center: ReactNode; caption?: string; tone?: ChartTone; color?: string };
   /** The one number the page is about, set large in the serif. */
   lead: { label: string; value: ReactNode; hint?: ReactNode; valueClassName?: string };
   /** Supporting numbers, shown as quiet columns divided by hairlines (no boxes). */
@@ -45,7 +45,7 @@ export function PageHero({ ring, lead, stats = [], side, ariaLabel, className }:
         <div className="flex flex-col gap-5 sm:gap-6 md:flex-row md:items-center md:gap-8">
           <div className="flex items-center gap-5">
             {ring && (
-              <ProgressRing value={ring.value} max={Math.max(ring.max, 1)} label={ring.label} size={104} thickness={8} tone={ring.tone}>
+              <ProgressRing value={ring.value} max={Math.max(ring.max, 1)} label={ring.label} size={104} thickness={8} tone={ring.tone} color={ring.color}>
                 <span className="text-2xl font-medium leading-none text-content-primary tabular-nums">
                   {ring.center}
                 </span>

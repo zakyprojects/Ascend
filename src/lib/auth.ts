@@ -55,12 +55,6 @@ export function removeCachedPublicPlan(planId: string) {
   cachedPublicPlans = cachedPublicPlans.filter((p) => p.id !== planId);
 }
 
-export function getProfilePointsByUsername(username: string): number {
-  if (!username) return 0;
-  const match = cachedProfiles.find((p) => p.username?.toLowerCase() === username.toLowerCase());
-  return match?.total_points || match?.totalPoints || 0;
-}
-
 export function computeCompetitorLeaguePoints(
   profile: any,
   type: LeagueType,
