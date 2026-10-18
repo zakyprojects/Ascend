@@ -1783,6 +1783,9 @@ export function useAppState() {
   // (offline or a server error; the list on screen stays), 'ready' after a good fetch.
   const [notificationsStatus, setNotificationsStatus] = useState<'loading' | 'ready' | 'failed'>('loading');
   const notificationsRefreshRef = useRef<(() => Promise<void>) | null>(null);
+  // Partners page: whether partnerships, invites and challenges came back from the last fetch.
+  const [partnersStatus, setPartnersStatus] = useState<'loading' | 'ready' | 'failed'>('loading');
+  const partnersRefreshRef = useRef<(() => Promise<void>) | null>(null);
   // The initial check found no session while this device still holds a saved sign-in (a phone's
   // network not ready yet): the boot loader stays up until Supabase signs it in or drops it, rather
   // than flashing the sign-in page. 'failed' once that takes too long (offline).
@@ -2801,6 +2804,7 @@ export function useAppState() {
     const username = state.username;
     // A new account (or a fresh sign-in) waits for its own first inbox fetch.
     setNotificationsStatus('loading');
+    setPartnersStatus('loading');
 
     /** Keeps local "read" marks (a mark-read may still be on its way) and drops cleared rows. */
     const mergeFetchedNotifications = (prev: AppState, fetched: AppNotification[]): AppNotification[] => {
@@ -2836,6 +2840,7 @@ export function useAppState() {
     const syncPartnerDataLive = async () => {
       if (typeof navigator !== 'undefined' && !navigator.onLine) {
         setNotificationsStatus((s) => (s === 'ready' ? s : 'failed'));
+        setPartnersStatus('failed');
         return;
       }
       try {
@@ -2850,6 +2855,7 @@ export function useAppState() {
           : null;
         const fetchedNotifs = await fetchNotificationsSupabase(userId);
         setNotificationsStatus(fetchedNotifs ? 'ready' : 'failed');
+        setPartnersStatus(fetchedInvites && activePartnerships && challenges ? 'ready' : 'failed');
 
         if (activePartnerships && activePartnerships.length > 0) {
           // Clean up stale invites in Supabase DB for all active partnerships
@@ -2942,9 +2948,11 @@ export function useAppState() {
           return { ...prev, ...next };
         });
       } catch (e) {
-        /* ignore background sync error */
+        // Background sync error: what is on screen stays; the Partners page offers Retry.
+        setPartnersStatus('failed');
       }
     };
+    partnersRefreshRef.current = syncPartnerDataLive;
 
     let pollInterval: any = null;
 
@@ -7840,6 +7848,12 @@ export function useAppState() {
     return notificationsRefreshRef.current?.() ?? Promise.resolve();
   }, []);
 
+  /** Fetches partnerships, invites and challenges again (the Partners page's Retry). */
+  const refreshPartners = useCallback(() => {
+    setPartnersStatus('loading');
+    return partnersRefreshRef.current?.() ?? Promise.resolve();
+  }, []);
+
   // Multi-user Competitor League Helper
   const getLeagueData = useCallback(
     (type: LeagueType) => {
@@ -9141,6 +9155,8 @@ export function useAppState() {
     clearReadNotifications,
     refreshNotifications,
     notificationsStatus,
+    refreshPartners,
+    partnersStatus,
     // Projects & Goals Module Actions
     createGoal,
     updateGoal,

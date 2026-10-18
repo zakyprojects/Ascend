@@ -1,19 +1,22 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { Check, Clock, Flame, Plus, RotateCcw, Trash2, UserPlus, UserMinus, Users, Zap } from 'lucide-react';
+import { Check, Clock, Flame, Plus, RotateCcw, Trash2, UserPlus, UserMinus, Users, WifiOff, Zap } from 'lucide-react';
 import { AscendLoadingIndicator } from '@/components/ui/AscendLoadingIndicator';
 import { useAsyncAction, useAsyncActionKey } from '@/lib/useAsyncAction';
 import { AppStore } from '@/lib/store';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { TierBadge } from '@/components/ui/TierBadge';
 import { useToast } from '@/components/ui/Toast';
-import { Dialog, Disclosure, EmptyState, Form, Input, Skeleton, Switch, useFormController } from '@/components/ui/primitives';
+import { Button, Dialog, Disclosure, EmptyState, Form, Input, Skeleton, Switch, Tabs, useFormController } from '@/components/ui/primitives';
 import { useUnsavedChanges } from '@/lib/unsavedChanges';
-import { CountUp } from '@/components/ui/Motion';
+import { CountUp, Reveal } from '@/components/ui/Motion';
+import { PageHero } from '@/components/ui/PageHero';
 import { TAP_TARGET, cx } from '@/components/ui/primitives/shared';
 import { leagueNow } from '@/lib/leagueTime';
 import { getProfileSeasonPointsByUsername } from '@/lib/auth';
 import { isPartnershipUser1 } from '@/lib/partnershipSide';
-import { todayKey, calculateElapsedDays } from '@/lib/dates';
+import { calculateElapsedDays } from '@/lib/dates';
+import { useLocalDayKey } from '@/lib/useLocalDayKey';
+import { ptsText } from '@/lib/leagues';
 import { createNotificationSupabase } from '@/lib/supabase';
 import { calculateUnifiedStreak } from '@/lib/streakLogic';
 import { toUserMessage } from '@/lib/userMessage';
@@ -73,7 +76,8 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
 
   const currentUser = store.state.currentUser;
   const currentUsername = store.state.username;
-  const today = todayKey();
+  // Follows local midnight: ticks, "done today" and the once-a-day nudge roll over without a reload.
+  const today = useLocalDayKey();
 
   const rawPartnerships = store.state.partnerships;
   const singlePartnership = store.state.partnership;
@@ -178,6 +182,32 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
   const finishedChallenges = myChallenges.filter((c) => c.status === 'completed' || c.status === 'expired');
   const partnerDoneAllToday =
     runningChallenges.length > 0 && runningChallenges.every((c) => doneDates(c, !amUser1).includes(today));
+
+  // Partner data comes from the server (not the local save): loading / failed states with Retry.
+  const partnersStatus = store.partnersStatus;
+  const hasPartnerData = partnerships.length > 0 || partnerInvites.length > 0 || sharedChallenges.length > 0;
+  const firstLoad = Boolean(currentUser?.id) && partnersStatus === 'loading' && !hasPartnerData;
+  const loadFailed = partnersStatus === 'failed' && !hasPartnerData;
+  const refreshFailed = partnersStatus === 'failed' && hasPartnerData;
+  const { isLoading: isRetrying, executeFn: executeRetry } = useAsyncAction();
+  const retry = () => executeRetry(() => store.refreshPartners());
+
+  // Hero: today's ticks across every partner's running challenges.
+  const heroNumbers = useMemo(() => {
+    let running = 0;
+    let doneToday = 0;
+    let together = 0;
+    for (const p of partnerships) {
+      const u1 = isPartnershipUser1(p, currentUser?.id, currentUsername);
+      for (const c of challengesFor(p)) {
+        if (c.status !== 'active') continue;
+        running++;
+        together += c.totalJointDaysCompleted ?? 0;
+        if (doneDates(c, u1).includes(today)) doneToday++;
+      }
+    }
+    return { running, doneToday, together };
+  }, [partnerships, challengesFor, currentUser?.id, currentUsername, today]);
 
   const myHabitNames = useMemo(
     () => Array.from(new Set((store.state.habits || []).map((h) => h.name.trim()).filter(Boolean))),
@@ -341,7 +371,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
               'shrink-0 w-11 h-11 rounded-xl flex items-center justify-center transition-all duration-300 active:scale-90',
               mineDone
                 ? 'bg-primary-600 text-on-brand'
-                : 'bg-bg-600 text-content-disabled hover:bg-bg-500 hover:text-content-secondary'
+                : 'bg-bg-600 text-content-muted hover:bg-bg-500 hover:text-content-secondary'
             )}
           >
             {busy ? <AscendLoadingIndicator size="sm" /> : <Check size={22} />}
@@ -356,14 +386,14 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
             )}
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-xs">
               <span className={mineDone ? 'text-success-text' : 'text-content-muted'}>
-                You {mineDone ? '✓' : '·'}
+                You: {mineDone ? 'done' : 'not yet'}
               </span>
               <span className={theirsDone ? 'text-success-text' : 'text-content-muted'}>
-                {partnerName} {theirsDone ? '✓' : '·'}
+                {partnerName}: {theirsDone ? 'done' : 'not yet'}
               </span>
               {(c.jointStreak || 0) > 0 && (
                 <span className="flex items-center gap-1 text-brand-text">
-                  <Flame size={13} />
+                  <Flame size={13} aria-hidden="true" />
                   <span className="figure">{c.jointStreak}d together</span>
                 </span>
               )}
@@ -374,7 +404,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
             type="button"
             onClick={() => setChallengeToDelete(c)}
             aria-label={`Delete challenge ${mine}`}
-            className={`shrink-0 p-2 rounded-lg text-content-disabled hover:text-rose-theme hover:bg-rose-500/10 transition-colors ${TAP_TARGET}`}
+            className={`shrink-0 p-2 rounded-lg text-content-muted hover:text-rose-theme hover:bg-rose-500/10 transition-colors ${TAP_TARGET}`}
           >
             <Trash2 size={16} />
           </button>
@@ -409,43 +439,127 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
           <h1 className="page-title">Partners</h1>
           <p className="page-subtitle">Do a daily challenge with a friend and keep each other going.</p>
         </div>
-        <button
-          onClick={() => setInviteModalOpen(true)}
-          disabled={!canInvite}
-          className="btn-primary sm:shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          <UserPlus size={18} />
-          <span>{canInvite ? 'Add partner' : `${MAX_PARTNERS} of ${MAX_PARTNERS} used`}</span>
-        </button>
+        {!firstLoad && !loadFailed && (
+          <button
+            type="button"
+            onClick={() => setInviteModalOpen(true)}
+            disabled={!canInvite}
+            className="btn-primary sm:shrink-0 disabled:cursor-not-allowed"
+          >
+            <UserPlus size={18} aria-hidden="true" />
+            <span>{canInvite ? 'Add partner' : `${MAX_PARTNERS} of ${MAX_PARTNERS} places used`}</span>
+          </button>
+        )}
       </div>
+
+      {firstLoad ? (
+        <div aria-busy="true" className="space-y-6">
+          <span className="sr-only" role="status">Loading your partners</span>
+          <div className="card p-5 sm:p-6 flex items-center gap-5">
+            <Skeleton className="h-[104px] w-[104px] rounded-full" />
+            <div className="flex-1 space-y-3">
+              <Skeleton className="h-3 w-24" />
+              <Skeleton className="h-9 w-20" />
+              <Skeleton className="h-3 w-40" />
+            </div>
+          </div>
+          <div className="card p-5 space-y-3">
+            <Skeleton className="h-5 w-32" />
+            <Skeleton className="h-16 w-full" />
+            <Skeleton className="h-16 w-full" />
+          </div>
+        </div>
+      ) : loadFailed ? (
+        <EmptyState
+          icon={WifiOff}
+          iconClassName="bg-overlay-subtle text-content-muted ring-1 ring-inset ring-overlay-default"
+          title="Couldn't load your partners"
+          description="Check your connection, then try again."
+          action={
+            <Button variant="secondary" size="sm" type="button" onClick={retry} loading={isRetrying}>
+              Retry
+            </Button>
+          }
+        />
+      ) : (
+      <>
+      {refreshFailed && (
+        <div role="status" className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-overlay-default px-4 py-2 text-xs text-content-secondary">
+          <span className="flex items-center gap-2">
+            <WifiOff size={14} aria-hidden="true" className="shrink-0 text-content-muted" />
+            Couldn't refresh. Showing what was loaded last.
+          </span>
+          <Button variant="ghost" size="sm" type="button" onClick={retry} loading={isRetrying}>
+            Retry
+          </Button>
+        </div>
+      )}
+
+      <Reveal index={0}>
+        <PageHero
+          ariaLabel="Your partners today"
+          ring={
+            heroNumbers.running > 0
+              ? {
+                  value: heroNumbers.doneToday,
+                  max: heroNumbers.running,
+                  label: `Challenges ticked today: ${heroNumbers.doneToday} of ${heroNumbers.running}`,
+                  center: (
+                    <>
+                      {heroNumbers.doneToday}
+                      <span className="text-sm font-medium text-content-muted">/{heroNumbers.running}</span>
+                    </>
+                  ),
+                  caption: 'ticked today',
+                }
+              : undefined
+          }
+          lead={{
+            label: 'Partners',
+            value: <CountUp value={partnerships.length} />,
+            hint: `of ${MAX_PARTNERS} places${sentInvites.length > 0 ? ` · ${sentInvites.length} waiting` : ''}`,
+          }}
+          stats={[
+            { label: 'Running', value: <CountUp value={heroNumbers.running} />, hint: heroNumbers.running === 1 ? 'challenge' : 'challenges' },
+            { label: 'Together', value: <CountUp value={heroNumbers.together} />, hint: 'days done together', valueClassName: 'text-brand-text' },
+            { label: 'Requests', value: <CountUp value={incomingInvites.length} />, hint: 'to answer' },
+          ]}
+        />
+      </Reveal>
 
       {(incomingInvites.length > 0 || sentInvites.length > 0) && (
         <div className="card p-4 space-y-1">
-          <h2 className="section-title mb-2">Requests</h2>
+          <h2 className="section-title mb-2">
+            Requests <span className="figure text-content-muted font-normal">{incomingInvites.length + sentInvites.length}</span>
+          </h2>
           {incomingInvites.map((invite) => {
             const accepting = isKeyLoading(`accept_invite_${invite.id}`);
             const declining = isKeyLoading(`decline_invite_${invite.id}`);
             return (
               <div key={invite.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 py-2.5 border-t border-overlay-subtle first:border-t-0">
                 <div className="flex items-center gap-2.5 min-w-0">
-                  <span className="text-xl shrink-0">{invite.fromAvatar || '🧑'}</span>
+                  <span className="text-xl shrink-0" aria-hidden="true">{invite.fromAvatar || '🧑'}</span>
                   <p className="text-sm text-content-muted truncate">
                     <span className="item-name text-content-secondary">{invite.fromUsername}</span> wants to be your partner
                   </p>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                   <button
+                    type="button"
                     disabled={accepting || declining || atPartnerLimit}
                     onClick={() => handleAccept(invite.id)}
-                    className="btn-primary text-xs py-1.5 px-3 disabled:opacity-60 disabled:cursor-not-allowed"
+                    aria-label={`Accept ${invite.fromUsername} as partner`}
+                    className="btn-primary min-h-11 text-xs px-3 disabled:cursor-not-allowed"
                   >
                     {accepting && <AscendLoadingIndicator size="sm" />}
                     <span>{accepting ? 'Accepting…' : 'Accept'}</span>
                   </button>
                   <button
+                    type="button"
                     disabled={accepting || declining}
                     onClick={() => handleDecline(invite.id)}
-                    className="btn-secondary text-xs py-1.5 px-3 disabled:opacity-60 disabled:cursor-not-allowed"
+                    aria-label={`Decline ${invite.fromUsername}'s invite`}
+                    className="btn-secondary min-h-11 text-xs px-3 disabled:cursor-not-allowed"
                   >
                     {declining && <AscendLoadingIndicator size="sm" />}
                     <span>{declining ? 'Declining…' : 'Decline'}</span>
@@ -460,12 +574,17 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
           {sentInvites.map((invite) => (
             <div key={invite.id} className="flex items-center justify-between gap-2 py-2.5 border-t border-overlay-subtle first:border-t-0">
               <p className="flex items-center gap-2 text-sm text-content-muted min-w-0">
-                <Clock size={14} className="shrink-0" />
+                <Clock size={14} className="shrink-0" aria-hidden="true" />
                 <span className="truncate">
                   Waiting for <span className="item-name text-content-secondary">{invite.toUsername}</span> to accept
                 </span>
               </p>
-              <button onClick={() => setInviteToCancel(invite)} className="btn-secondary text-xs py-1.5 px-3 shrink-0">
+              <button
+                type="button"
+                onClick={() => setInviteToCancel(invite)}
+                aria-label={`Cancel invite to ${invite.toUsername}`}
+                className="btn-secondary min-h-11 text-xs px-3 shrink-0"
+              >
                 Cancel
               </button>
             </div>
@@ -480,8 +599,8 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
           description="Add a friend with their 6-digit ID (it's in their Settings). Then pick something you'll both do every day and tick it off together."
           action={
             canInvite ? (
-              <button onClick={() => setInviteModalOpen(true)} className="btn-primary mx-auto">
-                <UserPlus size={16} />
+              <button type="button" onClick={() => setInviteModalOpen(true)} className="btn-primary mx-auto">
+                <UserPlus size={16} aria-hidden="true" />
                 <span>Add partner</span>
               </button>
             ) : undefined
@@ -490,39 +609,19 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
       ) : (
         <>
           {partnerships.length > 1 && (
-            <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1" role="tablist" aria-label="Partners">
-              {partnerships.map((p) => {
+            <Tabs
+              ariaLabel="Partners"
+              scrollable
+              value={activePartnership?.id ?? ''}
+              onChange={(id) => setSelectedPartnerId(id)}
+              items={partnerships.map((p) => {
                 const u1 = isPartnershipUser1(p, currentUser?.id, currentUsername);
-                const name = u1 ? p.user2Username : p.user1Username;
-                const selected = activePartnership?.id === p.id;
                 const running = challengesFor(p).filter((c) => c.status === 'active');
-                const doneToday = running.filter((c) => doneDates(c, u1).includes(today)).length;
-                return (
-                  <button
-                    key={p.id}
-                    role="tab"
-                    aria-selected={selected}
-                    onClick={() => setSelectedPartnerId(p.id)}
-                    className={cx(
-                      'shrink-0 flex items-center gap-2 rounded-full border pl-1.5 pr-3 py-1.5 text-sm transition-colors',
-                      selected
-                        ? 'border-primary-500/60 bg-primary-500/10 text-content-primary'
-                        : 'border-overlay-subtle text-content-tertiary hover:bg-overlay-subtle'
-                    )}
-                  >
-                    <span className="w-7 h-7 rounded-full bg-primary-500/20 text-brand-text flex items-center justify-center text-xs font-semibold">
-                      {initial(name)}
-                    </span>
-                    <span className="item-name max-w-[120px] truncate">{name}</span>
-                    {running.length > 0 && (
-                      <span className="figure text-micro text-content-muted">
-                        {doneToday}/{running.length}
-                      </span>
-                    )}
-                  </button>
-                );
+                const left = running.filter((c) => !doneDates(c, u1).includes(today)).length;
+                // Badge: challenges you still have to tick today with this partner.
+                return { id: p.id, label: u1 ? p.user2Username : p.user1Username, badge: left || undefined };
               })}
-            </div>
+            />
           )}
 
           {activePartnership && (
@@ -538,8 +637,8 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                       {mySeasonPoints === partnerSeasonPoints
                         ? 'Level on points this season'
                         : mySeasonPoints > partnerSeasonPoints
-                        ? `You're ahead by ${mySeasonPoints - partnerSeasonPoints} pts this season`
-                        : `${partnerName} is ahead by ${partnerSeasonPoints - mySeasonPoints} pts this season`}
+                        ? `You're ahead by ${ptsText(mySeasonPoints - partnerSeasonPoints)} this season`
+                        : `${partnerName} is ahead by ${ptsText(partnerSeasonPoints - mySeasonPoints)} this season`}
                     </p>
                   </div>
                   <button
@@ -547,7 +646,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                     onClick={() => setRemoveConfirmOpen(true)}
                     aria-label={`Remove ${partnerName} as partner`}
                     title="Remove partner"
-                    className={`shrink-0 p-2 rounded-lg text-content-disabled hover:text-rose-theme hover:bg-rose-500/10 transition-colors ${TAP_TARGET}`}
+                    className={`shrink-0 p-2 rounded-lg text-content-muted hover:text-rose-theme hover:bg-rose-500/10 transition-colors ${TAP_TARGET}`}
                   >
                     <UserMinus size={18} />
                   </button>
@@ -603,8 +702,8 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
               <div className="space-y-3">
                 <div className="flex items-center justify-between gap-3">
                   <h2 className="section-title">Challenges</h2>
-                  <button onClick={() => openChallengeForm()} className="btn-primary text-xs py-1.5 px-3">
-                    <Plus size={15} />
+                  <button type="button" onClick={() => openChallengeForm()} className="btn-primary min-h-11 text-xs px-3">
+                    <Plus size={15} aria-hidden="true" />
                     <span>New challenge</span>
                   </button>
                 </div>
@@ -633,11 +732,11 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                     {finishedChallenges.map((c) => {
                       const completed = c.status === 'completed';
                       return (
-                        <div key={c.id} className="card p-4 flex items-center gap-3 opacity-90">
+                        <div key={c.id} className="card p-4 flex items-center gap-3">
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2">
                               <h3 className="item-name truncate text-content-secondary">{goalOf(c, amUser1)}</h3>
-                              <span className={cx('badge text-2xs px-2 py-0.5 rounded-full shrink-0', completed ? 'badge-emerald' : 'badge-amber')}>
+                              <span className={cx('badge text-2xs px-2 py-0.5 rounded-full shrink-0', completed ? 'badge-emerald' : 'bg-overlay-subtle text-content-secondary')}>
                                 {completed ? 'Completed' : 'Ended'}
                               </span>
                             </div>
@@ -650,7 +749,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                             onClick={() => openChallengeForm(c)}
                             aria-label={`Start ${goalOf(c, amUser1)} again`}
                             title="Start again"
-                            className={`shrink-0 p-2 rounded-lg text-content-disabled hover:text-content-secondary hover:bg-overlay-subtle transition-colors ${TAP_TARGET}`}
+                            className={`shrink-0 p-2 rounded-lg text-content-muted hover:text-content-secondary hover:bg-overlay-subtle transition-colors ${TAP_TARGET}`}
                           >
                             <RotateCcw size={16} />
                           </button>
@@ -658,7 +757,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                             type="button"
                             onClick={() => setChallengeToDelete(c)}
                             aria-label={`Delete challenge ${goalOf(c, amUser1)}`}
-                            className={`shrink-0 p-2 rounded-lg text-content-disabled hover:text-rose-theme hover:bg-rose-500/10 transition-colors ${TAP_TARGET}`}
+                            className={`shrink-0 p-2 rounded-lg text-content-muted hover:text-rose-theme hover:bg-rose-500/10 transition-colors ${TAP_TARGET}`}
                           >
                             <Trash2 size={16} />
                           </button>
@@ -671,6 +770,8 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
             </div>
           )}
         </>
+      )}
+      </>
       )}
 
       <Dialog
