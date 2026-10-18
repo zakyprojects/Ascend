@@ -5789,7 +5789,14 @@ export function useAppState() {
             projects: prev.projects.map((p) => {
               if (p.id !== id) return p;
               const completedAt = resolveProjectCompletedAt(p.status, updates.status, p.completedAt, updates.completedAt);
-              return { ...p, ...updates, completedAt };
+              // Moved to another goal: join the end of that goal's sequence, so it can't take
+              // step 1 with its old order and lock the projects already there.
+              const movedGoal = 'goalId' in updates && (updates.goalId || undefined) !== (p.goalId || undefined);
+              const order =
+                movedGoal && updates.goalId && updates.order === undefined
+                  ? prev.projects.reduce((max, q) => (q.goalId === updates.goalId && q.id !== id ? Math.max(max, (q.order ?? 0) + 1) : max), 0)
+                  : updates.order ?? p.order;
+              return { ...p, ...updates, completedAt, order };
             }),
           };
         },
