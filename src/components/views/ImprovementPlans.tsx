@@ -8,7 +8,7 @@ import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { ProgressUpdateDialog } from '@/components/ui/ProgressUpdateDialog';
 import { PageHero } from '@/components/ui/PageHero';
 import { CountUp, Reveal } from '@/components/ui/Motion';
-import { Badge, Dialog, EmptyState, Form, NumberField, Tabs } from '@/components/ui/primitives';
+import { Badge, Dialog, EmptyState, Form, NumberField, TabPanel, Tabs } from '@/components/ui/primitives';
 import { TAP_TARGET } from '@/components/ui/primitives/shared';
 import { ImprovementPlan, UserPlanFollow } from '@/types';
 import { toUserMessage } from '@/lib/userMessage';
@@ -22,6 +22,8 @@ import { type AnyPlan, finishLineShare, isReviewDue, journeyState, ownPlans, pla
 import { useLocalDayKey } from '@/lib/useLocalDayKey';
 
 type Owner = 'own' | 'copy';
+type PlansTab = 'my_plans' | 'discover';
+const PLAN_TABS: PlansTab[] = ['my_plans', 'discover'];
 
 export function ImprovementPlans({ store }: { store: AppStore }) {
   const { showSuccessToast, showErrorToast } = useToast();
@@ -29,7 +31,8 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
   // Re-renders at local midnight: journeys' "done this period" and day counts roll over (C5).
   useLocalDayKey();
 
-  const [activeTab, setActiveTab] = useState<'my_plans' | 'discover'>('my_plans');
+  const [activeTab, setActiveTab] = useState<PlansTab>('my_plans');
+  const changeTab = (id: string) => setActiveTab(id as PlansTab);
   // Bumped on every open so the create dialog always starts fresh.
   const [createKey, setCreateKey] = useState(0);
   const [createOpen, setCreateOpen] = useState(false);
@@ -192,90 +195,93 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
       )}
 
       <Tabs
+        idBase="plans"
         ariaLabel="Plans"
         variant="underline"
         value={activeTab}
-        onChange={(id) => setActiveTab(id as 'my_plans' | 'discover')}
+        onChange={changeTab}
         items={[
           { id: 'my_plans', label: 'My plans', badge: myPlans.length + followedPlans.length },
           { id: 'discover', label: 'Discover' },
         ]}
       />
 
-      {activeTab === 'my_plans' && (
-        <div className="space-y-8">
-          <section className="space-y-3">
-            <h2 className="section-title">Created by me</h2>
-            {myPlans.length === 0 ? (
-              <EmptyState title="No plans yet" description="Start one from a template or from scratch with New plan." />
-            ) : (
-              <div className="grid-cards-lg gap-4">
-                {myPlans.map((plan) => (
-                  <PlanCard
-                    key={plan.id}
-                    plan={plan}
-                    category={plan.category}
-                    tags={
-                      <Badge tone="neutral" size="xs">
-                        {plan.isPublic ? <Globe size={11} /> : <Lock size={11} />} {plan.isPublic ? 'Public' : 'Only me'}
-                      </Badge>
-                    }
-                    controls={ownControls(plan)}
-                    actions={actionsFor('own', plan)}
-                    footer={
-                      plan.isPublic ? (
-                        <span className="text-xs text-content-muted">
-                          {plan.copyCount === 1 ? 'Copied once' : `Copied ${plan.copyCount || 0} times`}
-                        </span>
-                      ) : undefined
-                    }
-                  />
-                ))}
-              </div>
-            )}
-          </section>
+      <TabPanel idBase="plans" ids={PLAN_TABS} value={activeTab} onChange={changeTab}>
+        {activeTab === 'my_plans' && (
+          <div className="space-y-8">
+            <section className="space-y-3">
+              <h2 className="section-title">Created by me</h2>
+              {myPlans.length === 0 ? (
+                <EmptyState title="No plans yet" description="Start one from a template or from scratch with New plan." />
+              ) : (
+                <div className="grid-cards-lg gap-4">
+                  {myPlans.map((plan) => (
+                    <PlanCard
+                      key={plan.id}
+                      plan={plan}
+                      category={plan.category}
+                      tags={
+                        <Badge tone="neutral" size="xs">
+                          {plan.isPublic ? <Globe size={11} /> : <Lock size={11} />} {plan.isPublic ? 'Public' : 'Only me'}
+                        </Badge>
+                      }
+                      controls={ownControls(plan)}
+                      actions={actionsFor('own', plan)}
+                      footer={
+                        plan.isPublic ? (
+                          <span className="text-xs text-content-muted">
+                            {plan.copyCount === 1 ? 'Copied once' : `Copied ${plan.copyCount || 0} times`}
+                          </span>
+                        ) : undefined
+                      }
+                    />
+                  ))}
+                </div>
+              )}
+            </section>
 
-          <section className="space-y-3">
-            <h2 className="section-title">Copied plans</h2>
-            {followedPlans.length === 0 ? (
-              <EmptyState title="No copied plans" description="Copy a plan from Discover. Your progress on it is your own." />
-            ) : (
-              <div className="grid-cards-lg gap-4">
-                {followedPlans.map((follow) => (
-                  <PlanCard
-                    key={follow.id}
-                    plan={follow}
-                    source={copySource(follow)}
-                    controls={
-                      <button
-                        type="button"
-                        onClick={() => setFollowToDelete(follow)}
-                        className={`rounded-lg text-content-muted hover:text-rose-theme hover:bg-overlay-subtle transition-colors ${TAP_TARGET}`}
-                        aria-label={`Remove copy "${follow.title}"`}
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    }
-                    actions={actionsFor('copy', follow)}
-                  />
-                ))}
-              </div>
-            )}
-          </section>
-        </div>
-      )}
+            <section className="space-y-3">
+              <h2 className="section-title">Copied plans</h2>
+              {followedPlans.length === 0 ? (
+                <EmptyState title="No copied plans" description="Copy a plan from Discover. Your progress on it is your own." />
+              ) : (
+                <div className="grid-cards-lg gap-4">
+                  {followedPlans.map((follow) => (
+                    <PlanCard
+                      key={follow.id}
+                      plan={follow}
+                      source={copySource(follow)}
+                      controls={
+                        <button
+                          type="button"
+                          onClick={() => setFollowToDelete(follow)}
+                          className={`rounded-lg text-content-muted hover:text-rose-theme hover:bg-overlay-subtle transition-colors ${TAP_TARGET}`}
+                          aria-label={`Remove copy "${follow.title}"`}
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      }
+                      actions={actionsFor('copy', follow)}
+                    />
+                  ))}
+                </div>
+              )}
+            </section>
+          </div>
+        )}
 
-      {activeTab === 'discover' && (
-        <DiscoverPanel
-          discover={discover}
-          ownPlans={myPlans}
-          currentUserId={currentUserId}
-          copiedPlanIds={copiedPlanIds}
-          isCopying={(id) => isKeyLoading(`copy_plan_${id}`)}
-          onCopy={copyPlan}
-          ownControls={ownControls}
-        />
-      )}
+        {activeTab === 'discover' && (
+          <DiscoverPanel
+            discover={discover}
+            ownPlans={myPlans}
+            currentUserId={currentUserId}
+            copiedPlanIds={copiedPlanIds}
+            isCopying={(id) => isKeyLoading(`copy_plan_${id}`)}
+            onCopy={copyPlan}
+            ownControls={ownControls}
+          />
+        )}
+      </TabPanel>
 
       <CreatePlanDialog key={createKey} store={store} open={createOpen} onClose={() => setCreateOpen(false)} />
 
