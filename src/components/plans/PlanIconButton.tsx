@@ -2,7 +2,7 @@ import type { ButtonHTMLAttributes, ReactNode } from 'react';
 import { cx, FOCUS_RING, PRESS, TAP_TARGET_Y, TRANSITION } from '@/components/ui/primitives/shared';
 
 /**
- * A plan card's corner control (share, edit, delete). A real 32px button (40px on touch screens)
+ * A plan card's corner control (share, edit, delete). A real 32px button (28px small; 40px on touch screens)
  * with a hover fill, so neighbours never touch; the tap area grows only in height to stay off them.
  * `danger` turns rose on hover, `active` keeps the icon in brand colour (a plan that is public).
  */
@@ -11,6 +11,7 @@ export function PlanIconButton({
   title,
   tone = 'default',
   active = false,
+  size = 'md',
   className,
   children,
   ...rest
@@ -21,6 +22,8 @@ export function PlanIconButton({
   title: string;
   tone?: 'default' | 'danger';
   active?: boolean;
+  /** md for the card's corner controls, sm for a check-in note's own edit/delete. */
+  size?: 'md' | 'sm';
   children: ReactNode;
 }) {
   return (
@@ -29,7 +32,8 @@ export function PlanIconButton({
       aria-label={label}
       title={title}
       className={cx(
-        'inline-flex h-8 w-8 items-center justify-center rounded-lg disabled:opacity-50 disabled:pointer-events-none',
+        'inline-flex items-center justify-center rounded-lg disabled:opacity-50 disabled:pointer-events-none',
+        size === 'sm' ? 'h-7 w-7' : 'h-8 w-8',
         '[@media(pointer:coarse)]:h-10 [@media(pointer:coarse)]:w-10',
         TAP_TARGET_Y,
         FOCUS_RING,

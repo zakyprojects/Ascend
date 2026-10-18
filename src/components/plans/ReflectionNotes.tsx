@@ -2,9 +2,9 @@ import { useState } from 'react';
 import { Edit3, Trash2 } from 'lucide-react';
 import type { PlanReflectionNote } from '@/types';
 import { Textarea } from '@/components/ui/primitives';
-import { TAP_TARGET } from '@/components/ui/primitives/shared';
 import { formatDateShort } from '@/lib/dates';
 import { useUnsavedChanges } from '@/lib/unsavedChanges';
+import { PlanIconButton } from './PlanIconButton';
 import { ShowMoreText, ShowMoreToggle } from './ShowMore';
 
 /** Legacy notes were keyed by their date; newer ones by id. */
@@ -83,23 +83,24 @@ export function ReflectionNotes({
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-2xs text-content-muted">{formatDateShort(note.createdAt || note.date)}</span>
                   {!readOnly && !isEditing && (
-                    <div className="flex items-center">
-                      <button
-                        type="button"
+                    <div className="-my-1 flex items-center gap-1">
+                      <PlanIconButton
                         onClick={() => setEditing({ key, text: note.note })}
-                        className={`text-content-muted hover:text-content-primary transition-colors ${TAP_TARGET}`}
-                        aria-label="Edit check-in note"
+                        title="Edit"
+                        label="Edit check-in note"
+                        size="sm"
                       >
-                        <Edit3 size={13} />
-                      </button>
-                      <button
-                        type="button"
+                        <Edit3 size={14} />
+                      </PlanIconButton>
+                      <PlanIconButton
+                        tone="danger"
                         onClick={() => onRequestDelete?.(key)}
-                        className={`text-content-muted hover:text-rose-theme transition-colors ${TAP_TARGET}`}
-                        aria-label="Delete check-in note"
+                        title="Delete"
+                        label="Delete check-in note"
+                        size="sm"
                       >
-                        <Trash2 size={13} />
-                      </button>
+                        <Trash2 size={14} />
+                      </PlanIconButton>
                     </div>
                   )}
                 </div>
