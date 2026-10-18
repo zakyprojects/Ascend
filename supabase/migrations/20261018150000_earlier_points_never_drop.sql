@@ -1,13 +1,14 @@
 -- Earlier days' points never drop (Zakria 2026-10-18: deleting, clearing, editing or unticking
 -- never lowers points earned on an earlier local day; only today's points can change).
+-- Exception (Zakria 2026-10-18, Mode B): removing a book DOES take back its finish bonus, whenever
+-- it was earned, and a bonus the app gave before server bonuses comes back as a minus row. So
+-- ascend_recompute_reading_bonus is NOT in this file; the live function stays as it is
+-- (last defined in 20261015170000_reading_legacy_bonus_revoke.sql). Mirror: deleteBook in src/lib/store.ts.
 --
--- Three server paths still took back points earned on an earlier day:
---   1. Deleting a finished book removed its finish bonus (reading_bonus_<book>) whenever it was
---      earned, and revived a minus row for a bonus the app gave before server bonuses.
---      Now: a bonus earned TODAY leaves with the book; an earlier bonus stays; no new minus rows.
---   2. Deleting the week's last reflection took back its +5 even when it was earned on an earlier
+-- Two server paths still took back points earned on an earlier day:
+--   1. Deleting the week's last reflection took back its +5 even when it was earned on an earlier
 --      day of the Reflection Window. Now: only a reflection award earned today is taken back.
---   3. The week's goal points (weekly_goal_<week>, stamped at the last counted goal's completion)
+--   2. The week's goal points (weekly_goal_<week>, stamped at the last counted goal's completion)
 --      dropped when a goal achieved on an earlier day was unticked, deleted, lost its linked log or
 --      its linked habit/skill/book. Now: a goal counted on an earlier day stays counted for the
 --      week (the row's metadata.counted lists each counted goal and when it was achieved); goals
@@ -17,77 +18,7 @@
 -- Point values, caps and windows are unchanged. Apply BEFORE testing the studio build that has
 -- the matching client (commit "Earlier days' points never drop").
 
--- 1. Reading finish bonus ------------------------------------------------------------------------
-CREATE OR REPLACE FUNCTION public.ascend_recompute_reading_bonus(p_user uuid, p_book text, p_today date)
- RETURNS void
- LANGUAGE plpgsql
- SECURITY DEFINER
- SET search_path TO ''
-AS $function$
-DECLARE
-  v_id    text := 'reading_bonus_' || p_book;
-  v_book  record;
-  v_row   record;
-  v_days  int;
-  v_first text;
-  v_today_start timestamptz := p_today::timestamp AT TIME ZONE public.ascend_user_timezone(p_user);
-BEGIN
-  IF p_book IS NULL THEN
-    RETURN;
-  END IF;
-  PERFORM pg_advisory_xact_lock(hashtext('reading_bonus:' || p_user::text || ':' || p_book));
-
-  SELECT b.data, b.deleted_at INTO v_book
-  FROM public.reading_books b WHERE b.user_id = p_user AND b.id = p_book;
-  IF NOT FOUND THEN
-    RETURN;
-  END IF;
-
-  SELECT pe.data, pe.deleted_at INTO v_row
-  FROM public.point_entries pe WHERE pe.user_id = p_user AND pe.id = v_id;
-
-  IF v_book.deleted_at IS NOT NULL THEN
-    -- Only a bonus earned today leaves with the book; an earlier day's bonus stays, and a bonus the
-    -- app gave before server bonuses (legacy marker) is no longer taken back.
-    IF v_row.data IS NOT NULL
-       AND v_row.deleted_at IS NULL
-       AND coalesce((v_row.data->'metadata'->>'legacyMarker') = 'true', false) = false
-       AND coalesce(public.ascend_instant(v_row.data->>'timestamp') >= v_today_start, false)
-    THEN
-      UPDATE public.point_entries pe
-      SET deleted_at = now(), updated_at = greatest(now(), pe.updated_at)
-      WHERE pe.user_id = p_user AND pe.id = v_id;
-    END IF;
-    RETURN;
-  END IF;
-
-  IF v_book.data->>'status' IS DISTINCT FROM 'completed' OR v_row.data IS NOT NULL THEN
-    RETURN;
-  END IF;
-
-  SELECT count(DISTINCT l.data->>'date'), min(l.data->>'date') INTO v_days, v_first
-  FROM public.reading_logs l
-  WHERE l.user_id = p_user
-    AND l.deleted_at IS NULL
-    AND l.data->>'bookId' = p_book
-    AND public.ascend_reading_log_pages(l.data) > 0;
-
-  IF v_days >= 5 AND v_first <= to_char(p_today - 7, 'YYYY-MM-DD') THEN -- READING_BONUS_MIN_*
-    INSERT INTO public.point_entries (user_id, id, data, created_at, updated_at)
-    VALUES (p_user, v_id, jsonb_build_object(
-      'id', v_id,
-      'amount', 15, -- READING_POINTS.completionBonus
-      'reason', 'Book finished: ' || coalesce(nullif(v_book.data->>'title', ''), 'Book'),
-      'source', 'reading_bonus',
-      'timestamp', to_char(now() AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'),
-      'metadata', jsonb_build_object('bookId', p_book)
-    ), now(), now())
-    ON CONFLICT (user_id, id) DO NOTHING;
-  END IF;
-END;
-$function$;
-
--- 2. Weekly reflection ---------------------------------------------------------------------------
+-- 1. Weekly reflection ---------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION public.ascend_recompute_weekly_reflection_award(p_user uuid, p_week text, p_tz text)
  RETURNS void
  LANGUAGE plpgsql
@@ -162,7 +93,7 @@ BEGIN
 END;
 $function$;
 
--- 3. Weekly goals --------------------------------------------------------------------------------
+-- 2. Weekly goals --------------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION public.ascend_recompute_weekly_goal_awards(p_user uuid, p_week text, p_tz text)
  RETURNS void
  LANGUAGE plpgsql
