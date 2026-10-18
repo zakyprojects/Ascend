@@ -8,6 +8,10 @@
  *
  * Guests may send too, so the endpoint carries its own spam brakes: a honeypot field, a minimum
  * fill time, size caps, and a per-IP limit (best effort: each server instance counts on its own).
+ *
+ * Idempotent by ref: the form keeps one ref across retries, so a retry after a lost response finds
+ * the issue the first send made (title "[ref] …" or body "_Ref ref_") and returns it instead of
+ * filing it again. Screenshots already uploaded under that ref are reused.
  */
 
 declare const process: { env: Record<string, string | undefined> };
@@ -61,7 +65,7 @@ function rateLimited(ip: string): boolean {
   return false;
 }
 
-async function github(token: string, repo: string, path: string, method: string, body: unknown) {
+async function github(token: string, repo: string, path: string, method: string, body?: unknown) {
   return fetch(`https://api.github.com/repos/${repo}${path}`, {
     method,
     headers: {
@@ -71,8 +75,62 @@ async function github(token: string, repo: string, path: string, method: string,
       'Content-Type': 'application/json',
       'User-Agent': 'ascend-feedback',
     },
-    body: JSON.stringify(body),
+    body: body === undefined ? undefined : JSON.stringify(body),
   });
+}
+
+// Requests per ref still running on this instance: a retry that lands while the first send is
+// still filing the issue waits for it instead of filing a second one.
+const inFlightByRef = new Map<string, Promise<Response>>();
+
+const LOOKUP_PAGES = 3; // newest 300 issues: a retry comes seconds or minutes after the first send
+
+type Lookup = { found: true } | { found: false } | { error: Response };
+
+/**
+ * Is there already an issue for this ref? Uses the issues list (consistent right after a create),
+ * not the Search API (its index lags, which is exactly when a retry comes).
+ */
+async function findIssueByRef(token: string, repo: string, ref: string): Promise<Lookup> {
+  const titlePrefix = `[${ref}]`;
+  const bodyMarker = `_Ref ${ref}_`;
+  for (let page = 1; page <= LOOKUP_PAGES; page += 1) {
+    let res: Response;
+    try {
+      res = await github(token, repo, `/issues?state=all&sort=created&direction=desc&per_page=100&page=${page}`, 'GET');
+    } catch {
+      return { found: false }; // can't look: file it rather than lose it
+    }
+    if (res.status === 401) return { error: json(502, { error: 'token_invalid' }) };
+    if (res.status === 403 || res.status === 404) return { error: json(502, { error: 'token_no_access' }) };
+    if (!res.ok) return { found: false };
+    const issues = (await res.json().catch(() => [])) as Array<{ title?: string; body?: string | null }>;
+    if (!Array.isArray(issues)) return { found: false };
+    if (issues.some((i) => (i.title ?? '').startsWith(titlePrefix) || (i.body ?? '').includes(bodyMarker))) {
+      return { found: true };
+    }
+    if (issues.length < 100) return { found: false };
+  }
+  return { found: false };
+}
+
+/** Uploads one screenshot; a file already there under this ref (an earlier try) is reused. */
+async function uploadScreenshot(token: string, repo: string, path: string, ref: string, data: string) {
+  const res = await github(token, repo, `/contents/${path}`, 'PUT', { message: `Attachment for ${ref}`, content: data });
+  if (res.status === 401) return { status: 401 as const };
+  if (res.ok) {
+    const saved = (await res.json().catch(() => null)) as { content?: { html_url?: string } } | null;
+    return { url: saved?.content?.html_url };
+  }
+  // 422 = the path exists (created by a send whose issue never got made, or whose reply was lost).
+  if (res.status === 422) {
+    const existing = await github(token, repo, `/contents/${path}`, 'GET');
+    if (existing.ok) {
+      const file = (await existing.json().catch(() => null)) as { html_url?: string } | null;
+      return { url: file?.html_url };
+    }
+  }
+  return {};
 }
 
 function section(title: string, value: string): string {
@@ -114,6 +172,30 @@ export async function POST(request: Request): Promise<Response> {
   const title = text(input.title, 120);
   if (!kind || !ref || !title) return json(400, { error: 'bad_request' });
 
+  const running = inFlightByRef.get(ref);
+  if (running) return (await running).clone();
+  const work = fileReport(token, repo, kind, ref, title, input);
+  inFlightByRef.set(ref, work);
+  try {
+    return (await work).clone();
+  } finally {
+    inFlightByRef.delete(ref);
+  }
+}
+
+async function fileReport(
+  token: string,
+  repo: string,
+  kind: 'bug' | 'idea',
+  ref: string,
+  title: string,
+  input: Record<string, unknown>
+): Promise<Response> {
+  // A retry of a send that already went through: answer with the issue that exists.
+  const lookup = await findIssueByRef(token, repo, ref);
+  if ('error' in lookup) return lookup.error;
+  if (lookup.found) return json(200, { ok: true, ref });
+
   const fields = (input.fields ?? {}) as Record<string, unknown>;
   const context = (input.context ?? {}) as Record<string, unknown>;
   const images = (Array.isArray(input.images) ? input.images : []).slice(0, MAX_IMAGES) as ImageIn[];
@@ -123,15 +205,11 @@ export async function POST(request: Request): Promise<Response> {
   for (const [index, image] of images.entries()) {
     const data = typeof image.data === 'string' ? image.data : '';
     if (!/^[A-Za-z0-9+/=]+$/.test(data) || data.length * 0.75 > MAX_IMAGE_BYTES) continue;
-    const res = await github(token, repo, `/contents/attachments/${ref}/${index + 1}.jpg`, 'PUT', {
-      message: `Attachment for ${ref}`,
-      content: data,
-    });
-    if (res.status === 401) return json(502, { error: 'token_invalid' });
-    if (!res.ok) continue; // a missing screenshot must not lose the report itself
-    const saved = (await res.json()) as { content?: { html_url?: string } };
+    const saved = await uploadScreenshot(token, repo, `attachments/${ref}/${index + 1}.jpg`, ref, data).catch(() => ({}));
+    if ('status' in saved) return json(502, { error: 'token_invalid' });
+    if (!('url' in saved) || !saved.url) continue; // a missing screenshot must not lose the report itself
     const name = text(image.name, 80).replace(/[[\]]/g, '') || `Screenshot ${index + 1}`;
-    if (saved.content?.html_url) imageLines.push(`![${name}](${saved.content.html_url}?raw=true)`);
+    imageLines.push(`![${name}](${saved.url}?raw=true)`);
   }
 
   const contextRows = Object.entries(context)

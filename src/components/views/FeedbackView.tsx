@@ -117,6 +117,9 @@ export function FeedbackView({ kind, store, fromView, onNavigate }: FeedbackView
   const sendIssues = useFormController();
   const [sentRef, setSentRef] = useState<string | null>(null);
   const [startedAt, setStartedAt] = useState(() => trustedNowMs());
+  // One ref per report: a retry after a lost reply sends the same ref, so the server finds the
+  // issue the first send made instead of filing it twice. Renewed only for a new report.
+  const [reportRef, setReportRef] = useState(() => newFeedbackRef());
   const fileInputRef = useRef<HTMLInputElement>(null);
   // After Send the form is replaced: focus (and screen readers) move to the "sent" heading.
   const sentHeadingRef = useRef<HTMLHeadingElement>(null);
@@ -173,7 +176,7 @@ export function FeedbackView({ kind, store, fromView, onNavigate }: FeedbackView
     try {
       const ref = await submitFeedback({
         kind,
-        ref: newFeedbackRef(),
+        ref: reportRef,
         title: title.trim(),
         fields: { ...fields, area: area === OTHER_AREA ? '' : area },
         context,
@@ -207,6 +210,7 @@ export function FeedbackView({ kind, store, fromView, onNavigate }: FeedbackView
     setScreenshotError(null);
     sendIssues.clear();
     setStartedAt(trustedNowMs());
+    setReportRef(newFeedbackRef());
     setSentRef(null);
   };
 
