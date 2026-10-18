@@ -23,8 +23,10 @@ interface PageSwipeOptions<V extends string> {
   /** Every page in swipe order (the zones' page strips, end to end). */
   chain: readonly V[];
   current: V;
-  /** id of the page strip's container: no page swipe while it is hidden or absent. */
-  stripId: string;
+  /** The phone layout (below lg): no page swipe on wider screens, which have the sidebar. */
+  isPhoneLayout: () => boolean;
+  /** The element that reads touches: all of <main>, larger than the page area that moves. */
+  listenRef: RefObject<HTMLElement>;
   /** The same navigation a tap on the page strip uses (unsaved-changes guard, history, scroll reset). */
   go: (view: V) => void;
 }
@@ -33,14 +35,14 @@ interface PageSwipeOptions<V extends string> {
  * One continuous swipe on phones: through the page's tabs, then on to the next page of the zone,
  * then into the next zone's first page; it bounces only before the first page and after the last.
  * A page entered forward opens on its first tab, entered backward on its last. Pages outside the
- * chain (Dashboard, Settings, help) and screens where the page strip is hidden get no page swipe.
+ * chain (Settings, help) and screens from lg up (sidebar layout) get no page swipe.
  */
 export function usePageSwipe<V extends string>(
   areaRef: RefObject<HTMLElement>,
-  { chain, current, stripId, go }: PageSwipeOptions<V>
+  { chain, current, isPhoneLayout, listenRef, go }: PageSwipeOptions<V>
 ): PageSwipe {
-  const latest = useRef({ chain, current, stripId, go });
-  latest.current = { chain, current, stripId, go };
+  const latest = useRef({ chain, current, isPhoneLayout, go });
+  latest.current = { chain, current, isPhoneLayout, go };
   const tabs = useRef<PageTabs | null>(null);
   // Set by a page swipe for the page it heads to: which tab to open on, and the slide to play.
   const entry = useRef<{ view: V; end: 'first' | 'last' } | null>(null);
@@ -48,9 +50,9 @@ export function usePageSwipe<V extends string>(
 
   const swipe = useMemo(() => {
     const neighbour = (direction: SwipeDirection) => {
-      const { chain: pages, current: view, stripId: strip } = latest.current;
+      const { chain: pages, current: view, isPhoneLayout: phone } = latest.current;
       const index = pages.indexOf(view);
-      if (index === -1 || !document.getElementById(strip)?.getClientRects().length) return undefined;
+      if (index === -1 || !phone()) return undefined;
       return pages[index + (direction === 'next' ? 1 : -1)];
     };
     const goPage = (direction: SwipeDirection) => {
@@ -87,7 +89,16 @@ export function usePageSwipe<V extends string>(
     return { area, context };
   }, []);
 
-  useTabSwipe(areaRef, { ids: [], value: current, onChange: () => {}, stripId, edge: swipe.area, animateTaps: false });
+  useTabSwipe(areaRef, {
+    ids: [],
+    value: current,
+    onChange: () => {},
+    stripId: '',
+    isActive: () => latest.current.isPhoneLayout(),
+    listenRef,
+    edge: swipe.area,
+    animateTaps: false,
+  });
 
   // Runs after the new page's own layout effects (its TabPanel has taken the entry by then).
   useLayoutEffect(() => {

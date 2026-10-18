@@ -21,6 +21,12 @@ interface TabSwipeOptions {
   onChange: (id: string) => void;
   /** id of the strip: no swipe while it is hidden (e.g. Settings from sm up, the page strip from lg). */
   stripId: string;
+  /** Replaces the strip check above for a swipe that has no strip of its own on every screen
+   *  (the page area: Dashboard has no page strip). */
+  isActive?: () => boolean;
+  /** The element touches are read from, when larger than the panel that moves (the page area
+   *  listens on all of <main>, so empty space under short content swipes too). Default: the panel. */
+  listenRef?: RefObject<HTMLElement>;
   /** Past the first/last item. Without it the panel bounces and nothing changes. */
   edge?: SwipeEdge;
   /** Read once on mount: open on the first or last item (entered by a swipe from a neighbour). */
@@ -104,10 +110,10 @@ export function slideIn(el: HTMLElement, step: number): void {
  */
 export function useTabSwipe(
   panelRef: RefObject<HTMLElement>,
-  { ids, value, onChange, stripId, edge, entry, animateTaps = true }: TabSwipeOptions
+  { ids, value, onChange, stripId, isActive, listenRef, edge, entry, animateTaps = true }: TabSwipeOptions
 ): void {
-  const latest = useRef({ ids, value, onChange, stripId, edge, entry });
-  latest.current = { ids, value, onChange, stripId, edge, entry };
+  const latest = useRef({ ids, value, onChange, stripId, isActive, edge, entry });
+  latest.current = { ids, value, onChange, stripId, isActive, edge, entry };
   const shownValue = useRef(value);
   // Set by a committed swipe: its change scrolls back to the strip and slides in.
   const swiped = useRef(false);
@@ -115,7 +121,8 @@ export function useTabSwipe(
 
   useEffect(() => {
     const panel = panelRef.current;
-    if (!panel) return;
+    const surface = listenRef?.current ?? panel;
+    if (!panel || !surface) return;
     let gesture: Gesture | null = null;
     let frame = 0;
     // A drag ending on a button must not also press it.
@@ -157,11 +164,11 @@ export function useTabSwipe(
       const touch = e.touches[0];
       const target = e.target;
       if (e.touches.length !== 1 || !touch || !(target instanceof Element)) return;
-      const { ids: list, edge: ends, stripId: strip } = latest.current;
+      const { ids: list, edge: ends, stripId: strip, isActive: active } = latest.current;
       if ((list.length < 2 && !ends) || !window.matchMedia('(pointer: coarse)').matches) return;
-      if (!stripVisible(document.getElementById(strip))) return;
+      if (active ? !active() : !stripVisible(document.getElementById(strip))) return;
       if (nearScreenEdge(touch.clientX) || (window.visualViewport?.scale ?? 1) > 1.01) return;
-      if (startsInsideOwnGesture(target, panel) || window.getSelection()?.toString()) return;
+      if (startsInsideOwnGesture(target, surface) || window.getSelection()?.toString()) return;
       swiped.current = false;
       gesture = {
         x: touch.clientX,
@@ -236,23 +243,23 @@ export function useTabSwipe(
     };
 
     const passive = { passive: true } as const;
-    panel.addEventListener('touchstart', onTouchStart, passive);
-    panel.addEventListener('touchmove', onTouchMove, passive);
-    panel.addEventListener('touchend', onTouchEnd, passive);
-    panel.addEventListener('touchcancel', cancel, passive);
-    panel.addEventListener('click', onClickCapture, true);
+    surface.addEventListener('touchstart', onTouchStart, passive);
+    surface.addEventListener('touchmove', onTouchMove, passive);
+    surface.addEventListener('touchend', onTouchEnd, passive);
+    surface.addEventListener('touchcancel', cancel, passive);
+    surface.addEventListener('click', onClickCapture, true);
     // Rotation or the keyboard opening mid-drag.
     window.addEventListener('resize', cancel, passive);
     return () => {
       cancelAnimationFrame(frame);
-      panel.removeEventListener('touchstart', onTouchStart);
-      panel.removeEventListener('touchmove', onTouchMove);
-      panel.removeEventListener('touchend', onTouchEnd);
-      panel.removeEventListener('touchcancel', cancel);
-      panel.removeEventListener('click', onClickCapture, true);
+      surface.removeEventListener('touchstart', onTouchStart);
+      surface.removeEventListener('touchmove', onTouchMove);
+      surface.removeEventListener('touchend', onTouchEnd);
+      surface.removeEventListener('touchcancel', cancel);
+      surface.removeEventListener('click', onClickCapture, true);
       window.removeEventListener('resize', cancel);
     };
-  }, [panelRef]);
+  }, [panelRef, listenRef]);
 
   // Entered by a swipe from a neighbour: open on the near end, without a second slide.
   useLayoutEffect(() => {

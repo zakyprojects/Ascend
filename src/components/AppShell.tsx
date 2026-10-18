@@ -46,8 +46,10 @@ const DESKTOP_QUERY = '(min-width: 1024px)';
 
 // Phone page swipe order: each zone's page strip, zones in nav order (Dashboard, Settings and help
 // pages are outside it). The page strip's container id switches it off where the strip is hidden.
-const PAGE_SWIPE_CHAIN: View[] = NAV_GROUPS.flatMap((group) => group.items.map((item) => item.id));
+// Dashboard heads the chain: a swipe from it reaches Track's first page, and back.
+const PAGE_SWIPE_CHAIN: View[] = [NAV_DASHBOARD.id, ...NAV_GROUPS.flatMap((group) => group.items.map((item) => item.id))];
 const PAGE_STRIP_ID = 'zone-pages';
+const isPhoneLayout = () => !window.matchMedia(DESKTOP_QUERY).matches;
 
 function readScroll(main: HTMLElement): number {
   return window.matchMedia(DESKTOP_QUERY).matches ? main.scrollTop : window.scrollY;
@@ -177,7 +179,7 @@ export function AppShell({ currentView, navigationKind, pendingView = null, onVi
   );
   const goDashboard = useCallback(() => goTo(NAV_DASHBOARD.id), [goTo]);
   const pageAreaRef = useRef<HTMLDivElement>(null);
-  const pageSwipe = usePageSwipe(pageAreaRef, { chain: PAGE_SWIPE_CHAIN, current: currentView, stripId: PAGE_STRIP_ID, go: goTo });
+  const pageSwipe = usePageSwipe(pageAreaRef, { chain: PAGE_SWIPE_CHAIN, current: currentView, isPhoneLayout, listenRef: mainRef, go: goTo });
   const openZone = useCallback(
     (zone: keyof typeof lastByGroup) => (activeGroupId === zone ? setZoneSheetOpen((v) => !v) : onViewChange(lastByGroup[zone])),
     [activeGroupId, lastByGroup, onViewChange]
@@ -310,7 +312,7 @@ export function AppShell({ currentView, navigationKind, pendingView = null, onVi
 
         {/* Main content. Below lg the window scrolls, so main must not be a scroll container there
             (the scroll-rise timeline would bind to it and never move); it only clips sideways. */}
-        <main ref={mainRef} data-page-area className="relative flex-1 max-lg:overflow-x-clip lg:overflow-y-auto pb-[calc(6rem_+_env(safe-area-inset-bottom))] lg:pb-0">
+        <main ref={mainRef} data-page-area data-tab-swipe="" className="relative flex-1 max-lg:overflow-x-clip lg:overflow-y-auto pb-[calc(6rem_+_env(safe-area-inset-bottom))] lg:pb-0">
           {activeGroup && (
             <div id={PAGE_STRIP_ID} className="lg:hidden px-4 pt-3">
               <Tabs
@@ -334,7 +336,7 @@ export function AppShell({ currentView, navigationKind, pendingView = null, onVi
           )}
           {/* Page width: fills wide screens instead of a fixed narrow column (pages split into
               PageColumns from xl up); the cap stops lines growing past comfortable reading. */}
-          <div ref={pageAreaRef} data-tab-swipe="" className="max-w-[88rem] mx-auto px-4 sm:px-6 xl:px-8 2xl:px-10 py-6 xl:py-8">
+          <div ref={pageAreaRef} className="max-w-[88rem] mx-auto px-4 sm:px-6 xl:px-8 2xl:px-10 py-6 xl:py-8">
             <PageSwipeContext.Provider value={pageSwipe}>
               <ViewEntrance key={currentView}>
                 {children}
