@@ -5028,26 +5028,45 @@ export function useAppState() {
   }, []);
 
   // --- MODULE 7: PREFRONTAL CORTEX ACTIONS ---
-  const logFocusSession = useCallback((taskName: string, durationMinutes: number, skillId?: string, reflection?: string) => {
-    const date = todayKey();
-    setState((prev) => {
-      const focusLog: FocusSessionLog = {
-        id: uid(),
-        date,
-        taskName: taskName.trim() || 'Deep Focus',
-        skillId,
-        durationMinutes,
-        pointsAwarded: 0,
-        reflection: reflection?.trim() || undefined,
-        createdAt: trustedNow().toISOString(),
-      };
-      // The server writes the day's award (applyFocusAwardsInternal shows the same row now).
-      const awards = applyFocusAwardsInternal(prev, [focusLog, ...prev.focusLogs], date);
-      return { ...prev, focusLogs: awards.focusLogs, ...awards.points };
-    });
+  /**
+   * Logs a finished focus session and returns its id. `id` makes the log idempotent (a second call
+   * with the same id, or one for a deleted log, changes nothing); `endedAtMs` dates it on the local
+   * day it ended. The server awards only its own today, so only a session of today gets a preview.
+   */
+  const logFocusSession = useCallback(
+    (
+      taskName: string,
+      durationMinutes: number,
+      skillId?: string,
+      reflection?: string,
+      opts?: { id?: string; endedAtMs?: number }
+    ): string => {
+      const id = opts?.id || uid();
+      const endedAt = opts?.endedAtMs !== undefined ? new Date(Math.min(opts.endedAtMs, trustedNowMs())) : trustedNow();
+      const date = todayKey(endedAt);
+      setState((prev) => {
+        if (prev.focusLogs.some((f) => f.id === id) || (prev.deletedEntityIds || []).includes(id)) return prev;
+        const focusLog: FocusSessionLog = {
+          id,
+          date,
+          taskName: taskName.trim() || 'Deep Focus',
+          skillId,
+          durationMinutes,
+          pointsAwarded: 0,
+          reflection: reflection?.trim() || undefined,
+          createdAt: endedAt.toISOString(),
+        };
+        if (date !== todayKey()) return { ...prev, focusLogs: [focusLog, ...prev.focusLogs] };
+        // The server writes the day's award (applyFocusAwardsInternal shows the same row now).
+        const awards = applyFocusAwardsInternal(prev, [focusLog, ...prev.focusLogs], date);
+        return { ...prev, focusLogs: awards.focusLogs, ...awards.points };
+      });
+      return id;
+    },
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    []
+  );
 
   const updateFocusLogReflection = useCallback((logId: string, reflection: string) => {
     setState((prev) => {
