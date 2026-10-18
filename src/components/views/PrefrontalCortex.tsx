@@ -5,7 +5,7 @@ import { addDays, startOfWeek, todayKey } from '@/lib/dates';
 import { useLocalDayKey } from '@/lib/useLocalDayKey';
 import { isFocusDayEntry } from '@/lib/focusAwards';
 import { PFC_POINTS } from '@/lib/pointsConfig';
-import { Tabs } from '@/components/ui/primitives';
+import { TabPanel, Tabs } from '@/components/ui/primitives';
 import { CountUp, Reveal } from '@/components/ui/Motion';
 import { PageHero } from '@/components/ui/PageHero';
 import { CapMeterConnected } from '@/components/ui/CapMeterConnected';
@@ -17,6 +17,7 @@ import { EmotionLabeler } from '@/components/pfc/EmotionLabeler';
 import { dueDecisions, localDayOf } from '@/components/pfc/pfcLists';
 
 type PFCTab = 'focus' | 'schedule' | 'decisions' | 'emotions';
+const PFC_TABS: PFCTab[] = ['focus', 'schedule', 'decisions', 'emotions'];
 
 /** Time Tracker's "Open section" and the `?tab=live` / `?mode=sync` link open the Schedule tab. */
 function initialTab(): PFCTab {
@@ -43,6 +44,7 @@ function clearHandOffs(): void {
 /** Prefrontal Cortex page: deep focus timer, decision journal, emotion labeling (components/pfc). */
 export function PrefrontalCortex({ store, onNavigate }: { store: AppStore; onNavigate?: (view: View) => void }) {
   const [tab, setTab] = useState<PFCTab>(initialTab);
+  const changeTab = (id: string) => setTab(id as PFCTab);
   useEffect(clearHandOffs, []);
   const { focusLogs, decisionLogs, emotionLogs, pointsHistory } = store.state;
 
@@ -103,6 +105,7 @@ export function PrefrontalCortex({ store, onNavigate }: { store: AppStore; onNav
       </Reveal>
 
       <Tabs
+        idBase="pfc"
         ariaLabel="Prefrontal cortex sections"
         scrollable
         items={[
@@ -112,13 +115,15 @@ export function PrefrontalCortex({ store, onNavigate }: { store: AppStore; onNav
           { id: 'emotions', label: 'Emotions' },
         ]}
         value={tab}
-        onChange={(id) => setTab(id as PFCTab)}
+        onChange={changeTab}
       />
 
-      {tab === 'focus' && <FocusPanel store={store} today={today} />}
-      {tab === 'schedule' && <SchedulePanel store={store} onNavigate={onNavigate} onShowTimer={() => setTab('focus')} />}
-      {tab === 'decisions' && <DecisionJournal store={store} today={today} />}
-      {tab === 'emotions' && <EmotionLabeler store={store} today={today} />}
+      <TabPanel idBase="pfc" ids={PFC_TABS} value={tab} onChange={changeTab}>
+        {tab === 'focus' && <FocusPanel store={store} today={today} />}
+        {tab === 'schedule' && <SchedulePanel store={store} onNavigate={onNavigate} onShowTimer={() => setTab('focus')} />}
+        {tab === 'decisions' && <DecisionJournal store={store} today={today} />}
+        {tab === 'emotions' && <EmotionLabeler store={store} today={today} />}
+      </TabPanel>
 
       <FocusReflectionDialog store={store} />
     </div>
