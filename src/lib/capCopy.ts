@@ -11,6 +11,7 @@ import {
   WEEKLY_GOALS_POINTS,
   WEEKLY_REFLECTION_POINTS,
 } from '@/lib/pointsConfig';
+import { CUSTOM_HABIT_POINTS } from '@/lib/habitAwards';
 
 export const capLabels: Record<CapId, string> = {
   exercise: 'Exercise points today',
@@ -64,7 +65,7 @@ export function capNote(capId: CapId | 'timeTracker'): string {
   }
 
   if (capId === 'presetHabits') {
-    return `Preset habits earn points up to ${PRESET_HABIT_POINTS.dailyCap} per day. Custom habits track your streak only and earn 0 points. Resets at midnight.`;
+    return `Preset habits earn their points and daily custom habits ${CUSTOM_HABIT_POINTS} pt each, up to ${PRESET_HABIT_POINTS.dailyCap} per day for all of them together. Weekly custom habits track your streak only. Resets at midnight.`;
   }
 
   if (capId === 'journal') {

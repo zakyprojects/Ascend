@@ -87,12 +87,12 @@ export function HabitRow({ habit, done, seasonPoints, popClass, onToggle, onDele
     ? habit.points > 0
       ? `Tracked by Reading Hub, ${ptsText(habit.points, true)}`
       : 'Tracked by Reading Hub, no points'
-    : !habit.isPreset
+    : !(habit.points > 0)
       ? 'No points'
-      : done && current.pointsAwarded === 0 && habit.points > 0
+      : done && current.pointsAwarded === 0
         ? '0 pts, daily cap reached'
         : ptsText(habit.points, true);
-  const earns = !linked && habit.isPreset && habit.points > 0 && !(done && current.pointsAwarded === 0);
+  const earns = !linked && habit.points > 0 && !(done && current.pointsAwarded === 0);
 
   return (
     <SwipeRow

@@ -60,7 +60,7 @@ export interface Habit {
   name: string;
   frequency: HabitFrequency;
   points: number;
-  /** Whether this habit came from the preset library (earns points) or is custom (no points) */
+  /** Whether this habit came from the preset library (its catalogue points) or is custom (1 pt when daily, no penalty) */
   isPreset: boolean;
   /** Preset category, if from library */
   category?: string;

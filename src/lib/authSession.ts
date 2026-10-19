@@ -1,6 +1,6 @@
 import { User } from '@supabase/supabase-js';
 import { AppState, DEFAULT_STATE, UserProfile, Partnership } from '@/types';
-import { generateNumericUID, getNow, weekKey } from './dates';
+import { generateNumericUID, getNow, todayKey, weekKey } from './dates';
 import { reconcileSharedChallengeLifecycle } from './pactLifecycle';
 import { cachedSyncedCollections } from './sync/syncedCollections';
 import { cachedDeviceLocalState } from './deviceLocalState';
@@ -271,7 +271,8 @@ export async function hydrateUserSession(
       username: user.username,
     };
     state = applyRemoteChanges(state, tablePull.changes);
-    state = applyPresetHabitRemovalMigration(state, weekKey(getNow()));
+    const now = getNow();
+    state = applyPresetHabitRemovalMigration(state, weekKey(now), todayKey(now));
     setUserDataWatermark(userId, state);
   } else {
     // A new account starts empty. A guest keeps their data by upgrading their anonymous

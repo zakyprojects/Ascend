@@ -34,7 +34,7 @@ function habit(id: string, name: string, checkedHour: number | null, extra: Part
   } as Habit;
 }
 
-// 1. Catalogue points (stored points ignored), cap 10 in check order, duplicates and custom earn 0.
+// 1. Catalogue points (stored points ignored), cap 10 in check order, duplicates and retired earn 0.
 {
   const { allocation, entries } = computeHabitAwards(
     [
@@ -45,7 +45,7 @@ function habit(id: string, name: string, checkedHour: number | null, extra: Part
       habit('e', 'Wake up early', 5),
       habit('f', 'Sleep 7-8 hours', 6),
       habit('dup', 'Meditation', 7),
-      habit('x', 'My custom', 0, { isPreset: false }),
+      habit('x', 'My custom', 8, { isPreset: false }),
       habit('r', 'No porn', 0),
       habit('u', 'Morning walk', null),
     ],
@@ -54,12 +54,39 @@ function habit(id: string, name: string, checkedHour: number | null, extra: Part
     NOW
   );
   assert(allocation.a === 3 && allocation.b === 3 && allocation.c === 2 && allocation.d === 2, 'catalogue amounts');
-  assert(allocation.e === 0 && allocation.f === 0, 'cap reached');
-  assert(!('dup' in allocation) && !('x' in allocation) && !('r' in allocation) && !('u' in allocation), 'not counted');
+  assert(allocation.e === 0 && allocation.f === 0 && allocation.x === 0, 'cap reached');
+  assert(!('dup' in allocation) && !('r' in allocation) && !('u' in allocation), 'not counted');
   assert(entries.length === 4 && entries.reduce((s, e) => s + e.amount, 0) === 10, 'four rows, 10 points');
   const a = entries.find((e) => e.metadata?.habitId === 'a')!;
   assert(a.id === `habit_award_a_${DAY}` && a.source === 'habit_completed', 'server id and source');
   assert(a.timestamp === at(1) && a.reason === 'Habit completed: Learn something new', 'timestamp and reason');
+}
+
+// 1b. Daily custom habits earn 1 inside the same cap and check order; weekly custom, the Reading
+//     habit and the 2026-10-15 retired presets earn 0; the 2026-10-19 retired ones keep their points.
+{
+  const { allocation } = computeHabitAwards(
+    [
+      habit('c1', 'Call my mom', 1, { isPreset: false }),
+      habit('w', 'Deep clean', 2, { isPreset: false, frequency: 'weekly' }),
+      habit('rb', 'Reading (Books)', 3, { isSystemLinked: true, linkedModule: 'reading' }),
+      habit('r7', 'Journaling', 4),
+      habit('r3', 'Digital detox hour', 5),
+      habit('n1', '10,000 steps', 6),
+      habit('n2', 'Pray / spiritual practice', 7),
+      habit('n3', 'Watch a lecture / tutorial', 8),
+      habit('c2', 'Floss', 9, { isPreset: false }),
+      habit('n4', 'Make your bed', 10),
+      habit('c3', 'Stretch my back', 11, { isPreset: false }),
+    ],
+    DAY,
+    START,
+    NOW
+  );
+  assert(allocation.c1 === 1 && allocation.r3 === 1, 'custom 1, retired-scored 1');
+  assert(!('w' in allocation) && !('rb' in allocation) && !('r7' in allocation), 'weekly custom, Reading, retired 0');
+  assert(allocation.n1 === 2 && allocation.n2 === 2 && allocation.n3 === 2 && allocation.c2 === 1 && allocation.n4 === 1, 'new presets');
+  assert(allocation.c3 === 0, 'cap 10 reached');
 }
 
 // 2. Timestamps clamp to the day: a spoofed earlier check time stays inside it.

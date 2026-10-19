@@ -78,8 +78,8 @@ import { computeLinkedGoalProgress, linkedEntryPresent, linkedGoalCrossing, link
 import { autoStatusChanges } from './projectProgress';
 import { reconcileSharedChallengeLifecycle, applyPledgeToggle, mergeSharedChallenge } from './pactLifecycle';
 import { isPartnershipUser1 } from './partnershipSide';
-import { PresetHabit } from './presets';
-import { computeHabitAwards, isHabitAwardEntry, isRetiredAppHabitAward } from './habitAwards';
+import { PresetHabit, RETIRED_SCORED_PRESET_HABITS } from './presets';
+import { computeHabitAwards, isHabitAwardEntry, isRetiredAppHabitAward, presetHabitPoints } from './habitAwards';
 import { computeWorkoutAwards, isRetiredAppWorkoutAward, isWorkoutDayEntry } from './workoutAwards';
 import { computeSkillAwards, isRetiredAppSkillAward, isSkillDayEntry } from './skillAwards';
 import { computeRecoveryChanges, RECOVERY_MILESTONES, trackerStartMs } from './recoveryAwards';
@@ -304,16 +304,22 @@ export const RETIRED_PRESET_HABIT_NAMES = new Set<string>([
   'No social media before bed',
   'No junk food',
   'Journaling',
+  ...RETIRED_SCORED_PRESET_HABITS.keys(),
 ]);
 
 /**
- * Migration: Retires 7 preset habits from user state, tombstones removed IDs and detaches
- * linked weekly goals. Points are not reversed here: the server retired the remaining rows
- * (20261015120000_server_habit_awards.sql), none of which had completions.
+ * Migration: Retires preset habits from user state, tombstones removed IDs and detaches linked
+ * weekly goals. Points are not reversed: the first 7 left the server with no completions
+ * (20261015120000_server_habit_awards.sql); earlier days' awards always stay. A copy ticked
+ * today waits for a later day, because removing it would take back today's award.
  */
-export function applyPresetHabitRemovalMigration(state: AppState, currentWeekKey: string): AppState {
+export function applyPresetHabitRemovalMigration(state: AppState, currentWeekKey: string, today: string): AppState {
   const habitsToRetire = (state.habits || []).filter(
-    (h) => h && h.isPreset === true && RETIRED_PRESET_HABIT_NAMES.has(h.name)
+    (h) =>
+      h &&
+      h.isPreset === true &&
+      RETIRED_PRESET_HABIT_NAMES.has(h.name) &&
+      !(Array.isArray(h.completions) ? h.completions.includes(today) : h.completions?.[today]?.done === true)
   );
 
   if (habitsToRetire.length === 0) {
@@ -958,8 +964,8 @@ export function sanitizeLoadedState(loaded: Partial<AppState>, profile: UserProf
     now
   );
 
-  // Preset Habit Retirement Migration: Cleanse retired presets & retroactively claw back season points
-  sweptState = applyPresetHabitRemovalMigration(sweptState, weekKey(getNow()));
+  // Preset Habit Retirement Migration: retired presets leave (earned points stay)
+  sweptState = applyPresetHabitRemovalMigration(sweptState, weekKey(now), todayKey(now));
 
   return sweptState;
 }
@@ -3440,7 +3446,7 @@ export function useAppState() {
       id: uid(),
       name,
       frequency,
-      points: 0, // Custom habits earn no points
+      points: presetHabitPoints({ isPreset: false, name, frequency }),
       isPreset: false,
       createdAt: nowIso,
       updatedAt: nowIso,
@@ -3499,9 +3505,9 @@ export function useAppState() {
 
         const remainingHabits = prev.habits.filter((h) => h.id !== habitId);
 
-        // If target had a completion today, recalculate cap allocation for remaining preset habits
+        // If target had a completion today, recalculate cap allocation for the remaining habits
         let targetHadTodayDone = false;
-        if (target && target.isPreset && target.frequency === 'daily') {
+        if (target && target.frequency === 'daily' && presetHabitPoints(target) > 0) {
           if (Array.isArray(target.completions)) {
             targetHadTodayDone = target.completions.includes(today);
           } else if (target.completions && typeof target.completions === 'object') {
@@ -3512,7 +3518,7 @@ export function useAppState() {
           }
         }
 
-        // Today's award leaves with the habit and the remaining presets share the freed cap.
+        // Today's award leaves with the habit and the remaining habits share the freed cap.
         let updatedHabits = remainingHabits;
         if (targetHadTodayDone) {
           const awards = applyHabitAwardsInternal(runningState, remainingHabits, today);
@@ -3639,7 +3645,7 @@ export function useAppState() {
                   ...h,
                   completions: {
                     ...currentCompletions,
-                    [key]: { done: true, updatedAt: nowIso, pointsAwarded: h.isPreset && h.frequency === 'daily' ? 0 : h.points },
+                    [key]: { done: true, updatedAt: nowIso, pointsAwarded: h.frequency === 'daily' && presetHabitPoints(h) > 0 ? 0 : h.points },
                   },
                   updatedAt: nowIso,
                 };
@@ -3648,8 +3654,8 @@ export function useAppState() {
 
             let runningState = prev;
 
-            // Daily presets share the daily cap; every other habit earns no points.
-            if (habit && habit.isPreset && habit.frequency === 'daily') {
+            // Daily habits that earn points (presets and custom) share the daily cap; weekly ones earn none.
+            if (habit && habit.frequency === 'daily' && presetHabitPoints(habit) > 0) {
               const awards = applyHabitAwardsInternal(runningState, habits, todayKey());
               runningState = { ...runningState, ...awards.points };
               habits = awards.habits;

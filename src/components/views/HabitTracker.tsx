@@ -6,6 +6,7 @@ import { getNow, weekKey, formatWeekdayDate, formatWeekdayShort } from '@/lib/da
 import { getEffectiveSeasonPoints, ptsText } from '@/lib/leagues';
 import { leagueNow } from '@/lib/leagueTime';
 import { PRESET_HABIT_POINTS } from '@/lib/pointsConfig';
+import { CUSTOM_HABIT_POINTS } from '@/lib/habitAwards';
 import { actionFeedback } from '@/lib/actionFeedback';
 import { useLocalDayKey } from '@/lib/useLocalDayKey';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
@@ -90,7 +91,7 @@ export function HabitTracker({ store }: { store: AppStore }) {
 
   const deleteDescription = (habit: Habit | null): string => {
     if (!habit) return '';
-    const earns = habit.isPreset && habit.points > 0 && !isReadingLinked(habit);
+    const earns = habit.points > 0 && !isReadingLinked(habit);
     const points = earns
       ? " Only today's points from it are removed; earlier points and penalties stay."
       : ' It earns no points, so your points stay the same.';
@@ -158,14 +159,16 @@ export function HabitTracker({ store }: { store: AppStore }) {
             <Disclosure title="How points work" icon={Info}>
               <ul className="list-disc space-y-1 pl-4 text-content-muted">
                 <li>
-                  Preset habits earn their points, up to <span className="figure">{ptsText(PRESET_HABIT_POINTS.dailyCap)}</span> a
-                  day for all of them together. The ones you tick first count first. Custom habits earn no points.
+                  Preset habits earn their points and daily custom habits{' '}
+                  <span className="figure">{ptsText(CUSTOM_HABIT_POINTS, true)}</span> each, up to{' '}
+                  <span className="figure">{ptsText(PRESET_HABIT_POINTS.dailyCap)}</span> a day for all of them together. The ones
+                  you tick first count first. Weekly custom habits earn no points.
                 </li>
                 <li>You can only tick today, or this week for a weekly habit.</li>
                 <li>
                   A preset habit left unticked for a day costs its points, from the day you add it. Each further miss in a
                   row costs ×1.5 its points; from Performer rank, ×2 for the 2nd and ×2.5 from the 3rd (rounded). Ticking it
-                  resets the count.
+                  resets the count. Custom habits have no penalty.
                 </li>
                 <li>The Reading (Books) habit ticks itself when you log pages in Reading Hub. It earns no points and has no penalty.</li>
                 <li>Deleting a habit removes only today's points from it. Earlier points and penalties stay.</li>

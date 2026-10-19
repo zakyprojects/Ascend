@@ -1,5 +1,5 @@
 import type { Habit, PointsEntry } from '@/types';
-import { findPresetHabit } from './presets';
+import { findPresetHabit, RETIRED_SCORED_PRESET_HABITS } from './presets';
 import { PRESET_HABIT_POINTS, recomputeTodayPresetPoints, type PresetHabitCapItem } from './pointsConfig';
 
 /**
@@ -29,9 +29,17 @@ export const isRetiredAppHabitAward = (entry: PointsEntry): boolean =>
   typeof entry.metadata?.periodKey === 'string' &&
   entry.metadata.periodKey >= HABIT_AWARDS_SERVER_SINCE;
 
-/** Catalogue points of a habit (ascend_preset_habit_points): custom and retired habits earn 0. */
-export function presetHabitPoints(habit: Pick<Habit, 'isPreset' | 'name'>): number {
-  return habit.isPreset === true ? findPresetHabit(habit.name)?.points ?? 0 : 0;
+/** Points of a daily custom habit's tick (ascend_preset_habit_points); weekly custom habits earn 0. */
+export const CUSTOM_HABIT_POINTS = 1;
+
+/**
+ * Catalogue points of a habit (ascend_preset_habit_points): a preset earns its library points
+ * (a retired one its old points while it waits to leave, else 0; the Reading habit 0), a custom
+ * habit CUSTOM_HABIT_POINTS when daily.
+ */
+export function presetHabitPoints(habit: Pick<Habit, 'isPreset' | 'name' | 'frequency'>): number {
+  if (habit.isPreset !== true) return habit.frequency === 'daily' ? CUSTOM_HABIT_POINTS : 0;
+  return findPresetHabit(habit.name)?.points ?? RETIRED_SCORED_PRESET_HABITS.get(habit.name) ?? 0;
 }
 
 const timeOf = (value: string): number => {
@@ -41,7 +49,7 @@ const timeOf = (value: string): number => {
 
 /**
  * Mirror of ascend_recompute_habit_awards: the award entries of one local day. Checked daily
- * presets, one per preset name (the earliest check), share the daily cap in check order.
+ * habits that earn points (presets and custom), one per name (the earliest check), share the daily cap in check order.
  */
 export function computeHabitAwards(
   habits: Habit[],

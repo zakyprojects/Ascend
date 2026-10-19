@@ -3,6 +3,7 @@ import { BookMarked, Calendar, Check, Pencil, Plus, Repeat } from 'lucide-react'
 import type { Habit, HabitFrequency } from '@/types';
 import { PRESET_CATEGORIES, type PresetHabit } from '@/lib/presets';
 import { PRESET_HABIT_POINTS } from '@/lib/pointsConfig';
+import { CUSTOM_HABIT_POINTS } from '@/lib/habitAwards';
 import { ptsText } from '@/lib/leagues';
 import { useUnsavedChanges } from '@/lib/unsavedChanges';
 import { nameTaken, sameName } from '@/lib/uniqueNames';
@@ -35,7 +36,8 @@ interface AddHabitDialogProps {
 
 /**
  * Add a habit: the preset library (stays open for several adds) or a custom habit, as two tabs
- * of one dialog. Points stay the store's: presets earn their catalogue points, custom ones none.
+ * of one dialog. Points stay the store's: presets earn their catalogue points, daily custom ones
+ * CUSTOM_HABIT_POINTS.
  */
 export function AddHabitDialog({ open, onClose, habits, onAddPreset, onAddCustom }: AddHabitDialogProps) {
   const [tab, setTab] = useState<AddTab>('library');
@@ -105,8 +107,10 @@ export function AddHabitDialog({ open, onClose, habits, onAddPreset, onAddCustom
           {tab === 'library' ? (
             <div className="space-y-5">
               <p className="text-xs text-content-muted">
-                Preset habits earn points, up to <span className="figure">{ptsText(PRESET_HABIT_POINTS.dailyCap)}</span> a day for
-                all of them together. The ones you tick first count first.
+                Preset habits earn the points shown, daily custom habits{' '}
+                <span className="figure">{ptsText(CUSTOM_HABIT_POINTS, true)}</span>, up to{' '}
+                <span className="figure">{ptsText(PRESET_HABIT_POINTS.dailyCap)}</span> a day for all of them together. The ones
+                you tick first count first.
               </p>
               {PRESET_CATEGORIES.map((category) => (
                 <section key={category.name} aria-labelledby={`preset-cat-${category.name}`}>
@@ -209,7 +213,16 @@ export function AddHabitDialog({ open, onClose, habits, onAddPreset, onAddCustom
                   })}
                 </div>
               </div>
-              <p className="text-xs text-content-muted">Custom habits track streaks only and earn no points.</p>
+              <p className="text-xs text-content-muted">
+                {frequency === 'daily' ? (
+                  <>
+                    A daily custom habit earns <span className="figure">{ptsText(CUSTOM_HABIT_POINTS, true)}</span> a day, inside
+                    the same <span className="figure">{ptsText(PRESET_HABIT_POINTS.dailyCap)}</span> daily cap.
+                  </>
+                ) : (
+                  'A weekly custom habit tracks its streak only and earns no points.'
+                )}
+              </p>
             </Form>
           )}
         </StaticTabPanel>

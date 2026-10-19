@@ -896,6 +896,7 @@ function fakeHabit(id: string, name: string, frequency: Habit['frequency'], extr
 const SWIPE_HABITS = [
   { habit: fakeHabit('h1', 'Drink 2 litres of water', 'daily'), streak: 12, points: '+5 pts' },
   { habit: fakeHabit('h2', 'Read 20 pages', 'daily', { isSystemLinked: true, linkedModule: 'reading' }), streak: 4, points: 'Tracked by Reading Hub, +5 pts' },
+  { habit: fakeHabit('h4', 'Call my mom', 'daily', { isPreset: false, points: 1 }), streak: 3, points: '+1 pt' },
   { habit: fakeHabit('h3', 'Deep clean the room', 'weekly', { isPreset: false, points: 0 }), streak: 0, points: 'No points' },
 ];
 
