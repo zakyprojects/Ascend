@@ -1,12 +1,13 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Calendar, Check, ChevronDown, ChevronUp, Edit3, FolderKanban, Lock, Timer, Trash2 } from 'lucide-react';
 import type { Task, TaskPriority, TaskSubtask } from '@/types';
 import { formatDateShort } from '@/lib/dates';
-import { cx, ProgressBar } from '@/components/ui/primitives';
+import { cx, FieldErrorBubble, ProgressBar } from '@/components/ui/primitives';
 import { TAP_TARGET, TAP_TARGET_Y } from '@/components/ui/primitives/shared';
 import { useCompletionPop } from '@/lib/useCompletionPop';
 import { Chip } from './ItemCard';
 import { actionFeedback } from '@/lib/actionFeedback';
+import { nameTaken } from '@/lib/uniqueNames';
 
 const PRIORITY_DOT: Record<TaskPriority, string> = {
   high: 'bg-rose-500',
@@ -56,12 +57,20 @@ export function TaskRow({
   const dueToday = !task.completed && task.dueDate === today;
   const [expanded, setExpanded] = useState(false);
   const [newSubtask, setNewSubtask] = useState('');
+  const [subtaskError, setSubtaskError] = useState<string | null>(null);
+  const newSubtaskRef = useRef<HTMLInputElement>(null);
+  const newSubtaskId = `task-${task.id}-new-subtask`;
   // Armed by the tick and by subtask clicks: ticking the last subtask completes the task.
   const { arm: armCompletionPop, popClass } = useCompletionPop(task.completed);
 
   const addSubtask = () => {
     const title = newSubtask.trim();
     if (!title) return;
+    if (nameTaken(title, subtasks, { nameOf: (st) => st.title })) {
+      setSubtaskError('This task already has a subtask with this name.');
+      newSubtaskRef.current?.focus();
+      return;
+    }
     onAddSubtask(title);
     setNewSubtask('');
   };
@@ -238,11 +247,18 @@ export function TaskRow({
                     }}
                   >
                     <input
+                      ref={newSubtaskRef}
+                      id={newSubtaskId}
                       type="text"
                       aria-label={`New subtask for "${task.title}"`}
+                      aria-invalid={subtaskError ? true : undefined}
+                      aria-describedby={subtaskError ? `${newSubtaskId}-error` : undefined}
                       placeholder="Add a subtask"
                       value={newSubtask}
-                      onChange={(e) => setNewSubtask(e.target.value)}
+                      onChange={(e) => {
+                        setNewSubtask(e.target.value);
+                        setSubtaskError(null);
+                      }}
                       maxLength={120}
                       enterKeyHint="enter"
                       className="min-h-9 w-full rounded-lg border border-overlay-default bg-bg-900 px-2.5 py-1 text-base text-content-secondary placeholder:text-content-subtle focus:border-emerald-500/50 focus:outline-none sm:text-xs"
@@ -252,6 +268,7 @@ export function TaskRow({
                     </button>
                   </form>
                 )}
+                {!locked && subtaskError && <FieldErrorBubble id={`${newSubtaskId}-error`} message={subtaskError} />}
               </div>
             )}
           </div>

@@ -386,6 +386,10 @@ export function TaskFormDialog({
   const addSubtask = () => {
     const subtaskTitle = newSubtask.trim();
     if (!subtaskTitle) return;
+    if (nameTaken(subtaskTitle, subtasks, { nameOf: (st) => st.title })) {
+      issues.showError('This task already has a subtask with this name.', 'pg-task-new-subtask');
+      return;
+    }
     setSubtasks((prev) => [...prev, { id: uid(), title: subtaskTitle, completed: false }]);
     setNewSubtask('');
   };
@@ -499,6 +503,7 @@ export function TaskFormDialog({
           )}
           <div className="flex items-center gap-2">
             <Input
+              id="pg-task-new-subtask"
               aria-label="New subtask"
               placeholder="Add a subtask"
               value={newSubtask}
