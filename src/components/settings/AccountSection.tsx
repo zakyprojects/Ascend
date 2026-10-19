@@ -7,7 +7,7 @@ import { PasswordInput } from '@/components/ui/PasswordInput';
 import { PasswordStaircase } from '@/components/ui/PasswordStaircase';
 import { GuestLogoutWarningModal } from '@/components/ui/GuestLogoutWarningModal';
 import { LogoutConfirmModal } from '@/components/ui/LogoutConfirmModal';
-import { Button, Form, FormAlert, Input, useFocusOnRender, useFormController } from '@/components/ui/primitives';
+import { Button, Form, FormAlert, Input, focusStillInForm, useFocusOnRender, useFormController } from '@/components/ui/primitives';
 import { AscendLoadingIndicator, AscendLoadingOverlay } from '@/components/ui/AscendLoadingIndicator';
 import { useAsyncAction } from '@/lib/useAsyncAction';
 import { useUnsavedChanges } from '@/lib/unsavedChanges';
@@ -36,6 +36,7 @@ export function AccountSection({ store, onOpenAuth }: AccountSectionProps) {
   const { isLoading: isPasswordSaving, executeFn: executePasswordSave } = useAsyncAction();
   const { confirmDiscard } = useUnsavedChanges(showPasswordForm, { currentPassword, newPassword, confirmPassword });
   // The button goes away as the form opens: its first field takes focus instead of the page.
+  // Cancel/Save close the form and focus returns to the button.
   const focusNext = useFocusOnRender();
 
   const closePasswordForm = () => {
@@ -63,6 +64,7 @@ export function AccountSection({ store, onOpenAuth }: AccountSectionProps) {
         if (!currentUser?.email) throw new Error("Couldn't check your password. Try again.");
         await changeUserPassword(newPassword, { email: currentUser.email, password: currentPassword });
         showSuccessToast('Password changed');
+        if (focusStillInForm('settings-current-password')) focusNext('settings-change-password');
         closePasswordForm();
       } catch (err: unknown) {
         if (err instanceof WrongCurrentPasswordError) {
@@ -135,6 +137,7 @@ export function AccountSection({ store, onOpenAuth }: AccountSectionProps) {
             control={
               !showPasswordForm && (
                 <Button
+                  id="settings-change-password"
                   variant="secondary"
                   size="sm"
                   onClick={() => {
@@ -185,7 +188,12 @@ export function AccountSection({ store, onOpenAuth }: AccountSectionProps) {
                 <button
                   type="button"
                   disabled={isPasswordSaving}
-                  onClick={() => confirmDiscard(closePasswordForm)}
+                  onClick={() =>
+                    confirmDiscard(() => {
+                      closePasswordForm();
+                      focusNext('settings-change-password');
+                    })
+                  }
                   className="btn-secondary min-h-11 sm:min-h-10"
                 >
                   Cancel

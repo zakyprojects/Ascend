@@ -12,7 +12,7 @@ import { useAsyncAction } from '@/lib/useAsyncAction';
 import { AscendLoadingIndicator } from '@/components/ui/AscendLoadingIndicator';
 import { CapMeterConnected } from '@/components/ui/CapMeterConnected';
 import { useToast } from '@/components/ui/Toast';
-import { Dialog, Disclosure, EmptyState, Form, FormAlert, PageColumns, Tabs, Textarea, useFocusOnRender, useFormController } from '@/components/ui/primitives';
+import { Dialog, Disclosure, EmptyState, Form, FormAlert, PageColumns, Tabs, Textarea, focusStillInForm, useFocusOnRender, useFormController } from '@/components/ui/primitives';
 import { TAP_TARGET, cx } from '@/components/ui/primitives/shared';
 import { CountUp, Reveal } from '@/components/ui/Motion';
 import { PageHero } from '@/components/ui/PageHero';
@@ -52,6 +52,7 @@ export function Journal({ store }: { store: AppStore }) {
   const entryForm = useUnsavedChanges(isEditingToday, [mood, content]);
   const entryIssues = useFormController();
   // Edit swaps the saved entry for the editor: the notes take focus, caret at the end (not on page load).
+  // Cancel/Save swap it back and focus returns to Edit.
   const focusNext = useFocusOnRender();
 
   const toggleGuidedPrompt = (enabled: boolean) => {
@@ -106,6 +107,7 @@ export function Journal({ store }: { store: AppStore }) {
           wasAwarded ? 'Your entry has been updated.' : `+${JOURNAL_POINTS.entryCompleted} points for today's entry.`
         );
       });
+      if (focusStillInForm('journal-notes')) focusNext('journal-edit');
       setIsEditingToday(false);
     } catch (err: unknown) {
       entryIssues.showError(toUserMessage(err, "Couldn't save your entry. Try again."));
@@ -119,6 +121,7 @@ export function Journal({ store }: { store: AppStore }) {
         setContent(existingToday.content || '');
       }
       setIsEditingToday(false);
+      focusNext('journal-edit');
     });
 
   const entries = store.state.journalEntries;
@@ -327,6 +330,7 @@ export function Journal({ store }: { store: AppStore }) {
                       <span className="figure text-xs text-purple-hierarchy">+{JOURNAL_POINTS.entryCompleted} pts</span>
                     )}
                     <button
+                      id="journal-edit"
                       type="button"
                       onClick={() => {
                         setIsEditingToday(true);

@@ -24,7 +24,18 @@ export function focusField(el: HTMLElement, options?: FocusOptions) {
 /**
  * For an in-page editor that a button opens (and the button then goes away): call `focusNext(id)` in
  * the click handler; the field with that id is focused, caret at the end, once it has rendered.
+ * Closing the editor (Cancel/Save) calls it with the opener's id, so focus goes back to that button.
  */
+/**
+ * After an async save, focus is still in the editor's form (or nowhere): only then does the closing
+ * editor hand focus back to its opener, so a user who moved on while it saved keeps their place.
+ */
+export function focusStillInForm(fieldId: string): boolean {
+  const active = document.activeElement;
+  if (!active || active === document.body) return true;
+  return document.getElementById(fieldId)?.closest('form')?.contains(active) ?? false;
+}
+
 export function useFocusOnRender() {
   const pending = React.useRef<string | null>(null);
   React.useEffect(() => {

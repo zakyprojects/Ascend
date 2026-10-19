@@ -58,6 +58,7 @@ export function ReflectionsCard({
   const [editContent, setEditContent] = useState('');
   const [deleting, setDeleting] = useState<WeeklyGoalReflection | null>(null);
   // Write / Edit replace their button with the editor: its text field takes focus (caret at the end).
+  // Cancel/Save close it and focus returns to that button (Write only while the window is open).
   const focusNext = useFocusOnRender();
   const newForm = useUnsavedChanges(adding, newContent);
   const editForm = useUnsavedChanges(editing?.id ?? null, editContent);
@@ -70,6 +71,7 @@ export function ReflectionsCard({
       store.addWeeklyReflection(weekKey, newContent.trim());
       setNewContent('');
       setAdding(false);
+      focusNext('write-reflection');
     } catch (err) {
       newIssues.showError(toUserMessage(err, "Couldn't add the reflection. Try again."));
     }
@@ -79,6 +81,7 @@ export function ReflectionsCard({
     if (!editing || !editContent.trim()) return;
     try {
       store.updateWeeklyReflection(weekKey, editing.id, editContent.trim());
+      focusNext(`edit-reflection-${editing.id}`);
       setEditing(null);
       setEditContent('');
     } catch (err) {
@@ -113,6 +116,7 @@ export function ReflectionsCard({
         </div>
         {!adding && status.open && (
           <button
+            id="write-reflection"
             type="button"
             onClick={() => {
               setNewContent('');
@@ -146,7 +150,16 @@ export function ReflectionsCard({
             required
           />
           <div className="dialog-actions">
-            <button type="button" onClick={() => newForm.confirmDiscard(() => setAdding(false))} className="btn-secondary">
+            <button
+              type="button"
+              onClick={() =>
+                newForm.confirmDiscard(() => {
+                  setAdding(false);
+                  focusNext('write-reflection');
+                })
+              }
+              className="btn-secondary"
+            >
               Cancel
             </button>
             <button type="submit" disabled={!status.open} className="btn-primary">
@@ -174,7 +187,16 @@ export function ReflectionsCard({
                   required
                 />
                 <div className="dialog-actions">
-                  <button type="button" onClick={() => editForm.confirmDiscard(() => setEditing(null))} className="btn-secondary">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      editForm.confirmDiscard(() => {
+                        focusNext(`edit-reflection-${ref.id}`);
+                        setEditing(null);
+                      })
+                    }
+                    className="btn-secondary"
+                  >
                     Cancel
                   </button>
                   <button type="submit" disabled={!status.open} className="btn-primary">
@@ -194,6 +216,7 @@ export function ReflectionsCard({
                   {status.open && (
                     <div className="-mr-2 flex items-center">
                       <button
+                        id={`edit-reflection-${ref.id}`}
                         type="button"
                         onClick={() =>
                           editForm.confirmDiscard(() => {
