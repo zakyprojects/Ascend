@@ -31,6 +31,7 @@ const UNIT_MAX = 30;
 /**
  * The fields of a plan form, only those its type uses. `mode` 'edit' leaves out what belongs to
  * progress (starting amount, start date, first note): editing changes structure, never progress.
+ * `isCopy` leaves out category and sharing: a copy has neither of its own (it is always only yours).
  */
 export function PlanFields({
   idPrefix,
@@ -40,6 +41,7 @@ export function PlanFields({
   mode,
   savedTargetDate,
   savedReviewDate,
+  isCopy = false,
 }: {
   idPrefix: string;
   type: PlanType;
@@ -48,6 +50,7 @@ export function PlanFields({
   mode: 'create' | 'edit';
   savedTargetDate?: string;
   savedReviewDate?: string;
+  isCopy?: boolean;
 }) {
   const id = (name: string) => `${idPrefix}-${name}`;
   const setStep = (index: number, title: string) =>
@@ -229,24 +232,26 @@ export function PlanFields({
         />
       )}
 
-      <FieldRow>
-        <Select id={id('category')} label="Category" value={values.category} onChange={(e) => onChange({ category: e.target.value })}>
-          {PLAN_CATEGORIES.map((cat) => (
-            <option key={cat} value={cat}>
-              {cat}
-            </option>
-          ))}
-        </Select>
-        <Select
-          id={id('visibility')}
-          label="Who can see it"
-          value={values.isPublic ? 'public' : 'private'}
-          onChange={(e) => onChange({ isPublic: e.target.value === 'public' })}
-        >
-          <option value="private">Only me</option>
-          <option value="public">Everyone, in Discover</option>
-        </Select>
-      </FieldRow>
+      {!isCopy && (
+        <FieldRow>
+          <Select id={id('category')} label="Category" value={values.category} onChange={(e) => onChange({ category: e.target.value })}>
+            {PLAN_CATEGORIES.map((cat) => (
+              <option key={cat} value={cat}>
+                {cat}
+              </option>
+            ))}
+          </Select>
+          <Select
+            id={id('visibility')}
+            label="Who can see it"
+            value={values.isPublic ? 'public' : 'private'}
+            onChange={(e) => onChange({ isPublic: e.target.value === 'public' })}
+          >
+            <option value="private">Only me</option>
+            <option value="public">Everyone, in Discover</option>
+          </Select>
+        </FieldRow>
+      )}
 
       {type !== 'vision' && (
         <Select

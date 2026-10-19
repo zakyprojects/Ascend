@@ -143,6 +143,7 @@ import {
 import { toSeasonHistory } from './seasonArchive';
 import { addPointsInternal } from './pointsLedger';
 import { clockReady, trustedNow, trustedNowMs } from './clock';
+import { editedPlanStructure, type PlanStructureEdits } from './planStructure';
 export { addPointsInternal };
 import {
   PresetHabitCapItem,
@@ -6784,15 +6785,7 @@ export function useAppState() {
     category: string,
     isPublic: boolean,
     stepEdits?: { id?: string; title: string }[],
-    typeParams?: {
-      targetValue?: number;
-      targetUnit?: string;
-      targetDate?: string;
-      cadence?: 'daily' | 'weekly';
-      duration?: number;
-      targetReviewDate?: string;
-      reviewCadence?: 'weekly' | 'monthly' | null;
-    }
+    typeParams?: PlanStructureEdits
   ) => {
     let updatedPlan: ImprovementPlan | null = null;
     setState((prev) => {
@@ -6800,53 +6793,12 @@ export function useAppState() {
       if (idx === -1) return prev;
       const target = prev.improvementPlans[idx];
 
-      // Steps match by id, so removing or reordering a step never moves another step's completion.
-      const existingSteps = new Map((target.steps || []).map((st) => [st.id, st]));
-      const steps: PlanStep[] = (stepEdits || [])
-        .filter((st) => st.title.trim().length > 0)
-        .map((st, i) => {
-          const existing = st.id ? existingSteps.get(st.id) : undefined;
-          return {
-            id: existing?.id || uid(),
-            title: st.title.trim(),
-            orderIndex: i,
-            completed: existing?.completed || false,
-          };
-        });
-
-      const isVision = target.planType === 'vision';
-      const newReviewCadence = isVision
-        ? (typeParams?.reviewCadence || target.reviewCadence || 'weekly')
-        : (typeParams?.reviewCadence !== undefined ? typeParams.reviewCadence : target.reviewCadence);
-
-      let newNextReviewDueAt = target.nextReviewDueAt;
-      if (newReviewCadence !== target.reviewCadence || (newReviewCadence && !newNextReviewDueAt)) {
-        if (newReviewCadence === 'weekly') {
-          newNextReviewDueAt = new Date(trustedNowMs() + 7 * 24 * 60 * 60 * 1000).toISOString();
-        } else if (newReviewCadence === 'monthly') {
-          newNextReviewDueAt = new Date(trustedNowMs() + 30 * 24 * 60 * 60 * 1000).toISOString();
-        } else {
-          newNextReviewDueAt = null;
-        }
-      }
-
       updatedPlan = {
         ...target,
-        title: title.trim(),
-        description: description.trim(),
+        ...editedPlanStructure(target, title, description, stepEdits, typeParams),
         category: category.trim() || 'Personal Growth',
         isPublic,
-        steps: steps.length > 0 ? steps : target.steps,
         creatorPoints: prev.totalPoints,
-        // Structural field updates
-        targetValue: typeParams?.targetValue !== undefined ? typeParams.targetValue : target.targetValue,
-        targetUnit: typeParams?.targetUnit !== undefined ? typeParams.targetUnit : target.targetUnit,
-        targetDate: typeParams?.targetDate !== undefined ? typeParams.targetDate : target.targetDate,
-        cadence: typeParams?.cadence !== undefined ? typeParams.cadence : target.cadence,
-        duration: typeParams?.duration !== undefined ? typeParams.duration : target.duration,
-        targetReviewDate: typeParams?.targetReviewDate !== undefined ? typeParams.targetReviewDate : target.targetReviewDate,
-        reviewCadence: newReviewCadence,
-        nextReviewDueAt: newNextReviewDueAt,
         syncStatus: 'pending',
       };
 
@@ -6862,6 +6814,38 @@ export function useAppState() {
       handlePlanSyncExecution(planToSync);
     }
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // The user's own copy is theirs to reshape: only this copy changes, never the original or other copies.
+  // Its link to the original (originalPlanId, sourceUsername) and its progress stay as they are.
+  const updateFollowedPlan = useCallback((
+    followId: string,
+    title: string,
+    description: string,
+    stepEdits?: { id?: string; title: string }[],
+    typeParams?: PlanStructureEdits
+  ) => {
+    let updatedFollow: UserPlanFollow | null = null;
+    setState((prev) => {
+      const idx = prev.followedPlans.findIndex((f) => f.id === followId);
+      if (idx === -1) return prev;
+      const target = prev.followedPlans[idx];
+
+      updatedFollow = {
+        ...target,
+        ...editedPlanStructure(target, title, description, stepEdits, typeParams),
+      };
+
+      const updatedFollows = [...prev.followedPlans];
+      updatedFollows[idx] = updatedFollow;
+      return { ...prev, followedPlans: updatedFollows };
+    });
+
+    if (updatedFollow) {
+      handleFollowSyncExecution(updatedFollow);
+    }
+    // False positive: setState is stable (useCallback with empty deps array)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -9231,6 +9215,7 @@ export function useAppState() {
     // Social Features Actions
     createImprovementPlan,
     updateImprovementPlan,
+    updateFollowedPlan,
     togglePlanVisibility,
     updateTargetGoalProgress,
     setNewTargetGoal,

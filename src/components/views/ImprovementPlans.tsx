@@ -36,7 +36,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
   // Bumped on every open so the create dialog always starts fresh.
   const [createKey, setCreateKey] = useState(0);
   const [createOpen, setCreateOpen] = useState(false);
-  const [editingPlanId, setEditingPlanId] = useState<string | null>(null);
+  const [editing, setEditing] = useState<{ owner: Owner; id: string } | null>(null);
   const [progressFor, setProgressFor] = useState<{ owner: Owner; id: string } | null>(null);
   const [newTargetFor, setNewTargetFor] = useState<{ owner: Owner; id: string } | null>(null);
   const [newTargetValue, setNewTargetValue] = useState(10);
@@ -52,9 +52,9 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
   const remoteById = useMemo(() => new Map(discover.plans.map((p) => [p.id, p])), [discover.plans]);
   const copiedPlanIds = useMemo(() => new Set(followedPlans.map((f) => f.originalPlanId).filter(Boolean)), [followedPlans]);
 
-  const editingPlan = editingPlanId ? myPlans.find((p) => p.id === editingPlanId) : undefined;
   const findPlan = (owner: Owner, id: string): AnyPlan | undefined =>
     owner === 'own' ? myPlans.find((p) => p.id === id) : followedPlans.find((f) => f.id === id);
+  const editingPlan = editing ? findPlan(editing.owner, editing.id) : undefined;
   const progressPlan = progressFor ? findPlan(progressFor.owner, progressFor.id) : undefined;
 
   // ---- Hero numbers (live from the plans each render) ----
@@ -118,7 +118,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
         >
           {busy ? <AscendLoadingIndicator size="sm" /> : plan.isPublic ? <Globe size={16} /> : <Lock size={16} />}
         </PlanIconButton>
-        <PlanIconButton onClick={() => setEditingPlanId(plan.id)} title="Edit" label={`Edit "${plan.title}"`}>
+        <PlanIconButton onClick={() => setEditing({ owner: 'own', id: plan.id })} title="Edit" label={`Edit "${plan.title}"`}>
           <Edit3 size={16} />
         </PlanIconButton>
         <PlanIconButton tone="danger" onClick={() => setPlanToDelete(plan)} title="Delete" label={`Delete "${plan.title}"`}>
@@ -232,7 +232,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
             <section className="space-y-3">
               <h2 className="section-title">Copied plans</h2>
               {followedPlans.length === 0 ? (
-                <EmptyState title="No copied plans" description="Copy a plan from Discover. Your progress on it is your own." />
+                <EmptyState title="No copied plans" description="Copy a plan from Discover. The copy is yours: change it and track your own progress." />
               ) : (
                 <div className="grid-cards-lg gap-4">
                   {followedPlans.map((follow) => (
@@ -241,14 +241,23 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                       plan={follow}
                       source={copySource(follow)}
                       controls={
-                        <PlanIconButton
-                          tone="danger"
-                          onClick={() => setFollowToDelete(follow)}
-                          title="Remove copy"
-                          label={`Remove copy "${follow.title}"`}
-                        >
-                          <Trash2 size={16} />
-                        </PlanIconButton>
+                        <>
+                          <PlanIconButton
+                            onClick={() => setEditing({ owner: 'copy', id: follow.id })}
+                            title="Edit your copy"
+                            label={`Edit your copy "${follow.title}"`}
+                          >
+                            <Edit3 size={16} />
+                          </PlanIconButton>
+                          <PlanIconButton
+                            tone="danger"
+                            onClick={() => setFollowToDelete(follow)}
+                            title="Remove copy"
+                            label={`Remove copy "${follow.title}"`}
+                          >
+                            <Trash2 size={16} />
+                          </PlanIconButton>
+                        </>
                       }
                       actions={actionsFor('copy', follow)}
                     />
@@ -274,7 +283,15 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
 
       <CreatePlanDialog key={createKey} store={store} open={createOpen} onClose={() => setCreateOpen(false)} />
 
-      {editingPlan && <EditPlanDialog key={editingPlan.id} store={store} plan={editingPlan} onClose={() => setEditingPlanId(null)} />}
+      {editing && editingPlan && (
+        <EditPlanDialog
+          key={editingPlan.id}
+          store={store}
+          plan={editingPlan}
+          owner={editing.owner}
+          onClose={() => setEditing(null)}
+        />
+      )}
 
       <ProgressUpdateDialog
         open={Boolean(progressPlan)}
