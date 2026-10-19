@@ -15,6 +15,9 @@ export const DEFAULT_BOOK_LENGTH = 250;
 /** The book's unit as the forms use it (older rows may carry other spellings); the same rule points use. */
 export const bookUnit = (book: Pick<UserBook, 'unit'>): BookUnit => (isChapterBook(book) ? 'chapters' : 'pages');
 
+/** Under the disabled "Count in" select of a book that has logs (isBookUnitLocked). */
+export const UNIT_LOCKED_HINT = 'Locked once you log reading.';
+
 /** "1 page", "12 pages", "3 chapters". */
 export const formatAmount = (n: number, unit: BookUnit): string =>
   `${n} ${unit === 'chapters' ? (n === 1 ? 'chapter' : 'chapters') : n === 1 ? 'page' : 'pages'}`;

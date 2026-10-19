@@ -98,6 +98,7 @@ import {
 import { computeLessonAward, isLessonReadInSeason, lessonReadId } from './lessonAwards';
 import {
   computeReadingDayAward,
+  isBookUnitLocked,
   isReadingDayEntry,
   isRetiredAppReadingAward,
   meetsReadingBonusGates,
@@ -4597,7 +4598,8 @@ export function useAppState() {
           libraryBooks: prev.libraryBooks.map((b) => {
             if (b.id === bookId || b.linkedBookId === bookId) {
               const maxPages = options?.totalAmount ?? b.totalAmount ?? b.totalPages ?? 250;
-              const unit = options?.unit ?? b.unit ?? 'pages';
+              // A logged book keeps its unit (isBookUnitLocked; the server keeps it too).
+              const unit = isBookUnitLocked(b, prev.readingLogs || []) ? b.unit : options?.unit ?? b.unit ?? 'pages';
               const targetFinishDate = options?.targetFinishDate !== undefined ? options.targetFinishDate : b.targetFinishDate;
               return {
                 ...b,
@@ -4662,7 +4664,7 @@ export function useAppState() {
               totalPages: total,
               currentAmount: nextCurrent,
               currentPage: nextCurrent,
-              unit: details.unit,
+              unit: isBookUnitLocked(b, prev.readingLogs || []) ? b.unit : details.unit,
               targetFinishDate: finished ? b.targetFinishDate : details.targetFinishDate?.trim() || undefined,
               reflection: finished ? details.reflection?.trim() || b.reflection : b.reflection,
               updatedAt: now,

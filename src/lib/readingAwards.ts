@@ -58,6 +58,14 @@ const logPages = (log: ReadingLog): number =>
 /** The book counts in chapters (unit "chapters" in any case; anything else is pages), as the server reads it. */
 export const isChapterBook = (book: Pick<UserBook, 'unit'>): boolean => String(book.unit || '').toLowerCase() === 'chapters';
 
+/**
+ * A book's unit is fixed once it has any reading log (finish logs included), so logged pages never
+ * turn into chapters or back. Mirror of the reading_books_keep_unit trigger
+ * (supabase/migrations/20261019170000_reading_book_unit_lock.sql).
+ */
+export const isBookUnitLocked = (book: Pick<UserBook, 'id' | 'linkedBookId'>, logs: ReadingLog[]): boolean =>
+  logs.some((l) => Boolean(l && l.bookId && (l.bookId === book.id || l.bookId === book.linkedBookId)));
+
 /** Pages one chapter counts as for points: 1 chapter = pointsPerChapter points. */
 const PAGES_PER_CHAPTER = READING_POINTS.pointsPerChapter * READING_POINTS.pagesPerPoint;
 

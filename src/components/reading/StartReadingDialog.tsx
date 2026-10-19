@@ -5,7 +5,8 @@ import type { AppStore } from '@/lib/store';
 import type { UserBook } from '@/types';
 import { earliestTargetDate, isNewPastDate } from '@/lib/dates';
 import { useUnsavedChanges } from '@/lib/unsavedChanges';
-import { bookProgress, bookUnit, type BookUnit } from './bookMeta';
+import { isBookUnitLocked } from '@/lib/readingAwards';
+import { UNIT_LOCKED_HINT, bookProgress, bookUnit, type BookUnit } from './bookMeta';
 
 /** Moves a library book to Reading after confirming its length and an optional target date. */
 export function StartReadingDialog({
@@ -24,6 +25,7 @@ export function StartReadingDialog({
   const [targetDate, setTargetDate] = useState(() => book?.targetFinishDate || '');
   const guard = useUnsavedChanges(open ? book?.id ?? null : null, [total, unit, targetDate]);
   const minLength = book ? Math.max(1, bookProgress(book).current) : 1;
+  const unitLocked = Boolean(book && isBookUnitLocked(book, store.state.readingLogs || []));
 
   const submit = () => {
     if (!book) return;
@@ -72,7 +74,14 @@ export function StartReadingDialog({
             value={total}
             onValueChange={setTotal}
           />
-          <Select id="rh-start-unit" label="Count in" value={unit} onChange={(e) => setUnit(e.target.value as BookUnit)}>
+          <Select
+            id="rh-start-unit"
+            label="Count in"
+            value={unit}
+            onChange={(e) => setUnit(e.target.value as BookUnit)}
+            disabled={unitLocked}
+            hint={unitLocked ? UNIT_LOCKED_HINT : undefined}
+          >
             <option value="pages">Pages</option>
             <option value="chapters">Chapters</option>
           </Select>

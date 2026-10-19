@@ -6,7 +6,8 @@ import { BOOK_CATEGORIES } from '@/lib/books';
 import type { BookCategory, UserBook, UserBookStatus } from '@/types';
 import { earliestTargetDate, isNewPastDate } from '@/lib/dates';
 import { useUnsavedChanges } from '@/lib/unsavedChanges';
-import { DEFAULT_BOOK_LENGTH, bookProgress, bookUnit, formatAmount, sameBook, type BookUnit } from './bookMeta';
+import { isBookUnitLocked } from '@/lib/readingAwards';
+import { DEFAULT_BOOK_LENGTH, UNIT_LOCKED_HINT, bookProgress, bookUnit, formatAmount, sameBook, type BookUnit } from './bookMeta';
 
 interface BookFormValues {
   title: string;
@@ -50,8 +51,9 @@ function valuesFrom(book: UserBook | null, status: UserBookStatus): BookFormValu
 
 /**
  * Adds a book, or edits one (title, author, category, length, target, notes; a finished book's
- * takeaway). Progress and logs are never changed here. Remounted for each open (by key), so the
- * form always starts from the book's saved values or a blank book.
+ * takeaway; the unit until the book has a log). Progress and logs are never changed here.
+ * Remounted for each open (by key), so the form always starts from the book's saved values or a
+ * blank book.
  */
 export function BookFormDialog({
   store,
@@ -75,7 +77,10 @@ export function BookFormDialog({
   const finished = values.status === 'completed';
   // In progress, the length can't go below what is already read.
   const minLength = book && !finished ? Math.max(1, bookProgress(book).current) : 1;
-  const unitWord = values.unit === 'chapters' ? 'Chapters' : 'Pages';
+  // A book with logs keeps its saved unit (a restored draft can't change it either).
+  const unitLocked = Boolean(book && isBookUnitLocked(book, store.state.readingLogs || []));
+  const unit = book && unitLocked ? bookUnit(book) : values.unit;
+  const unitWord = unit === 'chapters' ? 'Chapters' : 'Pages';
 
   // Two books may share a title, so a book is the same book when title and author both match. A book
   // keeping its own title and author is fine (old duplicates can still be edited).
@@ -204,13 +209,15 @@ export function BookFormDialog({
             required
             value={values.totalAmount}
             onValueChange={(n) => update({ totalAmount: n })}
-            hint={minLength > 1 ? `You're at ${formatAmount(minLength, values.unit)}.` : undefined}
+            hint={minLength > 1 ? `You're at ${formatAmount(minLength, unit)}.` : undefined}
           />
           <Select
             id="rh-book-unit"
             label="Count in"
-            value={values.unit}
+            value={unit}
             onChange={(e) => update({ unit: e.target.value as BookUnit })}
+            disabled={unitLocked}
+            hint={unitLocked ? UNIT_LOCKED_HINT : undefined}
           >
             <option value="pages">Pages</option>
             <option value="chapters">Chapters</option>
