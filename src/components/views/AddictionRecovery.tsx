@@ -6,7 +6,8 @@ import { useToast } from '@/components/ui/Toast';
 import { useAsyncActionKey } from '@/lib/useAsyncAction';
 import { CravingLog } from '@/types';
 import { recoveryAwardsThisSeason, RecoveryMilestoneKey, RECOVERY_MILESTONES } from '@/lib/recoveryAwards';
-import { formatDateLong, todayKey, startOfWeek } from '@/lib/dates';
+import { formatDateLong, todayKey, startOfWeek, parseDate } from '@/lib/dates';
+import { useLocalDayKey } from '@/lib/useLocalDayKey';
 import { wouldExceedRecoverySeasonCap, RECOVERY_POINTS, SOBRIETY_MILESTONE_POINTS } from '@/lib/pointsConfig';
 import { CapMeter } from '@/components/ui/CapMeter';
 import { PageHero } from '@/components/ui/PageHero';
@@ -92,8 +93,10 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
   const prevHours = nextMilestone ? RECOVERY_MILESTONES[RECOVERY_MILESTONES.indexOf(nextMilestone) - 1]?.hours ?? 0 : 0;
 
   // Cravings: newest first; "Clear older cravings" removes those before this week's Monday.
+  // The week follows local midnight, so "this week" rolls over on Monday without a reload.
+  const today = useLocalDayKey();
   const sortedCravings = [...cravingLogs].sort((a, b) => (b.date || '').localeCompare(a.date || ''));
-  const weekStartKey = todayKey(startOfWeek());
+  const weekStartKey = todayKey(startOfWeek(parseDate(today)!));
   const cravingsThisWeek = cravingLogs.filter((l) => (cravingDay(l) ?? '') >= weekStartKey).length;
   const olderCravingCount = cravingLogs.filter((l) => {
     const day = cravingDay(l);
