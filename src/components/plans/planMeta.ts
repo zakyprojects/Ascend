@@ -2,7 +2,7 @@ import { CheckSquare, Compass, Flame, Target, type LucideIcon } from 'lucide-rea
 import type { BadgeTone } from '@/components/ui/primitives';
 import type { ProgressTone } from '@/components/ui/primitives';
 import type { ImprovementPlan, PlanType, UserPlanFollow } from '@/types';
-import { calculateActivePlanStreak, calculateElapsedDays, isPlanJourneyDoneThisPeriod, parseDate, todayKey } from '@/lib/dates';
+import { calculateActivePlanStreak, calculateElapsedDays, isPlanJourneyDoneThisPeriod, parseDate, startOfWeek, todayKey } from '@/lib/dates';
 import { trustedNowMs } from '@/lib/clock';
 
 /** A plan the user made, or their own copy of someone else's: both render with the same card. */
@@ -92,14 +92,19 @@ export type JourneyPhase = 'upcoming' | 'active' | 'complete';
 /**
  * Where a habit journey stands: its period number (day or week) out of its length, the live streak,
  * and whether this period is already marked. A journey is complete once its last period has passed.
+ * Weeks are Monday to Sunday, the same weeks "done this week" and the streak use: week 1 is the
+ * week holding the start day, so an N-week journey has exactly N markable weeks.
  */
 export function journeyState(plan: AnyPlan) {
   const cadence = plan.cadence === 'weekly' ? 'weekly' : 'daily';
   const length = Math.max(1, plan.duration || 30);
   const start = parseDate(plan.startDate);
   const startKey = start ? todayKey(start) : todayKey();
-  const elapsedDays = calculateElapsedDays(startKey);
-  const period = cadence === 'weekly' ? Math.ceil(elapsedDays / 7) : elapsedDays;
+  // Weekly: calendar days from the start week's Monday to this week's Monday, a multiple of 7.
+  const period =
+    cadence === 'weekly'
+      ? (calculateElapsedDays(todayKey(startOfWeek(parseDate(startKey)!)), startOfWeek()) - 1) / 7 + 1
+      : calculateElapsedDays(startKey);
   const phase: JourneyPhase = startKey > todayKey() ? 'upcoming' : period > length ? 'complete' : 'active';
   return {
     cadence,
