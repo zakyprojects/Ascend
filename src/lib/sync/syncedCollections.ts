@@ -137,6 +137,12 @@ function documentCollection<K extends keyof AppState>(
 type Created = { createdAt: string };
 const byCreatedAt = (item: Created) => item.createdAt;
 
+const weeklyGoalsBase = documentCollection('weeklyGoals', 'weekly_goals', byCreatedAt, (w) => w.weekKey);
+const weeklyGoalsCollection: SyncedCollection<'weeklyGoals'> = {
+  ...weeklyGoalsBase,
+  toRow: (w) => weeklyGoalsBase.toRow({ ...w, deletedGoalIds: w.deletedGoalIds ?? [] }),
+};
+
 const decisionLogs: SyncedCollection<'decisionLogs'> = {
   stateKey: 'decisionLogs',
   table: 'decision_logs',
@@ -562,8 +568,11 @@ export const SYNCED_COLLECTIONS = [
   documentCollection('skillLogs', 'skill_logs', byCreatedAt),
   documentCollection('badHabits', 'bad_habits', byCreatedAt),
   { ...documentCollection('badHabitLogs', 'bad_habit_logs', byCreatedAt), serverOwnedId: isServerOwnedBadHabitLogId },
-  // Weekly goals merge by week, not by document id, so the week is the row id.
-  documentCollection('weeklyGoals', 'weekly_goals', byCreatedAt, (w) => w.weekKey),
+  // Weekly goals merge by week, not by document id, so the week is the row id. Every upload carries
+  // deletedGoalIds so the server always merges goal by goal (weekly_goals_merge_row): without it a
+  // stale copy of the week (another tab or device, load normalisation) replaced the whole row and
+  // undid goal edits such as a carry-over dismiss.
+  weeklyGoalsCollection,
   // Points ledger (batch D): complete history; deterministic ids can be excised and re-awarded.
   // Every row is the server's (20261015250000): the app shows its own preview rows but never
   // uploads one, and the database drops any app write.
