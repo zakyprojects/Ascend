@@ -5,7 +5,7 @@ import { mergeAppState } from './stateMerger';
 import { reconcileSharedChallengeLifecycle } from './pactLifecycle';
 import { todayKey } from './dates';
 import { GuardBlockedError, PreFetchSyncError } from './errors';
-import { computeStateDataWeight, type UserDataWeight } from './dataWeight';
+import { computeStateDataWeight, savedItemCount, type UserDataWeight } from './dataWeight';
 import { withoutSyncedCollections } from './sync/syncedCollections';
 import { withoutRetiredKeys, withoutUnsavedBlobKeys } from './retiredStateKeys';
 import { withoutDeviceLocalKeys } from './deviceLocalState';
@@ -210,8 +210,19 @@ export function setUserDataWatermark(userId: string, stateOrWeight: AppState | U
     userWatermarkMap.set(userId, {
       itemCount: Math.max(existing.itemCount, weight.itemCount),
       arrayBreakdown: { ...existing.arrayBreakdown, ...weight.arrayBreakdown },
+      tombstoneIds: Array.from(new Set([...existing.tombstoneIds, ...weight.tombstoneIds])),
     });
   }
+}
+
+/**
+ * Items another device deleted (rows the server soft-deleted, removed here by a table pull) leave
+ * no tombstone on this device, so they come off the watermark: the next save is not a data loss.
+ */
+export function lowerUserDataWatermark(userId: string, removedCount: number) {
+  const existing = userWatermarkMap.get(userId);
+  if (!existing || removedCount <= 0) return;
+  userWatermarkMap.set(userId, { ...existing, itemCount: Math.max(0, existing.itemCount - removedCount) });
 }
 
 export function resetUserDataWatermark(userId: string, stateOrWeight: AppState | UserDataWeight) {
@@ -305,7 +316,9 @@ export async function saveUserDataToSupabase(
   const isHydrated = isUserHydrationComplete(userId);
   const allowDestructive = Boolean(options?.allowDestructiveWipe);
 
-  // Check 2A: Active in-memory session watermark guard
+  // Check 2A: Active in-memory session watermark guard. Items deleted on purpose since the last
+  // save (tombstoned) still count, so only items that vanished without a delete read as a drop.
+  const keptCount = watermark ? savedItemCount(incomingWeight, watermark) : incomingWeight.itemCount;
   if (!allowDestructive && watermark && watermark.itemCount > 0) {
     // Floor exemption: If the account has <= 3 items total AND hydration is fully complete,
     // allow legitimate low-data zero-outs / mass deletions without blocking.
@@ -313,7 +326,7 @@ export async function saveUserDataToSupabase(
 
     if (!isFloorExempt) {
       // Block total wipe: incoming is empty (0 items)
-      if (incomingWeight.itemCount === 0) {
+      if (keptCount === 0) {
         console.error('[CRITICAL GUARD] Blocked catastrophic zero-out wipe to user_data for established account:', {
           userId,
           watermark,
@@ -328,11 +341,12 @@ export async function saveUserDataToSupabase(
       }
 
       // Block massive catastrophic entity drop (>70% vanished at once on accounts with >= 3 items)
-      if (watermark.itemCount >= 3 && incomingWeight.itemCount < Math.ceil(watermark.itemCount * 0.3)) {
+      if (watermark.itemCount >= 3 && keptCount < Math.ceil(watermark.itemCount * 0.3)) {
         console.error('[CRITICAL GUARD] Blocked abnormal massive data drop to user_data:', {
           userId,
           watermarkItemCount: watermark.itemCount,
           incomingItemCount: incomingWeight.itemCount,
+          keptCount,
           isHydrated,
         });
         throw new GuardBlockedError(

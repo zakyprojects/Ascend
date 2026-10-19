@@ -1380,7 +1380,8 @@ export function mergeAppStateWithGuardResult(
 
   let hasSuspiciousDrop = false;
 
-  // Guard check: strictly matching supabase.ts Check 2A logic
+  // Guard check: the thresholds of supabase.ts Check 2A. Unlike a save, tombstones earn no credit
+  // here: a device copy whose tombstones remove most of the server's items is what this catches.
   if (watermark && watermark.itemCount > 0) {
     const isFloorExempt = watermark.itemCount <= 3 && isHydrated;
 

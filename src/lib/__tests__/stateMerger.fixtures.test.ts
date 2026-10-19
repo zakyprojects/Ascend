@@ -3,7 +3,7 @@
 // change to stateMerger.ts that alters behaviour fails here first.
 import { DEFAULT_STATE, type AppState } from '@/types';
 import { isLegitimateTombstoneId, mergeAppState, mergeAppStateWithGuardResult } from '../stateMerger';
-import { computeStateDataWeight } from '../dataWeight';
+import { computeStateDataWeight, hasStateData, savedItemCount } from '../dataWeight';
 
 function assert(condition: boolean, msg: string) {
   if (!condition) {
@@ -152,6 +152,22 @@ function runFixtures() {
     );
     const calm = mergeAppStateWithGuardResult(full, full, watermark);
     assert(!calm.hasSuspiciousDrop, 'no false positive on an unchanged state');
+  }
+
+  // 11. Guard weight: server-owned keys don't count; deletes made on purpose (tombstoned) still do.
+  {
+    const entries = Array.from({ length: 10 }, (_, i) => journal(`j${i}`, 'x', 'Thu 2026-10-01 3:00 PM PKT (UTC+05:00)'));
+    const points = Array.from({ length: 200 }, (_, i) => ({ id: `p${i}`, amount: 1, reason: '', source: 'x', timestamp: '' }));
+    const saved = computeStateDataWeight(state({ journalEntries: entries, pointsHistory: points }));
+    assert(saved.itemCount === 10, 'points are not counted');
+    const vanished = computeStateDataWeight(state({ journalEntries: entries.slice(0, 1), pointsHistory: points }));
+    assert(savedItemCount(vanished, saved) === 1, 'items gone without a delete are a drop, points or not');
+    const deleted = computeStateDataWeight(
+      state({ journalEntries: entries.slice(0, 1), deletedEntityIds: entries.slice(1).map((e) => e.id as string) })
+    );
+    assert(savedItemCount(deleted, saved) === 10, 'tombstoned deletes count as kept');
+    assert(savedItemCount(deleted, deleted) === 1, 'old tombstones earn nothing');
+    assert(hasStateData(state({ pointsHistory: points })) && !hasStateData(state({})), 'any data at all, points included');
   }
 
   console.log('\nAll stateMerger fixture assertions PASSED successfully!');

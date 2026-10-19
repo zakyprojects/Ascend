@@ -168,7 +168,7 @@ import {
 export { recomputeTodayPresetPoints, calculateWeeklyGoalsPoints, WEEKLY_GOALS_POINTS };
 export type { PresetHabitCapItem };
 import { calculateUnifiedStreak } from './streakLogic';
-import { computeStateDataWeight } from './dataWeight';
+import { hasStateData, isGuardedKey } from './dataWeight';
 import {
   supabase,
   isSupabaseConfigured,
@@ -182,6 +182,7 @@ import {
   getUserDataWatermark,
   setUserDataWatermark,
   resetUserDataWatermark,
+  lowerUserDataWatermark,
   saveUserDataToSupabase,
   fetchAllProfilesFromSupabase,
   fetchLeaguePointsFromSupabase,
@@ -207,8 +208,8 @@ import {
 } from './supabase';
 import { GuardBlockedError } from './errors';
 import { flushOutbox, hasPendingSyncOps, recordSyncedChanges } from './sync/outbox';
-import { applyRemoteChanges, prepareRemoteRows, pullSyncedRows } from './sync/pull';
-import { SYNCED_COLLECTIONS } from './sync/syncedCollections';
+import { applyRemoteChanges, prepareRemoteRows, pullSyncedRows, type RemoteChange } from './sync/pull';
+import { SYNCED_COLLECTIONS, itemsOf, rowIdOf, syncKeyOf } from './sync/syncedCollections';
 import { mergeAppState, deduplicatePresetHabits, mergeAppStateWithGuardResult, isLegitimateTombstoneId } from './stateMerger';
 import { toUserMessage } from './userMessage';
 import { disablePush } from './push';
@@ -1008,6 +1009,18 @@ export function excisePointsEntriesInternal(
  * tick, a waiting timezone change) would come back from the cache on every reload. An empty
  * hydrated ledger is not trusted (a failed or missing read), and the merge is kept as it is.
  */
+/**
+ * The user's own items still on this device whose rows the server deleted (on another device):
+ * applying these changes removes them here. This device's own deletes are already gone from it.
+ */
+function countRemoteRemovals(state: AppState, changes: RemoteChange[]): number {
+  return changes.filter((change) => {
+    if (change.item !== null || !change.id || !isGuardedKey(change.key)) return false;
+    const collection = SYNCED_COLLECTIONS.find((c) => syncKeyOf(c) === change.key);
+    return Boolean(collection && itemsOf(collection, state).some((item) => rowIdOf(collection, item) === change.id));
+  }).length;
+}
+
 function withHydratedPoints(merged: AppState, hydrated: AppState): AppState {
   const serverPoints = hydrated.pointsHistory || [];
   if (serverPoints.length === 0) return merged;
@@ -2089,6 +2102,7 @@ export function useAppState() {
       const { changes, everyTableRead } = await pullSyncedRows(userId, full);
       const applied = everyTableRead && isHydrated.current && currentUserRef.current?.id === userId;
       if (changes.length > 0) {
+        lowerUserDataWatermark(userId, countRemoteRemovals(stateRef.current, changes));
         setState((prev) => (prev.currentUser?.id === userId ? applyRemoteChanges(prev, changes) : prev));
       }
       if (applied) setIsServerDataApplied(true);
@@ -2110,6 +2124,7 @@ export function useAppState() {
           if (!row || !row.id) return;
           const changes = prepareRemoteRows(syncedUserId, collection, [row]);
           if (changes.length === 0) return;
+          lowerUserDataWatermark(syncedUserId, countRemoteRemovals(stateRef.current, changes));
           setState((prev) => (prev.currentUser?.id === syncedUserId ? applyRemoteChanges(prev, changes) : prev));
         }
       );
@@ -2254,7 +2269,7 @@ export function useAppState() {
           if (state.currentUser?.id) {
             const uid = state.currentUser.id;
             localStorage.setItem(`ascend_user_cache_${uid}`, JSON.stringify(state));
-            if (computeStateDataWeight(state).itemCount > 0) {
+            if (hasStateData(state)) {
               localStorage.setItem(`ascend_dirty_${uid}`, '1');
             }
           } else {
@@ -2687,7 +2702,7 @@ export function useAppState() {
                   };
                   return resultingState;
                 });
-                if (computeStateDataWeight(resultingState).itemCount === 0) {
+                if (!hasStateData(resultingState)) {
                   canPersistLocally.current = true;
                 }
               }
