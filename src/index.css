@@ -627,13 +627,19 @@
 
   /* Press glow on touch (lib/pressGlow.ts marks the tapped element): a soft tint of the element's
      own text colour grows from the finger's point and fades, inside the element's shape. */
+  /* Brand-coloured glow (Zakria 2026-10-19); on solid brand/danger buttons the brand colour would
+     vanish into the fill, so those glow in their own text colour. */
   [data-press] {
+    --press-color: theme('colors.primary.500');
     background-image: radial-gradient(
       circle at var(--press-x) var(--press-y),
-      color-mix(in srgb, currentColor calc(var(--press-a) * 16%), transparent) calc(var(--press-r) * var(--press-k) * 0.6),
+      color-mix(in srgb, var(--press-color) calc(var(--press-a) * 16%), transparent) calc(var(--press-r) * var(--press-k) * 0.6),
       transparent calc(var(--press-r) * var(--press-k))
     );
     animation: press-glow 320ms var(--ease-standard) forwards;
+  }
+  :is(.btn-primary, .btn-danger-solid, .bg-primary-600, .bg-rose-600)[data-press] {
+    --press-color: currentColor;
   }
   @media (prefers-reduced-motion: reduce) {
     [data-press] {
