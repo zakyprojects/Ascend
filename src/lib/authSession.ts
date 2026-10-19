@@ -225,7 +225,6 @@ export async function hydrateUserSession(
         const cached = localStorage.getItem(`ascend_user_cache_${userId}`);
         if (cached) {
           savedState = JSON.parse(cached);
-          console.log('Successfully recovered user state from local cache');
         }
       } catch (e) {
         console.error('Failed reading user cache from localStorage:', e);
