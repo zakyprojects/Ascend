@@ -1100,99 +1100,29 @@ export async function acceptPartnerInviteAtomicSupabase(
   user1Username: string,
   user2Id: string,
   user2Username: string
-): Promise<{ success: boolean; partnershipId?: string; error?: string }> {
-  if (!isSupabaseConfigured) return { success: true, partnershipId: crypto.randomUUID() };
-  try {
-    const { data, error } = await supabase.rpc('accept_partner_invite_atomic', {
-      p_invite_id: inviteId,
-      p_user1_id: user1Id,
-      p_user1_username: user1Username,
-      p_user2_id: user2Id,
-      p_user2_username: user2Username,
-    });
-
-    if (!error) {
-      if (data && data.success === false) {
-        return { success: false, error: data.error || 'This invite is no longer available' };
-      }
-
-      // Always ensure all pending invites between these 2 users are deleted
-      await cleanupPendingInvitesBetweenUsersSupabase(user1Id, user1Username, user2Id, user2Username);
-
-      return { success: true, partnershipId: data?.partnership_id };
-    }
-
-    // Fallback: If RPC error occurred, check if invite exists and is pending in database
-    console.warn('RPC accept_partner_invite_atomic fallback check:', error.message);
-    const { data: invCheck } = await supabase
-      .from('partner_invites')
-      .select('id, status')
-      .eq('id', inviteId)
-      .maybeSingle();
-
-    if (!invCheck || invCheck.status !== 'pending') {
-      return { success: false, error: 'This invite is no longer available' };
-    }
-
-    const partnershipId = crypto.randomUUID();
-    await savePartnershipSupabase({
-      id: partnershipId,
-      user1Id,
-      user1Username,
-      user2Id,
-      user2Username,
-      pairedAt: trustedNow().toISOString(),
-    });
-    await supabase.from('partner_invites').delete().eq('id', inviteId);
-    await cleanupPendingInvitesBetweenUsersSupabase(user1Id, user1Username, user2Id, user2Username);
-    return { success: true, partnershipId };
-  } catch (e: any) {
-    console.error('Error in acceptPartnerInviteAtomicSupabase:', e);
-    return { success: false, error: e.message || 'This invite is no longer available' };
+): Promise<{ success: true; partnershipId: string } | { success: false; error: string }> {
+  if (!isSupabaseConfigured) return { success: false, error: 'Partners need an online account.' };
+  // The server builds the partnership from the invite's own two users and returns its id.
+  // A failed call throws (the invite stays); a refused invite returns success: false.
+  const { data, error } = await supabase.rpc('accept_partner_invite_atomic', {
+    p_invite_id: inviteId,
+    p_user1_id: user1Id,
+    p_user1_username: user1Username,
+    p_user2_id: user2Id,
+    p_user2_username: user2Username,
+  });
+  if (error) {
+    console.error('RPC accept_partner_invite_atomic failed:', error);
+    throw new Error("Couldn't accept the invite. Try again.");
   }
-}
-
-export async function savePartnershipSupabase(partnership: Partnership) {
-  if (!isSupabaseConfigured) return;
-  try {
-    const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    let partId = uuidPattern.test(partnership.id) ? partnership.id : crypto.randomUUID();
-
-    // Deduplication check: see if a partnership between these 2 users already exists in DB
-    const { data: existing } = await supabase
-      .from('partnerships')
-      .select('id')
-      .or(`and(user1_username.ilike.${partnership.user1Username},user2_username.ilike.${partnership.user2Username}),and(user1_username.ilike.${partnership.user2Username},user2_username.ilike.${partnership.user1Username})`)
-      .maybeSingle();
-
-    if (existing?.id) {
-      partId = existing.id;
-    }
-
-    const { error: pErr } = await supabase.from('partnerships').upsert({
-      id: partId,
-      user1_id: partnership.user1Id,
-      user1_username: partnership.user1Username,
-      user2_id: partnership.user2Id,
-      user2_username: partnership.user2Username,
-      paired_at: partnership.pairedAt,
-    });
-    if (pErr) {
-      console.warn('Supabase partnership save warning:', pErr.message);
-      throw new Error(pErr.message || "Couldn't accept the invite. Try again.");
-    }
-
-    // Delete or update invite status in DB for both users
-    await cleanupPendingInvitesBetweenUsersSupabase(
-      partnership.user1Id,
-      partnership.user1Username,
-      partnership.user2Id,
-      partnership.user2Username
-    );
-  } catch (e) {
-    console.error('Error saving partnership in Supabase:', e);
-    throw e;
+  if (!data?.success || !data.partnership_id) {
+    return { success: false, error: data?.error || 'This invite is no longer available' };
   }
+
+  // Always ensure all pending invites between these 2 users are deleted
+  await cleanupPendingInvitesBetweenUsersSupabase(user1Id, user1Username, user2Id, user2Username);
+
+  return { success: true, partnershipId: data.partnership_id };
 }
 
 /** Recipient declines: the server sends the "declined" notice and removes the invite in one step. */

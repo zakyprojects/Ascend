@@ -7368,8 +7368,11 @@ export function useAppState() {
         if (p2?.id) toId = p2.id;
       }
 
-      if (!fromId) fromId = crypto.randomUUID();
-      if (!toId) toId = crypto.randomUUID();
+      // Never stand in made-up ids: the local partnership must carry the real user ids.
+      const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      if (!fromId || !toId || !uuidPattern.test(fromId) || !uuidPattern.test(toId)) {
+        throw new Error("Couldn't accept this invite. Refresh and try again.");
+      }
 
       const result = await acceptPartnerInviteAtomicSupabase(inviteId, fromId, fromUsername, toId, toUsername);
 
@@ -7381,9 +7384,8 @@ export function useAppState() {
         throw new Error(result.error || 'This invite is no longer available');
       }
 
-      const partnershipId = result.partnershipId || crypto.randomUUID();
       const partnership: Partnership = {
-        id: partnershipId,
+        id: result.partnershipId,
         user1Id: fromId,
         user1Username: fromUsername,
         user2Id: toId,
