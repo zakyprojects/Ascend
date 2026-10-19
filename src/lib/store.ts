@@ -79,6 +79,7 @@ import { autoStatusChanges } from './projectProgress';
 import { reconcileSharedChallengeLifecycle, applyPledgeToggle, mergeSharedChallenge } from './pactLifecycle';
 import { isPartnershipUser1 } from './partnershipSide';
 import { PresetHabit, RETIRED_SCORED_PRESET_HABITS } from './presets';
+import { sameName } from './uniqueNames';
 import { computeHabitAwards, isHabitAwardEntry, isRetiredAppHabitAward, presetHabitPoints } from './habitAwards';
 import { computeWorkoutAwards, isRetiredAppWorkoutAward, isWorkoutDayEntry } from './workoutAwards';
 import { computeSkillAwards, isRetiredAppSkillAward, isSkillDayEntry } from './skillAwards';
@@ -4875,14 +4876,17 @@ export function useAppState() {
   }, []);
 
   // --- MODULE 4: BAD HABIT REDUCTION TRACKER ACTIONS ---
-  const addBadHabit = useCallback((name: string) => {
+  const addBadHabit = useCallback((name: string, isPreset = false) => {
     const bh: BadHabit = {
       id: uid(),
       name: name.trim(),
+      isPreset,
       isCompleted: false,
       createdAt: trustedNow().toISOString(),
     };
     setState((prev) => {
+      // A library bad habit is added once (a quick second tap on Add); the dialog checks names first.
+      if (isPreset && prev.badHabits.some((b) => b && !b.isCompleted && sameName(b.name, bh.name))) return prev;
       return { ...prev, badHabits: [...prev.badHabits, bh] };
     });
     return bh;

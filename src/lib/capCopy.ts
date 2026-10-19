@@ -12,6 +12,13 @@ import {
   WEEKLY_REFLECTION_POINTS,
 } from '@/lib/pointsConfig';
 import { CUSTOM_HABIT_POINTS } from '@/lib/habitAwards';
+import { PRESET_BAD_HABITS } from '@/lib/presets';
+
+/** "1–3": the lowest and highest resist points in the bad-habit library. */
+function presetBadHabitRange(): string {
+  const points = PRESET_BAD_HABITS.map((p) => p.points);
+  return `${Math.min(...points)}–${Math.max(...points)}`;
+}
 
 export const capLabels: Record<CapId, string> = {
   exercise: 'Exercise points today',
@@ -73,7 +80,7 @@ export function capNote(capId: CapId | 'timeTracker'): string {
   }
 
   if (capId === 'badHabitsResisted') {
-    return `Only your first ${BAD_HABIT_POINTS.eligibleSlots} active bad habits are point-eligible (first ${BAD_HABIT_POINTS.maxDailyResists} resists each day earn +${BAD_HABIT_POINTS.resistBase}, max +${BAD_HABIT_POINTS.dailyCap} pts/day). Other habits are tracking-only (0 pts). Occurred and missed days apply penalties to point-eligible habits only. Resets at midnight.`;
+    return `Each resist earns its bad habit's points (library bad habits ${presetBadHabitRange()}, custom ${BAD_HABIT_POINTS.customResist}), up to ${BAD_HABIT_POINTS.dailyCap} per day for all of them together, in the order you log. Slips and unlogged days cost points only on your ${BAD_HABIT_POINTS.eligibleSlots} oldest bad habits. Resets at midnight.`;
   }
 
   const _exhaustive: never = capId;

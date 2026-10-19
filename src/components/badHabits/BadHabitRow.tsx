@@ -4,6 +4,7 @@ import { todayKey, parseDate, calculateStreak, calculateBestStreak } from '@/lib
 import { BAD_HABIT_POINTS } from '@/lib/pointsConfig';
 import { badHabitCreatedDay, getBadHabitBadDaysBefore, getMissPenaltyMultiplier } from '@/lib/habitPenalties';
 import { ptsText } from '@/lib/leagues';
+import { badHabitResistPoints } from '@/lib/badHabitAwards';
 import { lastDayKeys } from '@/lib/weeklyActivity';
 import { SwipeRow } from '@/components/ui/SwipeRow';
 import { cx, FOCUS_RING, TAP_TARGET, TRANSITION } from '@/components/ui/primitives/shared';
@@ -129,8 +130,10 @@ interface BadHabitRowProps {
   logs: BadHabitLog[];
   todayLog: BadHabitLog | undefined;
   today: string;
-  earnsPoints: boolean;
-  resistCapped: boolean;
+  /** One of the oldest bad habits that lose points when slipped or not logged. */
+  penalised: boolean;
+  /** Resist points still left under today's cap. */
+  resistRemaining: number;
   seasonPoints: number;
   /** Check pop class, kept by the page so it survives the move from To log to Logged. */
   popClass: string;
@@ -146,8 +149,8 @@ export function BadHabitRow({
   logs,
   todayLog,
   today,
-  earnsPoints,
-  resistCapped,
+  penalised,
+  resistRemaining,
   seasonPoints,
   popClass,
   onResist,
@@ -157,21 +160,21 @@ export function BadHabitRow({
 }: BadHabitRowProps) {
   const status = todayLog?.status === 'no_report' ? undefined : todayLog?.status;
   const { current, best } = resistStreaks(logs, today);
-  const slips = earnsPoints && !status ? slipsInARow(habit, logs, today) : 0;
+  const slips = penalised && !status ? slipsInARow(habit, logs, today) : 0;
   const points = todayLog?.pointsAwardedOrDeducted ?? 0;
+  // What resisting now would earn: its points, or what is left of today's cap.
+  const resistNow = Math.min(badHabitResistPoints(habit), resistRemaining);
 
   const pointsLabel = status
     ? points !== 0
       ? ptsText(points, true)
-      : earnsPoints && status === 'resisted'
+      : status === 'resisted'
         ? '0 pts, daily cap reached'
         : 'No points'
-    : !earnsPoints
-      ? 'Tracking only'
-      : resistCapped
-        ? 'Daily cap reached'
-        : ptsText(BAD_HABIT_POINTS.resistBase, true);
-  const pointsTone = points < 0 ? 'text-rose-theme' : (status ? points > 0 : earnsPoints && !resistCapped) ? 'text-brand-text' : '';
+    : resistNow <= 0
+      ? 'Daily cap reached'
+      : ptsText(resistNow, true);
+  const pointsTone = points < 0 ? 'text-rose-theme' : (status ? points > 0 : resistNow > 0) ? 'text-brand-text' : '';
 
   return (
     <SwipeRow

@@ -8,50 +8,38 @@ import { BAD_HABIT_POINTS } from '@/lib/pointsConfig';
 import { CapMeterConnected } from '@/components/ui/CapMeterConnected';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { PageHero } from '@/components/ui/PageHero';
-import { Dialog, Disclosure, EmptyState, Form, Input, PageColumns } from '@/components/ui/primitives';
-import { useUnsavedChanges } from '@/lib/unsavedChanges';
+import { Disclosure, EmptyState, PageColumns } from '@/components/ui/primitives';
 import { getActiveBadHabitsOrdered, getPointEligibleHabitIds } from '@/lib/badHabitEligibility';
 import { getCapStatus } from '@/lib/capStatus';
 import { getEffectiveSeasonPoints, ptsText } from '@/lib/leagues';
 import { leagueNow } from '@/lib/leagueTime';
 import { actionFeedback } from '@/lib/actionFeedback';
 import { useLocalDayKey } from '@/lib/useLocalDayKey';
-import { nameTaken } from '@/lib/uniqueNames';
 import { CountUp, Reveal } from '@/components/ui/Motion';
 import { BadHabitRow } from '@/components/badHabits/BadHabitRow';
+import { AddBadHabitDialog } from '@/components/badHabits/AddBadHabitDialog';
 
 export function BadHabitTracker({ store }: { store: AppStore }) {
   const { showSuccessToast } = useToast();
   const [showAdd, setShowAdd] = useState(false);
-  const [name, setName] = useState('');
   const [confirmDelete, setConfirmDelete] = useState<BadHabit | null>(null);
-  const addForm = useUnsavedChanges(showAdd, [name]);
   // Bad habits resisted here: their check pops even though the row moves from To log to Logged.
   const [popIds, setPopIds] = useState<ReadonlySet<string>>(() => new Set());
   // Re-renders at local midnight, so the page never shows yesterday's logs or taps dead rows (B4).
   const today = useLocalDayKey();
   const habits = getActiveBadHabitsOrdered(store.state.badHabits || []);
   const logs = store.state.badHabitLogs || [];
-  const eligible = getPointEligibleHabitIds(store.state.badHabits || []);
+  // Only these can lose points (slipped, not logged); every bad habit earns its resist points.
+  const penalised = getPointEligibleHabitIds(store.state.badHabits || []);
   const todayLogOf = (id: string) => logs.find((l) => l.badHabitId === id && l.date === today && l.status !== 'no_report');
   const toLog = habits.filter((h) => !todayLogOf(h.id));
   const logged = habits.filter((h) => todayLogOf(h.id));
   const resistedToday = logged.filter((h) => todayLogOf(h.id)?.status === 'resisted').length;
-  const resistCapped = getCapStatus(store.state, 'badHabitsResisted', getNow()).isCapped;
+  const resistRemaining = getCapStatus(store.state, 'badHabitsResisted', getNow()).remaining;
   // Read once for every row's slip cost (the same value as the season league's points).
   const seasonPoints = getEffectiveSeasonPoints(store.state, leagueNow());
 
-  const openAdd = () => {
-    setName('');
-    setShowAdd(true);
-  };
-
-  const handleAdd = () => {
-    if (!name.trim()) return;
-    store.addBadHabit(name.trim());
-    setShowAdd(false);
-    showSuccessToast('Bad habit added', name.trim());
-  };
+  const openAdd = () => setShowAdd(true);
 
   const setPopping = (id: string, popping: boolean) =>
     setPopIds((prev) => {
@@ -86,8 +74,8 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
         logs={logs.filter((l) => l.badHabitId === habit.id)}
         todayLog={todayLog}
         today={today}
-        earnsPoints={eligible.has(habit.id)}
-        resistCapped={resistCapped}
+        penalised={penalised.has(habit.id)}
+        resistRemaining={resistRemaining}
         seasonPoints={seasonPoints}
         popClass={todayLog?.status === 'resisted' && popIds.has(habit.id) ? 'animate-pop' : ''}
         onResist={() => resist(habit)}
@@ -141,12 +129,14 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
           <Disclosure title="How points work" icon={Info}>
             <ul className="list-disc space-y-1 pl-4 text-content-muted">
               <li>
-                Your <span className="figure">{BAD_HABIT_POINTS.eligibleSlots}</span> oldest bad habits earn and lose points. The
-                others are tracked only and never lose points.
+                Resisted: library bad habits earn their own points (shown when you add them), custom ones{' '}
+                <span className="figure">{ptsText(BAD_HABIT_POINTS.customResist, true)}</span>. Up to{' '}
+                <span className="figure">{ptsText(BAD_HABIT_POINTS.dailyCap)}</span> a day for all of them together; the ones
+                you log first count first.
               </li>
               <li>
-                Resisted: <span className="figure">{ptsText(BAD_HABIT_POINTS.resistBase, true)}</span>, up to{' '}
-                <span className="figure">{ptsText(BAD_HABIT_POINTS.dailyCap)}</span> a day.
+                Only your <span className="figure">{BAD_HABIT_POINTS.eligibleSlots}</span> oldest bad habits lose points. The
+                others never do.
               </li>
               <li>
                 Slipped: <span className="figure">{ptsText(-BAD_HABIT_POINTS.occurBase)}</span>. A day you don&apos;t log:{' '}
@@ -195,43 +185,19 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
         )}
       </PageColumns>
 
-      <Dialog
+      <AddBadHabitDialog
         open={showAdd}
         onClose={() => setShowAdd(false)}
-        dirty={addForm.dirty}
-        title="Add bad habit"
-        footer={
-          <>
-            <button type="button" onClick={() => addForm.confirmDiscard(() => setShowAdd(false))} className="btn-secondary">
-              Cancel
-            </button>
-            <button type="submit" form="bad-habit-add-form" className="btn-primary">
-              Add bad habit
-            </button>
-          </>
-        }
-      >
-        <Form
-          id="bad-habit-add-form"
-          onSubmit={handleAdd}
-          validate={() =>
-            nameTaken(name, habits) ? { message: 'You already have a bad habit with this name.', field: 'bad-habit-name-input' } : null
-          }
-          className="space-y-4"
-        >
-          <Input
-            id="bad-habit-name-input"
-            label="Bad habit"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="e.g. Doomscrolling"
-            maxLength={80}
-            enterKeyHint="done"
-            autoComplete="off"
-            required
-          />
-        </Form>
-      </Dialog>
+        habits={habits}
+        onAddPreset={(preset) => {
+          store.addBadHabit(preset.name, true);
+          showSuccessToast('Bad habit added', preset.name, `bad_habit_add_${preset.name}`);
+        }}
+        onAddCustom={(name) => {
+          store.addBadHabit(name);
+          showSuccessToast('Bad habit added', name);
+        }}
+      />
 
       <ConfirmDeleteModal
         open={!!confirmDelete}

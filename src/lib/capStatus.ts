@@ -91,17 +91,15 @@ export function getCapStatus(
 
   if (capId === 'badHabitsResisted') {
     const cap = BAD_HABIT_POINTS.dailyCap;
-    const slotsTotal = BAD_HABIT_POINTS.maxDailyResists;
     const resistLogs = (state.badHabitLogs || [])
       .filter((l) => l.date === periodKey && l.status === 'resisted');
     const earned = resistLogs.reduce((sum, l) => {
       const val = l.pointsAwardedOrDeducted || 0;
       return val > 0 ? sum + val : sum;
     }, 0);
-    const slotsUsed = resistLogs.filter((l) => (l.pointsAwardedOrDeducted || 0) > 0).length;
     const remaining = Math.max(0, cap - earned);
     const isCapped = earned >= cap;
-    return { capId, period, periodKey, earned, cap, remaining, isCapped, slotsUsed, slotsTotal };
+    return { capId, period, periodKey, earned, cap, remaining, isCapped };
   }
 
   if (capId === 'presetHabits') {

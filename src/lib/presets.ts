@@ -79,3 +79,25 @@ export function findPresetHabit(name: string): PresetHabit | undefined {
   }
   return undefined;
 }
+
+export interface PresetBadHabit {
+  name: string;
+  points: number;
+}
+
+/**
+ * The bad-habit library. A resist earns these points (ascend_bad_habit_points; change both
+ * together); a custom bad habit earns BAD_HABIT_POINTS.customResist.
+ */
+export const PRESET_BAD_HABITS: PresetBadHabit[] = [
+  { name: 'Doomscrolling', points: 2 },
+  { name: 'Phone in the first hour after waking', points: 2 },
+  { name: 'Procrastination', points: 2 },
+  { name: 'Late-night screen time', points: 1 },
+  { name: 'Junk food', points: 1 },
+  { name: 'Porn', points: 3 },
+  { name: 'Gaming too long', points: 2 },
+  { name: 'Smoking / vaping', points: 3 },
+  { name: 'Sugary drinks', points: 1 },
+  { name: 'Staying up late', points: 1 },
+];

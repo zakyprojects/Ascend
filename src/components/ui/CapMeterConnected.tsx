@@ -30,7 +30,7 @@ export function CapMeterConnected({ state, capId, bare = false }: CapMeterConnec
   const timezoneWait = useTimezoneWait();
 
   const status = getCapStatus(state, capId, getNow());
-  const variant = capId === 'badHabitsResisted' || capId === 'journal' ? 'slots' : 'bar';
+  const variant = capId === 'journal' ? 'slots' : 'bar';
 
   return (
     <div className={bare ? undefined : 'card p-4'}>

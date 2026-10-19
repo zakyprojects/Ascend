@@ -1,5 +1,6 @@
 import type { BadHabit, BadHabitLog, PointsEntry } from '@/types';
 import { BAD_HABIT_POINTS } from './pointsConfig';
+import { PRESET_BAD_HABITS } from './presets';
 import { getPointEligibleHabitIds } from './badHabitEligibility';
 import { badHabitCreatedDay, getBadHabitBadDaysBefore, getMissPenaltyMultiplier } from './habitPenalties';
 
@@ -17,6 +18,15 @@ export const badHabitOccurredId = (badHabitId: string, day: string) => `bad_habi
 
 /** Bad-habit logs only the server writes (no-report days). */
 export const isServerOwnedBadHabitLogId = (id: string): boolean => id.startsWith('no_report_');
+
+/**
+ * Points of one resist (ascend_bad_habit_points): a bad habit added from the library earns its
+ * preset's points, any other (custom, or a custom one with a library name) BAD_HABIT_POINTS.customResist.
+ */
+export function badHabitResistPoints(habit: Pick<BadHabit, 'isPreset' | 'name'>): number {
+  const preset = habit.isPreset === true ? PRESET_BAD_HABITS.find((p) => p.name === habit.name) : undefined;
+  return preset?.points ?? BAD_HABIT_POINTS.customResist;
+}
 
 const APP_WRITTEN_DAY_SOURCES = new Set(['bad_habit_resisted', 'bad_habit_occurred', 'bad_habit_undo']);
 
@@ -53,9 +63,10 @@ function firstLogPerHabit(logs: BadHabitLog[], liveIds: Set<string>, day: string
 
 /**
  * Mirror of ascend_recompute_bad_habit_awards: the resist and occurred rows of one local day,
- * and each of the day's logs' points. Resists: the 2 oldest active habits earn +3 (a log that
- * already earned goes first), at most 2 a day and 6 points. Occurred: a penalty already
- * written keeps its amount; a new one is 5 x the miss multiplier (bad days in a row, see
+ * and each of the day's logs' points. Resists: every active bad habit earns its points
+ * (badHabitResistPoints) in log order until the daily cap; a resist that already earned goes
+ * first and keeps at least what it earned. Occurred: a penalty already written keeps its
+ * amount; a new one is 5 x the miss multiplier (bad days in a row, see
  * getBadHabitBadDaysBefore), point-eligible habits only.
  */
 export function computeBadHabitAwards(
@@ -69,6 +80,7 @@ export function computeBadHabitAwards(
 ): { entries: PointsEntry[]; logPoints: Map<string, number> } {
   const eligible = getPointEligibleHabitIds(badHabits);
   const names = new Map(badHabits.filter(Boolean).map((h) => [h.id, h.name]));
+  const resistPoints = new Map(badHabits.filter(Boolean).map((h) => [h.id, badHabitResistPoints(h)]));
   const liveIds = new Set(names.keys());
   const created = new Map(badHabits.filter(Boolean).map((h) => [h.id, badHabitCreatedDay(h.createdAt)]));
   const live = new Map((pointsHistory || []).filter(Boolean).map((e) => [e.id, e]));
@@ -79,20 +91,22 @@ export function computeBadHabitAwards(
   for (const log of logs) if (log && log.date === day && log.status !== 'no_report') logPoints.set(log.id, 0);
 
   // a) Resists.
-  const earned = (log: BadHabitLog) => (live.get(badHabitResistId(log.badHabitId, day))?.amount || 0) > 0;
-  const resists = firstLogPerHabit(logs, liveIds, day, 'resisted')
-    .filter((log) => earned(log) || eligible.has(log.badHabitId))
-    .sort((a, b) => Number(earned(b)) - Number(earned(a)) || byTimeThenId(a, b));
+  const earned = (log: BadHabitLog) => Math.max(live.get(badHabitResistId(log.badHabitId, day))?.amount || 0, 0);
+  const resists = firstLogPerHabit(logs, liveIds, day, 'resisted').sort(
+    (a, b) => Number(earned(b) > 0) - Number(earned(a) > 0) || byTimeThenId(a, b)
+  );
   let used = 0;
-  let count = 0;
   for (const log of resists) {
-    if (count >= BAD_HABIT_POINTS.maxDailyResists || used + BAD_HABIT_POINTS.resistBase > BAD_HABIT_POINTS.dailyCap) continue;
-    count++;
-    used += BAD_HABIT_POINTS.resistBase;
-    logPoints.set(log.id, BAD_HABIT_POINTS.resistBase);
+    const amount = Math.min(
+      Math.max(earned(log), resistPoints.get(log.badHabitId) ?? 0),
+      Math.max(BAD_HABIT_POINTS.dailyCap - used, 0)
+    );
+    if (amount <= 0) continue;
+    used += amount;
+    logPoints.set(log.id, amount);
     entries.push({
       id: badHabitResistId(log.badHabitId, day),
-      amount: BAD_HABIT_POINTS.resistBase,
+      amount,
       reason: `Bad habit resisted: ${names.get(log.badHabitId) ?? ''}`,
       source: 'bad_habit_resisted',
       timestamp: stamp(log),

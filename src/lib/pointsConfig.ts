@@ -106,11 +106,12 @@ export const READING_POINTS = {
 } as const;
 
 export const BAD_HABIT_POINTS = {
+  // Penalties only (slipped and not logged): the oldest active bad habits that can lose points
   eligibleSlots: 2,
-  // Resist awards and occurred penalties: badHabitAwards.ts and ascend_recompute_bad_habit_awards
-  resistBase: 3,
+  // Resist awards and occurred penalties: badHabitAwards.ts and ascend_recompute_bad_habit_awards.
+  // A resist earns its bad habit's points (PRESET_BAD_HABITS; custom = customResist) up to dailyCap.
+  customResist: 1,
   dailyCap: 6,
-  maxDailyResists: 2,
   // multiplied by the miss multiplier
   occurBase: 5,
   // habitPenalties.ts and ascend_process_penalties (multiplied by the miss multiplier)
