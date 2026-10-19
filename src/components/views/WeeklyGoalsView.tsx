@@ -8,7 +8,7 @@ import { weeklyGoalsCapNote } from '@/lib/capCopy';
 import { EmptyState, PageColumns } from '@/components/ui/primitives';
 import { useToast } from '@/components/ui/Toast';
 import { useAsyncActionKey } from '@/lib/useAsyncAction';
-import { weekKey, getWeekDates, offsetWeekKey, formatWeekRange, getNow, parseDate } from '@/lib/dates';
+import { weekKey, getWeekDates, offsetWeekKey, formatWeekRange, getNow, parseDate, localDayStartMs } from '@/lib/dates';
 import { useLocalDayKey } from '@/lib/useLocalDayKey';
 import { isReflectionWindowOpen, weeklyScoringGoals } from '@/lib/weeklyAwards';
 import { WeeklyGoalItem } from '@/types';
@@ -95,7 +95,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
   const weekPoints = Math.max(0, ledgerPoints.goals + ledgerPoints.reflection);
   // Before the server's row arrives, the meter shows what the week's goals earn (same rule):
   // goals counted on an earlier day keep their points even when unticked or deleted.
-  const heldGoals = heldWeekGoals(store.state, selectedWeekKey, new Date(`${today}T00:00:00`).getTime());
+  const heldGoals = heldWeekGoals(store.state, selectedWeekKey, localDayStartMs(today));
   const goalPointsPreview = calculateWeeklyGoalsPoints(weeklyScoringGoals(allWeekGoals, heldGoals));
 
   // Average progress of each of the last 8 weeks, oldest first.

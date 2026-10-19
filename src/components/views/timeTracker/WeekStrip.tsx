@@ -1,6 +1,6 @@
 import { Check, ChevronLeft, ChevronRight } from 'lucide-react';
 import type { TimeTrackerState } from '@/types';
-import { addDays, parseDate } from '@/lib/dates';
+import { addDays, parseDate, startOfWeek, todayKey } from '@/lib/dates';
 import { calculateTimeTrackerDailyPoints, TIME_TRACKER_POINTS } from '@/lib/pointsConfig';
 import { plannedBlocksForDate } from '@/lib/timeTracker';
 import { cx, TAP_TARGET } from '@/components/ui/primitives/shared';
@@ -14,18 +14,12 @@ interface WeekStripProps {
 
 const shortDate = (dateKey: string) => parseDate(dateKey)?.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) ?? dateKey;
 
-/** Monday of the week that holds `dateKey`. */
-function mondayOf(dateKey: string): string {
-  const day = parseDate(dateKey)?.getDay() ?? 1;
-  return addDays(dateKey, day === 0 ? -6 : 1 - day);
-}
-
 /**
  * The week around the selected day as seven tappable days: a tick on a day whose blocks reached
  * the top points tier, a line under a day that has a plan. Arrows move a week.
  */
 export function WeekStrip({ timeTracker, today, selectedDateKey, onSelect }: WeekStripProps) {
-  const monday = mondayOf(selectedDateKey);
+  const monday = todayKey(startOfWeek(parseDate(selectedDateKey) ?? undefined));
   const days = Array.from({ length: 7 }, (_, i) => addDays(monday, i));
   const arrow = cx(
     'flex shrink-0 items-center justify-center rounded-xl border border-overlay-subtle p-2 text-content-muted transition-colors hover:bg-overlay-subtle hover:text-content-primary',

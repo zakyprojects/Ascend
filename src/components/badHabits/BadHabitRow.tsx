@@ -1,6 +1,6 @@
 import { AlertTriangle, Check, Flame, Trash2, Undo2, X } from 'lucide-react';
 import type { BadHabit, BadHabitLog } from '@/types';
-import { addDays, todayKey, parseDate } from '@/lib/dates';
+import { todayKey, parseDate, calculateStreak, calculateBestStreak } from '@/lib/dates';
 import { BAD_HABIT_POINTS } from '@/lib/pointsConfig';
 import { badHabitCreatedDay, getBadHabitBadDaysBefore, getMissPenaltyMultiplier } from '@/lib/habitPenalties';
 import { ptsText } from '@/lib/leagues';
@@ -15,23 +15,11 @@ type TodayStatus = 'resisted' | 'occurred' | undefined;
 /** Days resisted in a row, ending today (or yesterday while today is not logged yet). */
 function resistStreaks(logs: BadHabitLog[], today: string): { current: number; best: number } {
   const byDate = new Map(logs.map((l) => [l.date, l.status]));
-  let current = 0;
-  let cursor = byDate.has(today) ? today : addDays(today, -1);
-  while (byDate.get(cursor) === 'resisted') {
-    current++;
-    cursor = addDays(cursor, -1);
-  }
-
-  let best = 0;
-  let run = 0;
-  let prev: string | null = null;
-  for (const date of [...byDate.keys()].sort()) {
-    if (byDate.get(date) !== 'resisted') run = 0;
-    else run = prev && addDays(prev, 1) === date ? run + 1 : 1;
-    best = Math.max(best, run);
-    prev = date;
-  }
-  return { current, best: Math.max(best, current) };
+  const resisted = [...byDate.keys()].filter((date) => byDate.get(date) === 'resisted');
+  // A slip (or no report) logged today ends the run now; an unlogged today still counts from yesterday.
+  const todayStatus = byDate.get(today);
+  const current = todayStatus && todayStatus !== 'resisted' ? 0 : calculateStreak(resisted, 'daily', parseDate(today)!);
+  return { current, best: Math.max(calculateBestStreak(resisted, 'daily'), current) };
 }
 
 /**

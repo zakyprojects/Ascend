@@ -6,7 +6,7 @@ import { Badge, Dialog, Disclosure, EmptyState, PageColumns, ProgressBar, Switch
 import { TAP_TARGET, cx } from '@/components/ui/primitives/shared';
 import { CURATED_BOOKS, BOOK_CATEGORIES } from '@/lib/books';
 import type { BookCategory, CuratedBook, UserBook } from '@/types';
-import { formatDateLong, getNow, weekKey, formatWeekdayDate, formatWeekdayShort, addDays } from '@/lib/dates';
+import { formatDateLong, getNow, weekKey, formatWeekdayDate, formatWeekdayShort, calculateStreak, parseDate } from '@/lib/dates';
 import { READING_POINTS } from '@/lib/pointsConfig';
 import { READING_BONUS_COOLDOWN_DAYS, READING_BONUS_MIN_LOG_DAYS, READING_BONUS_MIN_SPAN_DAYS, bookRemovalPoints, isRetiredAppReadingAward } from '@/lib/readingAwards';
 import { getCapStatus } from '@/lib/capStatus';
@@ -101,17 +101,11 @@ export function ReadingHub({ store }: { store: AppStore }) {
   const pagesByDay = sumPerDay(readingLogs, pageDays, (l) => l.pagesRead);
   const pagesThisWeek = pagesByDay.reduce((sum, p) => sum + p, 0);
 
-  const streak = useMemo(() => {
-    // Any logged day counts, as before (older logs carry their amount under another field).
-    const days = new Set(readingLogs.filter(Boolean).map((l) => l.date));
-    let day = days.has(today) ? today : addDays(today, -1);
-    let count = 0;
-    while (days.has(day)) {
-      count++;
-      day = addDays(day, -1);
-    }
-    return count;
-  }, [readingLogs, today]);
+  // Any logged day counts, as before (older logs carry their amount under another field).
+  const streak = useMemo(
+    () => calculateStreak(readingLogs.filter(Boolean).map((l) => l.date), 'daily', parseDate(today)!),
+    [readingLogs, today]
+  );
 
   const pointsToday = getCapStatus(store.state, 'reading', getNow()).earned;
   // Points come from the points ledger (page points and finish bonuses): removing a book keeps

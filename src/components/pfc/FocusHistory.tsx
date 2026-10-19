@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { Timer, Trash2 } from 'lucide-react';
 import type { AppStore } from '@/lib/store';
 import type { FocusSessionLog } from '@/types';
-import { formatDateLong } from '@/lib/dates';
+import { formatDateLong, localDayStartMs } from '@/lib/dates';
 import { trustedNowMs } from '@/lib/clock';
 import { computeFocusAwards } from '@/lib/focusAwards';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
@@ -13,7 +13,7 @@ import { byNewest, groupByDay, timeOfDay, DAYS_PAGE } from './pfcLists';
 
 /** Today's points from these sessions (same rule as the server), for the delete message. */
 function todaysFocusPoints(logs: FocusSessionLog[], today: string): number {
-  return computeFocusAwards(logs, today, new Date(`${today}T00:00:00`).getTime(), trustedNowMs()).entry?.amount ?? 0;
+  return computeFocusAwards(logs, today, localDayStartMs(today), trustedNowMs()).entry?.amount ?? 0;
 }
 
 /** Sessions, newest first: Today, then earlier days a week at a time. */

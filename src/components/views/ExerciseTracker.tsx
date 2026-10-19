@@ -8,8 +8,7 @@ import { useLocalDayKey } from '@/lib/useLocalDayKey';
 import { WORKOUT_POINTS, calculateWorkoutPoints } from '@/lib/pointsConfig';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { WorkoutLog } from '@/types';
-import { todayKey, formatDateLong, startOfWeek, formatWeekdayDate } from '@/lib/dates';
-import { trustedNow } from '@/lib/clock';
+import { todayKey, formatDateLong, startOfWeek, formatWeekdayDate, calculateStreak, parseDate } from '@/lib/dates';
 import { useAsyncAction } from '@/lib/useAsyncAction';
 import { AscendLoadingIndicator } from '@/components/ui/AscendLoadingIndicator';
 import { useToast } from '@/components/ui/Toast';
@@ -42,18 +41,6 @@ const formatAmount = (value: number, measure: Measure): string => {
   const n = Number.isInteger(value) ? value : Math.round(value * 100) / 100;
   return measure === 'mins' ? `${n} min` : `${n} ${measure}`;
 };
-
-/** Days in a row with a workout, ending today (or yesterday while today has none yet). */
-function workoutStreak(workoutDays: Set<string>, today: string): number {
-  const cursor = trustedNow();
-  if (!workoutDays.has(today)) cursor.setDate(cursor.getDate() - 1);
-  let count = 0;
-  while (workoutDays.has(todayKey(cursor))) {
-    count++;
-    cursor.setDate(cursor.getDate() - 1);
-  }
-  return count;
-}
 
 export function ExerciseTracker({ store }: { store: AppStore }) {
   const { showSuccessToast } = useToast();
@@ -129,7 +116,8 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
   const todayChartIndex = weekDays.findIndex((d) => d.isToday);
   const maxPointsInChart = Math.max(WORKOUT_POINTS.dailyCap, ...weekDays.map((d) => d.points));
 
-  const streak = useMemo(() => workoutStreak(new Set(workouts.map((w) => w.date)), today), [workouts, today]);
+  // Days in a row with a workout, ending today (or yesterday while today has none yet).
+  const streak = useMemo(() => calculateStreak(workouts.map((w) => w.date), 'daily', parseDate(today)!), [workouts, today]);
   const pointsEarnedToday = todayWorkouts.reduce((sum, w) => sum + (w.pointsAwarded || 0), 0);
 
   // Points preview for the dialog

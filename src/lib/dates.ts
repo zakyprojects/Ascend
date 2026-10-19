@@ -140,6 +140,11 @@ export function addWeeks(key: string, n: number): string {
   return weekKey(weekStart);
 }
 
+/** Milliseconds of local midnight at the start of a YYYY-MM-DD day key (NaN for an invalid key). */
+export function localDayStartMs(dayKey: string): number {
+  return parseDate(dayKey)?.getTime() ?? NaN;
+}
+
 /** Robustly parses any date representation into a valid Date object, or null if invalid */
 export function parseDate(dateVal?: string | Date | number | null): Date | null {
   if (dateVal === null || dateVal === undefined) return null;
