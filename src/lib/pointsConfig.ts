@@ -98,8 +98,9 @@ export const PFC_POINTS = {
 } as const;
 
 export const READING_POINTS = {
-  // 2 pages = 1pt, cap 10pts/day (reached at 20 pages/day)
+  // 2 pages = 1pt, 1 chapter = 10pts (counts as 20 pages), cap 10pts/day shared by all books
   pagesPerPoint: 2,
+  pointsPerChapter: 10,
   dailyCap: 10,
   completionBonus: 15,
 } as const;

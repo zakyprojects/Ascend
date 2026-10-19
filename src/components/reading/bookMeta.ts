@@ -1,6 +1,6 @@
 import type { BookCategory, PointsEntry, UserBook } from '@/types';
 import { formatDateLong, todayKey } from '@/lib/dates';
-import { readingBonusId } from '@/lib/readingAwards';
+import { isChapterBook, readingBonusId } from '@/lib/readingAwards';
 import { trustedNow } from '@/lib/clock';
 import { sameName } from '@/lib/uniqueNames';
 
@@ -12,9 +12,8 @@ export const sameBook = (a: Pick<UserBook, 'title' | 'author'>, b: Pick<UserBook
 
 export const DEFAULT_BOOK_LENGTH = 250;
 
-/** The book's unit as the forms use it (older rows may carry other spellings). */
-export const bookUnit = (book: Pick<UserBook, 'unit'>): BookUnit =>
-  String(book.unit || '').toLowerCase() === 'chapters' ? 'chapters' : 'pages';
+/** The book's unit as the forms use it (older rows may carry other spellings); the same rule points use. */
+export const bookUnit = (book: Pick<UserBook, 'unit'>): BookUnit => (isChapterBook(book) ? 'chapters' : 'pages');
 
 /** "1 page", "12 pages", "3 chapters". */
 export const formatAmount = (n: number, unit: BookUnit): string =>

@@ -47,7 +47,7 @@ export function capNote(capId: CapId | 'timeTracker'): string {
   }
 
   if (capId === 'reading') {
-    return `${READING_POINTS.pagesPerPoint} pages = 1 pt. Cap ${READING_POINTS.dailyCap} pts per day. Resets at midnight.`;
+    return `${READING_POINTS.pagesPerPoint} pages = 1 pt, 1 chapter = ${READING_POINTS.pointsPerChapter} pts. Cap ${READING_POINTS.dailyCap} pts per day. Resets at midnight.`;
   }
 
   if (capId === 'skills') {

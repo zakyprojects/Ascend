@@ -55,10 +55,18 @@ const timeOf = (value: string): number => {
 const logPages = (log: ReadingLog): number =>
   typeof log.pagesRead === 'number' && Number.isFinite(log.pagesRead) ? Math.max(0, log.pagesRead) : 0;
 
+/** The book counts in chapters (unit "chapters" in any case; anything else is pages), as the server reads it. */
+export const isChapterBook = (book: Pick<UserBook, 'unit'>): boolean => String(book.unit || '').toLowerCase() === 'chapters';
+
+/** Pages one chapter counts as for points: 1 chapter = pointsPerChapter points. */
+const PAGES_PER_CHAPTER = READING_POINTS.pointsPerChapter * READING_POINTS.pagesPerPoint;
+
 /**
  * Mirror of ascend_recompute_reading_awards: the page award entry of one local day (null when the
  * day earns nothing), and each counted log's share in log order (shown on the log). Only logs of
- * books still in the library count, and not the pages Finish adds (finish: true); points = floor(day pages / pagesPerPoint), capped.
+ * books still in the library count, and not the pages Finish adds (finish: true); a chapter
+ * book's log counts each chapter as PAGES_PER_CHAPTER pages; points = floor(day pages / pagesPerPoint),
+ * capped across all books.
  */
 export function computeReadingDayAward(
   logs: ReadingLog[],
@@ -67,6 +75,7 @@ export function computeReadingDayAward(
   dayStartMs: number,
   nowMs: number
 ): { entry: PointsEntry | null; logPoints: Map<string, number> } {
+  const chapterBookIds = new Set(books.filter((b) => b && isChapterBook(b)).map((b) => b.id));
   const bookIds = new Set(books.filter(Boolean).map((b) => b.id));
   const dayLogs = logs
     .filter((l) => l && l.date === day && l.finish !== true && Boolean(l.bookId && bookIds.has(l.bookId)))
@@ -76,7 +85,7 @@ export function computeReadingDayAward(
   let pages = 0;
   let used = 0;
   for (const l of dayLogs) {
-    pages += logPages(l);
+    pages += logPages(l) * (chapterBookIds.has(l.bookId ?? '') ? PAGES_PER_CHAPTER : 1);
     const earned = Math.min(Math.floor(pages / READING_POINTS.pagesPerPoint), READING_POINTS.dailyCap);
     logPoints.set(l.id, earned - used);
     used = earned;

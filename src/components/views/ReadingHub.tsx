@@ -280,7 +280,8 @@ export function ReadingHub({ store }: { store: AppStore }) {
               <ul className="list-disc pl-4 space-y-0.5">
                 <li>
                   Every <span className="figure">{READING_POINTS.pagesPerPoint}</span> pages ={' '}
-                  <span className="figure text-success-text">1 pt</span>, up to{' '}
+                  <span className="figure text-success-text">1 pt</span>; in a book counted in chapters, every chapter ={' '}
+                  <span className="figure text-success-text">{READING_POINTS.pointsPerChapter} pts</span>. Up to{' '}
                   <span className="figure">{READING_POINTS.dailyCap}</span> pts a day, across all books.
                 </li>
                 <li>
