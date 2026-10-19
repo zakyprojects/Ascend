@@ -32,6 +32,16 @@ import { computeStateDataWeight, type UserDataWeight } from './dataWeight';
 import { trustedNow, trustedNowMs } from './clock';
 import { mergeRankCelebrated } from './rankCelebration';
 
+/**
+ * A stored time as epoch ms, for comparing: an ISO string in any offset (`…Z`, `…+00:00` from
+ * PostgREST) or epoch ms. Missing or unreadable sorts as the oldest. Text comparison would put a
+ * numeric `createdAt` before every ISO string and depends on both sides using the same offset.
+ */
+const timeMs = (value: string | number | undefined | null): number => {
+  const ms = typeof value === 'number' ? value : typeof value === 'string' ? Date.parse(value) : NaN;
+  return Number.isFinite(ms) ? ms : -Infinity;
+};
+
 function mergeEntityArrays<T extends { id?: string; createdAt?: string | number; updatedAt?: string; timestamp?: string }>(
   baseArr: T[] = [],
   incomingArr: T[] = [],
@@ -56,8 +66,8 @@ function mergeEntityArrays<T extends { id?: string; createdAt?: string | number;
       if (customMerge) {
         map.set(item.id, customMerge(existing, item));
       } else {
-        const existingTime = existing.updatedAt || (existing.createdAt !== undefined ? String(existing.createdAt) : '') || existing.timestamp || '';
-        const incomingTime = item.updatedAt || (item.createdAt !== undefined ? String(item.createdAt) : '') || item.timestamp || '';
+        const existingTime = timeMs(existing.updatedAt || existing.createdAt || existing.timestamp);
+        const incomingTime = timeMs(item.updatedAt || item.createdAt || item.timestamp);
         if (incomingTime >= existingTime) {
           map.set(item.id, { ...existing, ...item });
         } else {
@@ -999,7 +1009,7 @@ function mergeAppStateInternal(
       if (existing) {
         // Keep the more recent one or preserve read state if one is read
         const isRead = existing.read || n.read;
-        const newer = (n.createdAt || '') >= (existing.createdAt || '') ? n : existing;
+        const newer = timeMs(n.createdAt) >= timeMs(existing.createdAt) ? n : existing;
         notifMap.set(existingId, { ...newer, id: existingId, read: isRead });
       }
       continue;
@@ -1010,8 +1020,8 @@ function mergeAppStateInternal(
       notifMap.set(n.id, n);
       if (dedupKey) dedupKeyMap.set(dedupKey, n.id);
     } else {
-      const existingTime = existing.createdAt || '';
-      const incomingTime = n.createdAt || '';
+      const existingTime = timeMs(existing.createdAt);
+      const incomingTime = timeMs(n.createdAt);
       const isRead = existing.read || n.read;
       if (incomingTime >= existingTime) {
         notifMap.set(n.id, { ...existing, ...n, read: isRead });
@@ -1022,10 +1032,14 @@ function mergeAppStateInternal(
   }
 
   // Apply 30-day TTL + 50-item cap pruning
-  const thirtyDaysAgoIso = new Date(trustedNowMs() - 30 * 24 * 60 * 60 * 1000).toISOString();
+  const thirtyDaysAgoMs = trustedNowMs() - 30 * 24 * 60 * 60 * 1000;
   const notifications = Array.from(notifMap.values())
-    .filter((n) => !n.createdAt || n.createdAt >= thirtyDaysAgoIso)
-    .sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''))
+    .filter((n) => {
+      // No readable time: kept, as before (never pruned as old).
+      const created = timeMs(n.createdAt);
+      return created === -Infinity || created >= thirtyDaysAgoMs;
+    })
+    .sort((a, b) => timeMs(b.createdAt) - timeMs(a.createdAt) || 0)
     .slice(0, 50);
 
   // 15. Leagues, Lessons, Trackers
