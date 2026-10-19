@@ -42,7 +42,7 @@ import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { Button } from '@/components/ui/primitives';
 import { AscendLoadingOverlay, OVERLAY_EXIT_MS } from '@/components/ui/AscendLoadingIndicator';
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
-import { ToastProvider } from '@/components/ui/Toast';
+import { ToastProvider, useToast } from '@/components/ui/Toast';
 import { BannerStack } from '@/components/ui/BannerStack';
 import { DiscardChangesDialog } from '@/components/ui/DiscardChangesDialog';
 
@@ -54,7 +54,8 @@ const ResetPasswordPage = lazy(() =>
 function App() {
   const store = useAppState();
   // Page changes wait for the page's code first, so the view transition never shows a fallback.
-  const { view, pendingView, auth, search, navigationKind, navigate: setView, goToPath } = useViewRoute(preloadView);
+  const { view, pendingView, auth, search, navigationKind, startedOnUnknownPath, navigate: setView, goToPath } =
+    useViewRoute(preloadView);
 
   // The last ordinary page: a bug report or idea starts out about it ("Which page?").
   const [feedbackFromView, setFeedbackFromView] = useState<View>(view);
@@ -252,6 +253,7 @@ function App() {
       {authReady && (
         <ToastProvider>
           <DiscardChangesDialog />
+          <UnknownPageNotice show={startedOnUnknownPath && !showLoader} />
           {/* One column: the banner slot in flow, then the sign-in page or the shell filling the rest
               (so a banner never covers the header and never pushes the desktop shell off screen). */}
           <div className="flex flex-col min-h-dvh lg:h-dvh">
@@ -343,6 +345,18 @@ function App() {
       {loaderOverlay}
     </>
   );
+}
+
+/** Once per load, when the app opened at an address that names no page (shown once the loader is gone). */
+function UnknownPageNotice({ show }: { show: boolean }) {
+  const { showInfoToast } = useToast();
+  const shownRef = useRef(false);
+  useEffect(() => {
+    if (!show || shownRef.current) return;
+    shownRef.current = true;
+    showInfoToast("That page doesn't exist");
+  }, [show, showInfoToast]);
+  return null;
 }
 
 export default App;

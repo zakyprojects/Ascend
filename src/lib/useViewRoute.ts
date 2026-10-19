@@ -63,6 +63,12 @@ function routeFromLocation(): RouteTarget {
   return { view: viewFromPath(pathname) ?? DEFAULT_VIEW, auth: null };
 }
 
+/** The address names no page and no sign-in page (a mistyped or removed link): the dashboard shows. */
+function namesNoScreen(): boolean {
+  const { pathname, hash } = window.location;
+  return !viewFromLegacyHash(hash) && !authRouteFromPath(pathname) && viewFromPath(pathname) === null;
+}
+
 /**
  * Rewrites the address bar in place (no new history entry) when it does not name the screen on
  * show the canonical way: an alias, a trailing slash, an unknown path, an old `#/` link. The
@@ -111,6 +117,8 @@ export function useViewRoute(prepare?: (view: View) => Promise<unknown>) {
     kind: 'push',
     search: window.location.search,
   }));
+  // Read before the address is rewritten to `/`, for a one-time "That page doesn't exist" (App).
+  const [startedOnUnknownPath] = useState(namesNoScreen);
   const viewRef = useRef(route.view);
   viewRef.current = route.view;
   const authRef = useRef(route.auth);
@@ -238,6 +246,8 @@ export function useViewRoute(prepare?: (view: View) => Promise<unknown>) {
     auth: route.auth,
     search: route.search,
     navigationKind: route.kind,
+    /** The app was opened at an address that names no page (it shows the dashboard instead). */
+    startedOnUnknownPath,
     navigate,
     goToPath,
   };
