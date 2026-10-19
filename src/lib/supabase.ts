@@ -1306,13 +1306,8 @@ export async function deletePartnershipSupabase(partnershipId: string) {
     }
     console.warn('RPC end_partnership_atomic unavailable, falling back to direct delete:', rpcErr);
 
-    // Fallback (database without the RPC yet): delete associated shared challenges first
-    const { error: chalErr } = await supabase.from('shared_challenges').delete().eq('partnership_id', partnershipId);
-    if (chalErr) {
-      console.error('Error deleting associated shared challenges in Supabase:', chalErr);
-      throw new Error(chalErr.message || "Couldn't end the pairing. Try again.");
-    }
-
+    // Fallback (database without the RPC yet): the pair's shared challenges go with the
+    // partnership (FK cascade); members cannot delete them directly.
     const { error } = await supabase.from('partnerships').delete().eq('id', partnershipId);
     if (error) {
       console.error('Supabase partnership delete error:', error);
@@ -1464,20 +1459,10 @@ export async function deleteSharedChallengeSupabase(challengeId: string) {
   if (!isSupabaseConfigured || !challengeId) return;
   try {
     const { data: rpcData, error: rpcErr } = await supabase.rpc('delete_shared_challenge_atomic', { p_challenge_id: challengeId });
-    if (!rpcErr && rpcData?.success) {
-      return;
-    }
-    if (rpcErr) {
-      console.warn('RPC delete_shared_challenge_atomic reported error, falling back to direct delete:', rpcErr);
-    } else if (rpcData && !rpcData.success) {
-      console.error('RPC delete_shared_challenge_atomic business error:', rpcData.error);
-      throw new Error(rpcData.error || "Couldn't delete the pact. Try again.");
-    }
-
-    const { error } = await supabase.from('shared_challenges').delete().eq('id', challengeId);
-    if (error) {
-      console.error('Error deleting shared challenge in Supabase:', error);
-      throw new Error(error.message || "Couldn't delete the pact. Try again.");
+    // The RPC is the only delete path (it tells the partner); members have no direct DELETE.
+    if (rpcErr || !rpcData?.success) {
+      console.error('RPC delete_shared_challenge_atomic failed:', rpcErr || rpcData?.error);
+      throw new Error(rpcData?.error || "Couldn't delete the pact. Try again.");
     }
   } catch (e: any) {
     console.error('deleteSharedChallengeSupabase failed:', e);
