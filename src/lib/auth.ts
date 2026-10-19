@@ -17,6 +17,7 @@ import { isUsernameTakenError, looksLikeUsername, sameUsername, USERNAME_TAKEN, 
 import { NETWORK_MESSAGE } from './userMessage';
 import { clearDrafts } from './unsavedChanges';
 import { FunctionsHttpError } from '@supabase/supabase-js';
+import { CaptchaRejectedError, isCaptchaRejection } from './captcha';
 
 let cachedProfiles: any[] = [];
 
@@ -133,12 +134,16 @@ export type SignUpResult =
  *
  * Also stores signup metadata (username, avatar) in sessionStorage so the
  * onAuthStateChange listener can pick it up and use it when creating the profile.
+ *
+ * `captchaToken`: from getCaptchaToken (undefined while the bot check is off), here and in the
+ * other Auth calls below.
  */
 export async function signUpUser(
   email: string,
   password: string,
   username: string,
-  avatar: string
+  avatar: string,
+  captchaToken?: string
 ): Promise<SignUpResult> {
   const trimmedEmail = email.trim().toLowerCase();
   const trimmedUsername = username.trim();
@@ -169,11 +174,13 @@ export async function signUpUser(
         username: trimmedUsername,
         avatar,
       },
+      captchaToken,
     },
   });
 
   if (authError) {
     sessionStorage.removeItem('ascend_signup_defaults');
+    if (isCaptchaRejection(authError)) throw new CaptchaRejectedError();
     throw new Error(signUpErrorMessage(authError.message));
   }
 
@@ -205,19 +212,21 @@ const WRONG_USERNAME_LOGIN = 'Wrong username or password.';
  * It does NOT hydrate profile/user_data or set any app state.
  * All state setup is handled by onAuthStateChange in store.ts (single source of truth).
  */
-export async function loginUser(identifier: string, password: string): Promise<void> {
+export async function loginUser(identifier: string, password: string, captchaToken?: string): Promise<void> {
   const trimmed = identifier.trim();
   if (!trimmed.includes('@')) {
-    await loginWithUsername(trimmed, password);
+    await loginWithUsername(trimmed, password, captchaToken);
     return;
   }
 
   const { error: authError } = await supabase.auth.signInWithPassword({
     email: trimmed.toLowerCase(),
     password,
+    options: { captchaToken },
   });
 
   if (authError) {
+    if (isCaptchaRejection(authError)) throw new CaptchaRejectedError();
     const msg = authError.message || WRONG_EMAIL_LOGIN;
     if (authError.code === 'invalid_credentials' || msg.toLowerCase().includes('invalid login credentials')) {
       throw new Error(WRONG_EMAIL_LOGIN);
@@ -232,17 +241,22 @@ export async function loginUser(identifier: string, password: string): Promise<v
  * (it is never sent to the app), signs in, and returns the session, which setSession stores. That
  * fires SIGNED_IN like an email sign-in does.
  */
-async function loginWithUsername(username: string, password: string): Promise<void> {
+async function loginWithUsername(username: string, password: string, captchaToken?: string): Promise<void> {
   if (!looksLikeUsername(username)) throw new Error(WRONG_USERNAME_LOGIN);
 
   const { data, error } = await supabase.functions.invoke<{ access_token?: string; refresh_token?: string }>(
     'sign-in-username',
-    { body: { username, password } }
+    { body: captchaToken ? { username, password, captchaToken } : { username, password } }
   );
 
   if (error) {
-    const status = error instanceof FunctionsHttpError ? (error.context as Response | undefined)?.status : undefined;
+    const response = error instanceof FunctionsHttpError ? (error.context as Response | undefined) : undefined;
+    const status = response?.status;
     if (status === 401) throw new Error(WRONG_USERNAME_LOGIN);
+    if (status === 400) {
+      const body = (await response?.json().catch(() => null)) as { error?: string } | null;
+      if (body?.error === 'captcha_failed') throw new CaptchaRejectedError();
+    }
     if (status === 403) throw new Error('Confirm your email first: open the link we sent you, then sign in.');
     if (status === 429) throw new Error('Too many sign-in attempts. Wait a few minutes, or sign in with your email.');
     if (typeof navigator !== 'undefined' && navigator.onLine === false) throw new Error(NETWORK_MESSAGE);
@@ -267,9 +281,10 @@ async function loginWithUsername(username: string, password: string): Promise<vo
  * IMPORTANT: This function ONLY calls supabase.auth.signInWithAnonymous() and returns.
  * State hydration is handled by onAuthStateChange in store.ts (single source of truth).
  */
-export async function signInAsGuest(): Promise<void> {
-  const { error } = await supabase.auth.signInAnonymously();
+export async function signInAsGuest(captchaToken?: string): Promise<void> {
+  const { error } = await supabase.auth.signInAnonymously({ options: { captchaToken } });
   if (error) {
+    if (isCaptchaRejection(error)) throw new CaptchaRejectedError();
     throw new Error(error.message || "Couldn't sign in as a guest. Try again.");
   }
 }
@@ -499,11 +514,15 @@ export async function changeUserPassword(newPassword: string, current?: { email:
  * on the Supabase redirect allow-list). Supabase answers the same whether or not the email has an
  * account, so the screen never says which. Throws Supabase's error as is (429 = too many emails).
  */
-export async function requestPasswordReset(email: string): Promise<void> {
+export async function requestPasswordReset(email: string, captchaToken?: string): Promise<void> {
   const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
     redirectTo: `${window.location.origin}/reset-password`,
+    captchaToken,
   });
-  if (error) throw error;
+  if (error) {
+    if (isCaptchaRejection(error)) throw new CaptchaRejectedError();
+    throw error;
+  }
 }
 
 /** Sets a new password for the session a reset link opened (no current password: the email proved it). */

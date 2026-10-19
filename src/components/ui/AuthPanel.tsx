@@ -9,6 +9,7 @@ import { PasswordStaircase } from './PasswordStaircase';
 import { newPasswordProblem } from '@/lib/passwordRules';
 import { toUserMessage } from '@/lib/userMessage';
 import { looksLikeUsername } from '@/lib/usernameRules';
+import { preloadCaptcha, withCaptcha } from '@/lib/captcha';
 
 /** How long the sign-in/sign-up success screen shows before `onDone` runs. */
 const AUTH_SUCCESS_MS = 900;
@@ -262,6 +263,11 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
   const [errorInputs, setErrorInputs] = useState<string | null>(null);
   const inputsKey = [email, password, confirmPassword, username, avatar].join('\u0000');
 
+  // Sign-in, sign-up, guest and reset pass the bot check (saving a guest's progress does not).
+  useEffect(() => {
+    if (mode !== 'upgrade') preloadCaptcha();
+  }, [mode]);
+
   // Screen switches slide in (direction from MODE_ORDER); the first screen does not. Derived
   // during render so a new screen's first frame animates.
   const [slide, setSlide] = useState<'left' | 'right' | null>(null);
@@ -467,7 +473,8 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
     setLoading(true);
 
     try {
-      await withTimeout(signInAsGuest());
+      // The timeout covers each Auth call, not the bot check before it.
+      await withCaptcha('guest', (captchaToken) => withTimeout(signInAsGuest(captchaToken)));
       onDone();
     } catch (err: unknown) {
       console.error('Guest sign-in failed:', err);
@@ -515,12 +522,15 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
           return;
         }
 
-        const result = await withTimeout(
-          signUpUser(
-            email,
-            password,
-            username,
-            avatar
+        const result = await withCaptcha('sign_up', (captchaToken) =>
+          withTimeout(
+            signUpUser(
+              email,
+              password,
+              username,
+              avatar,
+              captchaToken
+            )
           )
         );
 
@@ -533,7 +543,7 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
 
         await finishWithSuccess('Welcome to Ascend!', onDone);
       } else {
-        await withTimeout(loginUser(email, password));
+        await withCaptcha('sign_in', (captchaToken) => withTimeout(loginUser(email, password, captchaToken)));
         await finishWithSuccess('Welcome back!', onDone);
       }
     } catch (err: unknown) {
@@ -563,7 +573,7 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
   const sendResetEmail = async (to: string, showError: (message: string) => void) => {
     setLoading(true);
     try {
-      await withTimeout(requestPasswordReset(to));
+      await withCaptcha('password_reset', (captchaToken) => withTimeout(requestPasswordReset(to, captchaToken)));
       setResetSentTo(to.trim());
       setResendIn(RESET_RESEND_SECONDS);
     } catch (err: unknown) {

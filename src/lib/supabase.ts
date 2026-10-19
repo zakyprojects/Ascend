@@ -16,6 +16,7 @@ import { withoutSyncedCollections } from './sync/syncedCollections';
 import { withoutRetiredKeys, withoutUnsavedBlobKeys } from './retiredStateKeys';
 import { withoutDeviceLocalKeys } from './deviceLocalState';
 import { trustedNow, trustedNowMs } from './clock';
+import { CaptchaRejectedError, isCaptchaRejection, withCaptcha } from './captcha';
 
 function getValidSupabaseUrl(url: unknown): string | null {
   if (typeof url !== 'string') return null;
@@ -113,7 +114,7 @@ export function passwordRecoveryLinkError(): string | null {
 /**
  * Checks a password for the signed-in email without touching the app's own sign-in (D-S3): a
  * separate client that keeps nothing, then a sign-out of just that check's session. The app's
- * session, its events and the other devices are unaffected.
+ * session, its events and the other devices are unaffected. Passes the bot check like a sign-in.
  */
 export async function verifyAccountPassword(email: string, password: string): Promise<'ok' | 'wrong'> {
   const checker = createClient(supabaseUrl, supabaseAnonKey, {
@@ -124,7 +125,11 @@ export async function verifyAccountPassword(email: string, password: string): Pr
       storageKey: `${AUTH_STORAGE_KEY}-password-check`,
     },
   });
-  const { error } = await checker.auth.signInWithPassword({ email, password });
+  const error = await withCaptcha('password_check', async (captchaToken) => {
+    const { error: signInError } = await checker.auth.signInWithPassword({ email, password, options: { captchaToken } });
+    if (isCaptchaRejection(signInError)) throw new CaptchaRejectedError();
+    return signInError;
+  });
   if (error) {
     if (error.code === 'invalid_credentials' || /invalid login credentials/i.test(error.message || '')) return 'wrong';
     throw new Error(error.message || "Couldn't check your password. Try again.");
