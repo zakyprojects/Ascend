@@ -2907,8 +2907,15 @@ export function useAppState() {
         });
     };
 
+    /**
+     * This tab still holds this account's session. A tab whose sign-in lapsed (signed out or
+     * replaced in another tab, a dead refresh token) would otherwise poll as anon every 10 s and
+     * get "permission denied"; it skips until the session is back (same check as outbox/pull).
+     */
+    const hasSession = async () => (await supabase.auth.getSession()).data.session?.user.id === userId;
+
     const syncNotificationsLive = async () => {
-      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      if ((typeof navigator !== 'undefined' && !navigator.onLine) || !(await hasSession())) {
         setNotificationsStatus((s) => (s === 'ready' ? s : 'failed'));
         return;
       }
@@ -2931,6 +2938,11 @@ export function useAppState() {
       if (typeof navigator !== 'undefined' && !navigator.onLine) {
         setNotificationsStatus((s) => (s === 'ready' ? s : 'failed'));
         setPartnersStatus('failed');
+        return;
+      }
+      if (!(await hasSession())) {
+        setNotificationsStatus((s) => (s === 'ready' ? s : 'failed'));
+        setPartnersStatus((s) => (s === 'ready' ? s : 'failed'));
         return;
       }
       try {
