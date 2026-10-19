@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   BookOpen,
   Check,
@@ -37,6 +37,7 @@ import { isSupabaseConfigured } from '@/lib/supabase';
 import { useLeaguePeriodRollover } from '@/lib/useLeaguePeriodRollover';
 import { useLeagueStandingsRefresh } from '@/lib/useLeagueStandingsRefresh';
 import { useLocalDayKey } from '@/lib/useLocalDayKey';
+import { useMinuteTick } from '@/lib/useMinuteTick';
 import { useCompletionPop } from '@/lib/useCompletionPop';
 import { pageLinkProps } from '@/lib/pageLink';
 import { dailyHabitCompletions, dailyPoints, lastDayKeys } from '@/lib/weeklyActivity';
@@ -130,15 +131,6 @@ function HeaderLink({ view, navigate, children }: { view: View; navigate: (view:
       {children} <ArrowRight size={14} aria-hidden="true" />
     </a>
   );
-}
-
-/** Re-renders when the greeting's part of the day (or anything else minute-based) may change. */
-function useMinuteTick(): void {
-  const [, setTick] = useState(0);
-  useEffect(() => {
-    const timer = setInterval(() => setTick((t) => t + 1), 60_000);
-    return () => clearInterval(timer);
-  }, []);
 }
 
 interface DashboardProps {

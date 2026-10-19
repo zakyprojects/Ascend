@@ -38,7 +38,8 @@ import { AppLogo } from './ui/AppLogo';
 import { ThemeToggle } from './ui/ThemeToggle';
 import type { View } from '@/lib/views';
 import type { NavigationKind } from '@/lib/useViewRoute';
-import { trustedNowMs } from '@/lib/clock';
+import { useLocalDayKey } from '@/lib/useLocalDayKey';
+import { useMinuteTick } from '@/lib/useMinuteTick';
 import { FocusTimerChip } from './pfc/FocusTimerChip';
 import { PageSwipeContext, usePageSwipe } from '@/lib/pageSwipe';
 
@@ -94,12 +95,14 @@ export function AppShell({ currentView, navigationKind, pendingView = null, onVi
   const navView = pendingView ?? currentView;
   useEffect(() => { if (activeGroupId) setLastByGroup(prev => prev[activeGroupId] === currentView ? prev : { ...prev, [activeGroupId]: currentView }); }, [currentView, activeGroupId]);
   const activeGroup = NAV_GROUPS.find((g) => g.id === activeGroupId);
-  // Derived once per data change (and at most once a minute for their time-of-day parts), not on
-  // every shell render (a dialog opening, a sheet toggling).
-  const minute = Math.floor(trustedNowMs() / 60_000);
+  // Derived once per data change, at local midnight and once a minute (the late-day "risk" tone),
+  // not on every shell render (a dialog opening, a sheet toggling). The ticks re-render the shell
+  // on their own, so the dots also move while the app sits idle.
+  const today = useLocalDayKey();
+  const minute = useMinuteTick();
   const { state: appState, isHabitDone, getLeagueData } = store;
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- `minute` refreshes the time-of-day status
-  const navStatuses = useMemo(() => getNavStatuses(appState, isHabitDone), [appState, isHabitDone, minute]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- `today` and `minute` refresh the time-of-day status
+  const navStatuses = useMemo(() => getNavStatuses(appState, isHabitDone), [appState, isHabitDone, today, minute]);
 
   useNavShortcuts({
     onPageIndex: (index) => {
