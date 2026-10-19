@@ -10,7 +10,7 @@ import { TIER_ICONS } from '@/components/ui/TierBadge';
 import { LeagueCountdown } from '@/components/ui/LeagueCountdown';
 import { getLocalResetDetail, sortPointsNewestFirst } from '@/lib/leagues';
 import { getSeasonNumber, getSeasonStart, leagueNow } from '@/lib/leagueTime';
-import { isTodayLocal, isYesterdayLocal } from '@/lib/dates';
+import { getNow, isTodayLocal, isYesterdayLocal } from '@/lib/dates';
 import { useLocalDayKey } from '@/lib/useLocalDayKey';
 
 /** Entries the Recent points list shows (newest first). */
@@ -39,8 +39,10 @@ function formatEntryTime(entry: PointsEntry, now: Date, seasonStart: Date): stri
 export function TierView({ store }: { store: AppStore }) {
   // Re-renders at local midnight, so "Today" / "Yesterday" labels on recent points roll over (C5).
   useLocalDayKey();
-  const now = leagueNow();
-  const seasonStart = getSeasonStart(now);
+  // League clock for the season and its reset; the personal clock for the entries' own dates.
+  const leagueClock = leagueNow();
+  const seasonStart = getSeasonStart(leagueClock);
+  const personalNow = getNow();
   const seasonPoints = store.getLeagueData('ninetyDay').userPoints;
   const currentTier = getCurrentTier(seasonPoints);
   const nextTier = getNextTier(seasonPoints);
@@ -96,7 +98,7 @@ export function TierView({ store }: { store: AppStore }) {
             {
               label: 'Season ends in',
               value: <LeagueCountdown type="ninetyDay" className="font-mono text-lg sm:text-2xl" />,
-              hint: getLocalResetDetail('ninetyDay', now),
+              hint: getLocalResetDetail('ninetyDay', leagueClock),
             },
           ]}
         />
@@ -225,7 +227,7 @@ export function TierView({ store }: { store: AppStore }) {
                       </span>
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm text-content-secondary">{entry.reason}</p>
-                        <p className="text-xs text-content-muted">{formatEntryTime(entry, now, seasonStart)}</p>
+                        <p className="text-xs text-content-muted">{formatEntryTime(entry, personalNow, seasonStart)}</p>
                       </div>
                     </li>
                   );
