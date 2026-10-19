@@ -1595,11 +1595,17 @@ export function reconcileLinkedWeeklyGoals(state: AppState, now: Date = getNow()
     if (isDone && !flagged) {
       hasChanges = true;
       const crossing = linkedGoalCrossing(goal, state, dateStrings);
+      // Achieved when its logs reached the target, but never before the goal was made or last
+      // re-linked/re-targeted (Zakria 2026-10-19), so its points can't land on an earlier day.
+      const reachedAt = goal.completedAt || crossing?.at || nowIso;
       return {
         ...goal,
         completed: true,
         done: true,
-        completedAt: goal.completedAt || crossing?.at || nowIso,
+        completedAt: [reachedAt, goal.createdAt, goal.linkEditedAt].reduce<string>(
+          (latest, t) => (t && Date.parse(t) > Date.parse(latest) ? t : latest),
+          reachedAt
+        ),
         completedByLogId: crossing?.id,
         updatedAt: nowIso,
       };
@@ -5564,6 +5570,13 @@ export function useAppState() {
 
       // Check if re-linked (converting between freeform/linked, or pointing to a different habit/workout/book/skill/metric)
       const targetLinkedModule = effectiveUpdates.linkedModule !== undefined ? effectiveUpdates.linkedModule : existingGoal.linkedModule;
+      // What the goal counts changed (link, item, Count or target): it can't count as achieved before now.
+      const countEdited =
+        (effectiveUpdates.linkedModule !== undefined && effectiveUpdates.linkedModule !== existingGoal.linkedModule) ||
+        (effectiveUpdates.linkedItemId !== undefined && (effectiveUpdates.linkedItemId || '') !== (existingGoal.linkedItemId || '')) ||
+        (effectiveUpdates.linkedMetricKey !== undefined && effectiveUpdates.linkedMetricKey !== existingGoal.linkedMetricKey) ||
+        (effectiveUpdates.targetValue !== undefined && effectiveUpdates.targetValue !== existingGoal.targetValue);
+
       // No item ('' or missing) = any workout/book/skill.
       const isReLinked =
         (effectiveUpdates.linkedModule !== undefined && effectiveUpdates.linkedModule !== existingGoal.linkedModule) ||
@@ -5630,6 +5643,7 @@ export function useAppState() {
         completedByLogId: isLinkedGoal && nextCompleted ? nextCompletedByLogId : undefined,
         manualProgress: isLinkedGoal ? 0 : nextManualProgress,
         updatedAt: trustedNow().toISOString(),
+        ...(countEdited ? { linkEditedAt: trustedNow().toISOString() } : {}),
         title: effectiveUpdates.title !== undefined ? effectiveUpdates.title.trim() : existingGoal.title,
         targetDescription: effectiveUpdates.targetDescription !== undefined ? effectiveUpdates.targetDescription.trim() : existingGoal.targetDescription,
       };

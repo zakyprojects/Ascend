@@ -94,7 +94,8 @@ export function weeklyScoringGoals(goals: WeeklyGoalItem[], held: CountedGoalRef
     const h = g && isAchieved(g) ? heldById.get(g.id) : undefined;
     if (!h) return g;
     used.add(h.id);
-    return instantMs(h.at) < getWeeklyGoalCompletionTime(g) ? { ...g, completedAt: h.at } : g;
+    // The held copy counts at h.at itself (createdAt/linkEditedAt must not move it later), as the server's held time does.
+    return instantMs(h.at) < getWeeklyGoalCompletionTime(g) ? { ...g, completedAt: h.at, createdAt: h.at, linkEditedAt: undefined } : g;
   });
   const missing = held
     .filter((h) => !used.has(h.id))

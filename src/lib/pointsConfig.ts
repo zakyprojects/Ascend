@@ -276,10 +276,17 @@ export function calculateTimeTrackerDailyPoints(blocks: Array<{ completed?: bool
   return { percentage, pointsAwarded, completedCount, effectiveDenominator };
 }
 
-/** Time a weekly goal counts as achieved: completedAt, falling back to createdAt. */
+/**
+ * Time a weekly goal counts as achieved: completedAt (createdAt when missing), but never before the
+ * goal was created or last re-linked/re-targeted (linkEditedAt), so a goal made or edited after its
+ * logs met the target earns on that day, not an earlier one (Zakria 2026-10-19). Mirror of
+ * ascend_goal_completion_time (20261019200100_weekly_goal_completion_not_before_edit.sql).
+ */
 export function getWeeklyGoalCompletionTime(goal: WeeklyGoalItem): number {
-  if (goal.completedAt) return new Date(goal.completedAt).getTime();
-  return goal.createdAt ? new Date(goal.createdAt).getTime() : 0;
+  const ms = (value?: string) => (value ? new Date(value).getTime() : Number.NaN);
+  const base = goal.completedAt ? ms(goal.completedAt) : goal.createdAt ? ms(goal.createdAt) : 0;
+  const times = [base, ms(goal.createdAt), ms(goal.linkEditedAt)].filter(Number.isFinite);
+  return times.length > 0 ? Math.max(...times) : base;
 }
 
 /**
