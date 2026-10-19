@@ -27,19 +27,26 @@ export function timeTrackerGraceDay(now: Date): string | null {
 
 /**
  * Mirror of ascend_recompute_time_tracker_award: the award entry of one local day, or null when
- * the day earns nothing. The percentage is rounded half up with integers, as in SQL.
+ * the day earns nothing. The percentage is rounded half up with integers, as in SQL. An existing row
+ * (existing, the live ledger row) keeps its time when the score changes; a new row is stamped now.
  */
-export function computeTimeTrackerAward(blocks: TimeTrackerBlock[], day: string, nowMs: number): PointsEntry | null {
+export function computeTimeTrackerAward(
+  blocks: TimeTrackerBlock[],
+  day: string,
+  nowMs: number,
+  existing?: PointsEntry | null
+): PointsEntry | null {
   const { pointsAwarded, completedCount, effectiveDenominator } = calculateTimeTrackerDailyPoints(blocks || []);
   if (pointsAwarded <= 0 || effectiveDenominator <= 0) return null;
 
   const percentage = Math.floor((200 * completedCount + effectiveDenominator) / (2 * effectiveDenominator));
+  const id = timeTrackerAwardId(day);
   return {
-    id: timeTrackerAwardId(day),
+    id,
     amount: pointsAwarded,
     reason: `Time Tracker daily routine completed (${percentage}%): ${pointsAwarded} pts`,
     source: 'time_tracker',
-    timestamp: new Date(nowMs).toISOString(),
+    timestamp: existing && existing.id === id ? existing.timestamp : new Date(nowMs).toISOString(),
     metadata: { date: day, percentage, pointsAwarded },
   };
 }

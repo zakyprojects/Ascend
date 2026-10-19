@@ -43,12 +43,16 @@ const timeOf = (value: string): number => {
 /**
  * Mirror of ascend_recompute_workout_awards: the award entry of one local day (null when the
  * day earns nothing), and each workout's share of the cap in log order (shown on the workout).
+ * The row's time follows the server: a day whose row already exists (existing, the live ledger row)
+ * keeps that row's time and only the amount changes; a new row is stamped at the day's first
+ * earning log, clamped to [dayStartMs, nowMs].
  */
 export function computeWorkoutAwards(
   workouts: WorkoutLog[],
   day: string,
   dayStartMs: number,
-  nowMs: number
+  nowMs: number,
+  existing?: PointsEntry | null
 ): { entry: PointsEntry | null; workoutPoints: Map<string, number> } {
   const dayWorkouts = workouts
     .filter((w) => w && w.date === day)
@@ -56,15 +60,16 @@ export function computeWorkoutAwards(
 
   const workoutPoints = new Map<string, number>();
   let used = 0;
+  let firstMs: number | null = null;
   for (const w of dayWorkouts) {
     const { pointsToAward } = calculateWorkoutPoints(w.unit, w.amount, w.durationMinutes, WORKOUT_POINTS.dailyCap - used);
     workoutPoints.set(w.id, pointsToAward);
     used += pointsToAward;
+    if (firstMs === null && used > 0) firstMs = timeOf(w.createdAt);
   }
   if (used <= 0) return { entry: null, workoutPoints };
 
-  const lastMs = timeOf(dayWorkouts[dayWorkouts.length - 1].createdAt);
-  const at = Math.min(Math.max(Number.isFinite(lastMs) ? lastMs : nowMs, dayStartMs), nowMs);
+  const at = Math.min(Math.max(firstMs !== null && Number.isFinite(firstMs) ? firstMs : nowMs, dayStartMs), nowMs);
   const id = workoutAwardId(day);
   return {
     entry: {
@@ -72,7 +77,7 @@ export function computeWorkoutAwards(
       amount: used,
       reason: `Workouts logged (${dayWorkouts.length})`,
       source: 'exercise',
-      timestamp: new Date(at).toISOString(),
+      timestamp: existing && existing.id === id ? existing.timestamp : new Date(at).toISOString(),
       metadata: { date: day, workouts: dayWorkouts.length },
     },
     workoutPoints,

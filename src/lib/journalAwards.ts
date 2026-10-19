@@ -42,32 +42,35 @@ export const journalEntryEarns = (entry: JournalEntry): boolean => (entry.conten
 
 /**
  * Mirror of ascend_recompute_journal_awards: the award entry of one local day, or null when the
- * day has no entry with content.
+ * day has no entry with content. The row's time follows the server: an existing row (existing, the
+ * live ledger row) keeps its time; a new row is stamped at the day's first entry with content,
+ * clamped to [dayStartMs, nowMs].
  */
 export function computeJournalAward(
   entries: JournalEntry[],
   day: string,
   dayStartMs: number,
-  nowMs: number
+  nowMs: number,
+  existing?: PointsEntry | null
 ): PointsEntry | null {
-  let newestMs = -Infinity;
+  let firstMs = Infinity;
   let found = false;
   for (const e of entries) {
     if (!e || e.date !== day || !journalEntryEarns(e)) continue;
     found = true;
     const ms = new Date(e.createdAt).getTime();
-    if (!Number.isNaN(ms)) newestMs = Math.max(newestMs, ms);
+    if (!Number.isNaN(ms)) firstMs = Math.min(firstMs, ms);
   }
   if (!found) return null;
 
-  const at = Math.min(Math.max(Number.isFinite(newestMs) ? newestMs : nowMs, dayStartMs), nowMs);
+  const at = Math.min(Math.max(Number.isFinite(firstMs) ? firstMs : nowMs, dayStartMs), nowMs);
   const id = journalAwardId(day);
   return {
     id,
     amount: JOURNAL_POINTS.entryCompleted,
     reason: 'Journal entry completed',
     source: 'journal',
-    timestamp: new Date(at).toISOString(),
+    timestamp: existing && existing.id === id ? existing.timestamp : new Date(at).toISOString(),
     metadata: { date: day },
   };
 }

@@ -77,13 +77,17 @@ const PAGES_PER_CHAPTER = READING_POINTS.pointsPerChapter * READING_POINTS.pages
  * books still in the library count, and not the pages Finish adds (finish: true); a chapter
  * book's log counts each chapter as PAGES_PER_CHAPTER pages; points = floor(day pages / pagesPerPoint),
  * capped across all books.
+ * The row's time follows the server: a day whose row already exists (existing, the live ledger row)
+ * keeps that row's time and only the amount changes; a new row is stamped at the day's first
+ * earning log, clamped to [dayStartMs, nowMs].
  */
 export function computeReadingDayAward(
   logs: ReadingLog[],
   books: UserBook[],
   day: string,
   dayStartMs: number,
-  nowMs: number
+  nowMs: number,
+  existing?: PointsEntry | null
 ): { entry: PointsEntry | null; logPoints: Map<string, number> } {
   const chapterBookIds = new Set(books.filter((b) => b && isChapterBook(b)).map((b) => b.id));
   const bookIds = new Set(books.filter(Boolean).map((b) => b.id));
@@ -94,16 +98,17 @@ export function computeReadingDayAward(
   const logPoints = new Map<string, number>();
   let pages = 0;
   let used = 0;
+  let firstMs: number | null = null;
   for (const l of dayLogs) {
     pages += logPages(l) * (chapterBookIds.has(l.bookId ?? '') ? PAGES_PER_CHAPTER : 1);
     const earned = Math.min(Math.floor(pages / READING_POINTS.pagesPerPoint), READING_POINTS.dailyCap);
     logPoints.set(l.id, earned - used);
     used = earned;
+    if (firstMs === null && used > 0) firstMs = timeOf(l.createdAt);
   }
   if (used <= 0) return { entry: null, logPoints };
 
-  const lastMs = timeOf(dayLogs[dayLogs.length - 1].createdAt);
-  const at = Math.min(Math.max(Number.isFinite(lastMs) ? lastMs : nowMs, dayStartMs), nowMs);
+  const at = Math.min(Math.max(firstMs !== null && Number.isFinite(firstMs) ? firstMs : nowMs, dayStartMs), nowMs);
   const id = readingAwardId(day);
   return {
     entry: {
@@ -111,7 +116,7 @@ export function computeReadingDayAward(
       amount: used,
       reason: `Pages logged (${dayLogs.length})`,
       source: 'reading',
-      timestamp: new Date(at).toISOString(),
+      timestamp: existing && existing.id === id ? existing.timestamp : new Date(at).toISOString(),
       metadata: { date: day, logs: dayLogs.length },
     },
     logPoints,

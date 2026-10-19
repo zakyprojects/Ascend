@@ -205,8 +205,8 @@ export function calculatePeriodPoints(
   for (const entry of history) {
     const ts = new Date(entry.timestamp);
     
-    // Only process entries that fall within the requested time period
-    if (ts >= start && ts <= end) {
+    // Only entries inside the half-open period [start, end), as the server counts them
+    if (ts >= start && ts < end) {
       // Ignore physical compensating entries used for lifetime debt forgiveness;
       // seasonal scores dynamically floor at 0 on their own timeline.
       if (entry.reason === 'System: Debt Forgiveness' || entry.source === 'system') {

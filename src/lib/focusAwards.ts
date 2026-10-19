@@ -45,12 +45,16 @@ const timeOf = (value: string): number => {
 /**
  * Mirror of ascend_recompute_focus_awards: the award entry of one local day (null when the day
  * earns nothing), and each session's share of the cap in log order (shown on the session).
+ * The row's time follows the server: a day whose row already exists (existing, the live ledger row)
+ * keeps that row's time and only the amount changes; a new row is stamped at the day's first
+ * earning log, clamped to [dayStartMs, nowMs].
  */
 export function computeFocusAwards(
   logs: FocusSessionLog[],
   day: string,
   dayStartMs: number,
-  nowMs: number
+  nowMs: number,
+  existing?: PointsEntry | null
 ): { entry: PointsEntry | null; sessionPoints: Map<string, number> } {
   const daySessions = logs
     .filter((l) => l && l.date === day)
@@ -58,15 +62,16 @@ export function computeFocusAwards(
 
   const sessionPoints = new Map<string, number>();
   let used = 0;
+  let firstMs: number | null = null;
   for (const l of daySessions) {
     const { pointsToAward } = calculateFocusPoints(l.durationMinutes, PFC_POINTS.focus.dailyCap - used);
     sessionPoints.set(l.id, pointsToAward);
     used += pointsToAward;
+    if (firstMs === null && used > 0) firstMs = timeOf(l.createdAt);
   }
   if (used <= 0) return { entry: null, sessionPoints };
 
-  const lastMs = timeOf(daySessions[daySessions.length - 1].createdAt);
-  const at = Math.min(Math.max(Number.isFinite(lastMs) ? lastMs : nowMs, dayStartMs), nowMs);
+  const at = Math.min(Math.max(firstMs !== null && Number.isFinite(firstMs) ? firstMs : nowMs, dayStartMs), nowMs);
   const id = focusAwardId(day);
   return {
     entry: {
@@ -74,7 +79,7 @@ export function computeFocusAwards(
       amount: used,
       reason: `Focus sessions (${daySessions.length})`,
       source: 'focus',
-      timestamp: new Date(at).toISOString(),
+      timestamp: existing && existing.id === id ? existing.timestamp : new Date(at).toISOString(),
       metadata: { date: day, sessions: daySessions.length },
     },
     sessionPoints,
