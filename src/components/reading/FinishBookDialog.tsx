@@ -4,13 +4,15 @@ import { Dialog, Form, Textarea } from '@/components/ui/primitives';
 import { CapMeter } from '@/components/ui/CapMeter';
 import type { AppStore } from '@/lib/store';
 import type { UserBook } from '@/types';
-import { todayKey } from '@/lib/dates';
+import { formatDateKeyHuman, todayKey } from '@/lib/dates';
 import { trustedNow } from '@/lib/clock';
 import { READING_POINTS } from '@/lib/pointsConfig';
 import {
+  READING_BONUS_COOLDOWN_DAYS,
   READING_BONUS_MIN_LOG_DAYS,
   READING_BONUS_MIN_SPAN_DAYS,
   readingBonusAlreadyGiven,
+  readingBonusCooldown,
   readingBonusProgress,
 } from '@/lib/readingAwards';
 import { useUnsavedChanges } from '@/lib/unsavedChanges';
@@ -20,8 +22,8 @@ import { actionFeedback } from '@/lib/actionFeedback';
 /**
  * Finishes a book with its key takeaway (required). Shows whether the one-time finish bonus
  * applies, using the same gates as finishBook and ascend_recompute_reading_bonus (readingBonusProgress):
- * pages logged on 5 separate days, the first at least 7 days ago. Finish counts today as a
- * reading day when it adds the unread pages.
+ * pages logged on 5 separate days, the first at least 7 days ago, and no other finish bonus in the
+ * last 13 days (readingBonusCooldown). Finish counts today as a reading day when it adds the unread pages.
  */
 export function FinishBookDialog({
   store,
@@ -40,9 +42,16 @@ export function FinishBookDialog({
 
   const eligibility = useMemo(() => {
     if (!book) return null;
+    const today = todayKey(trustedNow());
     const alreadyAwarded = readingBonusAlreadyGiven(book, pointsHistory);
-    const progress = readingBonusProgress(book.id, readingLogs, todayKey(trustedNow()), bookProgress(book).left > 0);
-    return { alreadyAwarded, ...progress, isEligible: !alreadyAwarded && progress.meetsSpan && progress.meetsDays };
+    const progress = readingBonusProgress(book.id, readingLogs, today, bookProgress(book).left > 0);
+    const cooldown = readingBonusCooldown(book.id, pointsHistory, today);
+    return {
+      alreadyAwarded,
+      ...progress,
+      cooldown,
+      isEligible: !alreadyAwarded && !cooldown.active && progress.meetsSpan && progress.meetsDays,
+    };
   }, [book, readingLogs, pointsHistory]);
 
   const submit = () => {
@@ -83,6 +92,16 @@ export function FinishBookDialog({
           <div className="flex items-start gap-3 rounded-xl border border-overlay-default p-3.5">
             <Info size={18} className="mt-0.5 shrink-0 text-content-muted" />
             <p className="text-xs leading-relaxed text-content-muted">This book already got its finish bonus.</p>
+          </div>
+        ) : eligibility?.cooldown.active && eligibility.cooldown.lastDay && eligibility.cooldown.nextDay ? (
+          <div className="flex items-start gap-3 rounded-xl border border-overlay-default p-3.5">
+            <Info size={18} className="mt-0.5 shrink-0 text-content-muted" />
+            <p className="text-xs leading-relaxed text-content-muted">
+              No finish bonus for this book. Finish bonuses come at most once every {READING_BONUS_COOLDOWN_DAYS} days: your
+              last was on {formatDateKeyHuman(eligibility.cooldown.lastDay)}, the next can come from{' '}
+              {formatDateKeyHuman(eligibility.cooldown.nextDay)}. Finishing later won&apos;t add it to this book. Page points you
+              already earned stay.
+            </p>
           </div>
         ) : (
           eligibility && (

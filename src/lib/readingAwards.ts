@@ -15,6 +15,8 @@ export const READING_AWARDS_SERVER_SINCE = '2026-10-15';
 /** Finish bonus gates: distinct days with logged pages, and days since the first logged page. */
 export const READING_BONUS_MIN_LOG_DAYS = 5;
 export const READING_BONUS_MIN_SPAN_DAYS = 7;
+/** Finish bonuses are at least this many local days apart (one per book still, decided on the finishing day). */
+export const READING_BONUS_COOLDOWN_DAYS = 13;
 
 export const readingAwardId = (day: string) => `reading_award_${day}`;
 export const readingBonusId = (bookId: string) => `reading_bonus_${bookId}`;
@@ -145,6 +147,31 @@ export function readingBonusProgress(
     meetsDays: days.size >= READING_BONUS_MIN_LOG_DAYS,
     meetsSpan: spanDays >= READING_BONUS_MIN_SPAN_DAYS,
   };
+}
+
+const addDays = (day: string, days: number): string => {
+  const [y, m, d] = day.split('-').map(Number);
+  return new Date(Date.UTC(y, m - 1, d + days)).toISOString().slice(0, 10);
+};
+
+/**
+ * Mirror of ascend_recompute_reading_bonus's cooldown: the latest live finish bonus of another book
+ * (lastDay) and the first day the next one can be given (nextDay = lastDay + 13). active while
+ * today is before nextDay; a book finished then never gets its bonus.
+ */
+export function readingBonusCooldown(
+  bookId: string,
+  pointsHistory: PointsEntry[],
+  today: string
+): { active: boolean; lastDay: string | null; nextDay: string | null } {
+  let lastDay: string | null = null;
+  for (const e of pointsHistory) {
+    if (!e || e.id === readingBonusId(bookId) || !(e.id || '').startsWith('reading_bonus_') || !(e.amount > 0)) continue;
+    const day = localDayOf(e.timestamp);
+    if (day && (!lastDay || day > lastDay)) lastDay = day;
+  }
+  const nextDay = lastDay ? addDays(lastDay, READING_BONUS_COOLDOWN_DAYS) : null;
+  return { active: Boolean(nextDay && today < nextDay), lastDay, nextDay };
 }
 
 /** The book already holds its finish bonus: a server row with its id, or one the app gave before. */

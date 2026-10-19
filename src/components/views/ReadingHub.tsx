@@ -8,7 +8,7 @@ import { CURATED_BOOKS, BOOK_CATEGORIES } from '@/lib/books';
 import type { BookCategory, CuratedBook, UserBook } from '@/types';
 import { formatDateLong, getNow, weekKey, formatWeekdayDate, formatWeekdayShort, addDays } from '@/lib/dates';
 import { READING_POINTS } from '@/lib/pointsConfig';
-import { READING_BONUS_MIN_LOG_DAYS, READING_BONUS_MIN_SPAN_DAYS, bookRemovalPoints, isRetiredAppReadingAward } from '@/lib/readingAwards';
+import { READING_BONUS_COOLDOWN_DAYS, READING_BONUS_MIN_LOG_DAYS, READING_BONUS_MIN_SPAN_DAYS, bookRemovalPoints, isRetiredAppReadingAward } from '@/lib/readingAwards';
 import { getCapStatus } from '@/lib/capStatus';
 import { CapMeterConnected } from '@/components/ui/CapMeterConnected';
 import { PageHero } from '@/components/ui/PageHero';
@@ -287,7 +287,8 @@ export function ReadingHub({ store }: { store: AppStore }) {
                 <li>
                   Finishing a book gives <span className="figure text-success-text">+{READING_POINTS.completionBonus}</span> once,
                   when you logged pages on {READING_BONUS_MIN_LOG_DAYS} separate days and the first was {READING_BONUS_MIN_SPAN_DAYS}+
-                  days ago.
+                  days ago. Finish bonuses come at most once every {READING_BONUS_COOLDOWN_DAYS} days; a book finished sooner gets
+                  none.
                 </li>
                 <li>The pages Finish adds for you earn no page points.</li>
                 <li>Removing a book takes back its finish bonus and today's points from it. Earlier days keep their points.</li>

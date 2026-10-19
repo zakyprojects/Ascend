@@ -102,6 +102,7 @@ import {
   isReadingDayEntry,
   isRetiredAppReadingAward,
   meetsReadingBonusGates,
+  readingBonusCooldown,
   readingBonusAlreadyGiven,
   readingBonusId,
 } from './readingAwards';
@@ -4364,7 +4365,11 @@ export function useAppState() {
         // The server gives the finish bonus once (ascend_recompute_reading_bonus); the same check here shows it now.
         const alreadyAwarded = readingBonusAlreadyGiven(targetUserBook, prev.pointsHistory || []);
         const pointsToAward =
-          !alreadyAwarded && meetsReadingBonusGates(completedBook, updatedReadingLogs, today) ? READING_POINTS.completionBonus : 0;
+          !alreadyAwarded &&
+          meetsReadingBonusGates(completedBook, updatedReadingLogs, today) &&
+          !readingBonusCooldown(targetUserBook.id, prev.pointsHistory || [], today).active
+            ? READING_POINTS.completionBonus
+            : 0;
 
         const updatedLibraryBooks = prev.libraryBooks.map((lb) => {
           if (lb.id === bookId || lb.linkedBookId === bookId || lb.id === targetUserBook.id) {
