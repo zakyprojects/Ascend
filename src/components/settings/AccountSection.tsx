@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { LogOut, Trash2 } from 'lucide-react';
 import { AppStore } from '@/lib/store';
 import { changeUserPassword, deleteOwnAccount, WrongCurrentPasswordError } from '@/lib/auth';
+import { verifyAccountPassword } from '@/lib/supabase';
 import { newPasswordProblem } from '@/lib/passwordRules';
 import { PasswordInput } from '@/components/ui/PasswordInput';
 import { PasswordStaircase } from '@/components/ui/PasswordStaircase';
@@ -112,11 +113,18 @@ export function AccountSection({ store, onOpenAuth }: AccountSectionProps) {
     resetError: resetDeleteAccountError,
   } = useAsyncAction();
 
-  // On failure the account still exists, so the user stays signed in and the dialog stays open
-  // with the error; on success the session is cleared locally.
-  const handleDeleteAccount = async () => {
+  // The password is checked first: the server deletes only right after a password sign-in
+  // (Security B1). On failure the account still exists, so the user stays signed in and the
+  // dialog stays open with the error; on success the session is cleared locally.
+  const handleDeleteAccount = async (password: string) => {
     try {
-      await executeDeleteAccount(() => deleteOwnAccount(userId));
+      await executeDeleteAccount(async () => {
+        if (!currentUser?.email) throw new Error("Couldn't check your password. Try again.");
+        if ((await verifyAccountPassword(currentUser.email, password)) === 'wrong') {
+          throw new WrongCurrentPasswordError();
+        }
+        await deleteOwnAccount(userId);
+      });
     } catch (err) {
       console.error('Account deletion failed in Settings:', err);
       return;
