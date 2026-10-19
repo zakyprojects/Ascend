@@ -2136,7 +2136,6 @@ export function useAppState() {
 
       try {
         isSyncing = true;
-        console.log('[SYNC] Network reconnected or tab visible, reconciling server state...');
         const serverRes = await fetchUserDataWithStatusFromSupabase(userId);
         if (serverRes.exists && serverRes.state) {
           lastSyncTimeRef.current = trustedNowMs();
@@ -2163,7 +2162,6 @@ export function useAppState() {
         // OUTBOUND RETRY PUSH: the dirty flag stays set until a save succeeds, so changes made
         // offline (or a save that failed) are pushed whether or not the inbound fetch worked.
         if (localStorage.getItem(`ascend_dirty_${userId}`)) {
-          console.log('[SYNC] Triggering outbound retry-push for unsaved changes');
           setState((prev) => ({ ...prev }), { immediate: true, actionLabel: 'Pending changes' });
         }
       }
@@ -3018,8 +3016,9 @@ export function useAppState() {
 
     let pollInterval: any = null;
 
+    // No polling while the tab is hidden; a return to it catches up at once (handleVisibilityChange).
     const startFallbackPolling = () => {
-      if (!pollInterval && (typeof navigator === 'undefined' || navigator.onLine)) {
+      if (!pollInterval && (typeof navigator === 'undefined' || navigator.onLine) && !document.hidden) {
         pollInterval = setInterval(syncPartnerDataLive, 10000);
       }
     };
@@ -3162,13 +3161,24 @@ export function useAppState() {
       setNotificationsStatus((s) => (s === 'loading' ? 'failed' : s));
     };
 
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        stopFallbackPolling();
+      } else if (!isSubscribed && (typeof navigator === 'undefined' || navigator.onLine)) {
+        startFallbackPolling();
+        syncPartnerDataLive();
+      }
+    };
+
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
       stopFallbackPolling();
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
       if (channel) supabase.removeChannel(channel);
     };
     // Intentional: adding deletedEntityIds would tear down/reconnect the realtime channel on every deletion app-wide.
