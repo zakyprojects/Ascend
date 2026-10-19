@@ -66,8 +66,13 @@ export function useConnectionStatus(): ConnectionStatus {
   useEffect(() => {
     let heartbeatInterval: any = null;
 
+    // No heartbeat while the tab is hidden; a return to it checks at once (handleVisibilityChange).
     const startHeartbeat = () => {
-      if (!heartbeatInterval && (typeof navigator === 'undefined' || navigator.onLine)) {
+      if (
+        !heartbeatInterval &&
+        (typeof navigator === 'undefined' || navigator.onLine) &&
+        !document.hidden
+      ) {
         heartbeatInterval = setInterval(performHeartbeatCheck, 12000);
       }
     };
@@ -97,9 +102,19 @@ export function useConnectionStatus(): ConnectionStatus {
       }
     };
 
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        stopHeartbeat();
+      } else if (typeof navigator === 'undefined' || navigator.onLine) {
+        startHeartbeat();
+        performHeartbeatCheck();
+      }
+    };
+
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
     window.addEventListener('app-network-error', handleNetworkErrorEvent);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
 
     // Initial check on mount
     if (typeof navigator === 'undefined' || navigator.onLine) {
@@ -115,6 +130,7 @@ export function useConnectionStatus(): ConnectionStatus {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
       window.removeEventListener('app-network-error', handleNetworkErrorEvent);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
       stopHeartbeat();
     };
   }, [performHeartbeatCheck]);
