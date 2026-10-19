@@ -1,5 +1,6 @@
 import { Component, ErrorInfo, ReactNode } from 'react';
-import { AlertTriangle, RefreshCw } from 'lucide-react';
+import { AlertTriangle, RefreshCw, Wrench } from 'lucide-react';
+import { isBuildFileError, repairBuildFiles } from '@/lib/assetRecovery';
 
 interface Props {
   children: ReactNode;
@@ -25,6 +26,24 @@ export class ErrorBoundary extends Component<Props, State> {
 
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error('Uncaught error caught by ErrorBoundary:', error, errorInfo);
+    // A build file that failed to load (an update landed): repair and reload on its own.
+    if (isBuildFileError(error)) repairBuildFiles({ automatic: true });
+  }
+
+  /** The error's own words, short, so a screenshot of the card shows what failed. */
+  private detail() {
+    const { error } = this.state;
+    if (!error) return null;
+    const text = `${error.name}: ${error.message}`.slice(0, 200);
+    return <p className="text-xs text-content-muted break-words">{text}</p>;
+  }
+
+  private repairButton(className: string) {
+    return (
+      <button type="button" onClick={() => repairBuildFiles({ automatic: false })} className={className}>
+        <Wrench size={14} aria-hidden="true" /> Repair app
+      </button>
+    );
   }
 
   public render() {
@@ -37,11 +56,11 @@ export class ErrorBoundary extends Component<Props, State> {
               <h1 className="section-title">{this.props.fallbackTitle || 'Ascend couldn’t load'}</h1>
             </div>
             <p className="text-sm text-content-secondary">
-              Something went wrong while showing the app. Your data is safe. Reload the page to try again.
+              Something went wrong while showing the app. Your data is safe. Repair app reloads it with fresh app
+              files; your sign-in and data stay.
             </p>
-            <button type="button" onClick={() => window.location.reload()} className="btn-primary min-h-11 text-xs">
-              <RefreshCw size={14} aria-hidden="true" /> Reload page
-            </button>
+            {this.detail()}
+            {this.repairButton('btn-primary min-h-11 text-xs')}
           </div>
         </div>
       );
@@ -55,8 +74,10 @@ export class ErrorBoundary extends Component<Props, State> {
             <h2 className="section-title">{this.props.fallbackTitle || 'This section couldn’t load'}</h2>
           </div>
           <p className="text-sm text-content-secondary">
-            Something went wrong while showing it. Your data is safe. Try again, or reload the page if it keeps happening.
+            Something went wrong while showing it. Your data is safe. Try again, or repair the app if it keeps happening:
+            it reloads with fresh app files, and your sign-in and data stay.
           </p>
+          {this.detail()}
           <div className="flex flex-wrap gap-2">
             <button
               type="button"
@@ -65,9 +86,7 @@ export class ErrorBoundary extends Component<Props, State> {
             >
               <RefreshCw size={14} aria-hidden="true" /> Try again
             </button>
-            <button type="button" onClick={() => window.location.reload()} className="btn-ghost min-h-11 text-xs">
-              Reload page
-            </button>
+            {this.repairButton('btn-ghost min-h-11 text-xs')}
           </div>
         </div>
       );
