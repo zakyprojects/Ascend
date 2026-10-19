@@ -70,6 +70,7 @@ import {
   findSplitPartner,
   plannedBlocksForDate,
   templateDays,
+  lastBlockOfDay,
 } from './timeTracker';
 import { findCuratedBook } from './books';
 import { uid, generateUUID, generateNumericUID, periodKey, todayKey, isPlanJourneyDoneThisPeriod, calculateActivePlanStreak, getWeekDates, parseDate, getNow, getNextDateKey, weekKey, addDays } from './dates';
@@ -84,7 +85,7 @@ import { computeSkillAwards, isRetiredAppSkillAward, isSkillDayEntry } from './s
 import { computeRecoveryChanges, RECOVERY_MILESTONES, trackerStartMs } from './recoveryAwards';
 import { computeJournalAward, isJournalDayEntry, isRetiredAppJournalAward, journalEntryEarns } from './journalAwards';
 import { computeFocusAwards, isFocusDayEntry, isRetiredAppFocusAward } from './focusAwards';
-import { computeTimeTrackerAward, timeTrackerAwardId } from './timeTrackerAwards';
+import { computeTimeTrackerAward, timeTrackerAwardId, timeTrackerGraceDay } from './timeTrackerAwards';
 import {
   countedGoalRefs,
   heldCountedGoals,
@@ -8273,14 +8274,15 @@ export function useAppState() {
     []
   );
 
-  // Shows today's Time Tracker routine points at once (computeTimeTrackerAward). The entry is never
-  // uploaded; the server's own row replaces it on the next pull. Past days keep their points.
+  // Shows today's Time Tracker routine points at once (computeTimeTrackerAward), and yesterday's
+  // until 02:00 (the grace window, as the server). The entry is never uploaded; the server's own row
+  // replaces it on the next pull. Earlier days keep their points.
   const recomputeTimeTrackerDailyPointsForState = (
     baseState: AppState,
     targetDateKey: string,
     newBlocks: TimeTrackerBlock[]
   ): Partial<AppState> => {
-    if (targetDateKey !== todayKey()) {
+    if (targetDateKey !== todayKey() && targetDateKey !== timeTrackerGraceDay(trustedNow())) {
       return {};
     }
 
@@ -8558,11 +8560,14 @@ export function useAppState() {
   const toggleDailyTimeBlockCompleted = useCallback(
     (dateKey: string, blockId: string, passedTimeStr?: string) => {
       setState((prev) => {
-        if (dateKey !== todayKey()) return prev;
+        // Until 02:00, yesterday's last block can still be ticked or unticked (the grace window).
+        const inGrace = dateKey === timeTrackerGraceDay(trustedNow());
+        if (dateKey !== todayKey() && !inGrace) return prev;
         const prevTT = prev.timeTracker || DEFAULT_TIME_TRACKER_STATE;
         const prevDailyBlocks = prevTT.dailyLogs?.[dateKey] || [];
         const target = prevDailyBlocks.find((b) => b.id === blockId);
         if (!target) return prev;
+        if (inGrace && (target.skipped || lastBlockOfDay(prevDailyBlocks)?.id !== blockId)) return prev;
 
         const isCurrentlyCompleted = target.completed;
 

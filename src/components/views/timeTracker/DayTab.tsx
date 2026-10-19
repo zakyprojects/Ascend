@@ -9,11 +9,13 @@ import {
   formatDurationHuman,
   formatTime12h,
   getAscendViewForModule,
+  lastBlockOfDay,
   minutesToTimeString,
   timeStringToMinutes,
 } from '@/lib/timeTracker';
 import { calculateTimeTrackerDailyPoints, TIME_TRACKER_POINTS } from '@/lib/pointsConfig';
 import { timeTrackerCapNote } from '@/lib/capCopy';
+import { TIME_TRACKER_GRACE_MINUTES, timeTrackerGraceDay } from '@/lib/timeTrackerAwards';
 import { formatDateKeyHuman, formatWeekdayDate } from '@/lib/dates';
 import { PageHero } from '@/components/ui/PageHero';
 import { CapMeter } from '@/components/ui/CapMeter';
@@ -89,6 +91,9 @@ export function DayTab({
     () => computeLiveSchedule(blocks, activities, now, selectedDateKey),
     [blocks, activities, now, selectedDateKey]
   );
+  // Until 02:00, yesterday's last block can still be ticked (the store and the server allow the same).
+  const graceBlock = mode === 'past' && selectedDateKey === timeTrackerGraceDay(now) ? lastBlockOfDay(blocks) : null;
+  const graceBlockId = graceBlock && !graceBlock.skipped ? graceBlock.id : undefined;
   const score = calculateTimeTrackerDailyPoints(blocks);
   const points = ledgerDayPoints(store.state, selectedDateKey);
   const doneCount = blocks.filter((b) => b.completed).length;
@@ -270,7 +275,13 @@ export function DayTab({
           )}
         </div>
 
-        {mode === 'past' && <p className="text-xs text-content-muted">Past days can’t change.</p>}
+        {mode === 'past' && (
+          <p className="text-xs text-content-muted">
+            {graceBlockId
+              ? `Past days can’t change. Until ${formatTime12h(minutesToTimeString(TIME_TRACKER_GRACE_MINUTES))} you can still tick this day’s last block.`
+              : 'Past days can’t change.'}
+          </p>
+        )}
 
         {isPreview && planned.template && (
           <div className="flex flex-col gap-3 rounded-xl border border-overlay-default bg-overlay-subtle p-3 sm:flex-row sm:items-center sm:justify-between">
@@ -304,6 +315,7 @@ export function DayTab({
             activityMap={activityMap}
             theme={theme}
             mode={mode}
+            graceBlockId={graceBlockId}
             nowMinutes={mode === 'today' ? live.currentMinutes : undefined}
             onToggleDone={toggleDone}
             onSkip={skip}

@@ -102,6 +102,22 @@ function endMinutesOf(startTime: string, endTime: string): number {
   return end === 0 && start > 0 ? MINUTES_PER_DAY : end;
 }
 
+/** The day's last block: the latest end, then the latest start (null for an empty day). */
+export function lastBlockOfDay<T extends Pick<TimeTrackerBlock, 'startTime' | 'endTime'>>(blocks: T[]): T | null {
+  let last: T | null = null;
+  for (const b of blocks) {
+    if (
+      !last ||
+      endMinutesOf(b.startTime, b.endTime) > endMinutesOf(last.startTime, last.endTime) ||
+      (endMinutesOf(b.startTime, b.endTime) === endMinutesOf(last.startTime, last.endTime) &&
+        timeStringToMinutes(b.startTime) > timeStringToMinutes(last.startTime))
+    ) {
+      last = b;
+    }
+  }
+  return last;
+}
+
 /** "09:30" -> "9:30 AM", "22:00" -> "10:00 PM", "24:00" -> "12:00 AM". */
 export function formatTime12h(timeStr: string): string {
   if (!timeStr) return '';

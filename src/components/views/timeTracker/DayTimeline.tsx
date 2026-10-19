@@ -26,6 +26,8 @@ interface DayTimelineProps {
   theme: 'dark' | 'light';
   /** 'today' can tick blocks; 'future' can edit; 'past' is read-only. */
   mode: 'today' | 'future' | 'past';
+  /** Yesterday's last block until 02:00: it can still be ticked although the day is past. */
+  graceBlockId?: string;
   /** Minutes since midnight now (today only), for the now line and passed blocks. */
   nowMinutes?: number;
   onToggleDone: (block: TimeTrackerBlock) => void;
@@ -58,6 +60,7 @@ export function DayTimeline({
   activityMap,
   theme,
   mode,
+  graceBlockId,
   nowMinutes,
   onToggleDone,
   onSkip,
@@ -117,6 +120,7 @@ export function DayTimeline({
               activityMap={activityMap}
               theme={theme}
               mode={mode}
+              canTick={mode === 'today' || row.item.block.id === graceBlockId}
               isNow={mode === 'today' && nowMinutes !== undefined && row.start <= nowMinutes && nowMinutes < row.end}
               isPassed={mode === 'past' || (mode === 'today' && nowMinutes !== undefined && nowMinutes >= row.end)}
               open={openId === row.item.block.id}
@@ -151,6 +155,8 @@ interface BlockRowProps {
   activityMap: Map<string, TimeTrackerActivity>;
   theme: 'dark' | 'light';
   mode: 'today' | 'future' | 'past';
+  /** The done box is a button (today's blocks, and the grace block). */
+  canTick: boolean;
   isNow: boolean;
   isPassed: boolean;
   open: boolean;
@@ -169,6 +175,7 @@ function BlockRow({
   activityMap,
   theme,
   mode,
+  canTick,
   isNow,
   isPassed,
   open,
@@ -185,7 +192,7 @@ function BlockRow({
   const name = blockName(block, activity);
   const duration = calculateBlockDurationMinutes(block.startTime, block.endTime);
   const status = block.completed ? 'Done' : block.skipped ? 'Skipped' : isPassed ? 'Not done' : isNow ? 'Now' : null;
-  const canTick = mode === 'today';
+  const canSkip = mode === 'today';
   const canEdit = mode !== 'past';
   const modules = launchModules(block, activityMap);
   const extra = (block.secondaryActivityIds || []).map((id) => activityMap.get(id)?.name).filter(Boolean);
@@ -252,7 +259,7 @@ function BlockRow({
 
       {open && (
         <div className="flex flex-wrap gap-2 pb-2.5 pl-[5.25rem] pr-2 sm:pl-[8.25rem]">
-          {canTick && !block.completed && !block.skipped && (
+          {canSkip && !block.completed && !block.skipped && (
             <button type="button" onClick={() => onSkip(block)} className="btn-secondary text-xs">
               <SkipForward size={14} /> Skip
             </button>
