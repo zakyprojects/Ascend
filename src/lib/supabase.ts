@@ -1003,17 +1003,6 @@ export async function fetchPublicPlansFromSupabase(options?: FetchPublicPlansPar
   }
 }
 
-export async function deleteReflectionNoteFromSupabase(noteId: string): Promise<boolean> {
-  if (!isSupabaseConfigured) return false;
-  try {
-    const { error } = await supabase.from('plan_reflection_notes').delete().eq('id', noteId);
-    return !error;
-  } catch (e) {
-    console.error('Error deleting reflection note:', e);
-    return false;
-  }
-}
-
 export async function sendPartnerInviteSupabase(invite: PartnerInvite) {
   if (!isSupabaseConfigured) return;
 
