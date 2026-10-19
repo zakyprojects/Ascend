@@ -24,6 +24,7 @@ import {
 } from './supabase';
 import { trustedNow } from './clock';
 import { usernameFrom } from './usernameRules';
+import { deviceTimeZone, markDeviceTimezoneSent } from './deviceTimezone';
 
 export type SignUpDefaults = {
   username: string;
@@ -63,6 +64,9 @@ const PROFILE_INSERT_ATTEMPTS = 3;
  */
 async function insertInitialProfile(userId: string, user: UserProfile): Promise<UserProfile> {
   let candidate = user;
+  // The server starts the account on this timezone (an unknown name falls back to Asia/Karachi), so
+  // a sign-up west of Karachi doesn't begin in a timezone wait.
+  const timeZone = deviceTimeZone();
   for (let attempt = 1; attempt <= PROFILE_INSERT_ATTEMPTS; attempt++) {
     // profiles.email is copied from the auth user by the database.
     const { error } = await supabase.from('profiles').insert({
@@ -71,8 +75,10 @@ async function insertInitialProfile(userId: string, user: UserProfile): Promise<
       username: candidate.username,
       avatar: candidate.avatar,
       is_profile_public: candidate.isProfilePublic ?? true,
+      device_timezone: timeZone,
     });
     if (!error) {
+      markDeviceTimezoneSent(userId, timeZone);
       if (candidate.username !== user.username && typeof window !== 'undefined') {
         window.dispatchEvent(
           new CustomEvent('app-toast-error', {
