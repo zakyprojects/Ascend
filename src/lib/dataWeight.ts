@@ -40,8 +40,7 @@ export function computeStateDataWeight(state: Partial<AppState> | null | undefin
 
   const itemCount =
     Object.values(arrayBreakdown).reduce((sum, c) => sum + c, 0) +
-    (state.addictionTracker ? 1 : 0) +
-    (state.exerciseGoal ? 1 : 0);
+    (state.addictionTracker ? 1 : 0);
 
   return { itemCount, arrayBreakdown };
 }

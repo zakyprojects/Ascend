@@ -1285,7 +1285,6 @@ function mergeAppStateInternal(
     habits,
     journalEntries,
     workouts,
-    exerciseGoal: incomingState.exerciseGoal !== undefined ? incomingState.exerciseGoal : baseState.exerciseGoal,
     books: [],
     readingLogs,
     skills,

@@ -207,15 +207,6 @@ export interface Book {
   lastPenalizedDate?: string;
 }
 
-/** @deprecated The weekly exercise goal was removed 2026-10-17 (weekly goals can link exercise). Kept so old saved state still loads. */
-export interface ExerciseGoal {
-  targetWeeklySessions: number;
-  /** @deprecated Phase A: Replaced with dynamic derivation from AppState.workouts. Kept for schema compatibility. */
-  consecutiveMisses?: number;
-  lastEvaluatedWeek?: string;
-  createdAt?: string;
-}
-
 export interface ReadingLog {
   id: string;
   bookId?: string;
@@ -705,7 +696,6 @@ export interface AppState {
 
   // New modules state
   workouts: WorkoutLog[];
-  exerciseGoal?: ExerciseGoal | null;
   // Unified Reading Hub & Literature Module
   libraryBooks: UserBook[];
   readingLogs: ReadingLog[];
@@ -960,7 +950,6 @@ export const DEFAULT_STATE: AppState = {
   readLessonIds: [],
   username: 'Guest User',
   workouts: [],
-  exerciseGoal: null,
   books: [],
   readingLogs: [],
   skills: [],
