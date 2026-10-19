@@ -7,14 +7,19 @@ import type { UserBook } from '@/types';
 import { todayKey } from '@/lib/dates';
 import { trustedNow } from '@/lib/clock';
 import { READING_POINTS } from '@/lib/pointsConfig';
-import { READING_BONUS_MIN_LOG_DAYS, READING_BONUS_MIN_SPAN_DAYS, readingBonusId } from '@/lib/readingAwards';
+import {
+  READING_BONUS_MIN_LOG_DAYS,
+  READING_BONUS_MIN_SPAN_DAYS,
+  readingBonusAlreadyGiven,
+  readingBonusProgress,
+} from '@/lib/readingAwards';
 import { useUnsavedChanges } from '@/lib/unsavedChanges';
 import { bookProgress } from './bookMeta';
 import { actionFeedback } from '@/lib/actionFeedback';
 
 /**
  * Finishes a book with its key takeaway (required). Shows whether the one-time finish bonus
- * applies, using the same gates as meetsReadingBonusGates / ascend_recompute_reading_bonus:
+ * applies, using the same gates as finishBook and ascend_recompute_reading_bonus (readingBonusProgress):
  * pages logged on 5 separate days, the first at least 7 days ago. Finish counts today as a
  * reading day when it adds the unread pages.
  */
@@ -35,21 +40,9 @@ export function FinishBookDialog({
 
   const eligibility = useMemo(() => {
     if (!book) return null;
-    const alreadyAwarded = (book.pointsAwarded ?? 0) > 0 || pointsHistory.some((e) => e.id === readingBonusId(book.id));
-    const today = todayKey(trustedNow());
-    const logDates = new Set(readingLogs.filter((l) => l.bookId === book.id && (l.pagesRead || 0) > 0).map((l) => l.date));
-    if (bookProgress(book).left > 0) logDates.add(today);
-    const first = [...logDates].sort()[0];
-    let spanDays = 0;
-    if (first) {
-      const [sY, sM, sD] = first.split('-').map(Number);
-      const [nY, nM, nD] = today.split('-').map(Number);
-      spanDays = Math.round((Date.UTC(nY, nM - 1, nD) - Date.UTC(sY, sM - 1, sD)) / 86400000);
-    }
-    const meetsSpan = spanDays >= READING_BONUS_MIN_SPAN_DAYS;
-    const loggedDays = logDates.size;
-    const meetsDays = loggedDays >= READING_BONUS_MIN_LOG_DAYS;
-    return { alreadyAwarded, spanDays, loggedDays, meetsSpan, meetsDays, isEligible: !alreadyAwarded && meetsSpan && meetsDays };
+    const alreadyAwarded = readingBonusAlreadyGiven(book, pointsHistory);
+    const progress = readingBonusProgress(book.id, readingLogs, todayKey(trustedNow()), bookProgress(book).left > 0);
+    return { alreadyAwarded, ...progress, isEligible: !alreadyAwarded && progress.meetsSpan && progress.meetsDays };
   }, [book, readingLogs, pointsHistory]);
 
   const submit = () => {

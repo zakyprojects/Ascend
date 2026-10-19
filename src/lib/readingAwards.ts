@@ -1,6 +1,6 @@
 import type { PointsEntry, ReadingLog, UserBook } from '@/types';
 import { READING_POINTS } from './pointsConfig';
-import { addDays, todayKey } from './dates';
+import { todayKey } from './dates';
 
 /**
  * Reading points are written by the server (supabase/migrations/20261015160000_server_reading_awards.sql):
@@ -108,17 +108,49 @@ export function computeReadingDayAward(
   };
 }
 
+/** Whole days from one day key to a later one. */
+const daysBetween = (from: string, to: string): number => {
+  const [fY, fM, fD] = from.split('-').map(Number);
+  const [tY, tM, tD] = to.split('-').map(Number);
+  return Math.round((Date.UTC(tY, tM - 1, tD) - Date.UTC(fY, fM - 1, fD)) / 86400000);
+};
+
 /**
- * Mirror of ascend_recompute_reading_bonus's gates: the book is completed, its pages were logged
- * on at least READING_BONUS_MIN_LOG_DAYS distinct days, and the first of them is at least
- * READING_BONUS_MIN_SPAN_DAYS before today. Whether a bonus was already given is the caller's check.
+ * The finish bonus gates of one book, as ascend_recompute_reading_bonus counts them: distinct days
+ * with logged pages (loggedDays, at least READING_BONUS_MIN_LOG_DAYS) and days from the first of
+ * them to today (spanDays, at least READING_BONUS_MIN_SPAN_DAYS). finishAddsToday counts today as
+ * a reading day for a Finish that will add the unread pages (its log is not written yet).
+ */
+export function readingBonusProgress(
+  bookId: string,
+  logs: ReadingLog[],
+  today: string,
+  finishAddsToday = false
+): { loggedDays: number; spanDays: number; meetsDays: boolean; meetsSpan: boolean } {
+  const days = new Set(logs.filter((l) => l && l.bookId === bookId && logPages(l) > 0).map((l) => l.date));
+  if (finishAddsToday) days.add(today);
+  const first = [...days].sort()[0];
+  const spanDays = first ? daysBetween(first, today) : 0;
+  return {
+    loggedDays: days.size,
+    spanDays,
+    meetsDays: days.size >= READING_BONUS_MIN_LOG_DAYS,
+    meetsSpan: spanDays >= READING_BONUS_MIN_SPAN_DAYS,
+  };
+}
+
+/** The book already holds its finish bonus: a server row with its id, or one the app gave before. */
+export const readingBonusAlreadyGiven = (book: UserBook, pointsHistory: PointsEntry[]): boolean =>
+  (book.pointsAwarded ?? 0) > 0 || pointsHistory.some((e) => e && e.id === readingBonusId(book.id));
+
+/**
+ * Mirror of ascend_recompute_reading_bonus's gates: the book is completed and readingBonusProgress
+ * meets both gates. Whether a bonus was already given is the caller's check (readingBonusAlreadyGiven).
  */
 export function meetsReadingBonusGates(book: UserBook, logs: ReadingLog[], today: string): boolean {
   if (book.status !== 'completed') return false;
-  const days = new Set(logs.filter((l) => l && l.bookId === book.id && logPages(l) > 0).map((l) => l.date));
-  if (days.size < READING_BONUS_MIN_LOG_DAYS) return false;
-  const first = [...days].sort()[0];
-  return first <= addDays(today, -READING_BONUS_MIN_SPAN_DAYS);
+  const { meetsDays, meetsSpan } = readingBonusProgress(book.id, logs, today);
+  return meetsDays && meetsSpan;
 }
 
 /**

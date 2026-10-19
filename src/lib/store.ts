@@ -94,7 +94,14 @@ import {
   weeklyScoringGoals,
 } from './weeklyAwards';
 import { computeLessonAward, isLessonReadInSeason, lessonReadId } from './lessonAwards';
-import { computeReadingDayAward, isReadingDayEntry, isRetiredAppReadingAward, meetsReadingBonusGates, readingBonusId } from './readingAwards';
+import {
+  computeReadingDayAward,
+  isReadingDayEntry,
+  isRetiredAppReadingAward,
+  meetsReadingBonusGates,
+  readingBonusAlreadyGiven,
+  readingBonusId,
+} from './readingAwards';
 import {
   getLeaguePeriodStart,
   getLeaguePointsPeriods,
@@ -4283,9 +4290,7 @@ export function useAppState() {
         };
 
         // The server gives the finish bonus once (ascend_recompute_reading_bonus); the same check here shows it now.
-        const bonusId = readingBonusId(targetUserBook.id);
-        const alreadyAwarded =
-          (targetUserBook.pointsAwarded ?? 0) > 0 || (prev.pointsHistory || []).some((e) => e.id === bonusId);
+        const alreadyAwarded = readingBonusAlreadyGiven(targetUserBook, prev.pointsHistory || []);
         const pointsToAward =
           !alreadyAwarded && meetsReadingBonusGates(completedBook, updatedReadingLogs, today) ? READING_POINTS.completionBonus : 0;
 
@@ -4335,7 +4340,7 @@ export function useAppState() {
                 'reading_bonus',
                 { bookId: targetUserBook.id },
                 now,
-                bonusId
+                readingBonusId(targetUserBook.id)
               )
             : awards.points;
 
