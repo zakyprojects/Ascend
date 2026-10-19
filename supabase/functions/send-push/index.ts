@@ -59,6 +59,21 @@ const db = createClient(env('SUPABASE_URL'), env('SUPABASE_SERVICE_ROLE_KEY'), {
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
+/** Compares two secrets in constant time: both are hashed first, so neither length nor content leaks. */
+async function secretsMatch(given: string | null, expected: string): Promise<boolean> {
+  if (given === null) return false;
+  const encoder = new TextEncoder();
+  const [a, b] = await Promise.all([
+    crypto.subtle.digest('SHA-256', encoder.encode(given)),
+    crypto.subtle.digest('SHA-256', encoder.encode(expected)),
+  ]);
+  const x = new Uint8Array(a);
+  const y = new Uint8Array(b);
+  let diff = 0;
+  for (let i = 0; i < x.length; i++) diff |= x[i] ^ y[i];
+  return diff === 0;
+}
+
 /** Runs a read, retrying on error; logs every failed try (no secrets, no endpoints). */
 async function readWithRetry<T>(
   what: string,
@@ -94,7 +109,9 @@ const reply = (status: number, body: Record<string, unknown>) =>
 
 Deno.serve(async (req) => {
   if (req.method !== 'POST') return reply(405, { error: 'method' });
-  if (req.headers.get('x-ascend-push-secret') !== env('PUSH_WEBHOOK_SECRET')) return reply(401, { error: 'secret' });
+  if (!(await secretsMatch(req.headers.get('x-ascend-push-secret'), env('PUSH_WEBHOOK_SECRET')))) {
+    return reply(401, { error: 'secret' });
+  }
 
   let id: unknown;
   try {
