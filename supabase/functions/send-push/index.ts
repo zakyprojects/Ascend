@@ -3,7 +3,8 @@
  *
  * Called only by the notifications_send_push trigger (supabase/migrations/20261017080000_web_push.sql)
  * with { notification_id } and the shared x-ascend-push-secret header. The body is never trusted
- * beyond the id: the notification and the devices are read here with the service role.
+ * beyond the id: the notification and the devices are read here with the service role. Each
+ * device's row is stamped with its latest attempt (last_ok_at / last_error_at / last_status).
  *
  * Deploy with "Verify JWT" OFF (the secret header is the check; pg_net sends no Authorization header):
  *   supabase functions deploy send-push --project-ref qokeodigrywwsyglcfjj --no-verify-jwt
@@ -75,6 +76,19 @@ async function readWithRetry<T>(
   return { data: null, error: lastError };
 }
 
+/**
+ * Stamps one device's latest attempt (last_ok_at / last_error_at / last_status, migration
+ * 20261019130000_push_subscription_trace.sql). Best effort: a failed stamp is only logged.
+ */
+async function trace(endpoint: string, fields: Record<string, string | number | null>, context: Record<string, unknown>) {
+  try {
+    const { error } = await db.from('push_subscriptions').update(fields).eq('endpoint', endpoint);
+    if (error) console.error('send-push trace failed', { ...context, error: error.message });
+  } catch (err) {
+    console.error('send-push trace failed', { ...context, error: (err as Error).message });
+  }
+}
+
 const reply = (status: number, body: Record<string, unknown>) =>
   new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
 
@@ -121,12 +135,13 @@ Deno.serve(async (req) => {
   await Promise.all(
     (devices ?? []).map(async (device) => {
       try {
-        await webpush.sendNotification(
+        const result = await webpush.sendNotification(
           { endpoint: device.endpoint, keys: { p256dh: device.p256dh, auth: device.auth } },
           payload,
           PUSH_OPTIONS
         );
         sent += 1;
+        await trace(device.endpoint, { last_ok_at: new Date().toISOString(), last_status: result.statusCode }, logContext);
       } catch (err) {
         const status = (err as { statusCode?: number }).statusCode ?? null;
         // 404/410: the browser dropped this subscription for good.
@@ -139,6 +154,7 @@ Deno.serve(async (req) => {
             error: (err as Error).message,
             body: typeof body === 'string' ? body.slice(0, 200) : null,
           });
+          await trace(device.endpoint, { last_error_at: new Date().toISOString(), last_status: status }, logContext);
         }
       }
     })
