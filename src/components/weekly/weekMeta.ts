@@ -18,6 +18,9 @@ export function weekLabelInline(targetWeekKey: string, currentWeekKey: string): 
   return label.endsWith(' week') ? label.toLowerCase() : label;
 }
 
+/** "habit", "book", "skill": what a goal's linked item is called when it was deleted. */
+export const DELETED_ITEM: Record<string, string> = { habit: 'habit', reading: 'book', skill: 'skill' };
+
 export function isLinkedGoal(item: WeeklyGoalItem): boolean {
   return Boolean(item.linkedModule && item.linkedModule !== 'none');
 }

@@ -235,16 +235,26 @@ export function deduplicatePresetHabits(
   };
 }
 
+/** When a goal last changed: updatedAt, or createdAt for goals saved before updatedAt existed. */
+const goalTime = (g: WeeklyGoalItem): string => g.updatedAt || g.createdAt || '';
+
+/**
+ * Week docs merge by week, and the goals inside merge goal by goal: the copy changed last wins
+ * (on a tie, incoming fields over the base's), a goal only one side has is kept, and a goal either side deleted
+ * (tombstones or the docs' deletedGoalIds) stays deleted. The server merges the same way
+ * (weekly_goals_merge_row, 20261019200000).
+ */
 function mergeWeeklyGoals(
   baseList: WeeklyGoal[] = [],
   incomingList: WeeklyGoal[] = [],
   tombstoneSet: Set<string>
 ): WeeklyGoal[] {
   const map = new Map<string, WeeklyGoal>();
+  const keepGoal = (deleted: Set<string>) => (g: WeeklyGoalItem) => !g.id || (!tombstoneSet.has(g.id) && !deleted.has(g.id));
 
   for (const wg of baseList) {
     if (!wg || !wg.weekKey) continue;
-    const filteredGoals = (wg.goals || []).filter((g) => !g.id || !tombstoneSet.has(g.id));
+    const filteredGoals = (wg.goals || []).filter(keepGoal(new Set(wg.deletedGoalIds || [])));
     const filteredReflections = (wg.reflections || []).filter((r) => !r.id || !tombstoneSet.has(r.id));
     map.set(wg.weekKey, {
       ...wg,
@@ -255,10 +265,15 @@ function mergeWeeklyGoals(
 
   for (const wg of incomingList) {
     if (!wg || !wg.weekKey) continue;
-    const filteredGoals = (wg.goals || []).filter((g) => !g.id || !tombstoneSet.has(g.id));
+    const existing = map.get(wg.weekKey);
+    const deletedGoalIds =
+      existing?.deletedGoalIds || wg.deletedGoalIds
+        ? Array.from(new Set([...(existing?.deletedGoalIds || []), ...(wg.deletedGoalIds || [])]))
+        : undefined;
+    const keep = keepGoal(new Set(deletedGoalIds || []));
+    const filteredGoals = (wg.goals || []).filter(keep);
     const filteredReflections = (wg.reflections || []).filter((r) => !r.id || !tombstoneSet.has(r.id));
 
-    const existing = map.get(wg.weekKey);
     if (!existing) {
       map.set(wg.weekKey, {
         ...wg,
@@ -268,22 +283,16 @@ function mergeWeeklyGoals(
     } else {
       // Merge goals within week
       const goalsMap = new Map<string, WeeklyGoalItem>();
-      for (const g of existing.goals || []) {
-        if (g.id && !tombstoneSet.has(g.id)) goalsMap.set(g.id, g);
+      for (const g of (existing.goals || []).filter(keep)) {
+        if (g.id) goalsMap.set(g.id, g);
       }
       for (const g of filteredGoals) {
-        if (g.id && !tombstoneSet.has(g.id)) {
+        if (g.id) {
           const exG = goalsMap.get(g.id);
-          if (!exG) {
+          if (!exG || goalTime(g) > goalTime(exG)) {
             goalsMap.set(g.id, g);
-          } else {
-            const exTime = exG.createdAt || '';
-            const inTime = g.createdAt || '';
-            if (inTime >= exTime) {
-              goalsMap.set(g.id, { ...exG, ...g });
-            } else {
-              goalsMap.set(g.id, { ...g, ...exG });
-            }
+          } else if (goalTime(g) === goalTime(exG)) {
+            goalsMap.set(g.id, { ...exG, ...g });
           }
         }
       }
@@ -315,6 +324,7 @@ function mergeWeeklyGoals(
         ...wg,
         goals: Array.from(goalsMap.values()),
         reflections: Array.from(refMap.values()),
+        ...(deletedGoalIds ? { deletedGoalIds } : {}),
       });
     }
   }

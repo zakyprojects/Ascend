@@ -8,6 +8,8 @@ import { formatAmount, isLinkedGoal } from './weekMeta';
 export interface UnfinishedGoal {
   weekKey: string;
   goal: WeeklyGoalItem;
+  /** "habit", "book", "skill": the goal's linked item was deleted, so it carries over as a goal the user updates. */
+  deletedLink?: string;
 }
 
 /**
@@ -60,6 +62,9 @@ export function CarryOverCard({
                   <p className="text-xs text-content-muted">
                     From {labelFor(item.weekKey)} · <span className="capitalize">{item.goal.priority}</span> priority
                   </p>
+                  {item.deletedLink && (
+                    <p className="text-xs text-content-muted">Linked {item.deletedLink} was deleted, so it carries over as a goal you update yourself.</p>
+                  )}
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
                   <button type="button" onClick={() => setDismissing(item)} className="btn-secondary px-3 py-1.5 text-xs">

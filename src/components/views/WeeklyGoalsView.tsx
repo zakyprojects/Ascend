@@ -12,7 +12,7 @@ import { weekKey, getWeekDates, offsetWeekKey, formatWeekRange, getNow, parseDat
 import { useLocalDayKey } from '@/lib/useLocalDayKey';
 import { isReflectionWindowOpen, weeklyScoringGoals } from '@/lib/weeklyAwards';
 import { WeeklyGoalItem } from '@/types';
-import { computeLinkedGoalProgress, GoalProgressResult } from '@/lib/linkedGoalMetrics';
+import { computeLinkedGoalProgress, GoalProgressResult, linkedItemExists } from '@/lib/linkedGoalMetrics';
 import { TAP_TARGET } from '@/components/ui/primitives/shared';
 import { BarChart } from '@/components/ui/charts';
 import { CountUp, Reveal } from '@/components/ui/Motion';
@@ -22,7 +22,7 @@ import { GoalRow } from '@/components/weekly/GoalRow';
 import { GoalFormDialog, type GoalPayload } from '@/components/weekly/GoalFormDialog';
 import { ReflectionsCard } from '@/components/weekly/ReflectionsCard';
 import { CarryOverCard, type UnfinishedGoal } from '@/components/weekly/CarryOverCard';
-import { heldWeekGoals, isGoalAchieved, pointsLostOnDelete, recordedProgress, weekLabel, weekLabelInline, weekPointsFromLedger } from '@/components/weekly/weekMeta';
+import { DELETED_ITEM, heldWeekGoals, isGoalAchieved, isLinkedGoal, pointsLostOnDelete, recordedProgress, weekLabel, weekLabelInline, weekPointsFromLedger } from '@/components/weekly/weekMeta';
 import type { View } from '@/lib/views';
 
 const TREND_WEEKS = 8;
@@ -141,11 +141,14 @@ export function WeeklyGoalsView({ store, onNavigate }: { store: AppStore; onNavi
         // Settled: achieved in its week (the flag the points use) or its live progress reached the target.
         const settled = g.completed || g.done || getGoalProgress(g, doc.weekKey).percent >= 100;
         const addressed = carriedIds.has(g.id) || currentTitles.has(title) || supersededKeys.has(`${doc.weekKey}:${title}`);
-        if (!settled && !g.archived && !g.carryOverDismissed && !addressed) result.push({ weekKey: doc.weekKey, goal: g });
+        if (!settled && !g.archived && !g.carryOverDismissed && !addressed) {
+          const deletedLink = isLinkedGoal(g) && !linkedItemExists(g, store.state) ? DELETED_ITEM[g.linkedModule || ''] : undefined;
+          result.push({ weekKey: doc.weekKey, goal: g, ...(deletedLink ? { deletedLink } : {}) });
+        }
       })
     );
     return result;
-  }, [isCurrentWeek, currentWeekKey, weeklyGoals, getGoalProgress]);
+  }, [isCurrentWeek, currentWeekKey, weeklyGoals, getGoalProgress, store.state]);
 
   // Goal form: keyed per open so it always starts clean.
   const [formOpen, setFormOpen] = useState(false);

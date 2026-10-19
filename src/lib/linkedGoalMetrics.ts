@@ -220,6 +220,10 @@ export type GoalProgressResult =
       percent: number;
     };
 
+/** Percent of the target, 100 only once it is reached (99.6% of 550 reps is not done). */
+const percentOf = (current: number, target: number): number =>
+  current >= target ? 100 : Math.min(99, Math.max(0, Math.round((current / target) * 100)));
+
 export function computeLinkedGoalProgress(
   item: WeeklyGoalItem,
   state: AppState,
@@ -235,7 +239,7 @@ export function computeLinkedGoalProgress(
       current: manual,
       target,
       unit: item.unit || 'times',
-      percent: Math.min(100, Math.round((manual / target) * 100)),
+      percent: percentOf(manual, target),
     };
   }
 
@@ -257,6 +261,6 @@ export function computeLinkedGoalProgress(
     current,
     target,
     unit: linkedGoalUnit(item, state) ?? metric.label,
-    percent: Math.min(100, Math.round((current / target) * 100)),
+    percent: percentOf(current, target),
   };
 }

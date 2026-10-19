@@ -414,11 +414,17 @@ export interface WeeklyGoalItem {
   manualProgress?: number;
   completed: boolean;
   completedAt?: string;
+  /** Linked goals: the log (habit: day or week key) whose total reached the target when the goal was ticked. */
+  completedByLogId?: string;
   archived?: boolean;
   carriedOverFromWeekKey?: string;
   carriedOverFromGoalId?: string;
   carryOverDismissed?: boolean;
   createdAt: string;
+  /** Last change to this goal; two copies of a week merge goal by goal on it. Missing on older goals (createdAt counts). */
+  updatedAt?: string;
+  /** Last change to what the goal counts (link, item, Count or target). It is never achieved before this. */
+  linkEditedAt?: string;
   /** Legacy fields kept optional for backward compatibility */
   text?: string;
   done?: boolean;
@@ -437,6 +443,8 @@ export interface WeeklyGoal {
   weekKey: string; // e.g. 2026-W33
   goals: WeeklyGoalItem[];
   reflections?: WeeklyGoalReflection[];
+  /** Goals deleted from this week, so a merge with an older copy can't bring them back. */
+  deletedGoalIds?: string[];
   createdAt: string;
   /** Legacy fields kept optional for backward compatibility */
   insights?: string;

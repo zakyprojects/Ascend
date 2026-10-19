@@ -74,7 +74,7 @@ import {
 } from './timeTracker';
 import { findCuratedBook } from './books';
 import { uid, generateUUID, generateNumericUID, periodKey, todayKey, isPlanJourneyDoneThisPeriod, calculateActivePlanStreak, getWeekDates, parseDate, getNow, getNextDateKey, weekKey, addDays } from './dates';
-import { computeLinkedGoalProgress } from './linkedGoalMetrics';
+import { computeLinkedGoalProgress, linkedEntryPresent, linkedGoalCrossing, linkedItemExists, linkedGoalUnit } from './linkedGoalMetrics';
 import { autoStatusChanges } from './projectProgress';
 import { reconcileSharedChallengeLifecycle, applyPledgeToggle, mergeSharedChallenge } from './pactLifecycle';
 import { isPartnershipUser1 } from './partnershipSide';
@@ -260,28 +260,40 @@ function dispatchToastError(title: string, message?: string) {
   }
 }
 
+/**
+ * A week doc after this app changed it: it lists the goals deleted from it (removed ids added),
+ * so a merge with an older copy can't bring them back. A doc with the list is merged goal by goal
+ * on the server (20261019200000_weekly_goals_merge_per_goal.sql); one without it (an older app)
+ * keeps last-writer-wins.
+ */
+function withDeletedGoalIds(doc: WeeklyGoal, removedIds: string[] = []): WeeklyGoal {
+  return { ...doc, deletedGoalIds: Array.from(new Set([...(doc.deletedGoalIds || []), ...removedIds])) };
+}
+
+/**
+ * Removes the current and future weeks' goals linked to deleted habits, books or skills (past
+ * weeks keep theirs). The removed goal ids go to the tombstones (`removedGoalIds`) and to each
+ * week's deletedGoalIds, so a sync or merge can't bring them back.
+ */
 function removeLinkedWeeklyGoals(
   weeklyGoals: WeeklyGoal[],
   linkedModule: 'habit' | 'skill' | 'reading',
   itemIds: (string | undefined)[],
   currentWeekKey: string
-): WeeklyGoal[] {
+): { weeklyGoals: WeeklyGoal[]; removedGoalIds: string[] } {
   const validIds = new Set(itemIds.filter((id): id is string => Boolean(id)));
-  if (validIds.size === 0) return weeklyGoals;
+  const removedGoalIds: string[] = [];
+  if (validIds.size === 0) return { weeklyGoals, removedGoalIds };
 
-  return weeklyGoals.map((w) => {
+  const isLinked = (g: WeeklyGoalItem) => g.linkedModule === linkedModule && Boolean(g.linkedItemId) && validIds.has(g.linkedItemId!);
+  const updated = weeklyGoals.map((w) => {
     if (w.weekKey < currentWeekKey) return w;
-    const hasLinked = w.goals.some(
-      (g) => g.linkedModule === linkedModule && g.linkedItemId && validIds.has(g.linkedItemId)
-    );
-    if (!hasLinked) return w;
-    return {
-      ...w,
-      goals: w.goals.filter(
-        (g) => !(g.linkedModule === linkedModule && g.linkedItemId && validIds.has(g.linkedItemId))
-      ),
-    };
+    const removed = w.goals.filter(isLinked).map((g) => g.id);
+    if (removed.length === 0) return w;
+    removedGoalIds.push(...removed);
+    return withDeletedGoalIds({ ...w, goals: w.goals.filter((g) => !isLinked(g)) }, removed);
   });
+  return { weeklyGoals: removedGoalIds.length > 0 ? updated : weeklyGoals, removedGoalIds };
 }
 
 export const RETIRED_PRESET_HABIT_NAMES = new Set<string>([
@@ -316,15 +328,15 @@ export function applyPresetHabitRemovalMigration(state: AppState, currentWeekKey
   const updatedHabits = (runningState.habits || []).filter(
     (h) => !h || !retiredIdSet.has(h.id)
   );
+  const linkedRemoval = removeLinkedWeeklyGoals(runningState.weeklyGoals || [], 'habit', retiredHabitIds, currentWeekKey);
   const updatedDeletedEntityIds = Array.from(
-    new Set([...(runningState.deletedEntityIds || []), ...retiredHabitIds])
+    new Set([...(runningState.deletedEntityIds || []), ...retiredHabitIds, ...linkedRemoval.removedGoalIds])
   ).slice(-500);
-  const updatedWeeklyGoals = removeLinkedWeeklyGoals(runningState.weeklyGoals || [], 'habit', retiredHabitIds, currentWeekKey);
 
   runningState = {
     ...runningState,
     habits: updatedHabits,
-    weeklyGoals: updatedWeeklyGoals,
+    weeklyGoals: linkedRemoval.weeklyGoals,
     deletedEntityIds: updatedDeletedEntityIds,
   };
 
@@ -771,11 +783,13 @@ export function sanitizeLoadedState(loaded: Partial<AppState>, profile: UserProf
         },
       ];
     }
+    // Only docs this app version changed carry the list (withDeletedGoalIds); others stay as they are.
+    const deletedGoalIdSet = new Set(Array.isArray(wg.deletedGoalIds) ? wg.deletedGoalIds : []);
     return {
       ...wg,
       reflections,
       goals: (wg.goals ?? [])
-        .filter((g: any) => !g || !g.id || !activeDeletedEntityIdSet.has(g.id))
+        .filter((g: any) => !g || !g.id || (!activeDeletedEntityIdSet.has(g.id) && !deletedGoalIdSet.has(g.id)))
         .map((g: any) => ({
           id: g.id || uid(),
           title: g.title || g.text || 'Weekly Goal',
@@ -788,11 +802,15 @@ export function sanitizeLoadedState(loaded: Partial<AppState>, profile: UserProf
           unit: g.unit || undefined,
           manualProgress: typeof g.manualProgress === 'number' ? g.manualProgress : undefined,
           completed: Boolean(g.completed ?? g.done),
+          completedAt: g.completedAt || undefined,
+          completedByLogId: g.completedByLogId || undefined,
           archived: Boolean(g.archived),
           carryOverDismissed: Boolean(g.carryOverDismissed),
           carriedOverFromWeekKey: g.carriedOverFromWeekKey || undefined,
           carriedOverFromGoalId: g.carriedOverFromGoalId || undefined,
           createdAt: g.createdAt || trustedNow().toISOString(),
+          updatedAt: g.updatedAt || undefined,
+          linkEditedAt: g.linkEditedAt || undefined,
         })),
     };
   });
@@ -1542,150 +1560,14 @@ export function reconcileWeeklyGoalsPointsForAllWeeks(
   return currentState;
 }
 
-export function getLinkedGoalCompletionTimestamp(
-  goal: WeeklyGoalItem,
-  state: AppState,
-  dateStrings: string[]
-): string | undefined {
-  if (!goal.linkedModule || goal.linkedModule === 'none') {
-    return undefined;
-  }
-
-  const targetVal = goal.targetValue && goal.targetValue > 0 ? goal.targetValue : 1;
-
-  if (goal.linkedModule === 'habit') {
-    const habit = (state.habits || []).find((h) => h.id === goal.linkedItemId);
-    if (!habit || !habit.completions) return undefined;
-    // A weekly habit counts once a week (linkedGoalMetrics): its week tick is the completion.
-    if (habit.frequency === 'weekly' && !Array.isArray(habit.completions) && dateStrings.length > 0) {
-      const weekTick = habit.completions[weekKey(parseDate(dateStrings[0]) ?? undefined)];
-      return weekTick?.done && targetVal <= 1 ? weekTick.updatedAt : undefined;
-    }
-
-    const entries: { timestamp: string }[] = [];
-    if (Array.isArray(habit.completions)) {
-      for (const d of habit.completions) {
-        if (typeof d === 'string' && dateStrings.includes(d)) {
-          const parsed = parseDate(d);
-          entries.push({ timestamp: parsed ? parsed.toISOString() : `${d}T12:00:00.000Z` });
-        }
-      }
-    } else {
-      for (const [date, c] of Object.entries(habit.completions)) {
-        if (c && c.done && dateStrings.includes(date)) {
-          const fallbackTime = parseDate(date)?.toISOString() || `${date}T12:00:00.000Z`;
-          entries.push({ timestamp: c.updatedAt || fallbackTime });
-        }
-      }
-    }
-
-    entries.sort((a, b) => (a.timestamp < b.timestamp ? -1 : a.timestamp > b.timestamp ? 1 : 0));
-    if (entries.length >= targetVal && targetVal > 0) {
-      return entries[targetVal - 1].timestamp;
-    }
-    return undefined;
-  }
-
-  if (goal.linkedModule === 'exercise') {
-    let weekWorkouts = (state.workouts || []).filter((w) => dateStrings.includes(w.date));
-    const targetWorkoutName = (goal.linkedItemId || '').trim().toLowerCase();
-    if (targetWorkoutName) {
-      weekWorkouts = weekWorkouts.filter(
-        (w) => (w.type || '').trim().toLowerCase() === targetWorkoutName
-      );
-    }
-
-    const metric = goal.linkedMetricKey || 'workouts_logged';
-    const entries = weekWorkouts.map((w) => {
-      const fallbackTime = parseDate(w.date)?.toISOString() || `${w.date}T12:00:00.000Z`;
-      const timestamp = w.createdAt || fallbackTime;
-      let val = 0;
-      if (metric === 'workouts_logged') {
-        val = 1;
-      } else if (metric === 'minutes_exercised') {
-        val = w.durationMinutes || 0;
-      } else if (metric === 'reps_logged' && (w.unit || '').trim().toLowerCase() === 'reps') {
-        val = typeof w.amount === 'number' && !isNaN(w.amount) ? w.amount : 0;
-      } else if (metric === 'sets_logged' && (w.unit || '').trim().toLowerCase() === 'sets') {
-        val = typeof w.amount === 'number' && !isNaN(w.amount) ? w.amount : 0;
-      } else if (metric === 'distance_km' && (w.unit || '').trim().toLowerCase() === 'km') {
-        val = typeof w.amount === 'number' && !isNaN(w.amount) ? w.amount : 0;
-      }
-      return { timestamp, val };
-    });
-
-    entries.sort((a, b) => (a.timestamp < b.timestamp ? -1 : a.timestamp > b.timestamp ? 1 : 0));
-    let runningSum = 0;
-    for (const entry of entries) {
-      runningSum += entry.val;
-      if (runningSum >= targetVal) {
-        return entry.timestamp;
-      }
-    }
-    return undefined;
-  }
-
-  if (goal.linkedModule === 'reading') {
-    const logs = (state.readingLogs || []).filter((l) => dateStrings.includes(l.date));
-    const matchingBook = (state.libraryBooks || []).find(
-      (lb) => lb.id === goal.linkedItemId || lb.linkedBookId === goal.linkedItemId
-    );
-    const matchingIds = new Set<string>();
-    if (goal.linkedItemId) matchingIds.add(goal.linkedItemId);
-    if (matchingBook?.id) matchingIds.add(matchingBook.id);
-    if (matchingBook?.linkedBookId) matchingIds.add(matchingBook.linkedBookId);
-
-    const filtered = matchingIds.size > 0
-      ? logs.filter((l) => Boolean(l.bookId && matchingIds.has(l.bookId)))
-      : logs;
-
-    const entries = filtered.map((l) => {
-      const fallbackTime = parseDate(l.date)?.toISOString() || `${l.date}T12:00:00.000Z`;
-      return {
-        timestamp: l.createdAt || fallbackTime,
-        val: l.pagesRead || 0,
-      };
-    });
-
-    entries.sort((a, b) => (a.timestamp < b.timestamp ? -1 : a.timestamp > b.timestamp ? 1 : 0));
-    let runningSum = 0;
-    for (const entry of entries) {
-      runningSum += entry.val;
-      if (runningSum >= targetVal) {
-        return entry.timestamp;
-      }
-    }
-    return undefined;
-  }
-
-  if (goal.linkedModule === 'skill') {
-    const logs = (state.skillLogs || []).filter((l) => dateStrings.includes(l.date));
-    const filtered = goal.linkedItemId ? logs.filter((l) => l.skillId === goal.linkedItemId) : logs;
-    const metric = goal.linkedMetricKey || 'sessions_logged';
-
-    const entries = filtered.map((l) => {
-      const fallbackTime = parseDate(l.date)?.toISOString() || `${l.date}T12:00:00.000Z`;
-      const val = metric === 'minutes_practiced' ? (l.durationMinutes || 0) : 1;
-      return {
-        timestamp: l.createdAt || fallbackTime,
-        val,
-      };
-    });
-
-    entries.sort((a, b) => (a.timestamp < b.timestamp ? -1 : a.timestamp > b.timestamp ? 1 : 0));
-    let runningSum = 0;
-    for (const entry of entries) {
-      runningSum += entry.val;
-      if (runningSum >= targetVal) {
-        return entry.timestamp;
-      }
-    }
-    return undefined;
-  }
-
-  return undefined;
-}
-
+/**
+ * Sets the current week's linked goals' achieved flags from their live progress (the server scores
+ * the flags). Runs on load, merges, the minute tick, the Weekly Goals page and inside every action
+ * that logs, unticks or deletes a counted log, so a log at 23:59 sets its week's flag at once.
+ * A flag comes off only when the log that reached the target is on this device or was deleted
+ * here (Zakria 2026-10-19): a device that has not pulled another device's log never unticks its
+ * goal. Goals ticked before this rule (no completedByLogId) keep the old rule.
+ */
 export function reconcileLinkedWeeklyGoals(state: AppState, now: Date = getNow()): AppState {
   const currentKey = weekKey(now);
   const docIdx = (state.weeklyGoals || []).findIndex((w) => w.weekKey === currentKey);
@@ -1693,6 +1575,8 @@ export function reconcileLinkedWeeklyGoals(state: AppState, now: Date = getNow()
 
   const doc = state.weeklyGoals[docIdx];
   const { dateStrings } = getWeekDates(currentKey);
+  const tombstones = new Set(state.deletedEntityIds || []);
+  const nowIso = now.toISOString();
 
   let hasChanges = false;
   const updatedGoals = (doc.goals || []).map((goal) => {
@@ -1707,22 +1591,29 @@ export function reconcileLinkedWeeklyGoals(state: AppState, now: Date = getNow()
     }
 
     const isDone = prog.percent >= 100;
-    if (isDone && (!goal.completed && !goal.done)) {
+    const flagged = Boolean(goal.completed || goal.done);
+    if (isDone && !flagged) {
       hasChanges = true;
-      const computedCompletedAt = getLinkedGoalCompletionTimestamp(goal, state, dateStrings) || now.toISOString();
+      const crossing = linkedGoalCrossing(goal, state, dateStrings);
       return {
         ...goal,
         completed: true,
         done: true,
-        completedAt: goal.completedAt || computedCompletedAt,
+        completedAt: goal.completedAt || crossing?.at || nowIso,
+        completedByLogId: crossing?.id,
+        updatedAt: nowIso,
       };
-    } else if (!isDone && (goal.completed || goal.done)) {
+    } else if (!isDone && flagged) {
+      const by = goal.completedByLogId;
+      if (by && !linkedEntryPresent(goal, state, by) && !tombstones.has(by)) return goal;
       hasChanges = true;
       return {
         ...goal,
         completed: false,
         done: false,
         completedAt: undefined,
+        completedByLogId: undefined,
+        updatedAt: nowIso,
       };
     }
 
@@ -1731,7 +1622,7 @@ export function reconcileLinkedWeeklyGoals(state: AppState, now: Date = getNow()
 
   if (!hasChanges) return state;
 
-  const updatedDoc = { ...doc, goals: updatedGoals };
+  const updatedDoc = withDeletedGoalIds({ ...doc, goals: updatedGoals });
   const newWeeklyGoals = [...state.weeklyGoals];
   newWeeklyGoals[docIdx] = updatedDoc;
 
@@ -3623,11 +3514,12 @@ export function useAppState() {
           updatedHabits = awards.habits;
         }
 
-        const updatedDeletedEntityIds = [...(runningState.deletedEntityIds || []), habitId].slice(-500);
+        const linkedRemoval = removeLinkedWeeklyGoals(runningState.weeklyGoals, 'habit', [habitId], currentWeekKey);
+        const updatedDeletedEntityIds = [...(runningState.deletedEntityIds || []), habitId, ...linkedRemoval.removedGoalIds].slice(-500);
         return {
           ...runningState,
           habits: updatedHabits,
-          weeklyGoals: removeLinkedWeeklyGoals(runningState.weeklyGoals, 'habit', [habitId], currentWeekKey),
+          weeklyGoals: linkedRemoval.weeklyGoals,
           deletedEntityIds: updatedDeletedEntityIds,
         };
       },
@@ -3643,11 +3535,12 @@ export function useAppState() {
       (prev) => {
         const existing = prev.habits.find((h) => h.linkedModule === 'reading');
         if (existing) {
-          const updatedDeletedEntityIds = [...(prev.deletedEntityIds || []), existing.id].slice(-500);
+          const linkedRemoval = removeLinkedWeeklyGoals(prev.weeklyGoals, 'habit', [existing.id], currentWeekKey);
+          const updatedDeletedEntityIds = [...(prev.deletedEntityIds || []), existing.id, ...linkedRemoval.removedGoalIds].slice(-500);
           return {
             ...prev,
             habits: prev.habits.filter((h) => h.id !== existing.id),
-            weeklyGoals: removeLinkedWeeklyGoals(prev.weeklyGoals, 'habit', [existing.id], currentWeekKey),
+            weeklyGoals: linkedRemoval.weeklyGoals,
             deletedEntityIds: updatedDeletedEntityIds,
           };
         } else {
@@ -3780,11 +3673,11 @@ export function useAppState() {
               });
             }
 
-            return {
+            return reconcileLinkedWeeklyGoals({
               ...runningState,
               habits,
               sharedChallenges: updatedChallenges,
-            };
+            });
           },
           { immediate: true }
         );
@@ -4049,11 +3942,11 @@ export function useAppState() {
 
       // The server writes the day's award (applyWorkoutAwardsInternal shows the same row now).
       const awards = applyWorkoutAwardsInternal(prev, [workout, ...prev.workouts], date);
-      return {
+      return reconcileLinkedWeeklyGoals({
         ...prev,
         workouts: awards.workouts,
         ...awards.points,
-      };
+      });
     });
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -4072,15 +3965,15 @@ export function useAppState() {
           // Only today's award follows the workouts; an earlier day's points stay (as on the server).
           const today = todayKey();
           if (target.date !== today) {
-            return { ...prev, workouts: remainingWorkouts, deletedEntityIds: updatedDeletedEntityIds };
+            return reconcileLinkedWeeklyGoals({ ...prev, workouts: remainingWorkouts, deletedEntityIds: updatedDeletedEntityIds });
           }
           const awards = applyWorkoutAwardsInternal(prev, remainingWorkouts, today);
-          return {
+          return reconcileLinkedWeeklyGoals({
             ...prev,
             workouts: awards.workouts,
             deletedEntityIds: updatedDeletedEntityIds,
             ...awards.points,
-          };
+          });
         },
         { immediate: true, actionLabel: 'Workout deletion', entityId: workoutId }
       )
@@ -4321,7 +4214,7 @@ export function useAppState() {
         }
       }
 
-      return {
+      return reconcileLinkedWeeklyGoals({
         ...prev,
         libraryBooks: updatedLibraryBooks,
         books: [],
@@ -4329,7 +4222,7 @@ export function useAppState() {
         habits: updatedHabits,
         deletedEntityIds: updatedDeletedEntityIds,
         ...awards.points,
-      };
+      });
     },
     { immediate: true }
   );
@@ -4436,14 +4329,14 @@ export function useAppState() {
               )
             : awards.points;
 
-        return {
+        return reconcileLinkedWeeklyGoals({
           ...prev,
           libraryBooks: updatedLibraryBooks,
           readingLogs: awards.readingLogs,
           habits: updatedHabits,
           books: [],
           ...points,
-        };
+        });
       },
       { immediate: true }
     );
@@ -4528,11 +4421,13 @@ export function useAppState() {
         }
 
         const idsArray = Array.from(allMatchingIds);
+        const linkedRemoval = removeLinkedWeeklyGoals(prev.weeklyGoals, 'reading', idsArray, currentWeekKey);
         const updatedDeletedEntityIds = [
           ...(prev.deletedEntityIds || []),
           ...idsArray,
           ...bookLogs.map((l) => l.id),
           ...habitExcisedIds,
+          ...linkedRemoval.removedGoalIds,
         ].slice(-500);
 
         return {
@@ -4541,7 +4436,7 @@ export function useAppState() {
           libraryBooks: remainingBooks,
           readingLogs: updatedReadingLogs,
           habits: updatedHabits,
-          weeklyGoals: removeLinkedWeeklyGoals(prev.weeklyGoals, 'reading', idsArray, currentWeekKey),
+          weeklyGoals: linkedRemoval.weeklyGoals,
           deletedEntityIds: updatedDeletedEntityIds,
           ...awards.points,
         };
@@ -4835,11 +4730,11 @@ export function useAppState() {
 
       // The server writes the day's award (applySkillAwardsInternal shows the same row now).
       const awards = applySkillAwardsInternal(prev, [session, ...prev.skillLogs], prev.skills, date);
-      return {
+      return reconcileLinkedWeeklyGoals({
         ...prev,
         skillLogs: awards.skillLogs,
         ...awards.points,
-      };
+      });
     });
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -4868,10 +4763,12 @@ export function useAppState() {
           const skillLogsToRemove = prev.skillLogs.filter((l) => l.skillId === skillId);
           const remainingSkillLogs = prev.skillLogs.filter((l) => l.skillId !== skillId);
 
+          const linkedRemoval = removeLinkedWeeklyGoals(prev.weeklyGoals, 'skill', [skillId], currentWeekKey);
           const updatedDeletedEntityIds = [
             ...(prev.deletedEntityIds || []),
             skillId,
             ...skillLogsToRemove.map((l) => l.id),
+            ...linkedRemoval.removedGoalIds,
           ].slice(-500);
 
           // Only today's award follows the sessions; earlier days' points stay (as on the server).
@@ -4881,7 +4778,7 @@ export function useAppState() {
             ...prev,
             skills: remainingSkills,
             skillLogs: awards.skillLogs,
-            weeklyGoals: removeLinkedWeeklyGoals(prev.weeklyGoals, 'skill', [skillId], currentWeekKey),
+            weeklyGoals: linkedRemoval.weeklyGoals,
             deletedEntityIds: updatedDeletedEntityIds,
             ...awards.points,
           };
@@ -4907,22 +4804,22 @@ export function useAppState() {
         const today = todayKey();
         if (target.date !== today) {
           const mins = typeof target.durationMinutes === 'number' && Number.isFinite(target.durationMinutes) ? target.durationMinutes : 0;
-          return {
+          return reconcileLinkedWeeklyGoals({
             ...prev,
             skills: mins > 0
               ? prev.skills.map((sk) => (sk.id === target.skillId ? { ...sk, clearedMinutes: (sk.clearedMinutes || 0) + mins } : sk))
               : prev.skills,
             skillLogs: remainingSkillLogs,
             deletedEntityIds: updatedDeletedEntityIds,
-          };
+          });
         }
         const awards = applySkillAwardsInternal(prev, remainingSkillLogs, prev.skills, today);
-        return {
+        return reconcileLinkedWeeklyGoals({
           ...prev,
           skillLogs: awards.skillLogs,
           deletedEntityIds: updatedDeletedEntityIds,
           ...awards.points,
-        };
+        });
       },
       { immediate: true }
     );
@@ -5447,13 +5344,14 @@ export function useAppState() {
         getNow()
       );
 
-      const updatedDoc: WeeklyGoal = {
+      const updatedDoc: WeeklyGoal = withDeletedGoalIds({
         id: existingDoc ? existingDoc.id : uid(),
         weekKey: targetWeekKey,
         goals: existingDoc ? existingDoc.goals : [],
         reflections: updatedReflections,
+        deletedGoalIds: existingDoc?.deletedGoalIds,
         createdAt: existingDoc ? existingDoc.createdAt : trustedNow().toISOString(),
-      };
+      });
 
       let newWeeklyGoals = [...nextState.weeklyGoals];
       if (idx >= 0) {
@@ -5502,7 +5400,7 @@ export function useAppState() {
         getNow()
       );
 
-      const updatedDoc = { ...doc, reflections: updatedReflections };
+      const updatedDoc = withDeletedGoalIds({ ...doc, reflections: updatedReflections });
       const newWeeklyGoals = [...nextState.weeklyGoals];
       newWeeklyGoals[docIdx] = updatedDoc;
 
@@ -5538,7 +5436,7 @@ export function useAppState() {
             getNow()
           );
 
-          const updatedDoc = { ...doc, reflections: updatedReflections };
+          const updatedDoc = withDeletedGoalIds({ ...doc, reflections: updatedReflections });
           const newWeeklyGoals = [...nextState.weeklyGoals];
           newWeeklyGoals[docIdx] = updatedDoc;
           const updatedDeletedEntityIds = [...(nextState.deletedEntityIds || []), reflectionId].slice(-500);
@@ -5564,6 +5462,7 @@ export function useAppState() {
     setState((prev) => {
       const idx = prev.weeklyGoals.findIndex((w) => w.weekKey === targetWeekKey);
       const existingDoc = idx >= 0 ? prev.weeklyGoals[idx] : null;
+      const nowIso = trustedNow().toISOString();
 
       const isLinked = Boolean(goalData.linkedModule && goalData.linkedModule !== 'none');
 
@@ -5606,17 +5505,19 @@ export function useAppState() {
         completedAt,
         carriedOverFromWeekKey: goalData.carriedOverFromWeekKey,
         carriedOverFromGoalId: goalData.carriedOverFromGoalId || undefined,
-        createdAt: trustedNow().toISOString(),
+        createdAt: nowIso,
+        updatedAt: nowIso,
       };
 
       const updatedGoals = existingDoc ? [...existingDoc.goals, newItem] : [newItem];
-      const updatedDoc: WeeklyGoal = {
+      const updatedDoc: WeeklyGoal = withDeletedGoalIds({
         id: existingDoc ? existingDoc.id : uid(),
         weekKey: targetWeekKey,
         goals: updatedGoals,
         reflections: existingDoc?.reflections || [],
-        createdAt: existingDoc ? existingDoc.createdAt : trustedNow().toISOString(),
-      };
+        deletedGoalIds: existingDoc?.deletedGoalIds,
+        createdAt: existingDoc ? existingDoc.createdAt : nowIso,
+      });
 
       const newWeeklyGoals = [...prev.weeklyGoals];
       if (idx >= 0) {
@@ -5675,10 +5576,12 @@ export function useAppState() {
       let nextCompletedAt = existingGoal.completedAt;
       let nextManualProgress = existingGoal.manualProgress;
 
+      let nextCompletedByLogId = existingGoal.completedByLogId;
       if (isReLinked) {
         // If re-linked, reset completion state so it can be cleanly re-evaluated
         nextCompleted = false;
         nextCompletedAt = undefined;
+        nextCompletedByLogId = undefined;
         nextManualProgress = 0;
       } else if (isLinkedGoal) {
         // For linked goals, manual completion overrides are ignored; completed/completedAt are managed by reconcileLinkedWeeklyGoals
@@ -5724,7 +5627,9 @@ export function useAppState() {
         completed: nextCompleted,
         done: nextCompleted,
         completedAt: nextCompletedAt,
+        completedByLogId: isLinkedGoal && nextCompleted ? nextCompletedByLogId : undefined,
         manualProgress: isLinkedGoal ? 0 : nextManualProgress,
+        updatedAt: trustedNow().toISOString(),
         title: effectiveUpdates.title !== undefined ? effectiveUpdates.title.trim() : existingGoal.title,
         targetDescription: effectiveUpdates.targetDescription !== undefined ? effectiveUpdates.targetDescription.trim() : existingGoal.targetDescription,
       };
@@ -5732,7 +5637,7 @@ export function useAppState() {
       const updatedGoals = [...doc.goals];
       updatedGoals[goalIdx] = updatedGoal;
 
-      const updatedDoc = { ...doc, goals: updatedGoals };
+      const updatedDoc = withDeletedGoalIds({ ...doc, goals: updatedGoals });
       const newWeeklyGoals = [...prev.weeklyGoals];
       newWeeklyGoals[docIdx] = updatedDoc;
 
@@ -5763,7 +5668,7 @@ export function useAppState() {
           const deletedGoal = doc.goals.find((g) => g.id === goalId);
           const updatedGoals = doc.goals.filter((g) => g.id !== goalId);
 
-          const updatedDoc = { ...doc, goals: updatedGoals };
+          const updatedDoc = withDeletedGoalIds({ ...doc, goals: updatedGoals }, [goalId]);
           const newWeeklyGoals = [...prev.weeklyGoals];
           newWeeklyGoals[docIdx] = updatedDoc;
 
@@ -5773,12 +5678,13 @@ export function useAppState() {
             const sourceIdx = newWeeklyGoals.findIndex((w) => w.weekKey === deletedGoal.carriedOverFromWeekKey);
             const sourceDoc = sourceIdx >= 0 ? newWeeklyGoals[sourceIdx] : null;
             if (sourceDoc?.goals.some((g) => g.id === deletedGoal.carriedOverFromGoalId && !g.carryOverDismissed)) {
-              newWeeklyGoals[sourceIdx] = {
+              const nowIso = trustedNow().toISOString();
+              newWeeklyGoals[sourceIdx] = withDeletedGoalIds({
                 ...sourceDoc,
                 goals: sourceDoc.goals.map((g) =>
-                  g.id === deletedGoal.carriedOverFromGoalId ? { ...g, carryOverDismissed: true } : g
+                  g.id === deletedGoal.carriedOverFromGoalId ? { ...g, carryOverDismissed: true, updatedAt: nowIso } : g
                 ),
-              };
+              });
             }
           }
           const updatedDeletedEntityIds = [...(prev.deletedEntityIds || []), goalId].slice(-500);
@@ -5830,26 +5736,37 @@ export function useAppState() {
         return prev;
       }
 
+      const nowIso = trustedNow().toISOString();
+      // A goal whose habit, book or skill was deleted carries over as a goal the user updates
+      // themselves, in the unit it counted.
+      const deadLink = Boolean(targetGoal.linkedModule && targetGoal.linkedModule !== 'none') && !linkedItemExists(targetGoal, prev);
       const carriedItem: WeeklyGoalItem = {
         ...targetGoal,
         id: uid(),
+        ...(deadLink
+          ? { linkedModule: 'none', linkedItemId: undefined, linkedMetricKey: undefined, unit: linkedGoalUnit(targetGoal, prev) || 'times' }
+          : {}),
         completed: false,
         done: false,
         completedAt: undefined,
+        completedByLogId: undefined,
+        linkEditedAt: undefined,
         manualProgress: options?.resumeProgress ? (targetGoal.manualProgress || 0) : 0,
         carriedOverFromWeekKey: sourceWeekKey,
         carriedOverFromGoalId: targetGoal.id,
-        createdAt: trustedNow().toISOString(),
+        createdAt: nowIso,
+        updatedAt: nowIso,
       };
 
       const newGoals = targetDoc ? [...targetDoc.goals, carriedItem] : [carriedItem];
-      const newDoc: WeeklyGoal = {
+      const newDoc: WeeklyGoal = withDeletedGoalIds({
         id: targetDoc ? targetDoc.id : uid(),
         weekKey: targetWeekKey,
         goals: newGoals,
         reflections: targetDoc?.reflections || [],
-        createdAt: targetDoc ? targetDoc.createdAt : trustedNow().toISOString(),
-      };
+        deletedGoalIds: targetDoc?.deletedGoalIds,
+        createdAt: targetDoc ? targetDoc.createdAt : nowIso,
+      });
 
       let newWeeklyGoals = [...prev.weeklyGoals];
       if (targetDocIdx >= 0) {

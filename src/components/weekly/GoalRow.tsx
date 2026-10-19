@@ -7,7 +7,7 @@ import { TAP_TARGET, TAP_TARGET_Y } from '@/components/ui/primitives/shared';
 import { ProgressUpdateDialog, UpdateProgressButton } from '@/components/ui/ProgressUpdateDialog';
 import { useCompletionPop } from '@/lib/useCompletionPop';
 import { linkedItemExists } from '@/lib/linkedGoalMetrics';
-import { formatAmount, formatNumber, isGoalAchieved, isLinkedGoal } from './weekMeta';
+import { DELETED_ITEM, formatAmount, formatNumber, isGoalAchieved, isLinkedGoal } from './weekMeta';
 
 const PRIORITY_DOT: Record<WeeklyGoalPriority, string> = {
   high: 'bg-rose-500',
@@ -43,9 +43,6 @@ function linkedLabel(item: WeeklyGoalItem, state: AppState): string {
           : id; // exercise goals store the workout type itself
   return name ? `${module} · ${name}` : module;
 }
-
-/** "habit", "book", "skill": the deleted thing a goal was linked to. */
-const DELETED_ITEM: Record<string, string> = { habit: 'habit', reading: 'book', skill: 'skill' };
 
 export function GoalRow({
   item,
