@@ -76,32 +76,34 @@ function habit(id: string, name: string, checkedHour: number | null, extra: Part
   assert(!isRetiredAppHabitAward({ ...legacy, id: `habit_award_a_${DAY}` }), 'server row kept');
 }
 
-// 4. The outbox never uploads or deletes a server-owned row, but still syncs the rest.
+// 4. The outbox never uploads or deletes a points row (every one is the server's since
+//    20261015250000), but still syncs the other collections.
 {
   const server = { id: `habit_award_a_${DAY}`, amount: 3, reason: 'x', source: 'habit_completed', timestamp: at(1) };
-  const other = { id: 'w1', amount: 2, reason: 'w', source: 'workout', timestamp: at(1) };
-  const s1 = { ...DEFAULT_STATE, pointsHistory: [server, other] } as AppState;
+  const preview = { id: 'w1', amount: 2, reason: 'w', source: 'workout', timestamp: at(1) };
+  const skill = { id: 's1', name: 'Guitar', createdAt: at(1) } as unknown as AppState['skills'][number];
+  const s1 = { ...DEFAULT_STATE, pointsHistory: [server, preview], skills: [skill] } as AppState;
   const r1 = diffSyncedCollections(s1, {}, {}, at(2));
-  assert(!Object.keys(r1.outbox).some((k) => k.includes('habit_award')), 'server row not uploaded');
-  assert(Object.keys(r1.outbox).some((k) => k.includes('w1')), 'other row uploaded');
+  assert(!Object.keys(r1.outbox).some((k) => k.startsWith('point_entries:')), 'no points row uploaded');
+  assert('skills:s1' in r1.outbox, 'other collection uploaded');
 
-  const baseline = { pointsHistory: { [server.id]: 'serverhash', w1: r1.baseline.pointsHistory.w1 } };
-  const s2 = { ...DEFAULT_STATE, pointsHistory: [other] } as AppState;
+  const baseline = { pointsHistory: { [server.id]: 'serverhash' } };
+  const s2 = { ...DEFAULT_STATE, pointsHistory: [preview] } as AppState;
   const r2 = diffSyncedCollections(s2, baseline, {}, at(3));
   assert(!Object.keys(r2.outbox).some((k) => k.startsWith('point_entries:')), 'local removal of a server row is not a delete');
   assert(r2.baseline.pointsHistory[server.id] === 'serverhash', 'server baseline kept');
 }
 
-// 5. A full pull drops local server-owned rows the server does not hold (e.g. checked offline
-//    before midnight), and keeps the ones it does.
+// 5. A full pull drops local points rows the server does not hold (e.g. checked offline
+//    before midnight, or an app preview row), and keeps the ones it does.
 {
   const keep = { id: `habit_award_a_${DAY}`, amount: 3, reason: 'x', source: 'habit_completed', timestamp: at(1) };
   const stale = { id: 'habit_award_b_2026-10-14', amount: 2, reason: 'y', source: 'habit_completed', timestamp: at(-2) };
-  const other = { id: 'w1', amount: 2, reason: 'w', source: 'workout', timestamp: at(1) };
-  const s = { ...DEFAULT_STATE, pointsHistory: [keep, stale, other] } as AppState;
+  const preview = { id: 'w1', amount: 2, reason: 'w', source: 'workout', timestamp: at(1) };
+  const s = { ...DEFAULT_STATE, pointsHistory: [keep, stale, preview] } as AppState;
   const next = applyRemoteChanges(s, [{ key: 'pointsHistory', id: '', item: null, serverOwnedLive: [keep.id] }]);
   const ids = next.pointsHistory.map((e) => e.id);
-  assert(ids.includes(keep.id) && ids.includes('w1') && !ids.includes(stale.id), 'snapshot purge');
+  assert(ids.length === 1 && ids[0] === keep.id, 'snapshot purge');
   assert(hashRow({ a: 1 }) === hashRow({ a: 1 }), 'hash stable');
 }
 
