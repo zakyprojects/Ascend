@@ -5,6 +5,7 @@ import { ledgerPointsByDay } from '@/lib/ledgerDayPoints';
 import { isRetiredAppWorkoutAward } from '@/lib/workoutAwards';
 import { ptsText } from '@/lib/leagues';
 import { useLocalDayKey } from '@/lib/useLocalDayKey';
+import { pointsResumeText, useTimezoneWait } from '@/lib/useTimezoneWait';
 import { WORKOUT_POINTS, calculateWorkoutPoints } from '@/lib/pointsConfig';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { WorkoutLog } from '@/types';
@@ -120,7 +121,8 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
   const streak = useMemo(() => calculateStreak(workouts.map((w) => w.date), 'daily', parseDate(today)!), [workouts, today]);
   const pointsEarnedToday = todayWorkouts.reduce((sum, w) => sum + (w.pointsAwarded || 0), 0);
 
-  // Points preview for the dialog
+  // Points preview for the dialog (none while a timezone change waits: the server awards 0 today)
+  const timezoneWait = useTimezoneWait();
   const remainingCap = Math.max(0, WORKOUT_POINTS.dailyCap - pointsEarnedToday);
   const { rawPoints: previewRaw, pointsToAward: previewPoints } = calculateWorkoutPoints(measure, amount, measure === 'mins' ? amount : 0, remainingCap);
 
@@ -159,7 +161,7 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
     await executeLog(async () => {
       await store.logWorkout(name, measure === 'mins' ? amount : 0, amount, measure);
       setLogModalOpen(false);
-      showSuccessToast('Workout logged', previewPoints > 0 ? ptsText(previewPoints, true) : `${name} saved.`);
+      showSuccessToast('Workout logged', previewPoints > 0 && !timezoneWait ? ptsText(previewPoints, true) : `${name} saved.`);
     });
   };
 
@@ -445,13 +447,15 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
 
           <div className="rounded-xl p-3 text-xs text-content-muted flex items-center justify-between gap-3 border border-overlay-default">
             <span>
-              {remainingCap === 0
+              {timezoneWait
+                ? `${pointsResumeText(timezoneWait)} It still saves.`
+                : remainingCap === 0
                 ? `Today's ${WORKOUT_POINTS.dailyCap} pts are reached. It still saves.`
                 : previewRaw > previewPoints
                 ? `Only ${ptsText(remainingCap)} left today.`
                 : 'You earn'}
             </span>
-            <span className="figure text-success-text shrink-0">{ptsText(previewPoints, true)}</span>
+            {!timezoneWait && <span className="figure text-success-text shrink-0">{ptsText(previewPoints, true)}</span>}
           </div>
         </Form>
       </Dialog>

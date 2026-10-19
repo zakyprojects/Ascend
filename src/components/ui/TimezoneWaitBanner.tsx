@@ -1,61 +1,6 @@
-import { useEffect, useState } from 'react';
 import { Clock } from 'lucide-react';
-import { trustedNow, trustedNowMs } from '@/lib/clock';
-import { todayKey } from '@/lib/dates';
-import { supabase } from '@/lib/supabase';
-import { readTimezoneWait, type TimezoneWait } from '@/lib/timezoneStatus';
-
-const REFRESH_MS = 10 * 60 * 1000;
-
-function formatResume(resumesAt: Date): string {
-  const time = resumesAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  if (todayKey(resumesAt) === todayKey(trustedNow())) return time;
-  return `${resumesAt.toLocaleDateString([], { weekday: 'short' })} ${time}`;
-}
-
-/** The server-side timezone wait, if any (re-read every 10 min, on focus, on auth change). */
-export function useTimezoneWait(): TimezoneWait | null {
-  const [wait, setWait] = useState<TimezoneWait | null>(null);
-
-  useEffect(() => {
-    let active = true;
-    const refresh = () => {
-      readTimezoneWait()
-        .then((next) => {
-          if (active) setWait(next);
-        })
-        .catch(() => undefined);
-    };
-    const onVisible = () => {
-      if (document.visibilityState === 'visible') refresh();
-    };
-
-    refresh();
-    const timer = setInterval(refresh, REFRESH_MS);
-    document.addEventListener('visibilitychange', onVisible);
-    const { data: authListener } = supabase.auth.onAuthStateChange(() => refresh());
-    return () => {
-      active = false;
-      clearInterval(timer);
-      document.removeEventListener('visibilitychange', onVisible);
-      authListener.subscription.unsubscribe();
-    };
-  }, []);
-
-  // Re-read once the change should have been applied, so the banner leaves on its own.
-  useEffect(() => {
-    if (!wait) return;
-    const delay = Math.max(wait.resumesAt.getTime() - trustedNowMs(), 0) + 60_000;
-    const timer = setTimeout(() => {
-      readTimezoneWait()
-        .then(setWait)
-        .catch(() => undefined);
-    }, delay);
-    return () => clearTimeout(timer);
-  }, [wait]);
-
-  return wait;
-}
+import type { TimezoneWait } from '@/lib/timezoneStatus';
+import { formatTimezoneResume } from '@/lib/useTimezoneWait';
 
 /** Explains why today's ticks earn no points while a timezone change waits on the server. */
 export function TimezoneWaitBanner({ wait }: { wait: TimezoneWait }) {
@@ -70,7 +15,7 @@ export function TimezoneWaitBanner({ wait }: { wait: TimezoneWait }) {
       <div className="min-w-0">
         <p className="text-xs font-medium text-content-primary">Your timezone change is waiting</p>
         <p className="text-micro text-content-secondary">
-          Today's ticks earn points from about {formatResume(wait.resumesAt)}.
+          Today's ticks earn points from about {formatTimezoneResume(wait.resumesAt)}.
         </p>
       </div>
     </div>

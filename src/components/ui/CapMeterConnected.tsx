@@ -4,6 +4,7 @@ import { capLabels, capNote, capReachedText } from '@/lib/capCopy';
 import { CapMeter } from '@/components/ui/CapMeter';
 import { getNow } from '@/lib/dates';
 import { useLocalDayKey } from '@/lib/useLocalDayKey';
+import { pointsResumeText, useTimezoneWait } from '@/lib/useTimezoneWait';
 
 export interface CapMeterConnectedProps {
   state: Pick<
@@ -24,6 +25,9 @@ export interface CapMeterConnectedProps {
 export function CapMeterConnected({ state, capId, bare = false }: CapMeterConnectedProps) {
   // Re-render when the local day changes, so the cap resets at midnight.
   useLocalDayKey();
+  // While a timezone change waits on the server, today's logs earn nothing: say when they will
+  // instead of announcing a cap.
+  const timezoneWait = useTimezoneWait();
 
   const status = getCapStatus(state, capId, getNow());
   const variant = capId === 'badHabitsResisted' || capId === 'journal' ? 'slots' : 'bar';
@@ -39,10 +43,14 @@ export function CapMeterConnected({ state, capId, bare = false }: CapMeterConnec
         slotsTotal={status.slotsTotal}
         note={capNote(capId)}
       />
-      {status.isCapped && (
-        <div className="mt-1.5 text-micro text-warning-text">
-          {capReachedText(status.earned, status.cap)}
-        </div>
+      {timezoneWait ? (
+        <div className="mt-1.5 text-micro text-content-muted">{pointsResumeText(timezoneWait)}</div>
+      ) : (
+        status.isCapped && (
+          <div className="mt-1.5 text-micro text-warning-text">
+            {capReachedText(status.earned, status.cap)}
+          </div>
+        )
       )}
     </div>
   );
