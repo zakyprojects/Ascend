@@ -121,10 +121,6 @@ import {
   updateProfileNotificationPreferences,
   setCachedProfiles,
   setCachedLeaguePoints,
-  setCachedPublicPlans,
-  updateCachedPublicPlan,
-  getCachedPublicPlanById,
-  removeCachedPublicPlan,
   fetchProfileByUidFromSupabase,
 } from './auth';
 import { hydrateUserSession } from './authSession';
@@ -181,7 +177,6 @@ import {
   fetchAllProfilesFromSupabase,
   fetchLeaguePointsFromSupabase,
   fetchProfileByUsernameFromSupabase,
-  fetchPublicPlansFromSupabase,
   fetchPartnerInvitesSupabase,
   fetchPartnershipsSupabase,
   deletePartnershipSupabase,
@@ -2437,14 +2432,12 @@ export function useAppState() {
       }
 
       try {
-        const [publicPlans, sessionRes] = await Promise.all([
-          fetchPublicPlansFromSupabase(),
+        const [sessionRes] = await Promise.all([
           supabase.auth.getSession(),
           refreshLeagueStandings({ full: true }),
         ]);
 
         if (mounted) {
-          setCachedPublicPlans(publicPlans ?? []);
           if (!sessionRes.data?.session && !holdForStoredSession()) {
             setIsAuthChecking(false);
           }
@@ -2717,8 +2710,7 @@ export function useAppState() {
   // Real-time synchronization listener for cross-tab / multi-user updates
   useEffect(() => {
     const unsubscribe = syncBroadcaster.subscribe((event, payload) => {
-      // A plan deleted in another tab leaves this tab's public-plan cache and plan list too.
-      if (event === 'PLAN_DELETED') removeCachedPublicPlan(payload.planId);
+      // A plan deleted in another tab leaves this tab's plan list too.
       setState((prev) => {
         if (event === 'PLAN_DELETED') {
           if (!prev.improvementPlans.some((p) => p.id === payload.planId)) return prev;
@@ -6374,7 +6366,6 @@ export function useAppState() {
 
       if (newPlan) {
         const planToSync = newPlan as ImprovementPlan;
-        updateCachedPublicPlan(planToSync);
         syncBroadcaster.broadcast('PLAN_CREATED', planToSync);
         handlePlanSyncExecution(planToSync);
       }
@@ -6404,7 +6395,6 @@ export function useAppState() {
     });
 
     if (updatedPlan) {
-      updateCachedPublicPlan(updatedPlan);
       syncBroadcaster.broadcast('PLAN_UPDATED', updatedPlan);
       handlePlanSyncExecution(updatedPlan);
     }
@@ -6473,7 +6463,6 @@ export function useAppState() {
     });
 
     if (updatedPlan) {
-      updateCachedPublicPlan(updatedPlan);
       syncBroadcaster.broadcast('PLAN_UPDATED', updatedPlan);
       handlePlanSyncExecution(updatedPlan);
     }
@@ -6511,7 +6500,6 @@ export function useAppState() {
     });
 
     if (updatedPlan) {
-      updateCachedPublicPlan(updatedPlan);
       syncBroadcaster.broadcast('PLAN_UPDATED', updatedPlan);
       handlePlanSyncExecution(updatedPlan);
     }
@@ -6647,7 +6635,6 @@ export function useAppState() {
     });
 
     if (updatedPlan) {
-      updateCachedPublicPlan(updatedPlan);
       syncBroadcaster.broadcast('PLAN_UPDATED', updatedPlan);
       handlePlanSyncExecution(updatedPlan);
     }
@@ -6695,7 +6682,6 @@ export function useAppState() {
 
     if (updatedPlan) {
       const p = updatedPlan as ImprovementPlan;
-      updateCachedPublicPlan(p);
       syncBroadcaster.broadcast('PLAN_UPDATED', p);
       handlePlanSyncExecution(p);
     }
@@ -6731,7 +6717,6 @@ export function useAppState() {
 
     if (updatedPlan) {
       const planToSync = updatedPlan as ImprovementPlan;
-      updateCachedPublicPlan(planToSync);
       syncBroadcaster.broadcast('PLAN_UPDATED', planToSync);
       handlePlanSyncExecution(planToSync);
     }
@@ -6820,7 +6805,6 @@ export function useAppState() {
 
     if (updatedPlan) {
       const planToSync = updatedPlan as ImprovementPlan;
-      updateCachedPublicPlan(planToSync);
       syncBroadcaster.broadcast('PLAN_UPDATED', planToSync);
       handlePlanSyncExecution(planToSync);
     }
@@ -6860,7 +6844,6 @@ export function useAppState() {
     });
 
     if (updatedPlan) {
-      updateCachedPublicPlan(updatedPlan);
       syncBroadcaster.broadcast('PLAN_UPDATED', updatedPlan);
       // An older save still queued would carry the old setting; this one goes after it.
       if (!reachedTable || isUnconfirmed) handlePlanSyncExecution(updatedPlan);
@@ -6880,14 +6863,9 @@ export function useAppState() {
         return p;
       });
 
-      const cached = getCachedPublicPlanById(planId);
-      if (cached) {
-        updateCachedPublicPlan({ ...cached, copyCount: newCount });
-      }
-
       syncBroadcaster.broadcast('PLAN_UPDATED', { id: planId, copyCount: newCount });
 
-      if (!planFound && !cached) return prev;
+      if (!planFound) return prev;
       return { ...prev, improvementPlans: updatedPlans };
     });
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
@@ -7196,7 +7174,6 @@ export function useAppState() {
 
     if (updatedPlan) {
       const planToSync = updatedPlan as ImprovementPlan;
-      updateCachedPublicPlan(planToSync);
       syncBroadcaster.broadcast('PLAN_UPDATED', planToSync);
       handlePlanSyncExecution(planToSync);
     }
@@ -7209,7 +7186,6 @@ export function useAppState() {
     // if it fails). A plan that never reached the table deletes the same way.
     await deletePlanFromSupabase(planId);
 
-    removeCachedPublicPlan(planId);
     syncBroadcaster.broadcast('PLAN_DELETED', { planId });
     setState(
       (prev) => {

@@ -1,4 +1,4 @@
-import { AppState, LeagueCompetitor, LeagueType, ImprovementPlan, SeasonHistoryEntry, NotificationPreferenceKey } from '@/types';
+import { AppState, LeagueCompetitor, LeagueType, SeasonHistoryEntry, NotificationPreferenceKey } from '@/types';
 import { newPasswordProblem } from './passwordRules';
 import { sanitizePointsHistory } from './leagues';
 import { leagueNow, getSeasonNumber, getWeekPeriodId, getMonthPeriodId } from './leagueTime';
@@ -18,7 +18,6 @@ import { NETWORK_MESSAGE } from './userMessage';
 import { FunctionsHttpError } from '@supabase/supabase-js';
 
 let cachedProfiles: any[] = [];
-let cachedPublicPlans: ImprovementPlan[] = [];
 
 export function setCachedProfiles(profiles: any[]) {
   cachedProfiles = profiles;
@@ -30,33 +29,6 @@ let cachedLeaguePoints: Record<string, Record<string, number>> = {};
 /** null = none yet (signed out): standings read as 0. */
 export function setCachedLeaguePoints(points: Record<string, Record<string, number>> | null) {
   cachedLeaguePoints = points ?? {};
-}
-
-export function setCachedPublicPlans(plans: ImprovementPlan[]) {
-  cachedPublicPlans = plans;
-}
-
-export function updateCachedPublicPlan(updatedPlan: ImprovementPlan) {
-  const idx = cachedPublicPlans.findIndex((p) => p.id === updatedPlan.id);
-  if (updatedPlan.isPublic) {
-    if (idx !== -1) {
-      cachedPublicPlans[idx] = updatedPlan;
-    } else {
-      cachedPublicPlans.unshift(updatedPlan);
-    }
-  } else {
-    if (idx !== -1) {
-      cachedPublicPlans.splice(idx, 1);
-    }
-  }
-}
-
-export function getCachedPublicPlanById(planId: string): ImprovementPlan | undefined {
-  return cachedPublicPlans.find((p) => p.id === planId);
-}
-
-export function removeCachedPublicPlan(planId: string) {
-  cachedPublicPlans = cachedPublicPlans.filter((p) => p.id !== planId);
 }
 
 export function computeCompetitorLeaguePoints(
