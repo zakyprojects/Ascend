@@ -285,7 +285,8 @@ export async function signInAsGuest(captchaToken?: string): Promise<void> {
   const { error } = await supabase.auth.signInAnonymously({ options: { captchaToken } });
   if (error) {
     if (isCaptchaRejection(error)) throw new CaptchaRejectedError();
-    throw new Error(error.message || "Couldn't sign in as a guest. Try again.");
+    // AuthError keeps status/code so the caller can tell a rate limit apart.
+    throw error;
   }
 }
 

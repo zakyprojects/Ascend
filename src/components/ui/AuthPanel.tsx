@@ -478,7 +478,14 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
       onDone();
     } catch (err: unknown) {
       console.error('Guest sign-in failed:', err);
-      setErrorMsg(toUserMessage(err, 'Couldn’t sign in as a guest. Try again.'));
+      const authErr = err as { code?: string; status?: number };
+      // Supabase caps guest sign-ins per network; its own text ("Request rate limit reached") is unclear.
+      const rateLimited = authErr.status === 429 || authErr.code === 'over_request_rate_limit';
+      setErrorMsg(
+        rateLimited
+          ? 'Too many guest sign-ins from this network. Wait an hour, or create a free account.'
+          : toUserMessage(err, 'Couldn’t sign in as a guest. Try again.')
+      );
       noteError();
     } finally {
       setLoading(false);
