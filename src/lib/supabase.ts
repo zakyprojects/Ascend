@@ -4,7 +4,7 @@ import { calculateUnifiedStreak } from './streakLogic';
 import { mergeAppState } from './stateMerger';
 import { reconcileSharedChallengeLifecycle } from './pactLifecycle';
 import { todayKey } from './dates';
-import { GuardBlockedError, PreFetchSyncError } from './errors';
+import { GuardBlockedError, PreFetchSyncError, SessionLostError } from './errors';
 import { computeStateDataWeight, savedItemCount, type UserDataWeight } from './dataWeight';
 import { withoutSyncedCollections } from './sync/syncedCollections';
 import { withoutRetiredKeys, withoutUnsavedBlobKeys } from './retiredStateKeys';
@@ -126,6 +126,12 @@ export async function verifyAccountPassword(email: string, password: string): Pr
   // 'local' ends only the session this check just made.
   await checker.auth.signOut({ scope: 'local' }).catch(() => undefined);
   return 'ok';
+}
+
+/** This tab holds a sign-in for this account (requests run as the user, not as anon). */
+export async function hasSessionFor(userId: string): Promise<boolean> {
+  const { data } = await supabase.auth.getSession();
+  return data.session?.user.id === userId;
 }
 
 /**
@@ -287,6 +293,10 @@ export async function saveUserDataToSupabase(
     });
     return null;
   }
+
+  // SAFETY CHECK 1B: without this account's sign-in every request below runs as anon: the
+  // pre-fetch reads no row (so no merge) and both writes are refused. Keep the changes for later.
+  if (!(await hasSessionFor(userId))) throw new SessionLostError();
 
   // Write-time merge: Reconcile server state with incoming state using tombstone-aware merger
   let finalState: AppState = state;

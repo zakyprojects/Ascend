@@ -207,8 +207,9 @@ import {
   NOTIFICATION_WINDOW,
   NOTIFICATION_MAX_AGE_DAYS,
   storedAuthSession,
+  hasSessionFor,
 } from './supabase';
-import { GuardBlockedError } from './errors';
+import { GuardBlockedError, SessionLostError } from './errors';
 import { flushOutbox, hasPendingSyncOps, recordSyncedChanges } from './sync/outbox';
 import { applyRemoteChanges, prepareRemoteRows, pullSyncedRows, type RemoteChange } from './sync/pull';
 import { SYNCED_COLLECTIONS, itemsOf, rowIdOf, syncKeyOf } from './sync/syncedCollections';
@@ -1873,8 +1874,27 @@ export function useAppState() {
   const canPersistLocally = useRef(false);
   const authGenerationRef = useRef(0);
   const currentUserRef = useRef<UserProfile | null>(state.currentUser);
+  // The SIGNED_OUT handling of the auth listener, also run for a sign-in that died without that event.
+  const applySignedOutRef = useRef<(() => void) | null>(null);
   const stateRef = useRef<AppState>(state);
   stateRef.current = state;
+
+  /**
+   * The app shows an account whose sign-in this tab no longer holds (storage cleared outside the
+   * app, or a sign-out elsewhere this tab never heard of): show it signed out, as SIGNED_OUT would.
+   * A refresh token still on the device means Supabase is only waiting to refresh it (offline), so
+   * nothing changes then. Unsaved changes stay in the account's device cache and are merged and
+   * saved at its next sign-in.
+   */
+  const checkLostSession = useCallback(async () => {
+    const userId = currentUserRef.current?.id;
+    if (!userId || !isHydrated.current || storedSessionWaitRef.current) return;
+    if (await hasSessionFor(userId)) return;
+    if (storedAuthSession()) return;
+    if (currentUserRef.current?.id !== userId) return;
+    console.warn('[AUTH] Sign-in for this account is gone from this tab; showing it signed out.');
+    applySignedOutRef.current?.();
+  }, []);
   const get = useCallback(() => stateRef.current, []);
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const archiveTimer = useRef<number | null>(null);
@@ -2303,6 +2323,11 @@ export function useAppState() {
           })
           .catch((err) => {
             resolversToDrain.forEach(({ reject }) => reject(err));
+            if (err instanceof SessionLostError) {
+              // Not a connection problem: kept on the device (dirty flag); no toast.
+              void checkLostSession();
+              return;
+            }
             console.error('[AUTOSAVE IMMEDIATE] Failed to persist state:', err);
             if (typeof window !== 'undefined') {
               const isGuard = err instanceof GuardBlockedError;
@@ -2379,6 +2404,11 @@ export function useAppState() {
               localStorage.removeItem(`ascend_dirty_${state.currentUser.id}`);
             }
           } catch (err) {
+            if (err instanceof SessionLostError) {
+              // Not a connection problem: kept on the device (dirty flag); no toast.
+              void checkLostSession();
+              return;
+            }
             console.error('[AUTOSAVE DEBOUNCED] Failed to persist state:', err);
             if (typeof window !== 'undefined') {
               const isGuard = err instanceof GuardBlockedError;
@@ -2476,6 +2506,55 @@ export function useAppState() {
 
     initSupabaseData();
 
+    /** Leaves the signed-in account: guest state on screen, nothing more saved for the account. */
+    const applySignedOut = () => {
+      endStoredSessionWait();
+      const myGeneration = ++authGenerationRef.current;
+      clearLeagueStandings();
+
+      if (debounceTimer.current) {
+        clearTimeout(debounceTimer.current);
+        debounceTimer.current = null;
+      }
+      pendingImmediateResolvers.current = [];
+      isHydrated.current = false;
+      setIsServerDataApplied(false);
+      canPersistLocally.current = false;
+      currentUserRef.current = null;
+
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.removeItem('ascend_active_focus_session');
+          sessionStorage.removeItem('ascend_focus_tab_alive');
+        } catch (e) {
+          /* ignore */
+        }
+      }
+      const localTheme = getLocalThemePreference() || 'dark';
+      const guestRaw = localStorage.getItem(GUEST_STORAGE_KEY);
+      let guestState = DEFAULT_STATE;
+      if (guestRaw) {
+        try {
+          guestState = JSON.parse(guestRaw);
+        } catch {
+          /* use default */
+        }
+      }
+      const sanitized = sanitizeLoadedState(guestState, null);
+      const nextGuestState: AppState = {
+        ...sanitized,
+        themePreference: localTheme,
+      };
+      if (typeof document !== 'undefined') {
+        document.documentElement.setAttribute('data-theme', localTheme);
+      }
+      if (myGeneration !== authGenerationRef.current) return;
+      setState(nextGuestState);
+      setIsAuthChecking(false);
+      setIsSessionLoading(false);
+    };
+    applySignedOutRef.current = applySignedOut;
+
     // SINGLE SOURCE OF TRUTH: onAuthStateChange is the ONLY place that sets authenticated
     // app state. auth.ts functions (loginUser/signUpUser) only call Supabase Auth APIs and
     // return — they never hydrate state themselves. This eliminates the race condition.
@@ -2487,50 +2566,7 @@ export function useAppState() {
         if (!mounted) return;
 
         if (event === 'SIGNED_OUT') {
-          endStoredSessionWait();
-          const myGeneration = ++authGenerationRef.current;
-          clearLeagueStandings();
-
-          if (debounceTimer.current) {
-            clearTimeout(debounceTimer.current);
-            debounceTimer.current = null;
-          }
-          pendingImmediateResolvers.current = [];
-          isHydrated.current = false;
-          setIsServerDataApplied(false);
-          canPersistLocally.current = false;
-          currentUserRef.current = null;
-
-          if (typeof window !== 'undefined') {
-            try {
-              localStorage.removeItem('ascend_active_focus_session');
-              sessionStorage.removeItem('ascend_focus_tab_alive');
-            } catch (e) {
-              /* ignore */
-            }
-          }
-          const localTheme = getLocalThemePreference() || 'dark';
-          const guestRaw = localStorage.getItem(GUEST_STORAGE_KEY);
-          let guestState = DEFAULT_STATE;
-          if (guestRaw) {
-            try {
-              guestState = JSON.parse(guestRaw);
-            } catch {
-              /* use default */
-            }
-          }
-          const sanitized = sanitizeLoadedState(guestState, null);
-          const nextGuestState: AppState = {
-            ...sanitized,
-            themePreference: localTheme,
-          };
-          if (typeof document !== 'undefined') {
-            document.documentElement.setAttribute('data-theme', localTheme);
-          }
-          if (myGeneration !== authGenerationRef.current) return;
-          setState(nextGuestState);
-          setIsAuthChecking(false);
-          setIsSessionLoading(false);
+          applySignedOut();
           return;
         }
 
@@ -2726,6 +2762,7 @@ export function useAppState() {
 
     return () => {
       mounted = false;
+      applySignedOutRef.current = null;
       if (storedSessionTimerRef.current) clearTimeout(storedSessionTimerRef.current);
       authListener.subscription.unsubscribe();
     };
@@ -2908,11 +2945,15 @@ export function useAppState() {
     };
 
     /**
-     * This tab still holds this account's session. A tab whose sign-in lapsed (signed out or
-     * replaced in another tab, a dead refresh token) would otherwise poll as anon every 10 s and
-     * get "permission denied"; it skips until the session is back (same check as outbox/pull).
+     * This tab still holds this account's session. A tab whose sign-in lapsed would otherwise poll
+     * as anon every 10 s and get "permission denied"; it skips, and a sign-in that is gone for good
+     * shows the tab signed out (checkLostSession).
      */
-    const hasSession = async () => (await supabase.auth.getSession()).data.session?.user.id === userId;
+    const hasSession = async () => {
+      if (await hasSessionFor(userId)) return true;
+      void checkLostSession();
+      return false;
+    };
 
     const syncNotificationsLive = async () => {
       if ((typeof navigator !== 'undefined' && !navigator.onLine) || !(await hasSession())) {

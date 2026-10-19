@@ -24,3 +24,15 @@ export class PreFetchSyncError extends Error {
     Object.setPrototypeOf(this, PreFetchSyncError.prototype);
   }
 }
+
+/**
+ * A save for an account this tab no longer holds a sign-in for. Nothing was sent (it would run as
+ * anon and be refused); the changes stay on the device (dirty flag) for the next save.
+ */
+export class SessionLostError extends Error {
+  constructor() {
+    super('This tab is no longer signed in to the account.');
+    this.name = 'SessionLostError';
+    Object.setPrototypeOf(this, SessionLostError.prototype);
+  }
+}
