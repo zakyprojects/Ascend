@@ -75,13 +75,21 @@ interface AppShellProps {
   store: AppStore;
   /** Absent in local-only mode (no Supabase): there is no sign-in to open. */
   onOpenAuth?: () => void;
+  /** Opens Quick log when it turns true (the home-screen shortcut, `/?quick-log`). */
+  openQuickLog?: boolean;
   children: ReactNode;
 }
 
-export function AppShell({ currentView, navigationKind, pendingView = null, onViewChange, store, onOpenAuth, children }: AppShellProps) {
+export function AppShell({ currentView, navigationKind, pendingView = null, onViewChange, store, onOpenAuth, openQuickLog = false, children }: AppShellProps) {
   const [zoneSheetOpen, setZoneSheetOpen] = useState(false);
   const closeZoneSheet = useCallback(() => setZoneSheetOpen(false), []);
   const [quickLogOpen, setQuickLogOpen] = useState(false);
+  // Derived during render (no frame without the dialog): opens on each rise of `openQuickLog`.
+  const [quickLogLaunchSeen, setQuickLogLaunchSeen] = useState(false);
+  if (openQuickLog !== quickLogLaunchSeen) {
+    setQuickLogLaunchSeen(openQuickLog);
+    if (openQuickLog) setQuickLogOpen(true);
+  }
   const [accountOpen, setAccountOpen] = useState(false);
   const [guestLogoutWarningOpen, setGuestLogoutWarningOpen] = useState(false);
   const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);

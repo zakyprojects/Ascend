@@ -51,6 +51,9 @@ const ResetPasswordPage = lazy(() =>
   import('@/components/auth/ResetPasswordPage').then((m) => ({ default: m.ResetPasswordPage }))
 );
 
+/** The query flag the "Quick log" home-screen shortcut opens with (`/?quick-log`). */
+const QUICK_LOG_PARAM = 'quick-log';
+
 function App() {
   const store = useAppState();
   // Page changes wait for the page's code first, so the view transition never shows a fallback.
@@ -233,6 +236,19 @@ function App() {
   // a sign-in page takes (signed in, or local-only mode).
   const showApp = authReady && !authScreen && !auth;
 
+  // The home-screen shortcut "Quick log" (public/manifest.json) opens `/?quick-log`. Once the app
+  // and the account's data are on screen (a signed-out launch first signs in: `next` keeps the
+  // query), the shell opens Quick log and the flag leaves the address, so a refresh, back, or a
+  // later sign-in redirect never opens it again.
+  const quickLogLaunch = showApp && !store.isSessionLoading && new URLSearchParams(search).has(QUICK_LOG_PARAM);
+  useEffect(() => {
+    if (!quickLogLaunch) return;
+    const params = new URLSearchParams(search);
+    params.delete(QUICK_LOG_PARAM);
+    const rest = params.toString();
+    goToPath(pathForView(view) + (rest ? `?${rest}` : '') + window.location.hash, { replace: true });
+  }, [quickLogLaunch, search, view, goToPath]);
+
   // A notification tapped while Ascend is open: public/sw.js focuses this window and posts the
   // notification's url (a push's page, the focus timer's PFC page); open that page here. With no
   // window open, the service worker opens the url itself.
@@ -288,6 +304,7 @@ function App() {
               onViewChange={setView}
               store={store}
               onOpenAuth={openAuth}
+              openQuickLog={quickLogLaunch}
             >
               <ErrorBoundary>
                 <Suspense fallback={<PageSkeleton />}>
