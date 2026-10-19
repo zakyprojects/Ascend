@@ -20,6 +20,10 @@ const PUSH_OWNER_KEY = 'ascend_push_owner';
 // cache until the page removes it from the account.
 const PUSH_CACHE_NAME = 'ascend-push-v1';
 const OLD_ENDPOINT_KEY = '/__ascend/push-old-endpoint';
+// Set once the "Turn on notifications" card (PushPromptCard) is answered on this device: closed,
+// the browser's question answered, or push turned off in Settings. Cleared when push is turned
+// off for the user (logout), so the next sign-in here is offered it again.
+const PUSH_PROMPT_DONE_KEY = 'ascend_push_prompt_done';
 // A service worker that never becomes ready (failed install, blocked storage) must not hang the
 // Settings switch.
 const SW_READY_TIMEOUT_MS = 8000;
@@ -111,6 +115,30 @@ export async function getPushStatus(userId?: string): Promise<PushStatus> {
   return (await currentSubscription()) ? 'on' : 'off';
 }
 
+/**
+ * Whether to offer the "Turn on notifications" card: push works in this browser and is not
+ * blocked, nobody turned it on here (no owner, no subscription: an owner's lost subscription is
+ * restored by syncPushSubscription instead), and the card was not answered on this device yet.
+ */
+export async function shouldOfferPush(): Promise<boolean> {
+  if (!isPushSupported() || Notification.permission === 'denied' || readOwner()) return false;
+  try {
+    if (localStorage.getItem(PUSH_PROMPT_DONE_KEY)) return false;
+  } catch {
+    return false; // storage blocked: a closed card could not stay closed
+  }
+  return !(await currentSubscription());
+}
+
+/** The card is answered on this device and not offered again. */
+export function markPushPromptDone(): void {
+  try {
+    localStorage.setItem(PUSH_PROMPT_DONE_KEY, '1');
+  } catch {
+    /* storage blocked: shouldOfferPush already keeps the card away */
+  }
+}
+
 /** The endpoint the service worker replaced, removed from this account once, then forgotten. */
 async function removeReplacedEndpoint(current: string | null): Promise<void> {
   if (typeof caches === 'undefined') return;
@@ -169,12 +197,20 @@ export async function enablePush(userId?: string): Promise<PushStatus> {
   return 'on';
 }
 
-/** Removes this browser from the account and unsubscribes it. Safe to call when off. */
+/**
+ * Removes this browser from the account and unsubscribes it. Safe to call when off. Push that was
+ * on makes the card eligible again (logout); Settings marks it answered right after.
+ */
 export async function disablePush(): Promise<void> {
   if (!isPushSupported()) return;
   writeOwner(null);
   const subscription = await currentSubscription();
   if (!subscription) return;
+  try {
+    localStorage.removeItem(PUSH_PROMPT_DONE_KEY);
+  } catch {
+    /* storage blocked: the card is not offered anyway */
+  }
   const { error } = await supabase.rpc('remove_push_subscription', { p_endpoint: subscription.endpoint });
   await subscription.unsubscribe().catch(() => undefined);
   if (error) throw error;

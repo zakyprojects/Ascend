@@ -32,6 +32,8 @@ import { JOURNAL_POINTS } from '@/lib/pointsConfig';
 import { AutoNum, CountUp, Reveal } from '@/components/ui/Motion';
 import { LeagueCountdown } from '@/components/ui/LeagueCountdown';
 import { GuestSaveBanner } from '@/components/ui/GuestSaveBanner';
+import { PushPromptCard } from '@/components/ui/PushPromptCard';
+import { isSupabaseConfigured } from '@/lib/supabase';
 import { useLeaguePeriodRollover } from '@/lib/useLeaguePeriodRollover';
 import { useLeagueStandingsRefresh } from '@/lib/useLeagueStandingsRefresh';
 import { useLocalDayKey } from '@/lib/useLocalDayKey';
@@ -259,6 +261,12 @@ export function Dashboard({ store, onViewChange, onOpenAuth }: DashboardProps) {
           description="Create an account to keep your habits, points, and league rank."
           onCreateAccount={onOpenAuth}
         />
+      )}
+
+      {/* Push is opt-in per device: a one-time offer for a signed-in account (a guest gets the
+          save-progress banner above instead). */}
+      {isSupabaseConfigured && store.state.currentUser && !store.state.currentUser.isAnonymous && (
+        <PushPromptCard userId={store.state.currentUser.id} />
       )}
 
       {/* Hero: today, the season, and where you stand on the climb */}

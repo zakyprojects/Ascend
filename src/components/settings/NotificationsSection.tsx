@@ -6,7 +6,7 @@ import { Switch } from '@/components/ui/primitives';
 import { useAsyncAction, useAsyncActionKey } from '@/lib/useAsyncAction';
 import { toUserMessage } from '@/lib/userMessage';
 import { useToast } from '@/components/ui/Toast';
-import { disablePush, enablePush, getPushStatus, type PushStatus } from '@/lib/push';
+import { disablePush, enablePush, getPushStatus, markPushPromptDone, type PushStatus } from '@/lib/push';
 import { FOCUS_NOTIFS_PREF_KEY } from '@/components/pfc/focusSession';
 import { SettingRow, SettingsCard } from './SettingRow';
 
@@ -75,6 +75,7 @@ export function NotificationsSection({ store }: { store: AppStore }) {
       try {
         if (pushStatus === 'on') {
           await disablePush();
+          markPushPromptDone(); // turned off on purpose: the Dashboard card never asks again here
           setPushStatus('off');
         } else {
           setPushStatus(await enablePush(userId));
