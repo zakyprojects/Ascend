@@ -145,6 +145,23 @@ export function localDayStartMs(dayKey: string): number {
   return parseDate(dayKey)?.getTime() ?? NaN;
 }
 
+/**
+ * Today's YYYY-MM-DD date in an IANA timezone (e.g. a partner's), or null for an unknown zone.
+ * Uses the zone's own rules, so daylight-saving changes need no arithmetic here.
+ */
+export function todayKeyInZone(timeZone: string, now: Date = getNow()): string | null {
+  try {
+    const parts = new Intl.DateTimeFormat('en-US', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(now);
+    const part = (type: string) => parts.find((p) => p.type === type)?.value;
+    const y = part('year');
+    const m = part('month');
+    const d = part('day');
+    return y && m && d ? `${y}-${m}-${d}` : null;
+  } catch {
+    return null;
+  }
+}
+
 /** Robustly parses any date representation into a valid Date object, or null if invalid */
 export function parseDate(dateVal?: string | Date | number | null): Date | null {
   if (dateVal === null || dateVal === undefined) return null;

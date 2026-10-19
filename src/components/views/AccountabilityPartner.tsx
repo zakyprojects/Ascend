@@ -16,6 +16,7 @@ import { getProfileSeasonPointsByUsername } from '@/lib/auth';
 import { isPartnershipUser1 } from '@/lib/partnershipSide';
 import { calculateElapsedDays } from '@/lib/dates';
 import { useLocalDayKey } from '@/lib/useLocalDayKey';
+import { usePartnerDayKeys } from '@/lib/usePartnerDayKeys';
 import { ptUnit, ptsText } from '@/lib/leagues';
 import { createNotificationSupabase } from '@/lib/supabase';
 import { calculateUnifiedStreak } from '@/lib/streakLogic';
@@ -113,6 +114,14 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
   const amUser1 = activePartnership ? isPartnershipUser1(activePartnership, currentUser?.id, currentUsername) : true;
   const partnerName = activePartnership ? (amUser1 ? activePartnership.user2Username : activePartnership.user1Username) : null;
   const partnerUserId = activePartnership ? (amUser1 ? activePartnership.user2Id : activePartnership.user1Id) : null;
+  // The partner's ticks are stored on their own local day: judge "done today" on that day (the
+  // viewer's day only until the partner's timezone is known).
+  const otherUserIds = useMemo(
+    () => partnerships.map((p) => (isPartnershipUser1(p, currentUser?.id, currentUsername) ? p.user2Id : p.user1Id)),
+    [partnerships, currentUser?.id, currentUsername]
+  );
+  const partnerDayKeys = usePartnerDayKeys(otherUserIds);
+  const partnerToday = (partnerUserId && partnerDayKeys[partnerUserId]) || today;
 
   // Partner's published season points + streak
   const [partnerStats, setPartnerStats] = useState<{ seasonPoints?: number; streak: number; avatar?: string } | null>(null);
@@ -183,7 +192,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
   const runningChallenges = myChallenges.filter((c) => c.status === 'active');
   const finishedChallenges = myChallenges.filter((c) => c.status === 'completed' || c.status === 'expired');
   const partnerDoneAllToday =
-    runningChallenges.length > 0 && runningChallenges.every((c) => doneDates(c, !amUser1).includes(today));
+    runningChallenges.length > 0 && runningChallenges.every((c) => doneDates(c, !amUser1).includes(partnerToday));
 
   // Partner data comes from the server (not the local save): loading / failed states with Retry.
   const partnersStatus = store.partnersStatus;
@@ -357,7 +366,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
 
   const renderChallenge = (c: SharedChallenge) => {
     const mineDone = doneDates(c, amUser1).includes(today);
-    const theirsDone = doneDates(c, !amUser1).includes(today);
+    const theirsDone = doneDates(c, !amUser1).includes(partnerToday);
     const together = c.totalJointDaysCompleted ?? 0;
     const length = c.durationDays || 1;
     const day = Math.min(length, calculateElapsedDays(c.createdAt));
