@@ -625,6 +625,23 @@
     background-image: radial-gradient(24rem circle at var(--spot-x, 50%) var(--spot-y, 50%), rgb(var(--spot-color) / var(--spot-alpha)), transparent 70%);
   }
 
+  /* Press glow on touch (lib/pressGlow.ts marks the tapped element): a soft tint of the element's
+     own text colour grows from the finger's point and fades, inside the element's shape. */
+  [data-press] {
+    background-image: radial-gradient(
+      circle at var(--press-x) var(--press-y),
+      color-mix(in srgb, currentColor calc(var(--press-a) * 16%), transparent) calc(var(--press-r) * var(--press-k) * 0.6),
+      transparent calc(var(--press-r) * var(--press-k))
+    );
+    animation: press-glow 320ms var(--ease-standard) forwards;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    [data-press] {
+      animation: none;
+      background-image: none;
+    }
+  }
+
   /* A list item that was just added (or moved to another list) rises in; first paint included.
      React unmounts a deleted item at once (no deleted data kept on screen); its exit is played by
      lib/listExit.ts on an inert copy. */
@@ -1707,4 +1724,29 @@ html.vt-auth-handoff::view-transition-new(root) {
 @keyframes rankup-rise {
   from { opacity: 0; transform: translateY(14px); }
   to { opacity: 1; transform: none; }
+}
+
+/* Press glow (see [data-press]): registered so the keyframes can animate them. */
+@property --press-k {
+  syntax: '<number>';
+  inherits: false;
+  initial-value: 0;
+}
+@property --press-a {
+  syntax: '<number>';
+  inherits: false;
+  initial-value: 0;
+}
+@keyframes press-glow {
+  0% {
+    --press-k: 0.15;
+    --press-a: 1;
+  }
+  55% {
+    --press-a: 0.85;
+  }
+  100% {
+    --press-k: 1;
+    --press-a: 0;
+  }
 }

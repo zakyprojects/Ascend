@@ -14,6 +14,7 @@ import { installAssetRecovery } from './lib/assetRecovery';
 import { installPageVisibilityFlag, installWindowFocusFlag } from './lib/motion';
 import { installScrollRise } from './lib/scrollRise';
 import { installCardSpotlight } from './lib/cardSpotlight';
+import { installPressGlow } from './lib/pressGlow';
 import { installListExit } from './lib/listExit';
 import { authRouteFromPath, nextFromSearch, viewFromLocation, viewFromPath } from './lib/routes';
 import { installPagePrefetch, preloadView } from './components/views/lazyViews';
@@ -27,6 +28,7 @@ installPageVisibilityFlag();
 installWindowFocusFlag();
 installScrollRise();
 installCardSpotlight();
+installPressGlow();
 installListExit();
 
 const root = createRoot(document.getElementById('root')!);
