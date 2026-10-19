@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Dialog, FieldErrorBubble, Input } from '@/components/ui/primitives';
 import { AscendLoadingIndicator } from '@/components/ui/AscendLoadingIndicator';
 import { PasswordInput } from '@/components/ui/PasswordInput';
+import { CaptchaSlot } from '@/components/ui/CaptchaSlot';
 
 interface DeleteAccountDialogProps {
   open: boolean;
@@ -84,6 +85,7 @@ export function DeleteAccountDialog({ open, username, isDeleting, error, onClose
           autoComplete="current-password"
         />
         {error ? <FieldErrorBubble message={error} attached={false} /> : null}
+        <CaptchaSlot />
       </form>
     </Dialog>
   );

@@ -16,6 +16,7 @@ import { toUserMessage } from '@/lib/userMessage';
 import { useToast } from '@/components/ui/Toast';
 import { SettingRow, SettingsCard } from './SettingRow';
 import { DeleteAccountDialog } from './DeleteAccountDialog';
+import { CaptchaSlot } from '@/components/ui/CaptchaSlot';
 
 interface AccountSectionProps {
   store: AppStore;
@@ -192,6 +193,7 @@ export function AccountSection({ store, onOpenAuth }: AccountSectionProps) {
                 onChange={(e) => setConfirmPassword(e.target.value)}
               />
               <FormAlert />
+              <CaptchaSlot />
               <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
                 <button
                   type="button"

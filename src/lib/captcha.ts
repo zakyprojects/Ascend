@@ -77,11 +77,38 @@ export function preloadCaptcha(): void {
   if (SITE_KEY) loadTurnstile().catch(() => undefined);
 }
 
+/**
+ * Places in the open form where a click challenge may show (CaptchaSlot, just above the submit
+ * button). The newest one still on the page wins; with none, the challenge shows at the bottom of
+ * the screen.
+ */
+const slots: HTMLElement[] = [];
+
+export function registerCaptchaSlot(slot: HTMLElement): () => void {
+  slots.push(slot);
+  return () => {
+    const index = slots.lastIndexOf(slot);
+    if (index !== -1) slots.splice(index, 1);
+  };
+}
+
+function activeSlot(): HTMLElement | null {
+  for (let i = slots.length - 1; i >= 0; i--) {
+    if (slots[i].isConnected) return slots[i];
+  }
+  return null;
+}
+
 async function solveOnce(action: CaptchaAction): Promise<string> {
   const turnstile = await loadTurnstile();
+  const slot = activeSlot();
   const host = document.createElement('div');
-  host.style.cssText = 'position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:var(--z-blocking)';
-  document.body.appendChild(host);
+  if (slot) {
+    slot.appendChild(host);
+  } else {
+    host.style.cssText = 'position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:var(--z-blocking)';
+    document.body.appendChild(host);
+  }
   let widgetId: string | null | undefined;
   try {
     return await new Promise<string>((resolve, reject) => {
@@ -94,6 +121,8 @@ async function solveOnce(action: CaptchaAction): Promise<string> {
         sitekey: SITE_KEY,
         action,
         appearance: 'interaction-only',
+        // In a form the challenge matches the inputs' width (Turnstile's minimum is 300 px).
+        ...(slot ? { size: 'flexible' } : {}),
         retry: 'never',
         'refresh-expired': 'never',
         'response-field': false,
@@ -109,7 +138,11 @@ async function solveOnce(action: CaptchaAction): Promise<string> {
         'expired-callback': fail,
         'timeout-callback': fail,
         // Someone is asked to click: give them Turnstile's own time, not ours.
-        'before-interactive-callback': () => window.clearTimeout(timer),
+        'before-interactive-callback': () => {
+          window.clearTimeout(timer);
+          // Space from the field above, added only now so an invisible check never moves the form.
+          if (slot) host.style.marginTop = '0.75rem';
+        },
       });
       if (!widgetId) fail();
     });

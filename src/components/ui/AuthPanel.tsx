@@ -10,6 +10,7 @@ import { newPasswordProblem } from '@/lib/passwordRules';
 import { toUserMessage } from '@/lib/userMessage';
 import { looksLikeUsername } from '@/lib/usernameRules';
 import { preloadCaptcha, withCaptcha } from '@/lib/captcha';
+import { CaptchaSlot } from '@/components/ui/CaptchaSlot';
 
 /** How long the sign-in/sign-up success screen shows before `onDone` runs. */
 const AUTH_SUCCESS_MS = 900;
@@ -723,6 +724,7 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
                       {resendError}
                     </p>
                   )}
+                  <CaptchaSlot />
                   <div className="flex flex-col gap-2">
                     <button type="button" onClick={closeForgot} disabled={loading} className="btn-primary w-full min-h-11">
                       <ArrowLeft size={16} aria-hidden="true" /> Back to sign in
@@ -773,6 +775,7 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
                       <FieldMessage htmlFor="auth-email" />
                     </div>
                     <FormAlert />
+                    <CaptchaSlot />
                     <button
                       type="submit"
                       disabled={loading}
@@ -841,6 +844,7 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
                     <ArrowRight size={18} className="shrink-0 text-content-muted transition-transform duration-base group-hover:translate-x-0.5" />
                   )}
                 </button>
+                <CaptchaSlot />
                 {errorMsg && <FieldErrorBubble message={errorMsg} attached={false} />}
                 <p className="text-xs text-content-muted text-center">
                   Already have an account?{' '}
@@ -1033,6 +1037,7 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
               )}
 
               <FormAlert />
+              <CaptchaSlot />
 
               {/* Muted until every required field is valid, then primary. Always clickable, so the
                   form's own messages still show for a missing field. */}
