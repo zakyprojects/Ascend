@@ -5,6 +5,12 @@ import { mergeAppState } from './stateMerger';
 import { reconcileSharedChallengeLifecycle } from './pactLifecycle';
 import { todayKey } from './dates';
 import { GuardBlockedError, PreFetchSyncError, SessionLostError } from './errors';
+import {
+  DEVICE_TIMEZONE_SENT_EVENT,
+  deviceTimeZone,
+  deviceTimezoneSent,
+  markDeviceTimezoneSent,
+} from './deviceTimezone';
 import { computeStateDataWeight, savedItemCount, type UserDataWeight } from './dataWeight';
 import { withoutSyncedCollections } from './sync/syncedCollections';
 import { withoutRetiredKeys, withoutUnsavedBlobKeys } from './retiredStateKeys';
@@ -466,7 +472,7 @@ export async function saveUserDataToSupabase(
         active_habits: [],
         // The device's timezone. The server derives profiles.timezone (the user's "today") from it,
         // never letting the local date go backwards (supabase/migrations/20261016120000).
-        device_timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        device_timezone: deviceTimeZone(),
       };
 
       if (finalState.currentUser.uid) {
@@ -496,6 +502,7 @@ export async function saveUserDataToSupabase(
         console.error('Error upserting profile in Supabase:', profErr);
         throw new Error(profErr.message || "Couldn't save your profile. Try again.");
       }
+      if (profilePayload.device_timezone) markDeviceTimezoneSent(userId, profilePayload.device_timezone);
       return null;
     })();
 
@@ -593,6 +600,32 @@ async function writeOwnProfile(userId: string, payload: Record<string, any>) {
   if (Object.keys(privatePart).length === 0) return null;
   const { error: privateErr } = await supabase.from('profiles').update(privatePart).eq('id', userId);
   return privateErr;
+}
+
+/**
+ * Sends the device timezone on its own (app start, back to the tab, back online), so the server's
+ * "today" follows the device without waiting for the next change to save. Only with this account's
+ * sign-in (never as anon) and only when this tab has not sent this timezone yet. True once the
+ * server has it; false when there is no session or no profile row yet (sign-up creates it with it).
+ */
+export async function sendDeviceTimezone(userId: string): Promise<boolean> {
+  if (!isSupabaseConfigured) return false;
+  const timeZone = deviceTimeZone();
+  if (deviceTimezoneSent(userId, timeZone)) return true;
+  if (!(await hasSessionFor(userId))) return false;
+  const { data, error } = await supabase
+    .from('profiles')
+    .update({ device_timezone: timeZone })
+    .eq('id', userId)
+    .select('id');
+  if (error) {
+    console.warn('Failed to send the device timezone:', error.message);
+    return false;
+  }
+  if (!data || data.length === 0) return false;
+  markDeviceTimezoneSent(userId, timeZone);
+  if (typeof window !== 'undefined') window.dispatchEvent(new Event(DEVICE_TIMEZONE_SENT_EVENT));
+  return true;
 }
 
 /** A league period whose points the server sums: [start, end], start already clamped to the season. */

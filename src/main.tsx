@@ -10,6 +10,7 @@ import '@fontsource/instrument-serif/400.css';
 import '@fontsource/instrument-serif/400-italic.css';
 import './index.css';
 import { startTrustedClock } from './lib/clock';
+import { startDeviceTimezoneSync } from './lib/timezoneStatus';
 import { installAssetRecovery } from './lib/assetRecovery';
 import { installPageVisibilityFlag, installWindowFocusFlag } from './lib/motion';
 import { installScrollRise } from './lib/scrollRise';
@@ -24,6 +25,8 @@ import { preloadAuthPage } from './components/auth/lazyAuthPage';
 installAssetRecovery();
 // First, so the server time is known before the session's days and periods are worked out.
 startTrustedClock();
+// The server's "today" follows the device timezone (sign-in, app start, back to the tab, online).
+startDeviceTimezoneSync();
 installPageVisibilityFlag();
 installWindowFocusFlag();
 installScrollRise();
