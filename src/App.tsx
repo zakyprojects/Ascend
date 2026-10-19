@@ -2,7 +2,7 @@ import { Suspense, lazy, useEffect, useLayoutEffect, useRef, useState, type Comp
 import { useAppState } from '@/lib/store';
 import { useViewRoute } from '@/lib/useViewRoute';
 import { confirmLeave } from '@/lib/unsavedChanges';
-import { authPathWithNext, nextFromSearch, pathForAuthRoute, pathForView } from '@/lib/routes';
+import { authPathWithNext, nextFromSearch, pathForAuthRoute, pathForView, viewFromPath } from '@/lib/routes';
 import { consumeSignOutByUser, logoutUser } from '@/lib/auth';
 import type { View } from '@/lib/views';
 import { isSupabaseConfigured, storedAuthSession } from '@/lib/supabase';
@@ -231,6 +231,21 @@ function App() {
   // The app itself: not while a sign-in page is up, nor for the one frame a redirect away from
   // a sign-in page takes (signed in, or local-only mode).
   const showApp = authReady && !authScreen && !auth;
+
+  // A notification tapped while Ascend is open: public/sw.js focuses this window and posts the
+  // notification's url (a push's page, the focus timer's PFC page); open that page here. With no
+  // window open, the service worker opens the url itself.
+  useEffect(() => {
+    if (!showApp || typeof navigator === 'undefined' || !('serviceWorker' in navigator)) return;
+    const onMessage = (event: MessageEvent) => {
+      const data = event.data as { type?: unknown; url?: unknown } | null;
+      if (data?.type !== 'ascend:navigate' || typeof data.url !== 'string') return;
+      const target = viewFromPath(new URL(data.url, window.location.origin).pathname);
+      if (target) setView(target);
+    };
+    navigator.serviceWorker.addEventListener('message', onMessage);
+    return () => navigator.serviceWorker.removeEventListener('message', onMessage);
+  }, [showApp, setView]);
 
   return (
     <>

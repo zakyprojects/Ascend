@@ -150,8 +150,8 @@ self.addEventListener('pushsubscriptionchange', (event) => {
 });
 
 // Notification click event - focus or open client window when tapped. An open window is also
-// told the notification's url (`ascend:navigate`); the app acts on the ones it knows (the focus
-// timer opens PFC, FocusSessionProvider).
+// told the notification's url (`ascend:navigate`) and opens that page (App.tsx); a push's url is
+// its notification's page (send-push), the focus timer's is PFC.
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   const url = (event.notification.data && event.notification.data.url) || '/';

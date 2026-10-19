@@ -24,6 +24,26 @@ const READ_RETRY_DELAYS_MS = [400, 1500];
 // Push options: 'high' so Android delivers at once instead of holding it until the phone wakes
 // from Doze; a phone that is offline longer than TTL drops it (a reminder that late is stale).
 const PUSH_OPTIONS = { TTL: 4 * 60 * 60, urgency: 'high' as const };
+// The page a tap opens, by notification type. Mirrors `link` in src/lib/notificationMeta.ts with
+// the paths of src/lib/routes.ts (change them together); any other type opens the dashboard.
+const PAGE_BY_TYPE: Record<string, string> = {
+  partner_invite: '/partner',
+  partner_invite_accepted: '/partner',
+  partner_invite_declined: '/partner',
+  partner_removed: '/partner',
+  partner_nudge: '/partner',
+  partner_pledge_done: '/partner',
+  partner_missed_habit: '/partner',
+  challenge_completed: '/partner',
+  challenge_deleted: '/partner',
+  missed_habit: '/habits',
+  bad_habit_no_report: '/bad-habits',
+  missed_exercise_target: '/exercise',
+  missed_book_deadline: '/reading',
+  addiction_milestone: '/recovery',
+  daily_reminder: '/',
+  sunday_planning: '/weekly-goals',
+};
 
 const env = (name: string): string => {
   const value = Deno.env.get(name);
@@ -93,7 +113,7 @@ Deno.serve(async (req) => {
     id: notice.id,
     title: notice.title || 'Ascend',
     body: notice.message || '',
-    url: '/',
+    url: PAGE_BY_TYPE[notice.type] ?? '/',
   });
 
   let sent = 0;

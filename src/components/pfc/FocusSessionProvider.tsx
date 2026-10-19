@@ -3,7 +3,6 @@ import type { AppStore } from '@/lib/store';
 import { trustedNowMs } from '@/lib/clock';
 import {
   FOCUS_STORAGE_KEY,
-  PFC_PATH,
   breakIdFor,
   focusLogIdFor,
   newSessionId,
@@ -213,17 +212,6 @@ export function FocusSessionProvider({
     setSession(readStoredSession());
     setFinished(null);
   }, [userId]);
-
-  // Notification click with the app already open (public/sw.js posts this).
-  useEffect(() => {
-    if (typeof navigator === 'undefined' || !('serviceWorker' in navigator)) return;
-    const onMessage = (event: MessageEvent) => {
-      const data = event.data as { type?: string; url?: string } | null;
-      if (data?.type === 'ascend:navigate' && data.url === PFC_PATH) openRef.current();
-    };
-    navigator.serviceWorker.addEventListener('message', onMessage);
-    return () => navigator.serviceWorker.removeEventListener('message', onMessage);
-  }, []);
 
   const start = useCallback((input: FocusStartInput) => {
     const focusSeconds = Math.round(input.focusMinutes * 60);

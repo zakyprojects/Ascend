@@ -4,7 +4,7 @@ import { focusAlertsEnabled, PFC_PATH } from './focusSession';
  * Focus timer alerts are shown by the page itself when it sees the session end, so they arrive
  * only while the app is running (a minimised mobile app is usually paused by the system).
  * A click opens the PFC page: the service worker posts `ascend:navigate` to an open window
- * (public/sw.js), the plain Notification fallback calls `onOpen` directly.
+ * (public/sw.js; App opens the page), the plain Notification fallback calls `onOpen` directly.
  */
 
 const SW_READY_TIMEOUT_MS = 2000;
