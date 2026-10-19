@@ -1137,7 +1137,8 @@ function applyWorkoutAwardsInternal(
     workouts,
     day,
     new Date(`${day}T00:00:00`).getTime(),
-    trustedNow().getTime()
+    trustedNow().getTime(),
+    (state.pointsHistory || []).find((e) => isWorkoutDayEntry(e, day))
   );
 
   const { excisedEntryIds: _excised, ...excised } = excisePointsEntriesInternal(state, (e) => isWorkoutDayEntry(e, day));
@@ -1167,7 +1168,8 @@ function applySkillAwardsInternal(
     skills,
     day,
     new Date(`${day}T00:00:00`).getTime(),
-    trustedNow().getTime()
+    trustedNow().getTime(),
+    (state.pointsHistory || []).find((e) => isSkillDayEntry(e, day))
   );
 
   const { excisedEntryIds: _excised, ...excised } = excisePointsEntriesInternal(state, (e) => isSkillDayEntry(e, day));
@@ -1195,7 +1197,8 @@ function applyFocusAwardsInternal(
     focusLogs,
     day,
     new Date(`${day}T00:00:00`).getTime(),
-    trustedNow().getTime()
+    trustedNow().getTime(),
+    (state.pointsHistory || []).find((e) => isFocusDayEntry(e, day))
   );
 
   const { excisedEntryIds: _excised, ...excised } = excisePointsEntriesInternal(state, (e) => isFocusDayEntry(e, day));
@@ -1235,7 +1238,13 @@ function applyJournalAwardInternal(
   journalEntries: JournalEntry[],
   day: string
 ): Pick<AppState, 'seasonPoints' | 'totalPoints' | 'seasonId' | 'pointsHistory' | 'leagueArchives'> {
-  const entry = computeJournalAward(journalEntries, day, new Date(`${day}T00:00:00`).getTime(), trustedNow().getTime());
+  const entry = computeJournalAward(
+    journalEntries,
+    day,
+    new Date(`${day}T00:00:00`).getTime(),
+    trustedNow().getTime(),
+    (state.pointsHistory || []).find((e) => isJournalDayEntry(e, day))
+  );
   const { excisedEntryIds: _excised, ...excised } = excisePointsEntriesInternal(state, (e) => isJournalDayEntry(e, day));
   return entry
     ? addPointsInternal({ ...state, ...excised }, entry.amount, entry.reason, entry.source, entry.metadata, entry.timestamp, entry.id)
@@ -1258,7 +1267,8 @@ function applyReadingAwardsInternal(
     books,
     day,
     new Date(`${day}T00:00:00`).getTime(),
-    trustedNow().getTime()
+    trustedNow().getTime(),
+    (state.pointsHistory || []).find((e) => isReadingDayEntry(e, day))
   );
 
   const { excisedEntryIds: _excised, ...excised } = excisePointsEntriesInternal(state, (e) => isReadingDayEntry(e, day));
@@ -1492,9 +1502,10 @@ export const recomputeWeeklyGoalsPointsForState = (
 
 export function reconcileWeeklyGoalsPointsForAllWeeks(
   state: AppState,
-  now: Date = leagueNow()
+  now: Date = getNow()
 ): AppState {
-  const activeSeasonStart = getSeasonStart(now);
+  // Seasons follow league (UTC) time; the weeks below are the user's personal weeks.
+  const activeSeasonStart = getSeasonStart(leagueNow());
   const currentWeek = weekKey(now);
   const currentWeekStart = getWeekDates(currentWeek).start;
   const prevWeekDateKey = addDays(todayKey(currentWeekStart), -7);
@@ -1675,7 +1686,7 @@ export function getLinkedGoalCompletionTimestamp(
   return undefined;
 }
 
-export function reconcileLinkedWeeklyGoals(state: AppState, now: Date = leagueNow()): AppState {
+export function reconcileLinkedWeeklyGoals(state: AppState, now: Date = getNow()): AppState {
   const currentKey = weekKey(now);
   const docIdx = (state.weeklyGoals || []).findIndex((w) => w.weekKey === currentKey);
   if (docIdx === -1) return state;
@@ -2229,9 +2240,9 @@ export function useAppState() {
             const merged = reconcileWeeklyGoalsPointsForAllWeeks(
               reconcileLinkedWeeklyGoals(
                 mergeAppState(serverState, current, 'hydration'),
-                leagueNow()
+                getNow()
               ),
-              leagueNow()
+              getNow()
             );
             setUserDataWatermark(userId, merged);
             lastKnownGoodStateRef.current = merged;
@@ -2664,8 +2675,8 @@ export function useAppState() {
                 ? guardResult.retainedState
                 : withHydratedPoints(guardResult.mergedState, sanitizedState);
               const reconciledMergedState = reconcileWeeklyGoalsPointsForAllWeeks(
-                reconcileLinkedWeeklyGoals(rawMergedState, leagueNow()),
-                leagueNow()
+                reconcileLinkedWeeklyGoals(rawMergedState, getNow()),
+                getNow()
               );
 
               lastKnownGoodStateRef.current = reconciledMergedState;
@@ -2722,8 +2733,8 @@ export function useAppState() {
                 const sanitizedCached = sanitizeLoadedState(cachedState, fallbackUser);
                 setState((current) =>
                   reconcileWeeklyGoalsPointsForAllWeeks(
-                    reconcileLinkedWeeklyGoals(mergeAppState(sanitizedCached, current, 'hydration'), leagueNow()),
-                    leagueNow()
+                    reconcileLinkedWeeklyGoals(mergeAppState(sanitizedCached, current, 'hydration'), getNow()),
+                    getNow()
                   )
                 );
                 canPersistLocally.current = true;
@@ -3338,8 +3349,8 @@ export function useAppState() {
   const setAuthSessionState = useCallback((user: UserProfile | null, newState: AppState) => {
     setState(
       reconcileWeeklyGoalsPointsForAllWeeks(
-        reconcileLinkedWeeklyGoals(sanitizeLoadedState(newState, user), leagueNow()),
-        leagueNow()
+        reconcileLinkedWeeklyGoals(sanitizeLoadedState(newState, user), getNow()),
+        getNow()
       )
     );
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
@@ -5860,8 +5871,8 @@ export function useAppState() {
   const syncLinkedWeeklyGoals = useCallback(() => {
     setState((prev) =>
       reconcileWeeklyGoalsPointsForAllWeeks(
-        reconcileLinkedWeeklyGoals(prev, leagueNow()),
-        leagueNow()
+        reconcileLinkedWeeklyGoals(prev, getNow()),
+        getNow()
       )
     );
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
@@ -8350,8 +8361,8 @@ export function useAppState() {
     }
 
     const entryId = timeTrackerAwardId(targetDateKey);
-    const entry = computeTimeTrackerAward(newBlocks, targetDateKey, trustedNow().getTime());
     const current = (baseState.pointsHistory || []).find((e) => e && e.id === entryId);
+    const entry = computeTimeTrackerAward(newBlocks, targetDateKey, trustedNow().getTime(), current);
     if (!entry && !current) return {};
     if (
       entry &&
