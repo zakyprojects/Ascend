@@ -6,7 +6,8 @@ import { ProgressBar } from '@/components/ui/primitives';
 import { TAP_TARGET, TAP_TARGET_Y } from '@/components/ui/primitives/shared';
 import { ProgressUpdateDialog, UpdateProgressButton } from '@/components/ui/ProgressUpdateDialog';
 import { useCompletionPop } from '@/lib/useCompletionPop';
-import { formatAmount, isGoalAchieved, isLinkedGoal } from './weekMeta';
+import { linkedItemExists } from '@/lib/linkedGoalMetrics';
+import { formatAmount, formatNumber, isGoalAchieved, isLinkedGoal } from './weekMeta';
 
 const PRIORITY_DOT: Record<WeeklyGoalPriority, string> = {
   high: 'bg-rose-500',
@@ -21,11 +22,17 @@ const MODULE_LABEL: Record<string, string> = {
   skill: 'Skill',
 };
 
-/** "Reading · Atomic Habits": what a linked goal follows, by name. */
+const ANY_LABEL: Record<string, string> = {
+  exercise: 'Any workout',
+  reading: 'Any book',
+  skill: 'Any skill',
+};
+
+/** "Reading · Atomic Habits": what a linked goal follows, by name ("Skill · Any skill" for all of them). */
 function linkedLabel(item: WeeklyGoalItem, state: AppState): string {
   const module = MODULE_LABEL[item.linkedModule || ''] ?? 'Linked';
   const id = item.linkedItemId;
-  if (!id) return module;
+  if (!id) return ANY_LABEL[item.linkedModule || ''] ? `${module} · ${ANY_LABEL[item.linkedModule || '']}` : module;
   const name =
     item.linkedModule === 'habit'
       ? state.habits.find((h) => h.id === id)?.name
@@ -36,6 +43,9 @@ function linkedLabel(item: WeeklyGoalItem, state: AppState): string {
           : id; // exercise goals store the workout type itself
   return name ? `${module} · ${name}` : module;
 }
+
+/** "habit", "book", "skill": the deleted thing a goal was linked to. */
+const DELETED_ITEM: Record<string, string> = { habit: 'habit', reading: 'book', skill: 'skill' };
 
 export function GoalRow({
   item,
@@ -62,6 +72,7 @@ export function GoalRow({
   onDelete: () => void;
 }) {
   const linked = isLinkedGoal(item);
+  const deadLink = linked && !linkedItemExists(item, state);
   const achieved = isGoalAchieved(item, prog, isPastWeek);
   const readOnly = isPastWeek || isFutureWeek;
   // Linked goals complete from other modules' activity, so only the tick and Update arm the pop.
@@ -134,12 +145,13 @@ export function GoalRow({
               <span aria-hidden="true" className={`h-1.5 w-1.5 rounded-full ${PRIORITY_DOT[item.priority]}`} />
               {item.priority} priority
             </span>
-            {linked && (
+            {linked && !deadLink && (
               <span className="inline-flex min-w-0 items-center gap-1 text-brand-text">
                 <Zap size={11} aria-hidden="true" />
                 <span className="truncate">{linkedLabel(item, state)}</span>
               </span>
             )}
+            {deadLink && <span className="text-rose-theme">Linked {DELETED_ITEM[item.linkedModule || ''] ?? 'item'} was deleted</span>}
             {carriedFromLabel && <span>From {carriedFromLabel}</span>}
           </div>
 
@@ -165,7 +177,7 @@ export function GoalRow({
           <div className="space-y-1.5">
             <div className="flex items-baseline justify-between gap-3 text-xs">
               <span className="figure text-content-secondary">
-                {prog.current} / {formatAmount(prog.target, prog.unit)}
+                {formatNumber(prog.current)} / {formatAmount(prog.target, prog.unit)}
               </span>
               <span className="figure text-content-muted">{prog.percent}%</span>
             </div>

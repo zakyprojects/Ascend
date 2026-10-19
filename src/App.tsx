@@ -311,7 +311,7 @@ function App() {
                   {view === 'dashboard' && <Dashboard store={store} onViewChange={setView} onOpenAuth={openAuth} />}
                   {view === 'habits' && <HabitTracker store={store} />}
                   {view === 'time-tracker' && <TimeTrackerView store={store} onNavigate={setView} />}
-                  {view === 'weekly-goals' && <WeeklyGoalsView store={store} />}
+                  {view === 'weekly-goals' && <WeeklyGoalsView store={store} onNavigate={setView} />}
                   {view === 'projects-goals' && (
                     <ProjectsGoalsView
                       store={store}

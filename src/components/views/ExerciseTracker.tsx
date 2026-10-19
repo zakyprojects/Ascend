@@ -9,7 +9,9 @@ import { pointsResumeText, useTimezoneWait } from '@/lib/useTimezoneWait';
 import { WORKOUT_POINTS, calculateWorkoutPoints } from '@/lib/pointsConfig';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { WorkoutLog } from '@/types';
-import { todayKey, formatDateLong, startOfWeek, formatWeekdayDate, calculateStreak, parseDate } from '@/lib/dates';
+import { todayKey, formatDateLong, startOfWeek, formatWeekdayDate, calculateStreak, parseDate, weekKey } from '@/lib/dates';
+import { DEFAULT_WORKOUT_TYPES, workoutMeasureOf, workoutTypeKey, type WorkoutMeasure } from '@/lib/workoutTypes';
+import { EXERCISE_METRIC_BY_MEASURE } from '@/lib/linkedGoalMetrics';
 import { useAsyncAction } from '@/lib/useAsyncAction';
 import { AscendLoadingIndicator } from '@/components/ui/AscendLoadingIndicator';
 import { useToast } from '@/components/ui/Toast';
@@ -21,9 +23,7 @@ import { TAP_TARGET, cx } from '@/components/ui/primitives/shared';
 import { BarChart } from '@/components/ui/charts';
 import { CountUp, Reveal } from '@/components/ui/Motion';
 
-const DEFAULT_WORKOUT_TYPES = ['Running', 'Walking', 'Push-ups', 'Weightlifting', 'Cycling', 'Yoga', 'Swimming', 'HIIT'];
-
-type Measure = 'mins' | 'reps' | 'sets' | 'km';
+type Measure = WorkoutMeasure;
 const MEASURES: { id: Measure; label: string; start: number }[] = [
   { id: 'mins', label: 'Minutes', start: 30 },
   { id: 'reps', label: 'Reps', start: 30 },
@@ -32,10 +32,7 @@ const MEASURES: { id: Measure; label: string; start: number }[] = [
 ];
 const DAYS_PAGE = 7;
 
-const measureOf = (w: WorkoutLog): Measure => {
-  const u = (w.unit || 'mins').trim().toLowerCase();
-  return u === 'reps' || u === 'sets' || u === 'km' ? u : 'mins';
-};
+const measureOf = workoutMeasureOf;
 const amountOf = (w: WorkoutLog): number =>
   measureOf(w) === 'mins' ? (w.amount && w.amount > 0 ? w.amount : w.durationMinutes || 0) : w.amount ?? 0;
 const formatAmount = (value: number, measure: Measure): string => {
@@ -125,6 +122,22 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
   const timezoneWait = useTimezoneWait();
   const remainingCap = Math.max(0, WORKOUT_POINTS.dailyCap - pointsEarnedToday);
   const { rawPoints: previewRaw, pointsToAward: previewPoints } = calculateWorkoutPoints(measure, amount, measure === 'mins' ? amount : 0, remainingCap);
+
+  // A goal this week on this workout (or on any workout) that counts another measure: logs in
+  // this measure add nothing to it, so the form says so (minutes, reps, sets or km goals only).
+  const goalMeasureMismatch = useMemo(() => {
+    const typeKey = workoutTypeKey(workoutName);
+    if (!typeKey) return null;
+    const currentWeekKey = weekKey(parseDate(today) ?? undefined);
+    const goals = store.state.weeklyGoals.find((w) => w.weekKey === currentWeekKey)?.goals ?? [];
+    for (const g of goals) {
+      if (g.archived || g.linkedModule !== 'exercise') continue;
+      if (g.linkedItemId && workoutTypeKey(g.linkedItemId) !== typeKey) continue;
+      const counted = MEASURES.find((m) => EXERCISE_METRIC_BY_MEASURE[m.id] === g.linkedMetricKey);
+      if (counted && counted.id !== measure) return { title: g.title, counted: counted.label.toLowerCase() };
+    }
+    return null;
+  }, [store.state.weeklyGoals, workoutName, measure, today]);
 
   const logForm = useUnsavedChanges(logModalOpen, { workoutName, measure, amount });
   const logIssues = useFormController();
@@ -431,6 +444,11 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
                 </button>
               ))}
             </div>
+            {goalMeasureMismatch && (
+              <p className="mt-1.5 text-xs text-warning-text">
+                Your goal “{goalMeasureMismatch.title}” counts {goalMeasureMismatch.counted}, so this log won’t add to it.
+              </p>
+            )}
           </div>
 
           <NumberField

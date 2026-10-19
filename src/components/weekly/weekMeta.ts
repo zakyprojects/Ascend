@@ -34,12 +34,27 @@ export function isGoalAchieved(item: WeeklyGoalItem, prog: GoalProgressResult, i
   return !prog.needsMetricSelection && prog.percent >= 100;
 }
 
+/** A goal amount as shown: whole numbers as they are, decimals (km) to 2 places. */
+export function formatNumber(n: number): string {
+  return String(Number.isInteger(n) ? n : Math.round(n * 100) / 100);
+}
+
 /** "1 time", "3 times", "12 pages": a count with its unit. */
 export function formatAmount(n: number, unit: string): string {
   const trimmed = unit.trim();
-  if (!trimmed) return String(n);
-  if (n === 1 && trimmed.endsWith('s') && !trimmed.endsWith('ss')) return `${n} ${trimmed.slice(0, -1)}`;
-  return `${n} ${trimmed}`;
+  const shown = formatNumber(n);
+  if (!trimmed) return shown;
+  if (n === 1 && trimmed.endsWith('s') && !trimmed.endsWith('ss')) return `${shown} ${trimmed.slice(0, -1)}`;
+  return `${shown} ${trimmed}`;
+}
+
+/**
+ * The progress a goal row shows. A past week's linked goal shows what was recorded when the week
+ * closed: a ticked goal reads as complete even when today's logs say less (a log deleted later).
+ */
+export function recordedProgress(item: WeeklyGoalItem, prog: GoalProgressResult, isPastWeek: boolean): GoalProgressResult {
+  if (!isPastWeek || !isLinkedGoal(item) || prog.needsMetricSelection || !(item.completed || item.done)) return prog;
+  return { ...prog, current: Math.max(prog.current, prog.target), percent: 100 };
 }
 
 /**

@@ -22,13 +22,14 @@ import { GoalRow } from '@/components/weekly/GoalRow';
 import { GoalFormDialog, type GoalPayload } from '@/components/weekly/GoalFormDialog';
 import { ReflectionsCard } from '@/components/weekly/ReflectionsCard';
 import { CarryOverCard, type UnfinishedGoal } from '@/components/weekly/CarryOverCard';
-import { heldWeekGoals, isGoalAchieved, pointsLostOnDelete, weekLabel, weekLabelInline, weekPointsFromLedger } from '@/components/weekly/weekMeta';
+import { heldWeekGoals, isGoalAchieved, pointsLostOnDelete, recordedProgress, weekLabel, weekLabelInline, weekPointsFromLedger } from '@/components/weekly/weekMeta';
+import type { View } from '@/lib/views';
 
 const TREND_WEEKS = 8;
 const CARRY_OVER_LOOKBACK_WEEKS = 4;
 const WEEK_POINTS_MAX = WEEKLY_GOALS_POINTS.maxWeeklyPoints + WEEKLY_REFLECTION_POINTS.awarded;
 
-export function WeeklyGoalsView({ store }: { store: AppStore }) {
+export function WeeklyGoalsView({ store, onNavigate }: { store: AppStore; onNavigate: (view: View) => void }) {
   const { showErrorToast, showSuccessToast } = useToast();
   const { isKeyLoading, executeWithKey } = useAsyncActionKey();
   // Re-renders at local midnight, so Monday 00:00 starts the new week with the page open (C5).
@@ -58,10 +59,11 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
 
   const weeklyGoals = store.state.weeklyGoals;
 
+  // A past week shows each linked goal as it was recorded (recordedProgress).
   const getGoalProgress = useCallback(
     (item: WeeklyGoalItem, targetWeekKey: string): GoalProgressResult =>
-      computeLinkedGoalProgress(item, store.state, getWeekDates(targetWeekKey).dateStrings),
-    [store.state]
+      recordedProgress(item, computeLinkedGoalProgress(item, store.state, getWeekDates(targetWeekKey).dateStrings), targetWeekKey < currentWeekKey),
+    [store.state, currentWeekKey]
   );
 
   const weekGoals = useMemo(
@@ -391,6 +393,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
         weekText={selectedText}
         onClose={() => setFormOpen(false)}
         onSave={saveGoal}
+        onNavigate={onNavigate}
       />
 
       <ConfirmDeleteModal

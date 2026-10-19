@@ -5663,9 +5663,10 @@ export function useAppState() {
 
       // Check if re-linked (converting between freeform/linked, or pointing to a different habit/workout/book/skill/metric)
       const targetLinkedModule = effectiveUpdates.linkedModule !== undefined ? effectiveUpdates.linkedModule : existingGoal.linkedModule;
+      // No item ('' or missing) = any workout/book/skill.
       const isReLinked =
         (effectiveUpdates.linkedModule !== undefined && effectiveUpdates.linkedModule !== existingGoal.linkedModule) ||
-        (effectiveUpdates.linkedItemId !== undefined && effectiveUpdates.linkedItemId !== existingGoal.linkedItemId) ||
+        (effectiveUpdates.linkedItemId !== undefined && (effectiveUpdates.linkedItemId || '') !== (existingGoal.linkedItemId || '')) ||
         (effectiveUpdates.linkedMetricKey !== undefined && effectiveUpdates.linkedMetricKey !== existingGoal.linkedMetricKey);
 
       const isLinkedGoal = Boolean(targetLinkedModule && targetLinkedModule !== 'none');
@@ -5719,6 +5720,7 @@ export function useAppState() {
       const updatedGoal: WeeklyGoalItem = {
         ...existingGoal,
         ...effectiveUpdates,
+        ...(effectiveUpdates.linkedItemId !== undefined ? { linkedItemId: effectiveUpdates.linkedItemId || undefined } : {}),
         completed: nextCompleted,
         done: nextCompleted,
         completedAt: nextCompletedAt,
