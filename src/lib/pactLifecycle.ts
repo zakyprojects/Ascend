@@ -91,9 +91,25 @@ export function calculateJointStreak(jointDates: string[], targetNow: Date = get
 }
 
 /**
- * Evaluates a shared challenge's lifecycle:
+ * The status this device shows. Completed once the joint days reach the length. Ended ('expired')
+ * when the server says so, or once this viewer's own last day is over: the partner may still be on
+ * theirs, so the stored status is the server's alone (shared_challenges_guard and the hourly pact
+ * expiry wait for both members) and the app never sends one (saveSharedChallengeSupabase).
+ */
+function displayedPactStatus(
+  challenge: SharedChallenge,
+  totalCompleted: number,
+  targetNow: Date
+): SharedChallenge['status'] {
+  if (totalCompleted >= challenge.durationDays) return 'completed';
+  if (challenge.status === 'expired') return 'expired';
+  return calculateElapsedDays(challenge.createdAt, targetNow) > challenge.durationDays ? 'expired' : 'active';
+}
+
+/**
+ * Evaluates a shared challenge's lifecycle for display:
  * 1. Checks if totalJointDaysCompleted >= durationDays (Pact Won)
- * 2. Checks if elapsed calendar days > durationDays (Expired if not won)
+ * 2. Ended when the server stored it, or once this viewer's own last day is over (displayedPactStatus)
  * 3. Evaluates consecutive streak continuity for active pacts
  */
 export function reconcileSharedChallengeLifecycle(
@@ -105,16 +121,7 @@ export function reconcileSharedChallengeLifecycle(
   const totalCompleted = norm.totalCompleted;
   const currentStreak = calculateJointStreak(jointDates, targetNow);
 
-  const elapsedDays = calculateElapsedDays(challenge.createdAt, targetNow);
-
-  let status: SharedChallenge['status'] = challenge.status;
-  if (totalCompleted >= challenge.durationDays) {
-    status = 'completed';
-  } else if (elapsedDays > challenge.durationDays) {
-    status = 'expired';
-  } else {
-    status = 'active';
-  }
+  const status = displayedPactStatus(challenge, totalCompleted, targetNow);
 
   return {
     ...challenge,
@@ -171,12 +178,7 @@ export function applyPledgeToggle(
   const newLastJointDate = jointDates.length > 0 ? jointDates[jointDates.length - 1] : undefined;
 
   const isCompleted = totalCompleted >= target.durationDays;
-  const elapsed = calculateElapsedDays(target.createdAt, targetNow);
-  const status: SharedChallenge['status'] = isCompleted
-    ? 'completed'
-    : elapsed > target.durationDays
-    ? 'expired'
-    : 'active';
+  const status = displayedPactStatus(target, totalCompleted, targetNow);
 
   const latestU1 = updatedU1Dates.length > 0 ? updatedU1Dates[updatedU1Dates.length - 1] : undefined;
   const latestU2 = updatedU2Dates.length > 0 ? updatedU2Dates[updatedU2Dates.length - 1] : undefined;

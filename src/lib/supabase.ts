@@ -1323,7 +1323,9 @@ export async function saveSharedChallengeSupabase(challenge: SharedChallenge) {
       p_user2_done_date: u2Scalar,
       p_user1_done_dates: challenge.user1DoneDates || [],
       p_user2_done_dates: challenge.user2DoneDates || [],
-      p_status: challenge.status || 'active',
+      // The status is the server's (shared_challenges_guard derives it on every write, the hourly
+      // pact expiry ends it once both members' last day is over); the app never sends its own.
+      p_status: null,
     };
 
     // 1. Try atomic SECURITY DEFINER RPC first to bypass client RLS discrepancies
@@ -1356,7 +1358,6 @@ export async function saveSharedChallengeSupabase(challenge: SharedChallenge) {
       user2_done_date: u2Scalar,
       user1_done_dates: challenge.user1DoneDates || [],
       user2_done_dates: challenge.user2DoneDates || [],
-      status: challenge.status,
     };
 
     let { error } = await supabase.from('shared_challenges').upsert(payload);

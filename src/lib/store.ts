@@ -3272,14 +3272,16 @@ export function useAppState() {
         .forEach((follow) => handleFollowSyncExecution(follow));
     };
 
-    const checkUpdates = (simulatedNow?: Date) => {
-      const targetNow = simulatedNow || leagueNow();
+    const checkUpdates = (simulatedLeagueNow?: Date) => {
+      const leagueTarget = simulatedLeagueNow || leagueNow();
+      // Weekly goals and pacts run on the user's own days, never on league time.
+      const personalNow = getNow();
       const challengesToSync: SharedChallenge[] = [];
 
       // A new week, month or season: other members' points for it (and final ones for the period
       // that just closed, which archiving waits for) need a fresh fetch.
       const fetchedPeriod = leagueRefresher.fetchedPeriodKey();
-      if (fetchedPeriod && fetchedPeriod !== leaguePeriodKey(targetNow)) {
+      if (fetchedPeriod && fetchedPeriod !== leaguePeriodKey(leagueTarget)) {
         void refreshLeagueStandings({ full: true });
       }
 
@@ -3287,13 +3289,15 @@ export function useAppState() {
         challengesToSync.length = 0;
         // League archives and missed-habit, no-report and exercise-target penalties come from hourly server jobs.
         const weeklyGoalsReconciledState = reconcileWeeklyGoalsPointsForAllWeeks(
-          reconcileLinkedWeeklyGoals(prev, targetNow),
-          targetNow
+          reconcileLinkedWeeklyGoals(prev, personalNow),
+          personalNow
         );
 
         const reconciledChallenges = (weeklyGoalsReconciledState.sharedChallenges || []).map((c) => {
-          const updated = reconcileSharedChallengeLifecycle(c, targetNow);
-          if (updated.status !== c.status || updated.jointStreak !== c.jointStreak) {
+          const updated = reconcileSharedChallengeLifecycle(c, personalNow);
+          // A pact that ends here only shows as ended: the server stores the status once both
+          // members' last day is over (hourly pact expiry), so a status change is never saved.
+          if (updated.status === 'active' && updated.jointStreak !== c.jointStreak) {
             challengesToSync.push(updated);
           }
           return updated;
