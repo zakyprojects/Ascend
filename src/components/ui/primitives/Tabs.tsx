@@ -274,3 +274,23 @@ export function TabPanel({ idBase, ids, value, onChange, className, children }: 
     </div>
   );
 }
+
+/**
+ * The active tab's content for a strip that does not swipe (tabs inside a card or a dialog, and
+ * Partners' per-partner tabs, where a swipe changes the page): the same tabpanel the strip points
+ * at, without the gesture. With no `idBase` (the strip is hidden, e.g. one partner) it is a plain
+ * wrapper.
+ */
+export function StaticTabPanel({
+  idBase,
+  value,
+  className,
+  children,
+}: Pick<TabPanelProps, 'value' | 'className' | 'children'> & { idBase?: string }) {
+  if (!idBase) return <div className={className}>{children}</div>;
+  return (
+    <div id={panelDomId(idBase)} role="tabpanel" aria-labelledby={tabDomId(idBase, value)} className={className}>
+      {children}
+    </div>
+  );
+}

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { AppStore } from '@/lib/store';
 import type { View } from '@/lib/views';
+import { pathForView } from '@/lib/routes';
 import { addDays, startOfWeek, todayKey } from '@/lib/dates';
 import { useLocalDayKey } from '@/lib/useLocalDayKey';
 import { isFocusDayEntry } from '@/lib/focusAwards';
@@ -19,12 +20,22 @@ import { dueDecisions, localDayOf } from '@/components/pfc/pfcLists';
 type PFCTab = 'focus' | 'schedule' | 'decisions' | 'emotions';
 const PFC_TABS: PFCTab[] = ['focus', 'schedule', 'decisions', 'emotions'];
 
-/** Time Tracker's "Open section" and the `?tab=live` / `?mode=sync` link open the Schedule tab. */
+const isPfcTab = (value: unknown): value is PFCTab => PFC_TABS.includes(value as PFCTab);
+
+/** The tab's address: `/prefrontal-cortex?tab=decisions` (Focus, the first tab, has no query). */
+const tabPath = (tab: PFCTab) => pathForView('prefrontal') + (tab === 'focus' ? '' : `?tab=${tab}`);
+
+/**
+ * The tab the address names (`?tab=decisions`). Time Tracker's "Open section" and the older
+ * `?tab=live` / `?mode=sync` links open the Schedule tab.
+ */
 function initialTab(): PFCTab {
   try {
     if (sessionStorage.getItem('ascend_pending_pfc_timer_mode') === 'sync') return 'schedule';
     const params = new URLSearchParams(window.location.search);
-    if (params.get('tab') === 'live' || params.get('mode') === 'sync') return 'schedule';
+    const tab = params.get('tab');
+    if (isPfcTab(tab)) return tab;
+    if (tab === 'live' || params.get('mode') === 'sync') return 'schedule';
   } catch {
     /* storage unavailable */
   }
@@ -46,6 +57,15 @@ export function PrefrontalCortex({ store, onNavigate }: { store: AppStore; onNav
   const [tab, setTab] = useState<PFCTab>(initialTab);
   const changeTab = (id: string) => setTab(id as PFCTab);
   useEffect(clearHandOffs, []);
+
+  // The tab lives in the address: reload keeps it and a link can open it. It replaces the entry,
+  // so Back still leaves the page.
+  useEffect(() => {
+    const path = tabPath(tab);
+    if (window.location.pathname + window.location.search !== path) {
+      window.history.replaceState(window.history.state, '', path);
+    }
+  }, [tab]);
   const { focusLogs, decisionLogs, emotionLogs, pointsHistory } = store.state;
 
   // Re-renders at local midnight, so "today" numbers and the tabs below roll over (C5).

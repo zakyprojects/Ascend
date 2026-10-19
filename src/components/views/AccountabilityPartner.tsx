@@ -6,7 +6,7 @@ import { AppStore } from '@/lib/store';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { TierBadge } from '@/components/ui/TierBadge';
 import { useToast } from '@/components/ui/Toast';
-import { Button, Dialog, Disclosure, EmptyState, Form, Input, Skeleton, Switch, Tabs, useFormController } from '@/components/ui/primitives';
+import { Button, Dialog, Disclosure, EmptyState, Form, Input, Skeleton, StaticTabPanel, Switch, Tabs, useFormController } from '@/components/ui/primitives';
 import { useUnsavedChanges } from '@/lib/unsavedChanges';
 import { CountUp, Reveal } from '@/components/ui/Motion';
 import { PageHero } from '@/components/ui/PageHero';
@@ -621,6 +621,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
         <>
           {partnerships.length > 1 && (
             <Tabs
+              idBase="partners"
               ariaLabel="Partners"
               scrollable
               value={activePartnership?.id ?? ''}
@@ -636,7 +637,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
           )}
 
           {activePartnership && (
-            <div className="space-y-6">
+            <StaticTabPanel idBase={partnerships.length > 1 ? 'partners' : undefined} value={activePartnership.id} className="space-y-6">
               <div className="card p-5 space-y-4">
                 <div className="flex items-center gap-3">
                   <div className="w-12 h-12 rounded-2xl bg-primary-500/20 text-brand-text flex items-center justify-center text-lg font-semibold shrink-0">
@@ -778,7 +779,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                   </div>
                 )}
               </div>
-            </div>
+            </StaticTabPanel>
           )}
         </>
       )}
