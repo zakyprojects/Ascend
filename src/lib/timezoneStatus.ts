@@ -1,5 +1,5 @@
 import { trustedNow } from './clock';
-import { todayKey } from './dates';
+import { todayKey, todayKeyInZone } from './dates';
 import { supabase, isSupabaseConfigured, fetchMyPrivateProfile, sendDeviceTimezone } from './supabase';
 
 /**
@@ -15,15 +15,6 @@ export interface TimezoneWait {
 const WAIT_CAP_MS = 48 * 60 * 60 * 1000;
 const HOUR_MS = 60 * 60 * 1000;
 
-function dateInZone(date: Date, timeZone: string): string | null {
-  try {
-    // en-CA formats as YYYY-MM-DD, the same shape as todayKey().
-    return new Intl.DateTimeFormat('en-CA', { timeZone }).format(date);
-  } catch {
-    return null;
-  }
-}
-
 /** Reads the signed-in user's timezone state; null when nothing waits, the user is a guest, or the read fails. */
 export async function readTimezoneWait(): Promise<TimezoneWait | null> {
   if (!isSupabaseConfigured) return null;
@@ -35,7 +26,7 @@ export async function readTimezoneWait(): Promise<TimezoneWait | null> {
   if (!data?.timezone || !data.timezone_waiting_since) return null;
 
   const now = trustedNow();
-  const serverDate = dateInZone(now, data.timezone);
+  const serverDate = todayKeyInZone(data.timezone, now);
   if (!serverDate || serverDate <= todayKey(now)) return null;
 
   const nextDeviceMidnight = new Date(now);

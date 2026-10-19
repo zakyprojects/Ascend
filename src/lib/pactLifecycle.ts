@@ -222,8 +222,13 @@ export function mergeSharedChallenge(baseC: SharedChallenge, incC: SharedChallen
   const jointDates = u1Dates.filter((d) => u2Set.has(d)).sort();
   const totalCompleted = jointDates.length;
 
-  const baseTime = baseC.createdAt || '';
-  const incTime = incC.createdAt || '';
+  // Parsed, not compared as text: the same instant can arrive as '…Z' or '…+00:00'.
+  const toMs = (v: unknown) => {
+    const ms = typeof v === 'number' ? v : Date.parse(String(v ?? ''));
+    return Number.isFinite(ms) ? ms : 0;
+  };
+  const baseTime = toMs(baseC.createdAt);
+  const incTime = toMs(incC.createdAt);
   const primary = incTime >= baseTime ? incC : baseC;
   const secondary = incTime >= baseTime ? baseC : incC;
 

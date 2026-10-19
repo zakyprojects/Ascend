@@ -628,7 +628,7 @@ export async function sendDeviceTimezone(userId: string): Promise<boolean> {
   return true;
 }
 
-/** A league period whose points the server sums: [start, end], start already clamped to the season. */
+/** A league period whose points the server sums: [start, end), start already clamped to the season. */
 export interface LeaguePointsPeriod {
   id: string;
   start: Date;
