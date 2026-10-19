@@ -78,7 +78,7 @@ import { computeLinkedGoalProgress, linkedEntryPresent, linkedGoalCrossing, link
 import { autoStatusChanges } from './projectProgress';
 import { reconcileSharedChallengeLifecycle, applyPledgeToggle, mergeSharedChallenge } from './pactLifecycle';
 import { isPartnershipUser1 } from './partnershipSide';
-import { PresetHabit, RETIRED_SCORED_PRESET_HABITS } from './presets';
+import { PresetHabit } from './presets';
 import { sameName } from './uniqueNames';
 import { computeHabitAwards, isHabitAwardEntry, isRetiredAppHabitAward, presetHabitPoints } from './habitAwards';
 import { computeWorkoutAwards, isRetiredAppWorkoutAward, isWorkoutDayEntry } from './workoutAwards';
@@ -305,7 +305,10 @@ export const RETIRED_PRESET_HABIT_NAMES = new Set<string>([
   'No social media before bed',
   'No junk food',
   'Journaling',
-  ...RETIRED_SCORED_PRESET_HABITS.keys(),
+  // Retired 2026-10-19 (server copies soft-deleted the same day; a device's offline copy still leaves here)
+  'No phone for first hour after waking',
+  'Digital detox hour',
+  'No procrastination (complete top priority task)',
 ]);
 
 /**

@@ -39,7 +39,7 @@ function habit(id: string, name: string, checkedHour: number | null, extra: Part
   const { allocation, entries } = computeHabitAwards(
     [
       habit('a', 'Learn something new', 1),
-      habit('b', 'No procrastination (complete top priority task)', 2),
+      habit('b', 'Pray / spiritual practice', 2),
       habit('c', 'Meditation', 3),
       habit('d', 'Cold shower', 4),
       habit('e', 'Wake up early', 5),
@@ -53,17 +53,17 @@ function habit(id: string, name: string, checkedHour: number | null, extra: Part
     START,
     NOW
   );
-  assert(allocation.a === 3 && allocation.b === 3 && allocation.c === 2 && allocation.d === 2, 'catalogue amounts');
-  assert(allocation.e === 0 && allocation.f === 0 && allocation.x === 0, 'cap reached');
+  assert(allocation.a === 3 && allocation.b === 2 && allocation.c === 2 && allocation.d === 2, 'catalogue amounts');
+  assert(allocation.e === 1 && allocation.f === 0 && allocation.x === 0, 'last one partial, then cap reached');
   assert(!('dup' in allocation) && !('r' in allocation) && !('u' in allocation), 'not counted');
-  assert(entries.length === 4 && entries.reduce((s, e) => s + e.amount, 0) === 10, 'four rows, 10 points');
+  assert(entries.length === 5 && entries.reduce((s, e) => s + e.amount, 0) === 10, 'five rows, 10 points');
   const a = entries.find((e) => e.metadata?.habitId === 'a')!;
   assert(a.id === `habit_award_a_${DAY}` && a.source === 'habit_completed', 'server id and source');
   assert(a.timestamp === at(1) && a.reason === 'Habit completed: Learn something new', 'timestamp and reason');
 }
 
 // 1b. Daily custom habits earn 1 inside the same cap and check order; weekly custom, the Reading
-//     habit and the 2026-10-15 retired presets earn 0; the 2026-10-19 retired ones keep their points.
+//     habit and every retired preset earn 0.
 {
   const { allocation } = computeHabitAwards(
     [
@@ -83,10 +83,10 @@ function habit(id: string, name: string, checkedHour: number | null, extra: Part
     START,
     NOW
   );
-  assert(allocation.c1 === 1 && allocation.r3 === 1, 'custom 1, retired-scored 1');
-  assert(!('w' in allocation) && !('rb' in allocation) && !('r7' in allocation), 'weekly custom, Reading, retired 0');
+  assert(allocation.c1 === 1, 'custom 1');
+  assert(!('w' in allocation) && !('rb' in allocation) && !('r7' in allocation) && !('r3' in allocation), 'weekly custom, Reading, retired 0');
   assert(allocation.n1 === 2 && allocation.n2 === 2 && allocation.n3 === 2 && allocation.c2 === 1 && allocation.n4 === 1, 'new presets');
-  assert(allocation.c3 === 0, 'cap 10 reached');
+  assert(allocation.c3 === 1, 'last point of the cap');
 }
 
 // 2. Timestamps clamp to the day: a spoofed earlier check time stays inside it.

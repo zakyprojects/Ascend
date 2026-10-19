@@ -61,17 +61,6 @@ export const PRESET_CATEGORIES: PresetCategory[] = [
   },
 ];
 
-/**
- * Presets taken out of the library (2026-10-19) that still earn their points on the server
- * (ascend_preset_habit_points) until every copy has left its account: a copy ticked today is
- * retired on a later day, so today's points never drop (applyPresetHabitRemovalMigration).
- */
-export const RETIRED_SCORED_PRESET_HABITS: ReadonlyMap<string, number> = new Map([
-  ['No phone for first hour after waking', 1],
-  ['Digital detox hour', 1],
-  ['No procrastination (complete top priority task)', 3],
-]);
-
 export function findPresetHabit(name: string): PresetHabit | undefined {
   for (const cat of PRESET_CATEGORIES) {
     const found = cat.habits.find((h) => h.name === name);
