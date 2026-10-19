@@ -74,6 +74,7 @@ import {
 import { findCuratedBook } from './books';
 import { uid, generateUUID, generateNumericUID, periodKey, todayKey, isPlanJourneyDoneThisPeriod, calculateActivePlanStreak, getWeekDates, parseDate, getNow, getNextDateKey, weekKey, addDays } from './dates';
 import { computeLinkedGoalProgress } from './linkedGoalMetrics';
+import { autoStatusChanges } from './projectProgress';
 import { reconcileSharedChallengeLifecycle, applyPledgeToggle, mergeSharedChallenge } from './pactLifecycle';
 import { isPartnershipUser1 } from './partnershipSide';
 import { PresetHabit } from './presets';
@@ -6214,6 +6215,35 @@ export function useAppState() {
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Automatic status (lib/projectProgress.ts): applied on every change to goals, projects or tasks,
+  // whichever page, tab or device made it, so it never waits for the Projects page to open.
+  // Waits for the server data, so a device cache or a failed read never flips a status.
+  useEffect(() => {
+    if (!isServerDataApplied) return;
+    const pending = autoStatusChanges(state.goals, state.projects, state.tasks);
+    if (pending.projects.size === 0 && pending.goals.size === 0) return;
+    setState(
+      (prev) => {
+        const changes = autoStatusChanges(prev.goals, prev.projects, prev.tasks);
+        if (changes.projects.size === 0 && changes.goals.size === 0) return prev;
+        return {
+          ...prev,
+          projects: prev.projects.map((p) => {
+            const status = changes.projects.get(p.id);
+            return status ? { ...p, status, completedAt: resolveProjectCompletedAt(p.status, status, p.completedAt) } : p;
+          }),
+          goals: prev.goals.map((g) => {
+            const status = changes.goals.get(g.id);
+            return status ? { ...g, status } : g;
+          }),
+        };
+      },
+      { immediate: true }
+    );
+    // False positive: setState is stable; resolveProjectCompletedAt reads only its arguments and the clock
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isServerDataApplied, state.goals, state.projects, state.tasks]);
 
   // --- SOCIAL FEATURE 1: PERSONAL IMPROVEMENT PLANS ACTIONS ---
   // Every change to a plan or a copy goes through these two: the row is marked pending, saved, and

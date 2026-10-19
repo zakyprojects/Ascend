@@ -187,27 +187,6 @@ export function ProjectsGoalsView({
   const projectById = (id?: string) => (id ? projects.find((p) => p.id === id) : undefined);
 
   // --------------------------------------------------------------------------
-  // Automatic status: a project with tasks completes when they are all done, a goal with
-  // projects is achieved when they are all done, and both reopen when that stops being true.
-  // Abandoned goals are a choice and never change on their own.
-  // --------------------------------------------------------------------------
-  useEffect(() => {
-    for (const p of projects) {
-      const prog = h.getProjectProgress(p);
-      if (prog.isManual) continue;
-      if (prog.percent === 100 && p.status !== 'completed') store.updateProject(p.id, { status: 'completed' });
-      else if (prog.percent < 100 && p.status === 'completed') store.updateProject(p.id, { status: 'in_progress' });
-    }
-    for (const g of goals) {
-      if (g.status === 'abandoned') continue;
-      const prog = h.getGoalProgress(g);
-      if (prog.isManual) continue;
-      if (prog.percent === 100 && g.status === 'active') store.updateGoal(g.id, { status: 'achieved' });
-      else if (prog.percent < 100 && g.status === 'achieved') store.updateGoal(g.id, { status: 'active' });
-    }
-  }, [goals, projects, h, store]);
-
-  // --------------------------------------------------------------------------
   // Hero numbers
   // --------------------------------------------------------------------------
   const stats = useMemo(() => {
