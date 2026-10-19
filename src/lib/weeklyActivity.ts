@@ -14,18 +14,24 @@ export interface DayPoints {
 }
 
 const DAY_KEY = /^\d{4}-\d{2}-\d{2}$/;
+/** Server ledger ids end in the local day they are for (`habit_award_<habit>_<day>`, `time_tracker_<day>`, …). */
+const ID_DAY = /_(\d{4}-\d{2}-\d{2})$/;
 
 /**
- * The local day an entry belongs to. Missed-habit and unreported bad-habit penalties are issued
- * just after the day ends, so they count on the day that was missed (their metadata names it);
- * a weekly habit's period is a week, so it keeps its issue day. Everything else: its timestamp.
- * Display only: league points read the server ledger and never this.
+ * The local day an entry belongs to. The day the row names comes first: `metadata.date`,
+ * `metadata.periodKey` or `metadata.period` (a daily habit's day; a weekly period is a week key and
+ * does not count), else the day at the end of its id. A row's timestamp can sit outside its day
+ * (a missed-day penalty is issued just after the day ends, the time tracker's grace window stamps
+ * yesterday's row today, server rows are clamped in the profile timezone), so it is only the
+ * fallback, read on this device's local day. Display only: league points read the server ledger.
  */
-function entryDay(entry: PointsEntry): string | null {
+export function entryDay(entry: PointsEntry): string | null {
   const meta = entry.metadata;
-  const missedDay =
-    entry.source === 'habit_missed' ? meta?.period : entry.source === 'bad_habit_no_report' ? meta?.date : undefined;
-  if (typeof missedDay === 'string' && DAY_KEY.test(missedDay)) return missedDay;
+  for (const named of [meta?.date, meta?.periodKey, meta?.period]) {
+    if (typeof named === 'string' && DAY_KEY.test(named)) return named;
+  }
+  const idDay = typeof entry.id === 'string' ? ID_DAY.exec(entry.id)?.[1] : undefined;
+  if (idDay) return idDay;
   const date = parseDate(entry.timestamp);
   return date ? todayKey(date) : null;
 }

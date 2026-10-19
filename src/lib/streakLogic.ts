@@ -1,6 +1,7 @@
 import { AppState } from '@/types';
 import { todayKey } from './dates';
 import { trustedNow } from './clock';
+import { entryDay } from './weeklyActivity';
 
 export interface UnifiedStreakResult {
   currentStreakDays: number;
@@ -125,7 +126,8 @@ export function calculateUnifiedStreak(
     }
     if (!habitName || habitName === 'Habit') habitName = 'Habit Journey';
 
-    const dKey = toNormalizedDateKey(e.timestamp);
+    // The day the row is for (its stored date), not the moment it was stamped.
+    const dKey = entryDay(e);
     if (!dKey) return;
     trackLatestDate(dKey);
 
