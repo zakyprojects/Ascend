@@ -24,5 +24,49 @@
       "type": "image/png",
       "purpose": "maskable"
     }
+  ],
+  "shortcuts": [
+    {
+      "name": "Quick log",
+      "short_name": "Quick log",
+      "description": "Tick today's habits and log the rest",
+      "url": "/?quick-log",
+      "icons": [
+        {
+          "src": "/shortcut-quick-log-96x96.png?v=5",
+          "sizes": "96x96",
+          "type": "image/png",
+          "purpose": "any"
+        }
+      ]
+    },
+    {
+      "name": "Time Tracker",
+      "short_name": "Time Tracker",
+      "description": "Track where your time goes",
+      "url": "/time-tracker",
+      "icons": [
+        {
+          "src": "/shortcut-time-tracker-96x96.png?v=5",
+          "sizes": "96x96",
+          "type": "image/png",
+          "purpose": "any"
+        }
+      ]
+    },
+    {
+      "name": "Weekly Goals",
+      "short_name": "Weekly Goals",
+      "description": "See and update this week's goals",
+      "url": "/weekly-goals",
+      "icons": [
+        {
+          "src": "/shortcut-weekly-goals-96x96.png?v=5",
+          "sizes": "96x96",
+          "type": "image/png",
+          "purpose": "any"
+        }
+      ]
+    }
   ]
 }
