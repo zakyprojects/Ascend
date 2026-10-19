@@ -37,7 +37,8 @@ function versionFilePlugin(): Plugin {
 /**
  * Serves the Vercel Functions in /api during `npm run dev` (Vercel runs them in production).
  * Server-only secrets (GITHUB_FEEDBACK_TOKEN, no VITE_ prefix) come from .env.local and stay
- * on the dev server; they never reach the browser bundle.
+ * on the dev server; they never reach the browser bundle. The Supabase URL/anon key are passed
+ * too, so the function can check the sender's session as it does on Vercel.
  */
 function apiFunctionsPlugin(): Plugin {
   return {
@@ -45,7 +46,7 @@ function apiFunctionsPlugin(): Plugin {
     apply: 'serve',
     configureServer(server) {
       const env = loadEnv(server.config.mode, process.cwd(), '');
-      for (const key of ['GITHUB_FEEDBACK_TOKEN', 'GITHUB_FEEDBACK_REPO']) {
+      for (const key of ['GITHUB_FEEDBACK_TOKEN', 'GITHUB_FEEDBACK_REPO', 'VITE_SUPABASE_URL', 'VITE_SUPABASE_ANON_KEY']) {
         if (env[key] && !process.env[key]) process.env[key] = env[key];
       }
       server.middlewares.use('/api/feedback', async (req, res) => {

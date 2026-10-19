@@ -1,4 +1,5 @@
 import { trustedNowMs } from './clock';
+import { supabase } from './supabase';
 /**
  * Bug reports and ideas: the browser side of POST /api/feedback (api/feedback.ts), which files
  * them as issues in the private feedback repo. No token lives here.
@@ -116,6 +117,8 @@ export interface FeedbackSubmission {
 const ERROR_MESSAGES: Record<string, string> = {
   not_configured: "Feedback isn't set up yet. Please try again later.",
   rate_limited: 'Too many reports in a short time. Please wait a few minutes.',
+  daily_limit: 'Too many reports today. Please try again tomorrow.',
+  unauthorized: 'Your sign-in has ended. Sign in again, then send it.',
   too_large: 'The screenshots are too large. Remove one and try again.',
   token_invalid: "Feedback can't be delivered right now. Please try again later.",
   token_no_access: "Feedback can't be delivered right now. Please try again later.",
@@ -125,9 +128,15 @@ export async function submitFeedback(submission: FeedbackSubmission): Promise<st
   const { screenshots, ...rest } = submission;
   let res: Response;
   try {
+    // The server accepts only the app's own users (guests included): it checks this session.
+    const { data } = await supabase.auth.getSession();
+    const accessToken = data.session?.access_token;
     res = await fetch('/api/feedback', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+      },
       body: JSON.stringify({ ...rest, images: screenshots.map(({ name, data }) => ({ name, data })) }),
     });
   } catch {
