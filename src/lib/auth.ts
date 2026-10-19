@@ -15,6 +15,7 @@ import {
 import { trustedNow, trustedNowMs } from './clock';
 import { isUsernameTakenError, looksLikeUsername, sameUsername, USERNAME_TAKEN, usernameFormatProblem } from './usernameRules';
 import { NETWORK_MESSAGE } from './userMessage';
+import { clearDrafts } from './unsavedChanges';
 import { FunctionsHttpError } from '@supabase/supabase-js';
 
 let cachedProfiles: any[] = [];
@@ -372,6 +373,7 @@ export async function logoutUser({ scope = 'global' }: { scope?: 'global' | 'loc
     try {
       localStorage.removeItem('ascend_active_focus_session');
       sessionStorage.removeItem('ascend_focus_tab_alive');
+      clearDrafts();
     } catch (e) {
       /* ignore */
     }

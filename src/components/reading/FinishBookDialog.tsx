@@ -35,7 +35,7 @@ export function FinishBookDialog({
   onClose: () => void;
 }) {
   const [takeaway, setTakeaway] = useState('');
-  const guard = useUnsavedChanges(open ? book?.id ?? null : null, takeaway);
+  const guard = useUnsavedChanges(open ? book?.id ?? null : null, takeaway, { key: 'book-finish', restore: setTakeaway });
   const { readingLogs, pointsHistory } = store.state;
 
   const eligibility = useMemo(() => {

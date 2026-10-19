@@ -133,13 +133,16 @@ export async function verifyAccountPassword(email: string, password: string): Pr
  * when refreshing an expired one fails on the network (a phone waking up), yet keeps it saved and
  * signs it in again moments later; a dead sign-in is removed from storage instead.
  */
-export function storedAuthSession(): { isAnonymous: boolean } | null {
+export function storedAuthSession(): { isAnonymous: boolean; userId: string | null } | null {
   try {
     const raw = localStorage.getItem(AUTH_STORAGE_KEY);
     if (!raw) return null;
-    const saved = JSON.parse(raw) as { refresh_token?: unknown; user?: { is_anonymous?: unknown } } | null;
+    const saved = JSON.parse(raw) as { refresh_token?: unknown; user?: { id?: unknown; is_anonymous?: unknown } } | null;
     if (typeof saved?.refresh_token !== 'string' || !saved.refresh_token) return null;
-    return { isAnonymous: saved.user?.is_anonymous === true };
+    return {
+      isAnonymous: saved.user?.is_anonymous === true,
+      userId: typeof saved.user?.id === 'string' ? saved.user.id : null,
+    };
   } catch {
     return null;
   }

@@ -85,7 +85,17 @@ export function GoalFormDialog({
   const [status, setStatus] = useState<GoalStatus>(editing?.status ?? 'active');
   const [sequentialMode, setSequentialMode] = useState(editing?.sequentialMode ?? false);
   const issues = useFormController();
-  const form = useUnsavedChanges(open, [title, description, category, targetDate, status, sequentialMode]);
+  const form = useUnsavedChanges(open, [title, description, category, targetDate, status, sequentialMode] as const, {
+    key: `goal:${editing?.id ?? 'new'}`,
+    restore: ([t, d, c, td, s, seq]) => {
+      setTitle(t);
+      setDescription(d);
+      setCategory(c);
+      setTargetDate(td);
+      setStatus(s);
+      setSequentialMode(seq);
+    },
+  });
   const achievedLocked = hasProjects && editing?.status !== 'achieved';
 
   const handleSubmit = () => {
@@ -243,7 +253,17 @@ export function ProjectFormDialog({
   const [dueDate, setDueDate] = useState(editing?.dueDate ?? '');
   const [status, setStatus] = useState<ProjectStatus>(editing?.status ?? 'not_started');
   const issues = useFormController();
-  const form = useUnsavedChanges(open, [title, description, goalId, startDate, dueDate, status]);
+  const form = useUnsavedChanges(open, [title, description, goalId, startDate, dueDate, status] as const, {
+    key: `project:${editing?.id ?? 'new'}`,
+    restore: ([t, d, g, sd, dd, s]) => {
+      setTitle(t);
+      setDescription(d);
+      setGoalId(g);
+      setStartDate(sd);
+      setDueDate(dd);
+      setStatus(s);
+    },
+  });
   const completedLocked = hasTasks && editing?.status !== 'completed';
   const earliestDue = earliestTargetDate(editing?.dueDate);
   const { min, max } = dateBounds();
@@ -381,7 +401,18 @@ export function TaskFormDialog({
   const [subtasks, setSubtasks] = useState<TaskSubtask[]>(() => [...(editing?.subtasks || [])]);
   const [newSubtask, setNewSubtask] = useState('');
   const issues = useFormController();
-  const form = useUnsavedChanges(open, [title, description, projectId, dueDate, priority, subtasks, newSubtask]);
+  const form = useUnsavedChanges(open, [title, description, projectId, dueDate, priority, subtasks, newSubtask] as const, {
+    key: `task:${editing?.id ?? 'new'}`,
+    restore: ([t, d, p, dd, pr, subs, ns]) => {
+      setTitle(t);
+      setDescription(d);
+      setProjectId(p);
+      setDueDate(dd);
+      setPriority(pr);
+      setSubtasks([...subs]);
+      setNewSubtask(ns);
+    },
+  });
 
   const addSubtask = () => {
     const subtaskTitle = newSubtask.trim();

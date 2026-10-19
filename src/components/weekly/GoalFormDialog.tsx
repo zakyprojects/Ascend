@@ -46,7 +46,23 @@ export function GoalFormDialog({
   const [targetValue, setTargetValue] = useState<number>(editing?.targetValue || 1);
   const [unit, setUnit] = useState(editing?.unit || 'times');
   const issues = useFormController();
-  const form = useUnsavedChanges(open, [title, targetDescription, priority, linkedModule, linkedItemId, linkedMetricKey, targetValue, unit]);
+  const form = useUnsavedChanges(
+    open,
+    [title, targetDescription, priority, linkedModule, linkedItemId, linkedMetricKey, targetValue, unit] as const,
+    {
+      key: `weekly-goal:${editing?.id ?? 'new'}`,
+      restore: ([t, td, p, lm, li, lk, tv, u]) => {
+        setTitle(t);
+        setTargetDescription(td);
+        setPriority(p);
+        setLinkedModule(lm);
+        setLinkedItemId(li);
+        setLinkedMetricKey(lk);
+        setTargetValue(tv);
+        setUnit(u);
+      },
+    }
+  );
 
   const workoutTypes = useMemo(() => {
     const fromHistory = (state.workouts || []).map((w) => (w.type || '').trim()).filter((t) => Boolean(t) && t !== 'Other');

@@ -36,7 +36,7 @@ function valuesFrom(plan: ImprovementPlan): PlanFormValues {
 export function EditPlanDialog({ store, plan, onClose }: { store: AppStore; plan: ImprovementPlan; onClose: () => void }) {
   const type = planTypeOf(plan);
   const [values, setValues] = useState<PlanFormValues>(() => valuesFrom(plan));
-  const guard = useUnsavedChanges(plan.id, values);
+  const guard = useUnsavedChanges(plan.id, values, { key: 'plan-edit', restore: setValues });
 
   const update = (patch: Partial<PlanFormValues>) => setValues((v) => ({ ...v, ...patch }));
   const close = () => guard.confirmDiscard(onClose);

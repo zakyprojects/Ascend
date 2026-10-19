@@ -34,8 +34,11 @@ export function ReflectionNotes({
   const [editing, setEditing] = useState<{ key: string; text: string } | null>(null);
 
   // Leave guards: a note being written, and an open edit that differs from the saved note.
-  useUnsavedChanges(!readOnly, draft.trim());
-  useUnsavedChanges(editing ? `${planId}:${editing.key}` : null, editing?.text ?? '');
+  useUnsavedChanges(!readOnly, draft.trim(), { key: `plan-note:${planId}`, restore: setDraft });
+  useUnsavedChanges(editing ? `${planId}:${editing.key}` : null, editing?.text ?? '', {
+    key: 'plan-note-edit',
+    restore: (text) => setEditing((current) => (current ? { ...current, text } : current)),
+  });
 
   const visible = showAll ? notes : notes.slice(0, 1);
 

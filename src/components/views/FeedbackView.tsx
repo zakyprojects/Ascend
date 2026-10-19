@@ -137,7 +137,24 @@ export function FeedbackView({ kind, store, fromView, onNavigate }: FeedbackView
       : { problem, idea, impact, area };
   const isValid = title.trim() !== '' && (kind === 'bug' ? whatHappened.trim() !== '' : idea.trim() !== '');
 
-  useUnsavedChanges(sentRef === null, [title, fields, screenshots.map((s) => s.id)]);
+  // The typing is kept as a draft; screenshots are not (they are files, not text).
+  useUnsavedChanges(sentRef === null, [title, fields, screenshots.map((s) => s.id)] as const, {
+    key: `feedback:${kind}`,
+    restore: ([draftTitle, draftFields]) => {
+      setTitle(draftTitle);
+      if (kind === 'bug') {
+        setWhatHappened(draftFields.whatHappened ?? '');
+        setSteps(draftFields.steps ?? '');
+        setExpected(draftFields.expected ?? '');
+        setSeverity(draftFields.severity ?? '');
+      } else {
+        setProblem(draftFields.problem ?? '');
+        setIdea(draftFields.idea ?? '');
+        setImpact(draftFields.impact ?? '');
+      }
+      if (AREAS.includes(draftFields.area)) setArea(draftFields.area);
+    },
+  });
 
   // Object URLs of the previews are freed when a screenshot is removed and when the page closes.
   const screenshotsRef = useRef(screenshots);

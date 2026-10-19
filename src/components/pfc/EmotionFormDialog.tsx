@@ -23,7 +23,15 @@ export function EmotionFormDialog({
   const [custom, setCustom] = useState('');
   const [intensity, setIntensity] = useState(5);
   const [context, setContext] = useState('');
-  const form = useUnsavedChanges(open, [emotion, custom, intensity, context]);
+  const form = useUnsavedChanges(open, [emotion, custom, intensity, context] as [string, string, number, string], {
+    key: 'pfc-emotion',
+    restore: ([e, c, i, x]) => {
+      setEmotion(e);
+      setCustom(c);
+      setIntensity(i);
+      setContext(x);
+    },
+  });
 
   // Every open starts clean.
   useEffect(() => {

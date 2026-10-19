@@ -49,7 +49,14 @@ export function Journal({ store }: { store: AppStore }) {
       return true;
     }
   });
-  const entryForm = useUnsavedChanges(isEditingToday, [mood, content]);
+  // The draft is today's: yesterday's typing never lands in today's entry.
+  const entryForm = useUnsavedChanges(isEditingToday, [mood, content] as [Mood, string], {
+    key: `journal:${today}`,
+    restore: ([draftMood, draftContent]) => {
+      setMood(draftMood);
+      setContent(draftContent);
+    },
+  });
   const entryIssues = useFormController();
   // Edit swaps the saved entry for the editor: the notes take focus, caret at the end (not on page load).
   // Cancel/Save swap it back and focus returns to Edit.

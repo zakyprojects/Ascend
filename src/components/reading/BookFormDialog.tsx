@@ -68,7 +68,7 @@ export function BookFormDialog({
   onClose: () => void;
 }) {
   const [values, setValues] = useState<BookFormValues>(() => valuesFrom(book, initialStatus));
-  const guard = useUnsavedChanges(open ? book?.id ?? 'new-book' : null, values);
+  const guard = useUnsavedChanges(open ? book?.id ?? 'new-book' : null, values, { key: 'book-form', restore: setValues });
   const update = (patch: Partial<BookFormValues>) => setValues((v) => ({ ...v, ...patch }));
 
   const editing = Boolean(book);

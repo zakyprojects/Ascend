@@ -100,7 +100,14 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
     return day !== null && day < weekStartKey;
   }).length;
 
-  const cravingForm = useUnsavedChanges(cravingModalOpen, [intensity, triggerText, copingText]);
+  const cravingForm = useUnsavedChanges(cravingModalOpen, [intensity, triggerText, copingText] as const, {
+    key: 'recovery-craving',
+    restore: ([i, t, c]) => {
+      setIntensity(i);
+      setTriggerText(t);
+      setCopingText(c);
+    },
+  });
   const setupForm = useUnsavedChanges(setupTrackerModalOpen, trackerTitle);
 
   // Every open starts clean.

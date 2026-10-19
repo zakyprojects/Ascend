@@ -59,7 +59,11 @@ type Choice = { key: string; type: PlanType; values: PlanFormValues };
 export function CreatePlanDialog({ store, open, onClose }: { store: AppStore; open: boolean; onClose: () => void }) {
   const [choice, setChoice] = useState<Choice | null>(null);
   const values = choice?.values;
-  const guard = useUnsavedChanges(open && choice ? choice.key : null, values ?? null);
+  // The draft returns once the same type or template is picked again.
+  const guard = useUnsavedChanges(open && choice ? choice.key : null, values ?? null, {
+    key: 'plan-create',
+    restore: (draft) => draft && setChoice((c) => (c ? { ...c, values: draft } : c)),
+  });
 
   const update = (patch: Partial<PlanFormValues>) =>
     setChoice((c) => (c ? { ...c, values: { ...c.values, ...patch } } : c));

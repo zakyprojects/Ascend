@@ -60,8 +60,8 @@ export function ReflectionsCard({
   // Write / Edit replace their button with the editor: its text field takes focus (caret at the end).
   // Cancel/Save close it and focus returns to that button (Write only while the window is open).
   const focusNext = useFocusOnRender();
-  const newForm = useUnsavedChanges(adding, newContent);
-  const editForm = useUnsavedChanges(editing?.id ?? null, editContent);
+  const newForm = useUnsavedChanges(adding, newContent, { key: `weekly-reflection:${weekKey}`, restore: setNewContent });
+  const editForm = useUnsavedChanges(editing?.id ?? null, editContent, { key: 'weekly-reflection-edit', restore: setEditContent });
   const newIssues = useFormController();
   const editIssues = useFormController();
 

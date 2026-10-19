@@ -74,7 +74,14 @@ export function SkillTracker({ store }: { store: AppStore }) {
   const [duration, setDuration] = useState(QUICK_MINUTES[0]);
   const [note, setNote] = useState('');
   const addForm = useUnsavedChanges(addModalOpen, [skillName, category]);
-  const logForm = useUnsavedChanges(logModalOpen, [logSkillId, duration, note]);
+  const logForm = useUnsavedChanges(logModalOpen, [logSkillId, duration, note] as const, {
+    key: 'skill-log',
+    restore: ([s, d, n]) => {
+      setLogSkillId(s);
+      setDuration(d);
+      setNote(n);
+    },
+  });
   const addIssues = useFormController();
   const logIssues = useFormController();
 

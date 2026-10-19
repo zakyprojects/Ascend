@@ -13,7 +13,7 @@ export function DecisionReflectDialog({
   onSave: (id: string, reflection: string) => void;
 }) {
   const [text, setText] = useState('');
-  const form = useUnsavedChanges(decision?.id ?? null, text);
+  const form = useUnsavedChanges(decision?.id ?? null, text, { key: 'pfc-decision-reflect', restore: setText });
 
   useEffect(() => {
     if (decision) setText('');

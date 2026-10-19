@@ -16,7 +16,15 @@ export function DecisionFormDialog({
   const [rationale, setRationale] = useState('');
   const [outcome, setOutcome] = useState('');
   const [revisit, setRevisit] = useState(() => todayKey());
-  const form = useUnsavedChanges(open, [title, rationale, outcome, revisit]);
+  const form = useUnsavedChanges(open, [title, rationale, outcome, revisit], {
+    key: 'pfc-decision',
+    restore: ([t, r, o, v]) => {
+      setTitle(t);
+      setRationale(r);
+      setOutcome(o);
+      setRevisit(v);
+    },
+  });
 
   // Every open starts clean: a dismissed draft is not shown again.
   useEffect(() => {
