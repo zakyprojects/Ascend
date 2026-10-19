@@ -421,7 +421,11 @@ const timeTrackerTemplates = timeTrackerCollection<TimeTrackerTemplate>(
 
 const dayStart = (day: TimeTrackerDay) => `${day.date}T00:00:00.000Z`;
 
-/** Latest time a day's blocks were created or resolved; the day's start when none. */
+/**
+ * Latest time a day's blocks were created or resolved; EPOCH when none. Not the day's start: for a
+ * planned future day that is a future time, which would beat a real edit from another device
+ * (newer updated_at wins) until that day came.
+ */
 function dayOwnTimestamp(day: TimeTrackerDay): string {
   let latest = '';
   for (const block of day.blocks || []) {
@@ -430,7 +434,7 @@ function dayOwnTimestamp(day: TimeTrackerDay): string {
       if (iso && iso > latest) latest = iso;
     }
   }
-  return latest || dayStart(day);
+  return latest || EPOCH;
 }
 
 // A day is one document (one row per date). dailyLogs keeps "absent" (auto-apply a template)
