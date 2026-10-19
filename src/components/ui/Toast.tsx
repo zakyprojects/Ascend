@@ -2,7 +2,6 @@ import { createContext, useContext, useState, useCallback, ReactNode, useEffect,
 import { CheckCircle2, AlertCircle, AlertTriangle, Info, X } from 'lucide-react';
 import { TAP_TARGET } from '@/components/ui/primitives/shared';
 import { prefersReducedMotion } from '@/lib/motion';
-import { trustedNowMs } from '@/lib/clock';
 
 export type ToastType = 'success' | 'error' | 'warning' | 'info';
 
@@ -49,11 +48,14 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 
   const showToast = useCallback((toast: Omit<ToastItem, 'id'>) => {
     const key = toast.dedupKey ? `${toast.type}:${toast.dedupKey}` : `${toast.type}:${toast.title}:${toast.message || ''}`;
-    const now = trustedNowMs();
-    const lastTime = lastShownRef.current.get(key) || 0;
+    // Pure UI durations (spam window, time left) use the monotonic page clock: a trusted-clock
+    // re-sync must never shorten or stretch them.
+    const now = performance.now();
+    // performance.now() starts near 0 at page load, so "never shown" must not read as time 0.
+    const lastTime = lastShownRef.current.get(key);
 
     // Suppress identical toasts shown within the last 6 seconds to prevent spam
-    if (now - lastTime < 6000) {
+    if (lastTime !== undefined && now - lastTime < 6000) {
       return;
     }
 
@@ -163,11 +165,11 @@ function ToastCard({ toast, onDismiss }: { toast: ShownToast; onDismiss: (id: st
 
   useEffect(() => {
     if (toast.duration <= 0 || paused || toast.leaving) return;
-    const startedAt = trustedNowMs();
+    const startedAt = performance.now();
     const timer = setTimeout(() => onDismiss(toast.id), remainingRef.current);
     return () => {
       clearTimeout(timer);
-      remainingRef.current = Math.max(0, remainingRef.current - (trustedNowMs() - startedAt));
+      remainingRef.current = Math.max(0, remainingRef.current - (performance.now() - startedAt));
     };
   }, [paused, toast.duration, toast.id, toast.leaving, onDismiss]);
 
