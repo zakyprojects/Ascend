@@ -10,7 +10,8 @@ import { TIER_ICONS } from '@/components/ui/TierBadge';
 import { LeagueCountdown } from '@/components/ui/LeagueCountdown';
 import { getLocalResetDetail, sortPointsNewestFirst } from '@/lib/leagues';
 import { getSeasonNumber, getSeasonStart, leagueNow } from '@/lib/leagueTime';
-import { getNow, isTodayLocal, isYesterdayLocal } from '@/lib/dates';
+import { formatDateKeyHuman, getNow, isTodayLocal, isYesterdayLocal, todayKey } from '@/lib/dates';
+import { entryDay } from '@/lib/weeklyActivity';
 import { useLocalDayKey } from '@/lib/useLocalDayKey';
 
 /** Entries the Recent points list shows (newest first). */
@@ -18,7 +19,12 @@ const RECENT_POINTS_SHOWN = 10;
 
 const rankVar = (tierName: string, part: 'text' | 'bg' | 'border') => `var(--rank-${tierName.toLowerCase()}-${part})`;
 
-/** "Today 3:40 PM", "Yesterday 9:05 AM", "Oct 12 · 3:40 PM"; entries from an earlier season say which. */
+/**
+ * "Today 3:40 PM", "Yesterday 9:05 AM", "Oct 12 · 3:40 PM"; entries from an earlier season say which.
+ * A row for another day than the one it was issued on (a missed-day penalty issued just after
+ * midnight, a grace-window time tracker row) names that day ("Yesterday", "Mon, Oct 12"), as the
+ * week charts do, not its issue time.
+ */
 function formatEntryTime(entry: PointsEntry, now: Date, seasonStart: Date): string {
   const d = new Date(entry.timestamp);
   if (Number.isNaN(d.getTime())) return '';
@@ -31,6 +37,8 @@ function formatEntryTime(entry: PointsEntry, now: Date, seasonStart: Date): stri
     });
     return `${day} · Season ${getSeasonNumber(d)}`;
   }
+  const day = entryDay(entry);
+  if (day && day !== todayKey(d)) return formatDateKeyHuman(day);
   if (isTodayLocal(entry.timestamp)) return `Today ${time}`;
   if (isYesterdayLocal(entry.timestamp)) return `Yesterday ${time}`;
   return `${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} · ${time}`;
