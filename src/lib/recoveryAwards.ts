@@ -4,8 +4,9 @@ import { getSeasonNumber, getSeasonStart } from './leagueTime';
 
 /**
  * Sobriety milestone points are written by the server
- * (supabase/migrations/20261015240000_server_recovery_awards.sql), from the live tracker's own
- * streak start, on every tracker write and by an hourly job:
+ * (supabase/migrations/20261015240000_server_recovery_awards.sql, take-back id match
+ * 20261019120000), from the live tracker's own streak start, on every tracker write and by an
+ * hourly job:
  *   * 1 week and 90 days earn once per season, 1 month once per streak.
  *   * A milestone is dated when it was reached (a season's re-earn: the season's start).
  *   * When the streak ends (relapse or tracker deleted), this season's awards of every other
@@ -25,7 +26,8 @@ export const RECOVERY_MILESTONES = [
 
 export type RecoveryMilestoneKey = (typeof RECOVERY_MILESTONES)[number]['key'];
 
-const AWARD_ID = /^recovery_([A-Za-z0-9]+)_(1w|1m|90d)_([0-9]+)(?:_s[0-9]+)?$/;
+// Tracker ids never contain an underscore; since the trusted clock they can contain a dot.
+const AWARD_ID = /^recovery_([^_]+)_(1w|1m|90d)_([0-9]+)(?:_s[0-9]+)?$/;
 const REVOKE_PREFIX = 'recovery_revoke_';
 
 /** 1 month is once per streak; 1 week and 90 days once per season (season 1 ids carry no suffix). */
