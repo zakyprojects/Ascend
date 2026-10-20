@@ -40,5 +40,14 @@ jobs:
       - name: Type-check API functions
         run: npm run typecheck:api
 
-      - name: Tests
+      # Users' time zone (no daylight saving) and one with daylight saving, so day/week
+      # logic is checked across both kinds of midnight.
+      - name: Tests (Asia/Karachi)
         run: npm test
+        env:
+          TZ: Asia/Karachi
+
+      - name: Tests (America/New_York, daylight saving)
+        run: npm test
+        env:
+          TZ: America/New_York
