@@ -254,8 +254,20 @@ export function AppShell({ currentView, navigationKind, pendingView = null, onVi
     <div className="relative isolate flex-1 lg:min-h-0 bg-bg-900 flex lg:overflow-hidden pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]">
       <div aria-hidden="true" className="app-atmosphere" />
       {pendingView && <div aria-hidden="true" className="page-progress" />}
+      {/* Keyboard users jump past the navigation; hidden until it takes focus. Focus moves to
+          <main> itself, so the next Tab lands on the page's first control. */}
+      <a
+        href="#main-content"
+        onClick={(event) => {
+          event.preventDefault();
+          mainRef.current?.focus();
+        }}
+        className={cx('skip-link btn btn-secondary', FOCUS_RING)}
+      >
+        Skip to content
+      </a>
       {/* Desktop navigation: one column with every page, or its icon rail (nav/Sidebar). */}
-      <aside className="relative z-sticky hidden lg:flex h-full glass border-r border-overlay-subtle shrink-0">
+      <aside aria-label="Sidebar" className="relative z-sticky hidden lg:flex h-full glass border-r border-overlay-subtle shrink-0">
         <Sidebar
           currentView={navView}
           activeGroup={getGroupForView(navView)}
@@ -325,7 +337,7 @@ export function AppShell({ currentView, navigationKind, pendingView = null, onVi
 
         {/* Main content. Below lg the window scrolls, so main must not be a scroll container there
             (the scroll-rise timeline would bind to it and never move); it only clips sideways. */}
-        <main ref={mainRef} data-page-area data-tab-swipe="" className="relative flex-1 max-lg:overflow-x-clip lg:overflow-y-auto pb-[calc(6rem_+_env(safe-area-inset-bottom))] lg:pb-0">
+        <main ref={mainRef} id="main-content" tabIndex={-1} data-page-area data-tab-swipe="" className="relative flex-1 outline-none max-lg:overflow-x-clip lg:overflow-y-auto pb-[calc(6rem_+_env(safe-area-inset-bottom))] lg:pb-0">
           {activeGroup && (
             <div id={PAGE_STRIP_ID} className="lg:hidden px-4 pt-3">
               <Tabs

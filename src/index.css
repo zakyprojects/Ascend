@@ -1057,6 +1057,11 @@
   }
 
 
+  /* Skip-to-content link (AppShell): off screen until keyboard focus brings it to the top-left. */
+  .skip-link {
+    @apply fixed left-3 top-[max(0.75rem,env(safe-area-inset-top))] z-blocking -translate-y-[200%] focus:translate-y-0 motion-reduce:transition-none;
+  }
+
   .btn-secondary {
     @apply btn bg-bg-600 text-content-secondary hover:bg-bg-500;
   }

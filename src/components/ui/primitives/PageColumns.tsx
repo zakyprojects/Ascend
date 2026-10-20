@@ -44,6 +44,7 @@ export function PageColumns({ lead, aside, children, footer, stickyAside = false
       {hasLead && <div className="min-w-0 space-y-6 min-[1440px]:col-start-1 min-[1440px]:row-start-1">{lead}</div>}
       {hasAside && (
         <aside
+          aria-label="Side column"
           className={cx(
             'min-w-0 space-y-6 min-[1440px]:col-start-2 min-[1440px]:row-start-1 min-[1440px]:self-start',
             split && 'min-[1440px]:row-span-2',
