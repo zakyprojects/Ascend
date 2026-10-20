@@ -17,6 +17,7 @@ import { withoutRetiredKeys, withoutUnsavedBlobKeys } from './retiredStateKeys';
 import { withoutDeviceLocalKeys } from './deviceLocalState';
 import { trustedNow, trustedNowMs } from './clock';
 import { CaptchaRejectedError, isCaptchaRejection, withCaptcha } from './captcha';
+import { SentSnapshots, snapshotOf } from './sentSnapshots';
 
 function getValidSupabaseUrl(url: unknown): string | null {
   if (typeof url !== 'string') return null;
@@ -77,6 +78,9 @@ function readRecoveryRedirect(): { recovery: boolean; error: string | null } {
 const recoveryRedirect = readRecoveryRedirect();
 let passwordRecoverySession = recoveryRedirect.recovery;
 
+/** What this tab last wrote per account, to skip saves identical to the last successful one. */
+const sentSnapshots = new SentSnapshots();
+
 export const supabase = createClient(
   supabaseUrl,
   supabaseAnonKey,
@@ -94,6 +98,8 @@ export const supabase = createClient(
 supabase.auth.onAuthStateChange((event) => {
   if (event === 'PASSWORD_RECOVERY') passwordRecoverySession = true;
   else if (event === 'SIGNED_OUT') passwordRecoverySession = false;
+  // A new sign-in or a sign-out: the next save writes everything again.
+  if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') sentSnapshots.forget();
 });
 
 /** This tab was opened from a password-reset email and its session may set a new password. */
@@ -255,6 +261,7 @@ export function getUserDataWatermark(userId: string): UserDataWeight | undefined
 export function clearUserDataWatermark(userId: string) {
   userWatermarkMap.delete(userId);
   userHydrationCompleteMap.delete(userId);
+  sentSnapshots.forget(userId);
 }
 
 export async function fetchUserDataWithStatusFromSupabase(userId: string): Promise<{
@@ -581,7 +588,8 @@ const IDENTITY_PROFILE_COLUMNS = ['username', 'avatar'];
 
 /**
  * Writes the public profile columns (an update; the full upsert, identity included, only when the
- * row does not exist yet), then the private ones with a plain update.
+ * row does not exist yet), then the private ones with a plain update. A part identical to the one
+ * this tab last wrote for the account is not sent again (the profile triggers cost a round trip each).
  */
 async function writeOwnProfile(userId: string, payload: Record<string, any>) {
   const publicPart: Record<string, any> = {};
@@ -592,18 +600,26 @@ async function writeOwnProfile(userId: string, payload: Record<string, any>) {
   const updatePart = Object.fromEntries(
     Object.entries(publicPart).filter(([key]) => key !== 'id' && !IDENTITY_PROFILE_COLUMNS.includes(key))
   );
-  const { data: updatedRows, error: updateErr } = await supabase
-    .from('profiles')
-    .update(updatePart)
-    .eq('id', userId)
-    .select('id');
-  if (updateErr) return updateErr;
-  if (!updatedRows || updatedRows.length === 0) {
-    const { error } = await supabase.from('profiles').upsert(publicPart);
-    if (error) return error;
+  // Each part is sent only when it differs from what this tab last wrote for this account.
+  const publicSnapshot = snapshotOf(updatePart);
+  if (!sentSnapshots.matches(userId, 'profile-public', publicSnapshot)) {
+    const { data: updatedRows, error: updateErr } = await supabase
+      .from('profiles')
+      .update(updatePart)
+      .eq('id', userId)
+      .select('id');
+    if (updateErr) return updateErr;
+    if (!updatedRows || updatedRows.length === 0) {
+      const { error } = await supabase.from('profiles').upsert(publicPart);
+      if (error) return error;
+    }
+    sentSnapshots.remember(userId, 'profile-public', publicSnapshot);
   }
   if (Object.keys(privatePart).length === 0) return null;
+  const privateSnapshot = snapshotOf(privatePart);
+  if (sentSnapshots.matches(userId, 'profile-private', privateSnapshot)) return null;
   const { error: privateErr } = await supabase.from('profiles').update(privatePart).eq('id', userId);
+  if (!privateErr) sentSnapshots.remember(userId, 'profile-private', privateSnapshot);
   return privateErr;
 }
 
