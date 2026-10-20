@@ -203,13 +203,21 @@
     --spot-color: 52 211 153;
     --spot-alpha: 0.04;
     --spot-ring-alpha: 0.45;
-    /* Hero card corner tint (.hero-glow). */
+    /* Hero card corner tint (.hero-glow) and the primary button's hover lift (shadow-brand-glow). */
     --hero-glow: rgb(16 185 129 / 0.10);
+    --brand-glow: 0 6px 18px -8px rgb(16 185 129 / 0.45);
+    /* Accent lines: every see-through emerald border or ring (border-primary-500/20, ring-emerald-500/30 …)
+       is drawn from these via tailwind.config (accentLine), so each theme sets their hue and strength here.
+       Solid ones (border-primary-500) stay the plain brand colour. */
+    --accent-line-400-rgb: 52 211 153;
+    --accent-line-500-rgb: 16 185 129;
+    --accent-line-k: 1;
   }
 
   /* Light theme surfaces (Zakria 2026-10-20: the redesign reused dark's emerald glows on white, which
      read as green outlines and stains). Light keeps the same effects, tuned for a white page: glows a
-     whisper of emerald, the card glint and list ring in neutral ink. All light-theme glow/border colour lives here; components never set their own. */
+     whisper of emerald, the card glint and list ring in neutral ink, accent lines in deep emerald and
+     lighter. All light-theme glow/border colour lives here; components never set their own. */
   [data-theme='light'] {
     --atmo-glow-a: rgb(16 185 129 / 0.05);
     --atmo-glow-b: rgb(20 184 166 / 0.03);
@@ -223,6 +231,10 @@
     --spot-alpha: 0.015;
     --spot-ring-alpha: 0.16;
     --hero-glow: rgb(16 185 129 / 0.035);
+    --brand-glow: 0 6px 16px -8px rgb(15 23 42 / 0.28);
+    --accent-line-400-rgb: 5 150 105;
+    --accent-line-500-rgb: 5 150 105;
+    --accent-line-k: 0.6;
 
     /* Surfaces */
     --color-bg-900: #f6f8f7;  /* page */
