@@ -61,6 +61,8 @@ function runFixtures() {
   assert(legalRouteFromPath('/privacy') === 'privacy' && legalRouteFromPath('/Terms/') === 'terms', 'legal path case + slash');
   assert(legalRouteFromPath('/privacy/extra') === null && legalRouteFromPath('/login') === null, 'not a legal page');
   assert(authRouteFromPath('/privacy') === null && viewFromPath('/terms') === null, 'legal pages are neither sign-in pages nor app pages');
+  assert(pathForLegalRoute('about') === '/about' && legalRouteFromPath('/About/') === 'about', 'about page');
+  assert(viewFromPath('/about') === null && authRouteFromPath('/about') === null, 'about is neither a sign-in page nor an app page');
 
   // next: only same-site paths
   assert(safeNextPath('/habits') === '/habits', 'plain path');

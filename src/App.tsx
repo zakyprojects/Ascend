@@ -81,7 +81,7 @@ function App() {
   const [leavingAuth, setLeavingAuth] = useState(false);
   if (leavingAuth && !auth) setLeavingAuth(false);
   // /reset-password is shown to anyone (signed in by its link or not) and never redirected; so are
-  // the legal pages (/privacy, /terms).
+  // the public pages (/privacy, /terms, /about).
   const onResetPassword = auth === 'reset-password';
   let routeScreen: AuthScreen | null = null;
   if (authReady && authGate) {

@@ -23,7 +23,7 @@ import { confirmLeave, hasUnsavedChanges } from './unsavedChanges';
  * app loads; the check here covers a hash typed into the address bar later).
  *
  * `/login` and `/signup` are routes too (`auth`), shown outside the app shell; App decides who
- * may see them and redirects with `goToPath`. So are `/privacy` and `/terms` (`legal`), which
+ * may see them and redirects with `goToPath`. So are `/privacy`, `/terms` and `/about` (`legal`), which
  * anyone may see.
  */
 
