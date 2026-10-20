@@ -86,6 +86,47 @@ function apiFunctionsPlugin(): Plugin {
 }
 
 /**
+ * Signed-out visits start on the sign-in page, which used to load in a chain: main bundle, then
+ * the AuthPage chunk (requested from main.tsx), then its fonts (found only once the CSS applied).
+ * This adds preload links to index.html so the browser fetches them alongside the main bundle:
+ * the AuthPage chunk and the chunks it imports, and the latin files of the two faces on the
+ * sign-in page's first screen (Geist, Instrument Serif regular). Signed-in visits fetch the
+ * AuthPage chunks too (~16 KB gzip, cached afterwards). Build only; matched by module id and
+ * file name, so a renamed AuthPage or font silently drops its preload (the page still works).
+ */
+function signInPreloadPlugin(): Plugin {
+  const AUTH_PAGE = '/src/components/auth/AuthPage.tsx';
+  const FONTS = [/^assets\/geist-latin-wght-normal-.*\.woff2$/, /^assets\/instrument-serif-latin-400-normal-.*\.woff2$/];
+  return {
+    name: 'sign-in-preload',
+    apply: 'build',
+    transformIndexHtml: {
+      order: 'post',
+      handler(html, ctx) {
+        const bundle = ctx.bundle;
+        if (!bundle) return html;
+        const chunks = Object.values(bundle).filter((file) => file.type === 'chunk');
+        const auth = chunks.find((chunk) => chunk.facadeModuleId?.replaceAll('\\', '/').endsWith(AUTH_PAGE));
+        const scripts = new Set<string>();
+        const visit = (fileName: string) => {
+          const chunk = bundle[fileName];
+          if (!chunk || chunk.type !== 'chunk' || scripts.has(fileName) || chunk.isEntry) return;
+          scripts.add(fileName);
+          chunk.imports.forEach(visit);
+        };
+        if (auth) visit(auth.fileName);
+        const fonts = Object.keys(bundle).filter((name) => FONTS.some((pattern) => pattern.test(name)));
+        const tags = [
+          ...[...scripts].filter((name) => !html.includes(`/${name}"`)).map((name) => `<link rel="modulepreload" crossorigin href="/${name}">`),
+          ...fonts.map((name) => `<link rel="preload" as="font" type="font/woff2" crossorigin href="/${name}">`),
+        ];
+        return html.replace('</head>', `    ${tags.join('\n    ')}\n  </head>`);
+      },
+    },
+  };
+}
+
+/**
  * Crash reports show real file names and lines: on a build with SENTRY_AUTH_TOKEN (Vercel only,
  * never .env.local), source maps are made, uploaded to Sentry under this release, then deleted
  * from dist so they are never served. Without the token nothing is made or uploaded.
@@ -97,6 +138,7 @@ export default defineConfig({
   plugins: [
     react(),
     versionFilePlugin(),
+    signInPreloadPlugin(),
     apiFunctionsPlugin(),
     sentryUpload &&
       sentryVitePlugin({
