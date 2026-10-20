@@ -1,7 +1,7 @@
 import { Moon, Sun } from 'lucide-react';
 import { AppStore } from '@/lib/store';
 import type { View } from '@/lib/views';
-import { NAV_HELP } from '@/components/nav/navConfig';
+import { NAV_GROUPS, NAV_HELP } from '@/components/nav/navConfig';
 import { cx, FOCUS_RING, Switch } from '@/components/ui/primitives';
 import { useAsyncActionKey } from '@/lib/useAsyncAction';
 import { pageLinkProps } from '@/lib/pageLink';
@@ -108,9 +108,27 @@ export function AppInfoSection({ onNavigate }: { onNavigate: (view: View) => voi
         <p className="mt-0.5 text-xs text-content-muted tabular-nums">
           Version {__APP_VERSION__} · Build {__APP_BUILD__}
         </p>
-        <p className="mt-2 text-xs leading-relaxed text-content-muted">
-          Track habits, exercise, reading and skills, compete in leagues, and keep each other on track with partners.
+        <p className="mt-3 text-sm leading-relaxed text-content-secondary">
+          Ascend turns self-improvement into a season you can win. What you do each day earns points, points move you
+          up the ranks and your league, and a partner can keep you on track. Signed in, your data syncs across your
+          devices.
         </p>
+      </div>
+      <div className="space-y-3 border-t border-overlay-subtle pt-4">
+        <h3 className="text-sm font-semibold text-content-primary">What's inside</h3>
+        <dl className="grid gap-3 sm:grid-cols-2">
+          {NAV_GROUPS.map(({ id, label, icon: Icon, items }) => (
+            <div key={id} className="flex gap-3 rounded-xl border border-overlay-subtle p-3">
+              <Icon size={16} className="mt-0.5 shrink-0 text-brand-text" aria-hidden="true" />
+              <div className="min-w-0">
+                <dt className="text-sm font-medium text-content-primary">{label}</dt>
+                <dd className="mt-0.5 text-xs leading-relaxed text-content-muted">
+                  {items.map((item) => item.label).join(' · ')}
+                </dd>
+              </div>
+            </div>
+          ))}
+        </dl>
       </div>
       <div className="flex flex-wrap items-center gap-2 border-t border-overlay-subtle pt-4">
         {NAV_HELP.map(({ id, label, icon: Icon }) => (

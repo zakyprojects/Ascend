@@ -9,8 +9,8 @@ const LINK_CLASS = cx('font-medium text-brand-text hover:underline underline-off
 
 function Part({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <div className="space-y-2">
-      <h3 className="text-sm font-medium text-content-primary">{title}</h3>
+    <div className="space-y-3">
+      <h3 className="text-base font-semibold text-content-primary">{title}</h3>
       {children}
     </div>
   );
@@ -36,7 +36,7 @@ function Email() {
 export function AboutUsSection({ onNavigate }: { onNavigate: (view: View) => void }) {
   return (
     <SettingsCard title="About us">
-      <div className="space-y-6 text-sm leading-relaxed text-content-secondary">
+      <div className="space-y-8 text-sm leading-relaxed text-content-secondary">
         <div className="space-y-2">
           <p className="text-base font-medium text-content-primary">
             Made by a student who thinks competition can be put to better use.
@@ -95,7 +95,7 @@ export function AboutUsSection({ onNavigate }: { onNavigate: (view: View) => voi
 export function SupportSection({ onNavigate }: { onNavigate: (view: View) => void }) {
   return (
     <SettingsCard title="Support">
-      <div className="space-y-6 text-sm leading-relaxed text-content-secondary">
+      <div className="space-y-8 text-sm leading-relaxed text-content-secondary">
         <p>Ascend is built by one student, and most of the ways to help it don’t cost anything.</p>
 
         <Part title="Free ways to help">
