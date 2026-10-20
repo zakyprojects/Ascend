@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Bell, Eye, Info, KeyRound, Palette, User, Vibrate, type LucideIcon } from 'lucide-react';
+import { Bell, Eye, HeartHandshake, Info, KeyRound, Palette, User, UserRound, Vibrate, type LucideIcon } from 'lucide-react';
 import { GuestSaveBanner } from '@/components/ui/GuestSaveBanner';
 import { AppStore } from '@/lib/store';
 import type { View } from '@/lib/views';
@@ -17,13 +17,14 @@ import {
 import { ProfileSection } from '@/components/settings/ProfileSection';
 import { AccountSection } from '@/components/settings/AccountSection';
 import { NotificationsSection } from '@/components/settings/NotificationsSection';
-import { AboutSection, AppearanceSection, PrivacySection } from '@/components/settings/PreferenceSections';
+import { AppInfoSection, AppearanceSection, PrivacySection } from '@/components/settings/PreferenceSections';
+import { AboutUsSection, SupportSection } from '@/components/settings/MakerSections';
 import { SoundVibrationSection } from '@/components/settings/SoundVibrationSection';
 
 interface SettingsViewProps {
   store: AppStore;
   onOpenAuth?: () => void;
-  /** Opens another page (the Help links under About). */
+  /** Opens another page (the Help links under App info, About us and Support). */
   onNavigate: (view: View) => void;
 }
 
@@ -34,7 +35,9 @@ const SECTIONS: { id: SettingsSection; label: string; icon: LucideIcon }[] = [
   { id: 'privacy', label: 'Privacy', icon: Eye },
   { id: 'appearance', label: 'Appearance', icon: Palette },
   { id: 'sound', label: 'Sound & vibration', icon: Vibrate },
-  { id: 'about', label: 'About', icon: Info },
+  { id: 'app', label: 'App info', icon: Info },
+  { id: 'about-us', label: 'About us', icon: UserRound },
+  { id: 'support', label: 'Support', icon: HeartHandshake },
 ];
 const SECTION_IDS = SECTIONS.map(({ id }) => id);
 
@@ -144,7 +147,9 @@ export function SettingsView({ store, onOpenAuth, onNavigate }: SettingsViewProp
             {section === 'privacy' && <PrivacySection store={store} />}
             {section === 'appearance' && <AppearanceSection store={store} />}
             {section === 'sound' && <SoundVibrationSection />}
-            {section === 'about' && <AboutSection onNavigate={onNavigate} />}
+            {section === 'app' && <AppInfoSection onNavigate={onNavigate} />}
+            {section === 'about-us' && <AboutUsSection onNavigate={onNavigate} />}
+            {section === 'support' && <SupportSection onNavigate={onNavigate} />}
           </Reveal>
         </TabPanel>
       </div>

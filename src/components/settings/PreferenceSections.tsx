@@ -100,9 +100,9 @@ export function AppearanceSection({ store }: { store: AppStore }) {
   );
 }
 
-export function AboutSection({ onNavigate }: { onNavigate: (view: View) => void }) {
+export function AppInfoSection({ onNavigate }: { onNavigate: (view: View) => void }) {
   return (
-    <SettingsCard title="About">
+    <SettingsCard title="App info">
       <div>
         <p className="text-sm font-medium text-content-primary">Ascend</p>
         <p className="mt-0.5 text-xs text-content-muted tabular-nums">

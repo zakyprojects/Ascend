@@ -2,7 +2,7 @@
  * Settings sections and their address: `/settings?section=notifications` (D-S2). The section is
  * kept in the query, so a reload stays on it and other screens can link straight to it.
  */
-export const SETTINGS_SECTIONS = ['profile', 'account', 'notifications', 'privacy', 'appearance', 'sound', 'about'] as const;
+export const SETTINGS_SECTIONS = ['profile', 'account', 'notifications', 'privacy', 'appearance', 'sound', 'app', 'about-us', 'support'] as const;
 export type SettingsSection = (typeof SETTINGS_SECTIONS)[number];
 
 export const DEFAULT_SETTINGS_SECTION: SettingsSection = 'profile';
