@@ -1,5 +1,6 @@
 import { defineConfig, loadEnv, Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
+import { sentryVitePlugin } from '@sentry/vite-plugin';
 import { fileURLToPath, URL } from 'node:url';
 import { readFileSync } from 'node:fs';
 
@@ -84,9 +85,29 @@ function apiFunctionsPlugin(): Plugin {
   };
 }
 
+/**
+ * Crash reports show real file names and lines: on a build with SENTRY_AUTH_TOKEN (Vercel only,
+ * never .env.local), source maps are made, uploaded to Sentry under this release, then deleted
+ * from dist so they are never served. Without the token nothing is made or uploaded.
+ */
+const sentryUpload = Boolean(process.env.SENTRY_AUTH_TOKEN);
+
 // https://vitejs.dev/config/
 export default defineConfig({
-  plugins: [react(), versionFilePlugin(), apiFunctionsPlugin()],
+  plugins: [
+    react(),
+    versionFilePlugin(),
+    apiFunctionsPlugin(),
+    sentryUpload &&
+      sentryVitePlugin({
+        org: process.env.SENTRY_ORG,
+        project: process.env.SENTRY_PROJECT,
+        authToken: process.env.SENTRY_AUTH_TOKEN,
+        release: { name: `ascend@${pkg.version}` },
+        sourcemaps: { filesToDeleteAfterUpload: ['./dist/**/*.map'] },
+        telemetry: false,
+      }),
+  ],
   define: {
     __APP_VERSION__: JSON.stringify(pkg.version),
     __APP_BUILD__: JSON.stringify(buildDate),
@@ -105,6 +126,7 @@ export default defineConfig({
     exclude: ['lucide-react'],
   },
   build: {
+    sourcemap: sentryUpload ? 'hidden' : false,
     rollupOptions: {
       output: {
         // Libraries in their own chunks: they change far less often than the app, so a deploy

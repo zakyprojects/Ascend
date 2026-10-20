@@ -1,6 +1,7 @@
 import { Component, ErrorInfo, ReactNode } from 'react';
 import { AlertTriangle, RefreshCw, Wrench } from 'lucide-react';
 import { isBuildFileError, repairBuildFiles } from '@/lib/assetRecovery';
+import { reportError } from '@/lib/errorReporting';
 
 interface Props {
   children: ReactNode;
@@ -27,7 +28,11 @@ export class ErrorBoundary extends Component<Props, State> {
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error('Uncaught error caught by ErrorBoundary:', error, errorInfo);
     // A build file that failed to load (an update landed): repair and reload on its own.
-    if (isBuildFileError(error)) repairBuildFiles({ automatic: true });
+    if (isBuildFileError(error)) {
+      repairBuildFiles({ automatic: true });
+      return;
+    }
+    reportError(error, { componentStack: errorInfo.componentStack, boundary: this.props.variant ?? 'section' });
   }
 
   /** The error's own words, short, so a screenshot of the card shows what failed. */
