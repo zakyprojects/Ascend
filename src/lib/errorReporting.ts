@@ -15,6 +15,9 @@ const MAX_QUEUED = 20;
 
 type Report = { error: unknown; extra?: Record<string, unknown> };
 let enabled = false;
+// Read at start-up: a signed-out visit is redirected to /login (query moved into `next`) before
+// the SDK loads.
+let sentryTest = false;
 let send: ((report: Report) => void) | null = null;
 const queued: Report[] = [];
 
@@ -32,7 +35,7 @@ const onRejection = (event: PromiseRejectionEvent) => enqueue({ error: event.rea
 async function loadSentry(): Promise<void> {
   try {
     const client = await import('./sentryClient');
-    client.startSentry(DSN);
+    client.startSentry(DSN, sentryTest);
     // Sentry's own handlers take over from here.
     window.removeEventListener('error', onError);
     window.removeEventListener('unhandledrejection', onRejection);
@@ -47,6 +50,7 @@ async function loadSentry(): Promise<void> {
 export function installErrorReporting(): void {
   if (!import.meta.env.PROD || !DSN) return;
   enabled = true;
+  sentryTest = new URLSearchParams(window.location.search).has('sentry-test');
   window.addEventListener('error', onError);
   window.addEventListener('unhandledrejection', onRejection);
   if (document.readyState === 'complete') void loadSentry();

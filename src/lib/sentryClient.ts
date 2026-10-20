@@ -18,7 +18,7 @@ function stripUrl(url: string): string {
 }
 
 /** Starts Sentry; errorReporting.ts then hands over what it queued before this loaded. */
-export function startSentry(dsn: string): void {
+export function startSentry(dsn: string, sentryTest: boolean): void {
   Sentry.init({
     dsn,
     release: `ascend@${__APP_VERSION__}`,
@@ -58,7 +58,7 @@ export function startSentry(dsn: string): void {
     },
   });
   // Setup check: open the app with ?sentry-test and one test crash is reported from our own file.
-  if (new URLSearchParams(window.location.search).has('sentry-test')) {
+  if (sentryTest) {
     window.setTimeout(() => {
       throw new Error('Sentry test crash (safe to resolve)');
     }, 0);
