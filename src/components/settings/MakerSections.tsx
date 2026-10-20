@@ -100,14 +100,14 @@ const FUEL_MENU: { name: string; line: string; icon: LucideIcon }[] = [
 ];
 
 function fuelMailto(name: string) {
-  const subject = encodeURIComponent(`Fuel the Streak: ${name}`);
+  const subject = encodeURIComponent(`Buy us a coffee: ${name}`);
   return `mailto:${LEGAL_CONTACT_EMAIL}?subject=${subject}`;
 }
 
 /** Settings > Support: a "buy me a coffee" menu (by email, no payments in the app) and free ways to help. */
 export function SupportSection({ onNavigate }: { onNavigate: (view: View) => void }) {
   return (
-    <SettingsCard title="Fuel the Streak">
+    <SettingsCard title="Buy us a coffee">
       <div className="space-y-8 text-sm leading-relaxed text-content-secondary">
         <p>
           Ascend is built by one student. If it’s helped you keep a habit or win a week, you can buy me a chai or a
