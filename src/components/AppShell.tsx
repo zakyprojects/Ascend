@@ -26,6 +26,7 @@ import { CommandPalette } from './nav/CommandPalette';
 import { getNavStatuses } from '@/lib/navStatus';
 import { prefersReducedMotion } from '@/lib/motion';
 import { pageLinkProps } from '@/lib/pageLink';
+import { cx, FOCUS_RING } from '@/components/ui/primitives/shared';
 import { RankChip } from './ui/RankChip';
 import { RankUpCelebration } from './ui/RankUpCelebration';
 import { useRankUpCelebration } from '@/lib/useRankUpCelebration';
@@ -288,13 +289,14 @@ export function AppShell({ currentView, navigationKind, pendingView = null, onVi
       <div className="flex-1 flex flex-col min-w-0 lg:h-full lg:overflow-hidden">
         {/* Mobile header */}
         <header className="app-header lg:hidden glass border-b px-4 pt-[calc(0.75rem_+_env(safe-area-inset-top))] pb-3 flex items-center justify-between sticky top-0 z-30">
-          <div className="flex items-center gap-1.5 sm:gap-2">
+          {/* Logo + name go to the Dashboard (or back to its top), like the desktop sidebar's. */}
+          <a {...pageLinkProps(NAV_DASHBOARD.id, goTo)} className={cx('flex items-center gap-1.5 sm:gap-2 rounded-lg', FOCUS_RING)}>
             <AppLogo variant="small" className="w-8 h-8 shrink-0" />
             <span className="font-display font-bold text-content-primary">Ascend</span>
             <span className="whitespace-nowrap shrink-0 px-1.5 py-0.5 rounded-lg badge-beta text-3xs font-semibold">
               Beta
             </span>
-          </div>
+          </a>
 
           <div className="flex items-center gap-2">
             <Button variant="ghost" size="icon" aria-label="Quick log" onClick={() => setQuickLogOpen(true)}>
