@@ -392,8 +392,18 @@
     -webkit-tap-highlight-color: transparent;
   }
 
+  /* Installed app (PWA) only: no pinch or double-tap zoom, so a stray two-finger touch during a swipe
+     cannot leave the app zoomed and sliding sideways (Zakria 2026-10-20). touch-action narrows down the
+     tree, so this also overrides the "pan-y pinch-zoom" on swipe surfaces. Browser tabs keep zoom for
+     accessibility, and the viewport meta is untouched, so Android's "Force enable zoom" still works. */
+  @media (display-mode: standalone) {
+    html {
+      touch-action: pan-x pan-y;
+    }
+  }
+
   /* iOS Safari auto-zooms into any focused field under 16px. Pinch-zoom is
-     enabled (no user-scalable=no), so keep text fields at 16px on iOS only;
+     enabled in browser tabs (no user-scalable=no), so keep text fields at 16px on iOS only;
      other platforms keep their designed sizes. */
   @supports (-webkit-touch-callout: none) {
     input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']),
