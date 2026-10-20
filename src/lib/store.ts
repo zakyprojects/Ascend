@@ -218,6 +218,7 @@ import { SYNCED_COLLECTIONS, itemsOf, rowIdOf, syncKeyOf } from './sync/syncedCo
 import { mergeAppState, deduplicatePresetHabits, mergeAppStateWithGuardResult, isLegitimateTombstoneId } from './stateMerger';
 import { toUserMessage } from './userMessage';
 import { disablePush } from './push';
+import { keepIfUnchanged } from './stateEquality';
 
 // Cross-tab real-time state synchronization channel
 export const STATE_SYNC_CHANNEL_NAME = 'ascend-state-sync';
@@ -3231,10 +3232,11 @@ export function useAppState() {
           return updated;
         });
 
-        return {
-          ...weeklyGoalsReconciledState,
-          sharedChallenges: reconciledChallenges,
-        };
+        const next = { ...weeklyGoalsReconciledState, sharedChallenges: reconciledChallenges };
+        // A tick that changed nothing keeps the same state, so nothing re-renders or saves. While
+        // an immediate save waits (its own update changed nothing), the tick still runs the
+        // autosave as before, which settles that wait.
+        return pendingImmediateResolvers.current.length > 0 ? next : keepIfUnchanged(prev, next);
       });
 
       for (const updated of challengesToSync) {
