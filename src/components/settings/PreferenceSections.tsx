@@ -5,6 +5,7 @@ import { NAV_HELP } from '@/components/nav/navConfig';
 import { cx, FOCUS_RING, Switch } from '@/components/ui/primitives';
 import { useAsyncActionKey } from '@/lib/useAsyncAction';
 import { pageLinkProps } from '@/lib/pageLink';
+import { pathForLegalRoute } from '@/lib/routes';
 import { toggleThemeWithReveal } from '@/lib/themeTransition';
 import { SettingRow, SettingsCard } from './SettingRow';
 
@@ -123,6 +124,20 @@ export function AboutSection({ onNavigate }: { onNavigate: (view: View) => void 
           >
             <Icon size={14} aria-hidden="true" />
             {label}
+          </a>
+        ))}
+      </div>
+      {/* A new tab, so this page (and anything typed here) stays as it is. */}
+      <div className="-mb-2 flex flex-wrap items-center gap-x-5">
+        {(['privacy', 'terms'] as const).map((route) => (
+          <a
+            key={route}
+            href={pathForLegalRoute(route)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={cx('inline-flex min-h-11 items-center rounded-lg text-xs font-medium text-brand-text hover:underline underline-offset-2', FOCUS_RING)}
+          >
+            {route === 'privacy' ? 'Privacy Policy' : 'Terms'}
           </a>
         ))}
       </div>
