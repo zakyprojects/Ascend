@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Bell, Eye, HeartHandshake, Info, KeyRound, Palette, User, UserRound, Vibrate, type LucideIcon } from 'lucide-react';
+import { Bell, Coffee, Eye, Info, KeyRound, Palette, User, UserRound, Vibrate, type LucideIcon } from 'lucide-react';
 import { GuestSaveBanner } from '@/components/ui/GuestSaveBanner';
 import { AppStore } from '@/lib/store';
 import type { View } from '@/lib/views';
@@ -37,7 +37,7 @@ const SECTIONS: { id: SettingsSection; label: string; icon: LucideIcon }[] = [
   { id: 'sound', label: 'Sound & vibration', icon: Vibrate },
   { id: 'app', label: 'App info', icon: Info },
   { id: 'about-us', label: 'About us', icon: UserRound },
-  { id: 'support', label: 'Support', icon: HeartHandshake },
+  { id: 'support', label: 'Support', icon: Coffee },
 ];
 const SECTION_IDS = SECTIONS.map(({ id }) => id);
 

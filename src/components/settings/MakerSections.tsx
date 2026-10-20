@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { Coffee, CupSoda, Flame, type LucideIcon } from 'lucide-react';
 import type { View } from '@/lib/views';
 import { cx, FOCUS_RING } from '@/components/ui/primitives';
 import { LEGAL_CONTACT_EMAIL } from '@/lib/legal';
@@ -91,12 +92,50 @@ export function AboutUsSection({ onNavigate }: { onNavigate: (view: View) => voi
   );
 }
 
-/** Settings > Support: ways to help Ascend. No payments in the app; money offers go by email. */
+/** One drink on the Support menu. Nothing is paid in the app: each one opens an email to Zakria. */
+const FUEL_MENU: { name: string; line: string; icon: LucideIcon }[] = [
+  { name: 'A chai', line: 'A small thank-you that says keep going.', icon: CupSoda },
+  { name: 'A coffee', line: 'Fuel for a late night of fixing and building.', icon: Coffee },
+  { name: 'A streak saver', line: 'For when Ascend really helped you and you want it to keep climbing.', icon: Flame },
+];
+
+function fuelMailto(name: string) {
+  const subject = encodeURIComponent(`Fuel the Streak: ${name}`);
+  return `mailto:${LEGAL_CONTACT_EMAIL}?subject=${subject}`;
+}
+
+/** Settings > Support: a "buy me a coffee" menu (by email, no payments in the app) and free ways to help. */
 export function SupportSection({ onNavigate }: { onNavigate: (view: View) => void }) {
   return (
-    <SettingsCard title="Support">
+    <SettingsCard title="Fuel the Streak">
       <div className="space-y-8 text-sm leading-relaxed text-content-secondary">
-        <p>Ascend is built by one student, and most of the ways to help it don’t cost anything.</p>
+        <p>
+          Ascend is built by one student. If it’s helped you keep a habit or win a week, you can buy me a chai or a
+          coffee. Pick one and send me an email, and I’ll reply with how to send it.
+        </p>
+
+        <ul className="grid gap-3 sm:grid-cols-3">
+          {FUEL_MENU.map(({ name, line, icon: Icon }) => (
+            <li key={name}>
+              <a
+                href={fuelMailto(name)}
+                className={cx(
+                  'flex h-full flex-col gap-3 rounded-xl border border-overlay-default p-4 transition-colors hover:border-primary-500/40 hover:bg-overlay-subtle',
+                  FOCUS_RING
+                )}
+              >
+                <span className="flex size-10 items-center justify-center rounded-full bg-primary-500/10 text-brand-text">
+                  <Icon size={20} aria-hidden="true" />
+                </span>
+                <span className="space-y-1">
+                  <span className="block text-sm font-semibold text-content-primary">{name}</span>
+                  <span className="block text-xs leading-relaxed text-content-muted">{line}</span>
+                </span>
+                <span className="mt-auto text-xs font-medium text-brand-text">Email me</span>
+              </a>
+            </li>
+          ))}
+        </ul>
 
         <Part title="Free ways to help">
           <ul className="list-disc space-y-1.5 pl-5 marker:text-content-muted">
@@ -110,12 +149,9 @@ export function SupportSection({ onNavigate }: { onNavigate: (view: View) => voi
           </ul>
         </Part>
 
-        <Part title="Want to support it another way?">
-          <p>
-            If you’d like to help with costs or support Ascend in some other way, email me at <Email /> and we’ll
-            talk.
-          </p>
-        </Part>
+        <p className="text-xs text-content-muted">
+          Anything else, write to <Email />. Thank you for being here.
+        </p>
       </div>
     </SettingsCard>
   );
