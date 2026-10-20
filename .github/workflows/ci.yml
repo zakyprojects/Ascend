@@ -1,0 +1,44 @@
+name: CI
+
+# Every push and pull request to main: the app must build, lint clean, type-check the
+# API functions and pass the fixture tests. Production only gets commits that are green here.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Build, lint, type-check, test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Build (app type-check + Vite build)
+        run: npm run build
+
+      - name: Lint
+        run: npx eslint src --quiet
+
+      - name: Type-check API functions
+        run: npm run typecheck:api
+
+      - name: Tests
+        run: npm test

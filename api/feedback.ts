@@ -249,7 +249,9 @@ async function fileReport(
   const lookup = await findIssueByRef(token, repo, ref);
   if ('error' in lookup) return lookup.error;
   if (lookup.found) return json(200, { ok: true, ref });
-  if ((lookup.filedToday ?? 0) >= DAILY_MAX) return json(429, { error: 'daily_limit' });
+  // `in` narrows under any compiler settings (Vercel's function check runs without strict).
+  const filedToday = 'filedToday' in lookup ? (lookup.filedToday ?? 0) : 0;
+  if (filedToday >= DAILY_MAX) return json(429, { error: 'daily_limit' });
 
   const fields = (input.fields ?? {}) as Record<string, unknown>;
   const context = (input.context ?? {}) as Record<string, unknown>;
