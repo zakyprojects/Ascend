@@ -10,7 +10,7 @@ export interface LegalPageProps {
   onNavigate: (path: string) => void;
 }
 
-const TITLES: Record<LegalRoute, string> = { privacy: 'Privacy Policy', terms: 'Terms', about: 'About Ascend' };
+const TITLES: Record<LegalRoute, string> = { privacy: 'Privacy Policy', terms: 'Terms' };
 
 const LINK_CLASS = cx('font-medium text-brand-text hover:underline underline-offset-2 rounded', FOCUS_RING);
 
@@ -371,91 +371,14 @@ function Terms({ onNavigate }: { onNavigate: (path: string) => void }) {
   );
 }
 
-function About() {
-  return (
-    <>
-      <p>
-        Ascend is a place to get better at the things you care about, and to compete with friends while you do it.
-      </p>
-
-      <Section title="Why it exists">
-        <p>
-          People love to compete. We do it in almost everything: grades, jobs, salaries, business, and on a bigger
-          scale countries compete over technology, the economy and power. Psychologists call part of this social
-          comparison: we work out how we’re doing by looking at the people around us.
-        </p>
-        <p>
-          When someone’s daily life has little competition in it, they usually go looking for it somewhere else. Very
-          often that’s competitive games like PUBG, Valorant or Call of Duty. Hours of effort, real drive, and most of
-          it stays inside the game.
-        </p>
-        <p>
-          I kept noticing this and thought: why not point that same drive at something that pays you back? That’s
-          Ascend. You still compete, but what you compete on is improving yourself.
-        </p>
-      </Section>
-
-      <Section title="The idea">
-        <p>
-          Friends and leagues give you someone to beat, and that’s what gets you started. But the opponent that matters
-          most is the person you were yesterday. Small things done every day add up, and a streak makes them hard to
-          skip. As Will Durant put Aristotle’s idea: “We are what we repeatedly do.”
-        </p>
-      </Section>
-
-      <Section title="What you can do">
-        <List>
-          <li>
-            <Term>Track.</Term> Habits, bad habits you’re quitting, exercise, reading, skills, and your day planned in
-            time blocks.
-          </li>
-          <li>
-            <Term>Mind.</Term> A focus timer, a journal, a recovery tracker for quitting things like smoking or social
-            media, and how your brain rewires itself.
-          </li>
-          <li>
-            <Term>Plan.</Term> Weekly goals, projects, longer improvement plans, and short reads on how habits and focus
-            work.
-          </li>
-          <li>
-            <Term>Play.</Term> Earn points, climb the ranks, compete in leagues each season, and pair up with partners
-            who keep you on track.
-          </li>
-        </List>
-      </Section>
-
-      <Section title="Keeping it fair">
-        <List>
-          <li>Points are worked out on our server, not on your phone, so nobody can just give themselves more.</li>
-          <li>Points start again every season, so someone who joins late still has a real chance.</li>
-          <li>Ascend is free. There are no ads, and we don’t sell your data.</li>
-        </List>
-      </Section>
-
-      <Section title="Who makes it">
-        <p>
-          I’m Zakria Khan, a BSCS student in Peshawar, from Risalpur Cantt. I build and run Ascend myself, and most of
-          what changes in it starts as feedback from the people using it.
-        </p>
-      </Section>
-
-      <Section title="Contact">
-        <p>
-          Found a bug, have an idea, or just want to say something? Use Report a bug or Suggest an idea in the app, or
-          email <ContactEmail />.
-        </p>
-      </Section>
-    </>
-  );
-}
-
 /**
- * `/privacy`, `/terms` and `/about`: shown to anyone, signed in or not, outside the app shell. Plain text in
+ * `/privacy` and `/terms`: shown to anyone, signed in or not, outside the app shell. Plain text in
  * one readable column, with links to the other page and back to the app.
  */
 export function LegalPage({ page, onNavigate }: LegalPageProps) {
   const mainRef = useRef<HTMLElement>(null);
-  const otherPages = (['about', 'privacy', 'terms'] as const).filter((route) => route !== page);
+  const otherPage: LegalRoute = page === 'privacy' ? 'terms' : 'privacy';
+  const otherPath = pathForLegalRoute(otherPage);
 
   useEffect(() => {
     const previous = document.title;
@@ -482,30 +405,17 @@ export function LegalPage({ page, onNavigate }: LegalPageProps) {
 
         <header className="mt-8">
           <h1 className="page-title">{TITLES[page]}</h1>
-          {page !== 'about' && <p className="page-subtitle">Last updated {LEGAL_UPDATED}</p>}
+          <p className="page-subtitle">Last updated {LEGAL_UPDATED}</p>
         </header>
 
         <article className="card mt-6 p-5 sm:p-8 space-y-8 text-sm leading-relaxed text-content-secondary">
-          {page === 'privacy' ? (
-            <PrivacyPolicy onNavigate={onNavigate} />
-          ) : page === 'terms' ? (
-            <Terms onNavigate={onNavigate} />
-          ) : (
-            <About />
-          )}
+          {page === 'privacy' ? <PrivacyPolicy onNavigate={onNavigate} /> : <Terms onNavigate={onNavigate} />}
         </article>
 
-        <nav aria-label="More pages" className="mt-6 flex flex-wrap items-center justify-between gap-x-6 gap-y-2 text-sm">
-          <div className="flex flex-wrap items-center gap-x-6">
-            {otherPages.map((route) => {
-              const path = pathForLegalRoute(route);
-              return (
-                <a key={route} href={path} onClick={inAppClick(path, onNavigate)} className={cx(LINK_CLASS, 'inline-flex min-h-11 items-center')}>
-                  {TITLES[route]}
-                </a>
-              );
-            })}
-          </div>
+        <nav aria-label="Legal" className="mt-6 flex flex-wrap items-center justify-between gap-x-6 gap-y-2 text-sm">
+          <a href={otherPath} onClick={inAppClick(otherPath, onNavigate)} className={cx(LINK_CLASS, 'inline-flex min-h-11 items-center')}>
+            {TITLES[otherPage]}
+          </a>
           <a href="/" onClick={inAppClick('/', onNavigate)} className={cx(LINK_CLASS, 'inline-flex min-h-11 items-center')}>
             Back to Ascend
           </a>

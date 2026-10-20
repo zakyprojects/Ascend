@@ -2,8 +2,8 @@ import { lazy } from 'react';
 import { reloadOnceForStaleChunk } from '@/lib/chunkReload';
 
 /**
- * The Terms, Privacy Policy and About page are their own chunk: most visits never open them.
- * main.tsx starts loading it when the app opens on `/privacy`, `/terms` or `/about`.
+ * The Terms and Privacy Policy are their own chunk: most visits never open them. main.tsx starts
+ * loading it when the app opens on `/privacy` or `/terms`.
  */
 
 let pending: Promise<typeof import('./LegalPage')> | null = null;

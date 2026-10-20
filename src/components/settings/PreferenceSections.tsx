@@ -129,7 +129,7 @@ export function AboutSection({ onNavigate }: { onNavigate: (view: View) => void 
       </div>
       {/* A new tab, so this page (and anything typed here) stays as it is. */}
       <div className="-mb-2 flex flex-wrap items-center gap-x-5">
-        {(['about', 'privacy', 'terms'] as const).map((route) => (
+        {(['privacy', 'terms'] as const).map((route) => (
           <a
             key={route}
             href={pathForLegalRoute(route)}
@@ -137,7 +137,7 @@ export function AboutSection({ onNavigate }: { onNavigate: (view: View) => void 
             rel="noopener noreferrer"
             className={cx('inline-flex min-h-11 items-center rounded-lg text-xs font-medium text-brand-text hover:underline underline-offset-2', FOCUS_RING)}
           >
-            {route === 'about' ? 'About Ascend' : route === 'privacy' ? 'Privacy Policy' : 'Terms'}
+            {route === 'privacy' ? 'Privacy Policy' : 'Terms'}
           </a>
         ))}
       </div>

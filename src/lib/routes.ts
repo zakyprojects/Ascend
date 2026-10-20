@@ -83,22 +83,21 @@ export function authRouteFromPath(pathname: string): AuthRoute | null {
 }
 
 /**
- * The public pages: the Terms, the Privacy Policy and About. Like `/reset-password` they live outside
- * the app shell and are shown to anyone (signed in or not, and without Supabase too), never
- * redirected away from.
+ * The Terms and the Privacy Policy. Like `/reset-password` they live outside the app shell and are
+ * shown to anyone (signed in or not, and without Supabase too), never redirected away from.
  */
-export type LegalRoute = 'privacy' | 'terms' | 'about';
+export type LegalRoute = 'privacy' | 'terms';
 
-const LEGAL_PATHS: Record<LegalRoute, string> = { privacy: '/privacy', terms: '/terms', about: '/about' };
+const LEGAL_PATHS: Record<LegalRoute, string> = { privacy: '/privacy', terms: '/terms' };
 
 export function pathForLegalRoute(route: LegalRoute): string {
   return LEGAL_PATHS[route];
 }
 
-/** The public page a path names (case and slashes at either end do not matter), or null. */
+/** The legal page a path names (case and slashes at either end do not matter), or null. */
 export function legalRouteFromPath(pathname: string): LegalRoute | null {
   const segment = pathname.replace(/^\/+|\/+$/g, '').toLowerCase();
-  return segment === 'privacy' || segment === 'terms' || segment === 'about' ? segment : null;
+  return segment === 'privacy' || segment === 'terms' ? segment : null;
 }
 
 /**
