@@ -11,6 +11,8 @@ import { toUserMessage } from '@/lib/userMessage';
 import { looksLikeUsername } from '@/lib/usernameRules';
 import { preloadCaptcha, withCaptcha } from '@/lib/captcha';
 import { CaptchaSlot } from '@/components/ui/CaptchaSlot';
+import { MIN_AGE } from '@/lib/legal';
+import { pathForLegalRoute } from '@/lib/routes';
 
 /** How long the sign-in/sign-up success screen shows before `onDone` runs. */
 const AUTH_SUCCESS_MS = 900;
@@ -179,6 +181,22 @@ function inAppClick(href: string, navigate: (href: string) => void) {
 }
 
 const PAGE_LINK_CLASS = 'font-medium text-brand-text hover:underline underline-offset-2';
+
+/** The Terms and Privacy Policy, in a new tab so the form here keeps what was typed. */
+function LegalLinks() {
+  return (
+    <>
+      the{' '}
+      <a href={pathForLegalRoute('terms')} target="_blank" rel="noopener noreferrer" className={PAGE_LINK_CLASS}>
+        Terms
+      </a>{' '}
+      and{' '}
+      <a href={pathForLegalRoute('privacy')} target="_blank" rel="noopener noreferrer" className={PAGE_LINK_CLASS}>
+        Privacy Policy
+      </a>
+    </>
+  );
+}
 /** Seconds after a reset email before "Resend" is offered (matches Supabase's per-email resend window). */
 const RESET_RESEND_SECONDS = 60;
 
@@ -243,6 +261,8 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
   const [confirmPassword, setConfirmPassword] = useState('');
   const [username, setUsername] = useState('');
   const [avatar, setAvatar] = useState('');
+  // Sign-up only: "I'm 13 or older and I agree to the Terms and Privacy Policy".
+  const [termsAccepted, setTermsAccepted] = useState(false);
 
   // `checkedFor` is the trimmed username the result belongs to, so a result for an older value never counts as valid.
   const [usernameStatus, setUsernameStatus] = useState<{ available: boolean; reason?: string; checkedFor?: string } | null>(null);
@@ -262,7 +282,7 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
   const [errorTick, setErrorTick] = useState(0);
   // The field values when the last error was shown; the mascot stays upset until one changes.
   const [errorInputs, setErrorInputs] = useState<string | null>(null);
-  const inputsKey = [email, password, confirmPassword, username, avatar].join('\u0000');
+  const inputsKey = [email, password, confirmPassword, username, avatar, termsAccepted].join('\u0000');
 
   // Sign-in, sign-up, guest and reset pass the bot check (saving a guest's progress does not).
   useEffect(() => {
@@ -420,7 +440,8 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
       : screen === 'signup-choice'
       ? 0
       : Number(usernameValid) + Number(avatarValid) + Number(emailValid) + Number(passwordValid) + Number(confirmValid);
-  const formReady = steps > 0 && progress === steps;
+  // The agreement box is not a climb step; the form is only ready once it is ticked.
+  const formReady = steps > 0 && progress === steps && (screen !== 'signup-form' || termsAccepted);
   const phase: AuthClimbState['phase'] = submitDone || successTitle ? 'success' : loading ? 'submitting' : 'idle';
   const shownTrail = screen === 'signup-choice' ? hoverTrail : null;
   const showsPreview = screen === 'signup-form' || screen === 'upgrade';
@@ -500,6 +521,7 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
     const passwordProblem = isNewAccount ? newPasswordProblem(password) : null;
     if (passwordProblem) return { message: `${passwordProblem}.`, field: 'auth-password' };
     if (isNewAccount && password !== confirmPassword) return { message: 'Passwords don’t match.', field: 'auth-confirm-password' };
+    if (mode === 'signup' && !termsAccepted) return { message: 'Tick this box to continue.', field: 'auth-terms' };
     return null;
   };
 
@@ -847,6 +869,9 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
                 <CaptchaSlot />
                 {errorMsg && <FieldErrorBubble message={errorMsg} attached={false} />}
                 <p className="text-xs text-content-muted text-center">
+                  By continuing, you confirm you’re {MIN_AGE} or older and agree to <LegalLinks />.
+                </p>
+                <p className="text-xs text-content-muted text-center">
                   Already have an account?{' '}
                   <a href={pageLinks.login} onClick={inAppClick(pageLinks.login, pageLinks.navigate)} className={PAGE_LINK_CLASS}>
                     Sign in
@@ -1033,6 +1058,24 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
                   </div>
                   <FieldMessage htmlFor="auth-confirm-password" />
 
+                </div>
+              )}
+
+              {mode === 'signup' && (
+                <div data-field="auth-terms">
+                  <label htmlFor="auth-terms" className="flex items-start gap-2.5 py-1 text-xs leading-relaxed text-content-secondary cursor-pointer">
+                    <input
+                      id="auth-terms"
+                      type="checkbox"
+                      checked={termsAccepted}
+                      onChange={(e) => setTermsAccepted(e.target.checked)}
+                      className="mt-0.5 h-4 w-4 shrink-0 cursor-pointer rounded accent-primary-600 aria-[invalid=true]:outline aria-[invalid=true]:outline-2 aria-[invalid=true]:outline-rose-500/70"
+                    />
+                    <span>
+                      I’m {MIN_AGE} or older and I agree to <LegalLinks />.
+                    </span>
+                  </label>
+                  <FieldMessage htmlFor="auth-terms" />
                 </div>
               )}
 

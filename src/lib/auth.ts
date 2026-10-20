@@ -18,6 +18,7 @@ import { NETWORK_MESSAGE } from './userMessage';
 import { clearDrafts } from './unsavedChanges';
 import { FunctionsHttpError } from '@supabase/supabase-js';
 import { CaptchaRejectedError, isCaptchaRejection } from './captcha';
+import { TERMS_VERSION } from './legal';
 
 let cachedProfiles: any[] = [];
 
@@ -170,9 +171,11 @@ export async function signUpUser(
     email: trimmedEmail,
     password,
     options: {
+      // terms_version: the Terms the person agreed to; the database stamps it on the profile.
       data: {
         username: trimmedUsername,
         avatar,
+        terms_version: TERMS_VERSION,
       },
       captchaToken,
     },
@@ -282,7 +285,8 @@ async function loginWithUsername(username: string, password: string, captchaToke
  * State hydration is handled by onAuthStateChange in store.ts (single source of truth).
  */
 export async function signInAsGuest(captchaToken?: string): Promise<void> {
-  const { error } = await supabase.auth.signInAnonymously({ options: { captchaToken } });
+  // Continuing as a guest agrees to the Terms (the line under the button); stamped like a sign-up.
+  const { error } = await supabase.auth.signInAnonymously({ options: { data: { terms_version: TERMS_VERSION }, captchaToken } });
   if (error) {
     if (isCaptchaRejection(error)) throw new CaptchaRejectedError();
     // AuthError keeps status/code so the caller can tell a rate limit apart.
