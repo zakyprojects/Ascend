@@ -1,8 +1,10 @@
 import {
   authPathWithNext,
   authRouteFromPath,
+  legalRouteFromPath,
   nextFromSearch,
   pathForAuthRoute,
+  pathForLegalRoute,
   pathForView,
   safeNextPath,
   viewFromLegacyHash,
@@ -53,6 +55,12 @@ function runFixtures() {
   assert(pathForAuthRoute('reset-password') === '/reset-password', 'reset path');
   assert(safeNextPath('/reset-password') === '/', 'no loop through the reset page');
   assert(viewFromPath('/login') === null, '/login is not a page');
+
+  // Legal pages
+  assert(pathForLegalRoute('privacy') === '/privacy' && pathForLegalRoute('terms') === '/terms', 'legal paths');
+  assert(legalRouteFromPath('/privacy') === 'privacy' && legalRouteFromPath('/Terms/') === 'terms', 'legal path case + slash');
+  assert(legalRouteFromPath('/privacy/extra') === null && legalRouteFromPath('/login') === null, 'not a legal page');
+  assert(authRouteFromPath('/privacy') === null && viewFromPath('/terms') === null, 'legal pages are neither sign-in pages nor app pages');
 
   // next: only same-site paths
   assert(safeNextPath('/habits') === '/habits', 'plain path');

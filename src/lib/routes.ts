@@ -83,6 +83,24 @@ export function authRouteFromPath(pathname: string): AuthRoute | null {
 }
 
 /**
+ * The Terms and the Privacy Policy. Like `/reset-password` they live outside the app shell and are
+ * shown to anyone (signed in or not, and without Supabase too), never redirected away from.
+ */
+export type LegalRoute = 'privacy' | 'terms';
+
+const LEGAL_PATHS: Record<LegalRoute, string> = { privacy: '/privacy', terms: '/terms' };
+
+export function pathForLegalRoute(route: LegalRoute): string {
+  return LEGAL_PATHS[route];
+}
+
+/** The legal page a path names (case and slashes at either end do not matter), or null. */
+export function legalRouteFromPath(pathname: string): LegalRoute | null {
+  const segment = pathname.replace(/^\/+|\/+$/g, '').toLowerCase();
+  return segment === 'privacy' || segment === 'terms' ? segment : null;
+}
+
+/**
  * A `next` value made safe to send the browser to: only a path on this site (`/habits`,
  * `/prefrontal-cortex?tab=live`). Anything else gives `/`: an absolute URL, `//host`, a backslash
  * (`/\host`, which browsers read as `//host`), whitespace or control characters (browsers drop

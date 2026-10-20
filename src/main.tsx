@@ -18,9 +18,10 @@ import { installScrollRise } from './lib/scrollRise';
 import { installCardSpotlight } from './lib/cardSpotlight';
 import { installPressGlow } from './lib/pressGlow';
 import { installListExit } from './lib/listExit';
-import { authRouteFromPath, nextFromSearch, viewFromLocation, viewFromPath } from './lib/routes';
+import { authRouteFromPath, legalRouteFromPath, nextFromSearch, viewFromLocation, viewFromPath } from './lib/routes';
 import { installPagePrefetch, preloadView } from './components/views/lazyViews';
 import { preloadAuthPage } from './components/auth/lazyAuthPage';
+import { preloadLegalPage } from './components/legal/lazyLegalPage';
 
 // Before anything else: a page whose build files failed to load reloads once with fresh ones.
 installAssetRecovery();
@@ -54,10 +55,18 @@ if (import.meta.env.DEV && devParams.has('splash-preview')) {
 } else {
   // The page in the address bar (on a sign-in page: the page it returns to) starts loading now,
   // alongside the session check behind the splash. So does the sign-in page: whether it is
-  // needed is only known after the check, and it must not flash in late.
-  const onAuthPage = authRouteFromPath(window.location.pathname) && !window.location.hash.startsWith('#/');
-  const firstView = onAuthPage ? viewFromPath(nextFromSearch(window.location.search).split('?')[0]) : viewFromLocation();
+  // needed is only known after the check, and it must not flash in late. A legal page loads its
+  // own code instead of a page's.
+  const legacyHash = window.location.hash.startsWith('#/');
+  const onAuthPage = authRouteFromPath(window.location.pathname) && !legacyHash;
+  const onLegalPage = Boolean(legalRouteFromPath(window.location.pathname)) && !legacyHash;
+  const firstView = onLegalPage
+    ? null
+    : onAuthPage
+      ? viewFromPath(nextFromSearch(window.location.search).split('?')[0])
+      : viewFromLocation();
   if (firstView) preloadView(firstView).catch(() => undefined);
+  if (onLegalPage) preloadLegalPage().catch(() => undefined);
   preloadAuthPage().catch(() => undefined);
   installPagePrefetch();
   root.render(

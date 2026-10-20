@@ -45,6 +45,7 @@ import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 import { ToastProvider, useToast } from '@/components/ui/Toast';
 import { BannerStack } from '@/components/ui/BannerStack';
 import { DiscardChangesDialog } from '@/components/ui/DiscardChangesDialog';
+import { LegalPage } from '@/components/legal/lazyLegalPage';
 
 // Where a password-reset email lands; rarely visited, so its code loads only then.
 const ResetPasswordPage = lazy(() =>
@@ -57,7 +58,7 @@ const QUICK_LOG_PARAM = 'quick-log';
 function App() {
   const store = useAppState();
   // Page changes wait for the page's code first, so the view transition never shows a fallback.
-  const { view, pendingView, auth, search, navigationKind, startedOnUnknownPath, navigate: setView, goToPath } =
+  const { view, pendingView, auth, legal, search, navigationKind, startedOnUnknownPath, navigate: setView, goToPath } =
     useViewRoute(preloadView);
 
   // The last ordinary page: a bug report or idea starts out about it ("Which page?").
@@ -79,11 +80,12 @@ function App() {
   // account is loaded (a new guest too, who would otherwise get the save-progress page).
   const [leavingAuth, setLeavingAuth] = useState(false);
   if (leavingAuth && !auth) setLeavingAuth(false);
-  // /reset-password is shown to anyone (signed in by its link or not) and never redirected.
+  // /reset-password is shown to anyone (signed in by its link or not) and never redirected; so are
+  // the legal pages (/privacy, /terms).
   const onResetPassword = auth === 'reset-password';
   let routeScreen: AuthScreen | null = null;
   if (authReady && authGate) {
-    if (onResetPassword) routeScreen = null;
+    if (onResetPassword || legal) routeScreen = null;
     else if (auth) routeScreen = !currentUser ? auth : isGuest && !leavingAuth ? 'upgrade' : null;
     // A sign-in still loading its data shows the session loader, not the sign-in page.
     else if (!currentUser && !store.isSessionLoading) routeScreen = 'login';
@@ -100,7 +102,9 @@ function App() {
     let target: string | null = null;
     // A Supabase hash (#access_token=…, #error=…) rides along on redirects to the sign-in pages.
     const authHash = window.location.hash.startsWith('#/') ? '' : window.location.hash;
-    if (!authGate) {
+    if (legal) {
+      // Stays put: the page links back to the app.
+    } else if (!authGate) {
       if (auth) target = '/';
     } else if (onResetPassword) {
       // Stays put: the page itself offers the way on (sign in, new link, the app).
@@ -114,7 +118,7 @@ function App() {
       target = plain ? pathForAuthRoute('login') : authPathWithNext('login', pathForView(view) + search) + authHash;
     }
     if (target) goToPath(target, { replace: true });
-  }, [authReady, authGate, authHold, leavingAuth, auth, onResetPassword, currentUser, isGuest, search, view, store.isSessionLoading, goToPath]);
+  }, [authReady, authGate, authHold, leavingAuth, auth, legal, onResetPassword, currentUser, isGuest, search, view, store.isSessionLoading, goToPath]);
 
   // The sign-in page's code (preloaded behind the splash by main.tsx).
   const [AuthPageView, setAuthPageView] = useState<ComponentType<AuthPageProps> | null>(() => loadedAuthPage());
@@ -202,7 +206,7 @@ function App() {
 
   // Once the app is on screen, fetch the other pages' code in idle moments. Not behind a sign-in
   // page: a signed-out visitor may never get in, so the download would be wasted.
-  const appVisible = !store.isAuthChecking && authScreen === null && !auth;
+  const appVisible = !store.isAuthChecking && authScreen === null && !auth && !legal;
   useEffect(() => {
     if (appVisible) prefetchAllViewsWhenIdle();
   }, [appVisible]);
@@ -234,7 +238,7 @@ function App() {
 
   // The app itself: not while a sign-in page is up, nor for the one frame a redirect away from
   // a sign-in page takes (signed in, or local-only mode).
-  const showApp = authReady && !authScreen && !auth;
+  const showApp = authReady && !authScreen && !auth && !legal;
 
   // The home-screen shortcut "Quick log" (public/manifest.json) opens `/?quick-log`. Once the app
   // and the account's data are on screen (a signed-out launch first signs in: `next` keeps the
@@ -294,6 +298,13 @@ function App() {
                 onNavigate={(path, replace) => goToPath(path, { replace })}
               />
             </Suspense>
+          )}
+          {legal && (
+            <ErrorBoundary>
+              <Suspense fallback={null}>
+                <LegalPage page={legal} onNavigate={(path) => goToPath(path)} />
+              </Suspense>
+            </ErrorBoundary>
           )}
           {showApp && (
             <FocusSessionProvider store={store} onOpenFocus={() => setView('prefrontal')}>

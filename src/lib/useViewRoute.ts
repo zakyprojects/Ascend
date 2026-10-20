@@ -3,7 +3,10 @@ import { DEFAULT_VIEW, View } from './views';
 import {
   AuthRoute,
   authRouteFromPath,
+  LegalRoute,
+  legalRouteFromPath,
   pathForAuthRoute,
+  pathForLegalRoute,
   pathForView,
   viewFromLegacyHash,
   viewFromPath,
@@ -20,7 +23,8 @@ import { confirmLeave, hasUnsavedChanges } from './unsavedChanges';
  * app loads; the check here covers a hash typed into the address bar later).
  *
  * `/login` and `/signup` are routes too (`auth`), shown outside the app shell; App decides who
- * may see them and redirects with `goToPath`.
+ * may see them and redirects with `goToPath`. So are `/privacy` and `/terms` (`legal`), which
+ * anyone may see.
  */
 
 /** 'push' = the user opened a page; 'pop' = browser back/forward (restore its scroll). */
@@ -51,22 +55,34 @@ interface RouteTarget {
   view: View;
   /** A sign-in page, or null for an app page. */
   auth: AuthRoute | null;
+  /** The Terms or the Privacy Policy, or null. */
+  legal: LegalRoute | null;
 }
 
-/** What the address bar names right now: an old `#/` link wins, then a sign-in page, then a page. */
+/**
+ * What the address bar names right now: an old `#/` link wins, then a sign-in page, then a legal
+ * page, then a page.
+ */
 function routeFromLocation(): RouteTarget {
   const { pathname, hash } = window.location;
   const legacy = viewFromLegacyHash(hash);
-  if (legacy) return { view: legacy, auth: null };
+  if (legacy) return { view: legacy, auth: null, legal: null };
   const auth = authRouteFromPath(pathname);
-  if (auth) return { view: DEFAULT_VIEW, auth };
-  return { view: viewFromPath(pathname) ?? DEFAULT_VIEW, auth: null };
+  if (auth) return { view: DEFAULT_VIEW, auth, legal: null };
+  const legal = legalRouteFromPath(pathname);
+  if (legal) return { view: DEFAULT_VIEW, auth: null, legal };
+  return { view: viewFromPath(pathname) ?? DEFAULT_VIEW, auth: null, legal: null };
 }
 
-/** The address names no page and no sign-in page (a mistyped or removed link): the dashboard shows. */
+/** The address names no page, sign-in page or legal page (a mistyped or removed link): the dashboard shows. */
 function namesNoScreen(): boolean {
   const { pathname, hash } = window.location;
-  return !viewFromLegacyHash(hash) && !authRouteFromPath(pathname) && viewFromPath(pathname) === null;
+  return (
+    !viewFromLegacyHash(hash) &&
+    !authRouteFromPath(pathname) &&
+    !legalRouteFromPath(pathname) &&
+    viewFromPath(pathname) === null
+  );
 }
 
 /**
@@ -77,7 +93,11 @@ function namesNoScreen(): boolean {
 function canonicalizeUrl(target: RouteTarget): void {
   const { pathname, search, hash } = window.location;
   const legacyHash = hash.startsWith('#/');
-  const path = target.auth ? pathForAuthRoute(target.auth) : pathForView(target.view);
+  const path = target.auth
+    ? pathForAuthRoute(target.auth)
+    : target.legal
+      ? pathForLegalRoute(target.legal)
+      : pathForView(target.view);
   if (pathname === path && !legacyHash) return;
   window.history.replaceState(window.history.state, '', path + search + (legacyHash ? '' : hash));
 }
@@ -123,6 +143,8 @@ export function useViewRoute(prepare?: (view: View) => Promise<unknown>) {
   viewRef.current = route.view;
   const authRef = useRef(route.auth);
   authRef.current = route.auth;
+  const legalRef = useRef(route.legal);
+  legalRef.current = route.legal;
   // The page most recently asked for (may still be loading). A newer request supersedes it.
   const targetRef = useRef(route.view);
   const prepareRef = useRef(prepare);
@@ -136,13 +158,14 @@ export function useViewRoute(prepare?: (view: View) => Promise<unknown>) {
     setPendingView(null);
   }, []);
 
-  /** Shows what the address bar names now, at once (sign-in pages and moves to or from them). */
+  /** Shows what the address bar names now, at once (sign-in and legal pages, and moves to or from them). */
   const syncToLocation = useCallback((kind: NavigationKind) => {
     const target = routeFromLocation();
     canonicalizeUrl(target);
     targetRef.current = target.view;
     viewRef.current = target.view;
     authRef.current = target.auth;
+    legalRef.current = target.legal;
     clearPending();
     setRoute({ ...target, kind, search: window.location.search });
   }, [clearPending]);
@@ -164,7 +187,7 @@ export function useViewRoute(prepare?: (view: View) => Promise<unknown>) {
       viewRef.current = view;
       runPageTransition(() => {
         clearPending();
-        setRoute({ view, auth: null, kind, search: window.location.search });
+        setRoute({ view, auth: null, legal: null, kind, search: window.location.search });
       });
     });
   }, [clearPending]);
@@ -172,7 +195,7 @@ export function useViewRoute(prepare?: (view: View) => Promise<unknown>) {
   // A layout effect, so a redirect App makes in its own layout effect (declared later) sees the
   // canonical address and is not undone by this.
   useLayoutEffect(() => {
-    canonicalizeUrl({ view: viewRef.current, auth: authRef.current });
+    canonicalizeUrl({ view: viewRef.current, auth: authRef.current, legal: legalRef.current });
   }, []);
 
   useEffect(
@@ -192,8 +215,8 @@ export function useViewRoute(prepare?: (view: View) => Promise<unknown>) {
       const target = routeFromLocation();
       const previousAddress = lastAddress;
       lastAddress = window.location.pathname + window.location.search;
-      if (target.auth || authRef.current) {
-        syncToLocation('pop'); // to or from a sign-in page: no page transition, no chunk wait
+      if (target.auth || authRef.current || target.legal || legalRef.current) {
+        syncToLocation('pop'); // to or from a sign-in or legal page: no page transition, no chunk wait
         return;
       }
       if (hasUnsavedChanges() && target.view !== viewRef.current) {
@@ -244,6 +267,7 @@ export function useViewRoute(prepare?: (view: View) => Promise<unknown>) {
     /** The page a slow page change is heading to (its code still loading), else null. */
     pendingView,
     auth: route.auth,
+    legal: route.legal,
     search: route.search,
     navigationKind: route.kind,
     /** The app was opened at an address that names no page (it shows the dashboard instead). */
