@@ -426,6 +426,8 @@ export function Journal({ store }: { store: AppStore }) {
                     label="Notes"
                     dir="auto"
                     value={content}
+                    // = journal_entries_content_size in SQL; a longer entry could never sync.
+                    maxLength={100000}
                     onChange={(e) => setContent(e.target.value)}
                     placeholder={showGuidedPrompt ? 'Write your answer to the prompt…' : 'What happened today? What went well? What could be better?'}
                     className="min-h-[160px] resize-y leading-relaxed"
