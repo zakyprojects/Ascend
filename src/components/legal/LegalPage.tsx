@@ -54,8 +54,8 @@ function PrivacyPolicy({ onNavigate }: { onNavigate: (path: string) => void }) {
   return (
     <>
       <p>
-        This policy explains what Ascend collects, why, who can see it, and how to delete it. We don’t sell your data,
-        show ads, or use analytics or tracking tools. It goes with our{' '}
+        This policy explains what Ascend collects, why, who can see it, and how to delete it. We don’t sell your data or use
+        analytics or tracking tools. It goes with our{' '}
         <a href={termsPath} onClick={inAppClick(termsPath, onNavigate)} className={LINK_CLASS}>
           Terms
         </a>
