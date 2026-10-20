@@ -7,19 +7,6 @@ function withOpacityValue(varName) {
   };
 }
 
-// See-through emerald borders and rings (border-primary-500/20, ring-emerald-500/30 …) take their hue
-// and strength from the theme (--accent-line-* in index.css), so light can tune them in one place.
-// Without an opacity (border-primary-500) they stay the plain brand colour.
-// Tailwind passes `var(--tw-border-opacity, 1)` for a plain class and the number for a `/20` one.
-function accentLine(shade, rgb) {
-  return ({ opacityValue }) => {
-    if (opacityValue === undefined) return `rgb(${rgb})`;
-    if (String(opacityValue).startsWith('var(--tw-')) return `rgb(${rgb} / ${opacityValue})`;
-    return `rgb(var(--accent-line-${shade}-rgb) / calc(${opacityValue} * var(--accent-line-k)))`;
-  };
-}
-const accentLines = { 400: accentLine(400, '52 211 153'), 500: accentLine(500, '16 185 129') };
-
 /** @type {import('tailwindcss').Config} */
 export default {
   darkMode: ['selector', '[data-theme="dark"]'],
@@ -135,24 +122,18 @@ export default {
         },
       },
       borderColor: {
-        primary: accentLines,
-        emerald: accentLines,
         'overlay-subtle': 'var(--border-overlay-subtle)',
         'overlay-default': 'var(--border-overlay-default)',
         'overlay-medium': 'var(--border-overlay-medium)',
         'overlay-strong': 'var(--border-overlay-strong)',
         'overlay-heavy': 'var(--border-overlay-heavy)',
       },
-      ringColor: {
-        primary: accentLines,
-        emerald: accentLines,
-      },
       boxShadow: {
         sm: 'var(--shadow-sm)',
         md: 'var(--shadow-md)',
         lg: 'var(--shadow-lg)',
         // Primary button hover: a soft emerald lift (lighter than the original 0.6).
-        'brand-glow': 'var(--brand-glow)',
+        'brand-glow': '0 6px 18px -8px rgb(16 185 129 / 0.45)',
       },
       fontFamily: {
         // Design v3: Geist runs the interface (and bold display numbers); Instrument Serif is reserved
