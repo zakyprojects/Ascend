@@ -1,7 +1,7 @@
 import { Moon, Sun } from 'lucide-react';
 import { AppStore } from '@/lib/store';
 import type { View } from '@/lib/views';
-import { NAV_GROUPS, NAV_HELP } from '@/components/nav/navConfig';
+import { NAV_GROUPS, NAV_HELP, type NavGroup } from '@/components/nav/navConfig';
 import { cx, FOCUS_RING, Switch } from '@/components/ui/primitives';
 import { useAsyncActionKey } from '@/lib/useAsyncAction';
 import { pageLinkProps } from '@/lib/pageLink';
@@ -100,6 +100,14 @@ export function AppearanceSection({ store }: { store: AppStore }) {
   );
 }
 
+/** One plain line per page group for App info's "What's inside". */
+const GROUP_INFO: Record<NavGroup['id'], string> = {
+  track: 'Habits, bad habits you’re quitting, exercise, reading, skills, and your day planned in time blocks.',
+  mind: 'A focus timer, a journal, a recovery tracker for quitting things like smoking or social media, and how your brain rewires itself.',
+  plan: 'Weekly goals, projects, longer improvement plans, and short reads on how habits and focus work.',
+  play: 'Earn points, climb the ranks, compete in leagues each season, and pair up with partners who keep you on track.',
+};
+
 export function AppInfoSection({ onNavigate }: { onNavigate: (view: View) => void }) {
   return (
     <SettingsCard title="App info">
@@ -110,21 +118,19 @@ export function AppInfoSection({ onNavigate }: { onNavigate: (view: View) => voi
         </p>
         <p className="mt-3 text-sm leading-relaxed text-content-secondary">
           Ascend turns self-improvement into a season you can win. What you do each day earns points, points move you
-          up the ranks and your league, and a partner can keep you on track. Signed in, your data syncs across your
-          devices.
+          up the ranks and your league, and a partner can keep you on track. Points start again every season, so someone
+          who joins late still has a real chance. Signed in, your data syncs across your devices.
         </p>
       </div>
       <div className="space-y-3 border-t border-overlay-subtle pt-4">
         <h3 className="text-sm font-semibold text-content-primary">What's inside</h3>
         <dl className="grid gap-3 sm:grid-cols-2">
-          {NAV_GROUPS.map(({ id, label, icon: Icon, items }) => (
+          {NAV_GROUPS.map(({ id, label, icon: Icon }) => (
             <div key={id} className="flex gap-3 rounded-xl border border-overlay-subtle p-3">
               <Icon size={16} className="mt-0.5 shrink-0 text-brand-text" aria-hidden="true" />
               <div className="min-w-0">
                 <dt className="text-sm font-medium text-content-primary">{label}</dt>
-                <dd className="mt-0.5 text-xs leading-relaxed text-content-muted">
-                  {items.map((item) => item.label).join(' · ')}
-                </dd>
+                <dd className="mt-0.5 text-xs leading-relaxed text-content-muted">{GROUP_INFO[id]}</dd>
               </div>
             </div>
           ))}
