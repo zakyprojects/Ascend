@@ -296,6 +296,90 @@ export async function fetchUserDataFromSupabase(userId: string): Promise<AppStat
   return res.state;
 }
 
+/** Writes this account's profile row from the state (stats, settings, device timezone); throws on failure. */
+async function writeProfileFromState(userId: string, st: AppState): Promise<null> {
+  if (!st.currentUser) return null;
+
+  const habitsCompletedCount = (st.habits || []).reduce(
+    (acc, h) =>
+      acc +
+      (Array.isArray(h.completions)
+        ? h.completions.length
+        : Object.values(h.completions || {}).filter((c) => c.done).length),
+    0
+  );
+  const habitsCompletedTodayCount = (st.habits || []).reduce((acc, h) => {
+    const todayStr = todayKey();
+    const isDone = Array.isArray(h.completions)
+      ? h.completions.includes(todayStr)
+      : h.completions?.[todayStr]?.done === true;
+    return acc + (isDone ? 1 : 0);
+  }, 0);
+  const unified = calculateUnifiedStreak(st);
+  const exerciseMinutes = (st.workouts || []).reduce((sum, w) => sum + w.durationMinutes, 0);
+  const booksRead = (st.libraryBooks || []).filter((b) => b.status === 'completed' || b.isFinished).length;
+  const skillsPracticedCount = (st.skillLogs || []).length;
+
+  const userStats = {
+    streakDays: unified.currentStreakDays,
+    streakSource: unified.currentStreakDays > 0 ? unified.currentStreakCategory : undefined,
+    currentStreakDays: unified.currentStreakDays,
+    currentStreakCategory: unified.currentStreakCategory,
+    currentStreakIsActive: unified.currentStreakIsActive,
+    lastActiveDate: unified.lastActiveDate,
+    habitsCompletedCount,
+    habitsCompletedTodayCount,
+    journalEntriesCount: (st.journalEntries || []).length,
+    exerciseMinutes,
+    booksRead,
+    skillsPracticedCount,
+  };
+
+  const profilePayload: Record<string, any> = {
+    id: userId,
+    username: st.currentUser.username,
+    email: st.currentUser.email,
+    avatar: st.currentUser.avatar || '🧑',
+    season_id: st.seasonId || 1,
+    stats: userStats,
+    // Habit names are not published: other members no longer see which habits someone keeps.
+    active_habits: [],
+    // The device's timezone. The server derives profiles.timezone (the user's "today") from it,
+    // never letting the local date go backwards (supabase/migrations/20261016120000).
+    device_timezone: deviceTimeZone(),
+  };
+
+  if (st.currentUser.uid) {
+    profilePayload.uid = st.currentUser.uid;
+  }
+
+  if (st.currentUser.lastUsernameChangeAt) {
+    profilePayload.last_username_change_at = st.currentUser.lastUsernameChangeAt;
+  }
+
+  let profErr = await writeOwnProfile(userId, profilePayload);
+
+  if (profErr) {
+    if (profErr.message?.includes('last_username_change_at')) {
+      delete profilePayload.last_username_change_at;
+    }
+    if (profErr.message?.includes('uid')) {
+      delete profilePayload.uid;
+    }
+    if (profErr.message?.includes('device_timezone')) {
+      delete profilePayload.device_timezone;
+    }
+    profErr = await writeOwnProfile(userId, profilePayload);
+  }
+
+  if (profErr) {
+    console.error('Error upserting profile in Supabase:', profErr);
+    throw new Error(profErr.message || "Couldn't save your profile. Try again.");
+  }
+  if (profilePayload.device_timezone) markDeviceTimezoneSent(userId, profilePayload.device_timezone);
+  return null;
+}
+
 export async function saveUserDataToSupabase(
   userId: string,
   state: AppState,
@@ -315,6 +399,15 @@ export async function saveUserDataToSupabase(
   // SAFETY CHECK 1B: without this account's sign-in every request below runs as anon: the
   // pre-fetch reads no row (so no merge) and both writes are refused. Keep the changes for later.
   if (!(await hasSessionFor(userId))) throw new SessionLostError();
+
+  // SKIP: this exact state was already saved by this tab (it passed the guards then), so there is
+  // no blob to merge or write and no table change to record. The profile still goes through: its
+  // stats follow the day, and writeOwnProfile sends only a part that changed.
+  const inputSnapshot = snapshotOf(state);
+  if (!options?.allowDestructiveWipe && sentSnapshots.matches(userId, 'save-input', inputSnapshot)) {
+    await writeProfileFromState(userId, state);
+    return state;
+  }
 
   // Write-time merge: Reconcile server state with incoming state using tombstone-aware merger
   let finalState: AppState = state;
@@ -435,88 +528,7 @@ export async function saveUserDataToSupabase(
       updated_at: trustedNow().toISOString(),
     });
 
-    const profilePromise = (async () => {
-      if (!finalState.currentUser) return null;
-
-      const habitsCompletedCount = (finalState.habits || []).reduce(
-        (acc, h) =>
-          acc +
-          (Array.isArray(h.completions)
-            ? h.completions.length
-            : Object.values(h.completions || {}).filter((c) => c.done).length),
-        0
-      );
-      const habitsCompletedTodayCount = (finalState.habits || []).reduce((acc, h) => {
-        const todayStr = todayKey();
-        const isDone = Array.isArray(h.completions)
-          ? h.completions.includes(todayStr)
-          : h.completions?.[todayStr]?.done === true;
-        return acc + (isDone ? 1 : 0);
-      }, 0);
-      const unified = calculateUnifiedStreak(finalState);
-      const exerciseMinutes = (finalState.workouts || []).reduce((sum, w) => sum + w.durationMinutes, 0);
-      const booksRead = (finalState.libraryBooks || []).filter((b) => b.status === 'completed' || b.isFinished).length;
-      const skillsPracticedCount = (finalState.skillLogs || []).length;
-
-      const userStats = {
-        streakDays: unified.currentStreakDays,
-        streakSource: unified.currentStreakDays > 0 ? unified.currentStreakCategory : undefined,
-        currentStreakDays: unified.currentStreakDays,
-        currentStreakCategory: unified.currentStreakCategory,
-        currentStreakIsActive: unified.currentStreakIsActive,
-        lastActiveDate: unified.lastActiveDate,
-        habitsCompletedCount,
-        habitsCompletedTodayCount,
-        journalEntriesCount: (finalState.journalEntries || []).length,
-        exerciseMinutes,
-        booksRead,
-        skillsPracticedCount,
-      };
-
-      const profilePayload: Record<string, any> = {
-        id: userId,
-        username: finalState.currentUser.username,
-        email: finalState.currentUser.email,
-        avatar: finalState.currentUser.avatar || '🧑',
-        season_id: finalState.seasonId || 1,
-        stats: userStats,
-        // Habit names are not published: other members no longer see which habits someone keeps.
-        active_habits: [],
-        // The device's timezone. The server derives profiles.timezone (the user's "today") from it,
-        // never letting the local date go backwards (supabase/migrations/20261016120000).
-        device_timezone: deviceTimeZone(),
-      };
-
-      if (finalState.currentUser.uid) {
-        profilePayload.uid = finalState.currentUser.uid;
-      }
-
-      if (finalState.currentUser.lastUsernameChangeAt) {
-        profilePayload.last_username_change_at = finalState.currentUser.lastUsernameChangeAt;
-      }
-
-      let profErr = await writeOwnProfile(userId, profilePayload);
-
-      if (profErr) {
-        if (profErr.message?.includes('last_username_change_at')) {
-          delete profilePayload.last_username_change_at;
-        }
-        if (profErr.message?.includes('uid')) {
-          delete profilePayload.uid;
-        }
-        if (profErr.message?.includes('device_timezone')) {
-          delete profilePayload.device_timezone;
-        }
-        profErr = await writeOwnProfile(userId, profilePayload);
-      }
-
-      if (profErr) {
-        console.error('Error upserting profile in Supabase:', profErr);
-        throw new Error(profErr.message || "Couldn't save your profile. Try again.");
-      }
-      if (profilePayload.device_timezone) markDeviceTimezoneSent(userId, profilePayload.device_timezone);
-      return null;
-    })();
+    const profilePromise = writeProfileFromState(userId, finalState);
 
     const [dataResult] = await Promise.all([userDataPromise, profilePromise]);
 
@@ -538,6 +550,7 @@ export async function saveUserDataToSupabase(
         throw new Error(dataResult.error.message || "Couldn't save your changes. Try again.");
       }
     }
+    sentSnapshots.remember(userId, 'save-input', inputSnapshot);
     return finalState;
   } catch (e) {
     console.error('Error saving user_data to Supabase:', e);
