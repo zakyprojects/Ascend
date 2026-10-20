@@ -22,6 +22,8 @@ export function useNavShortcuts(handlers: NavShortcutHandlers) {
   useEffect(() => {
     let goPressedAt = 0;
     const onKeyDown = (event: KeyboardEvent) => {
+      // Browser autofill fires keydown events without a key; they are never a shortcut.
+      if (typeof event.key !== 'string') return;
       if (event.metaKey || event.ctrlKey || event.altKey || event.repeat || isTyping(event.target)) return;
       if (document.querySelector('[aria-modal="true"]')) return;
       if (!window.matchMedia('(min-width: 1024px)').matches) return;

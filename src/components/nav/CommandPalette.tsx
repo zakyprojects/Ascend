@@ -63,6 +63,8 @@ export function CommandPalette({ open, onOpenChange, currentView, onViewChange }
   useEffect(() => {
     let pendingG = 0;
     const onKeyDown = (event: KeyboardEvent) => {
+      // Browser autofill fires keydown events without a key; they are never a shortcut.
+      if (typeof event.key !== 'string') return;
       const { open: isOpen, onOpenChange: setOpen, onViewChange: go } = latest.current;
       if (event.key.toLowerCase() === 'k' && (event.metaKey || event.ctrlKey) && !event.altKey) {
         if (!isOpen && anyDialogOpen()) return;
