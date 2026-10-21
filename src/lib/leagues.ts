@@ -56,6 +56,12 @@ export function getLeaguePointsPeriods(now: Date): LeaguePointsPeriod[] {
   return periods;
 }
 
+/** Only this week and this month: the periods whose points still move. */
+export function getLiveLeaguePointsPeriods(now: Date): LeaguePointsPeriod[] {
+  const periods = getLeaguePointsPeriods(now);
+  return [periods[0], periods[LEAGUE_POINTS_LOOKBACK + 1]];
+}
+
 export function getLeaguePeriodEnd(type: LeagueType, now: Date): Date {
   switch (type) {
     case 'weekly': return getWeekEnd(now);

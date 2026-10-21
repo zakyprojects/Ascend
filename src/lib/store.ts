@@ -111,6 +111,7 @@ import {
 import {
   getLeaguePeriodStart,
   getLeaguePointsPeriods,
+  getLiveLeaguePointsPeriods,
   calculatePeriodPoints,
   calculateSeasonalTotal,
   getEffectiveSeasonPoints,
@@ -1839,7 +1840,8 @@ export function useAppState() {
       sessionUserId: async () =>
         isSupabaseConfigured ? (await supabase.auth.getSession()).data?.session?.user?.id ?? null : null,
       fetchProfiles: fetchAllProfilesFromSupabase,
-      fetchPoints: (now) => fetchLeaguePointsFromSupabase(getLeaguePointsPeriods(now)),
+      fetchPoints: (now, scope) =>
+        fetchLeaguePointsFromSupabase(scope === 'live' ? getLiveLeaguePointsPeriods(now) : getLeaguePointsPeriods(now)),
       now: leagueNow,
       isOnline: () => typeof navigator === 'undefined' || navigator.onLine !== false,
       apply: ({ profiles, points }) => {
