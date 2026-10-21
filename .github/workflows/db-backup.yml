@@ -1,0 +1,68 @@
+name: DB backup
+
+# Encrypted copy of the live Supabase database every 3 days (~02:00 PKT), kept for 30 days
+# as a workflow artifact. Free-plan Supabase has no managed backups; this is the restore point.
+# Contents: public schema (structure + data, minus pure log tables) and auth users/identities (data).
+# Restore needs BACKUP_PASSPHRASE: gpg -d ascend-db-*.tar.gpg | tar -x, then pg_restore.
+on:
+  schedule:
+    - cron: '0 21 */3 * *' # 21:00 UTC = 02:00 PKT
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: db-backup
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    name: Dump, encrypt, upload
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Install PostgreSQL 17 client (must match the server major version)
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-common
+          sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
+          sudo apt-get install -y -qq postgresql-client-17
+
+      - name: Dump public schema and auth users
+        env:
+          DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          set -euo pipefail
+          PG_DUMP=/usr/lib/postgresql/17/bin/pg_dump
+          mkdir dump
+          "$PG_DUMP" "$DB_URL" --format=custom --no-owner --schema=public \
+            --exclude-table-data=public.ascend_guest_cleanup_log \
+            --exclude-table-data=public.sign_in_failures \
+            --file=dump/public.dump
+          "$PG_DUMP" "$DB_URL" --format=custom --data-only \
+            --table=auth.users --table=auth.identities \
+            --file=dump/auth.dump
+          ls -l dump
+
+      - name: Encrypt
+        env:
+          PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+        run: |
+          set -euo pipefail
+          NAME="ascend-db-$(date -u +%Y-%m-%d)"
+          echo "NAME=$NAME" >> "$GITHUB_ENV"
+          tar -cf - -C dump . \
+            | gpg --batch --yes --pinentry-mode loopback --passphrase-fd 3 \
+                --symmetric --cipher-algo AES256 --output "$NAME.tar.gpg" 3<<<"$PASSPHRASE"
+          rm -rf dump
+          ls -l "$NAME.tar.gpg"
+
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.NAME }}
+          path: ${{ env.NAME }}.tar.gpg
+          retention-days: 30
+          compression-level: 0
+          if-no-files-found: error
