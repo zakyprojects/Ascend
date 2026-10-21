@@ -22,18 +22,6 @@ export function FeaturePage({ slug }: { slug: FeatureSlug }) {
   const content = FEATURE_CONTENT[slug];
   const crumbs = [{ name: 'Home', href: '/' }, { name: 'Features', href: '/features' }, { name: feature.name }];
 
-  if (!content) {
-    // Pages not written yet (later batches) keep the plain heading.
-    return (
-      <MarketingLayout>
-        <section className="mx-auto max-w-6xl px-4 sm:px-6 pt-8">
-          <Breadcrumb items={crumbs} />
-          <h1 className="page-title mt-8">{feature.h1}</h1>
-        </section>
-      </MarketingLayout>
-    );
-  }
-
   return (
     <MarketingLayout>
       <section aria-labelledby="feature-title" className="mx-auto max-w-6xl px-4 sm:px-6 pt-6 sm:pt-8">

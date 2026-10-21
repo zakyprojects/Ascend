@@ -4,6 +4,9 @@ import { MARKETING_ROUTES } from '../routes';
 import { isRenderedRoute, renderMarketingPage } from '../render';
 import { absoluteUrl } from '../site';
 import { TIERS } from '@/lib/tiers';
+import { LESSONS } from '@/lib/lessons';
+import { SOBRIETY_MILESTONE_POINTS } from '@/lib/pointsConfig';
+import { RECOVERY_MILESTONES } from '@/lib/recoveryAwards';
 import { fmt, pts } from '../features/format';
 
 /**
@@ -81,9 +84,9 @@ assert(hub.includes('"@type":"BreadcrumbList"'), '/features has a BreadcrumbList
 // Written feature pages are full pages, not doorways: real length, the points section, a visible
 // breadcrumb matching the BreadcrumbList, related pages, sign-up, and no two pages alike.
 const featureTexts: string[] = [];
-for (const route of MARKETING_ROUTES.filter((r) => r.kind === 'feature' && r.slug && FEATURE_CONTENT[r.slug])) {
+for (const route of MARKETING_ROUTES.filter((r) => r.kind === 'feature' && r.slug)) {
   const html = renderMarketingPage(route, assets);
-  const content = FEATURE_CONTENT[route.slug!]!;
+  const content = FEATURE_CONTENT[route.slug!];
   assert(wordsOf(html) >= 900, `${route.path}: at least 900 words on the page (${wordsOf(html)})`);
   assert(html.includes('id="how-points-work"'), `${route.path}: has the points section the hero links to`);
   assert(html.includes('aria-label="Breadcrumb"') && html.includes(`"name":"${FEATURES[route.slug!].name}"`), `${route.path}: breadcrumb`);
@@ -93,11 +96,18 @@ for (const route of MARKETING_ROUTES.filter((r) => r.kind === 'feature' && r.slu
   assert(content.faq.length >= 4 && content.faq.length <= 6, `${route.path}: 4–6 questions`);
   featureTexts.push(textOf(html));
 }
-assert(featureTexts.length >= 5, 'the written feature pages are checked');
+assert(featureTexts.length === FEATURE_SLUGS.length, 'every feature page is checked');
 
 // The ranks page's ladder is the app's own (lib/tiers.ts), rank for rank.
 const ranksPage = renderMarketingPage(MARKETING_ROUTES.find((r) => r.slug === 'ranks')!, assets);
 TIERS.forEach((tier, i) => assert(ranksPage.includes(`${i + 1}. ${tier.name}`) && ranksPage.includes(pts(fmt(tier.minPoints))), `ranks page lists ${tier.name} at ${tier.minPoints}`));
+// Health-adjacent pages carry their not-medical-advice note; recovery also its milestones and a helpline.
+const pageOf = (slug: string) => renderMarketingPage(MARKETING_ROUTES.find((r) => r.slug === slug)!, assets);
+const recoveryPage = pageOf('recovery');
+assert(recoveryPage.includes('Ascend is not treatment, therapy or medical advice.') && recoveryPage.includes('1-800-662-4357'), 'recovery page: not-treatment note and helpline');
+for (const m of RECOVERY_MILESTONES) assert(recoveryPage.includes(`${m.hours / 24} days clean (${m.label})`) && recoveryPage.includes(`+${pts(SOBRIETY_MILESTONE_POINTS[m.key])}`), `recovery page lists ${m.label}`);
+const brainPage = pageOf('brain-lessons');
+assert(brainPage.includes('General education, not medical advice.') && brainPage.includes(`${LESSONS.length} short lessons`), 'brain-lessons page: note and lesson count');
 // No page is another with the names swapped: most of each page's sentences are its own.
 const sentences = (text: string) => new Set(text.split(/[.!?]\s+/).map((s) => s.replace(/\s+/g, ' ').trim()).filter((s) => s.length > 40));
 featureTexts.forEach((text, i) => {
