@@ -218,7 +218,7 @@ export function ProfileSection({ store }: { store: AppStore }) {
 
       <Form onSubmit={handleSaveUsername} controller={usernameForm} className="space-y-3 border-t border-overlay-subtle pt-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <label htmlFor="settings-username" className="label">
+          <label id="settings-username-label" htmlFor="settings-username" className="label">
             Username
           </label>
           {isCooldownActive && (
@@ -230,6 +230,7 @@ export function ProfileSection({ store }: { store: AppStore }) {
         </div>
         <Input
           id="settings-username"
+          aria-labelledby="settings-username-label"
           required
           disabled={isCooldownActive || isNameSaving}
           value={nameInput}
