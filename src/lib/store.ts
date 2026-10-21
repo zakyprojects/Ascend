@@ -2146,12 +2146,16 @@ export function useAppState() {
             // Reconcile and union-merge server state with current state using mergeAppState
             // Tombstones (deletedEntityIds) prevent resurrecting deleted items while preserving offline progress
             const serverState = serverRes.state!;
-            const merged = reconcileWeeklyGoalsPointsForAllWeeks(
-              reconcileLinkedWeeklyGoals(
-                mergeAppState(serverState, current, 'hydration'),
+            // Nothing new on the server: keep the same state, so no save starts.
+            const merged = keepIfUnchanged(
+              current,
+              reconcileWeeklyGoalsPointsForAllWeeks(
+                reconcileLinkedWeeklyGoals(
+                  mergeAppState(serverState, current, 'hydration'),
+                  getNow()
+                ),
                 getNow()
-              ),
-              getNow()
+              )
             );
             setUserDataWatermark(userId, merged);
             lastKnownGoodStateRef.current = merged;

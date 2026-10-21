@@ -18,6 +18,7 @@ import { withoutDeviceLocalKeys } from './deviceLocalState';
 import { trustedNow, trustedNowMs } from './clock';
 import { CaptchaRejectedError, isCaptchaRejection, withCaptcha } from './captcha';
 import { SentSnapshots, snapshotOf } from './sentSnapshots';
+import { canonical } from './stateEquality';
 
 function getValidSupabaseUrl(url: unknown): string | null {
   if (typeof url !== 'string') return null;
@@ -525,13 +526,25 @@ export async function saveUserDataToSupabase(
     withoutDeviceLocalKeys(withoutRetiredKeys(withoutSyncedCollections(finalState)))
   );
 
+  // The server already holds exactly this blob (key order aside): no write. A return to the tab
+  // merges the server blob into a new state object that saves with nothing changed.
+  const blobUnchanged =
+    existingRes.exists &&
+    existingRes.state !== null &&
+    JSON.stringify(canonical(blobState)) ===
+      JSON.stringify(
+        canonical(withoutUnsavedBlobKeys(withoutRetiredKeys(withoutSyncedCollections(existingRes.state))))
+      );
+
   try {
     // Execute user_data upsert and profiles upsert in parallel for maximum speed
-    const userDataPromise = supabase.from('user_data').upsert({
-      user_id: userId,
-      state: blobState,
-      updated_at: trustedNow().toISOString(),
-    });
+    const userDataPromise = blobUnchanged
+      ? Promise.resolve({ error: null })
+      : supabase.from('user_data').upsert({
+          user_id: userId,
+          state: blobState,
+          updated_at: trustedNow().toISOString(),
+        });
 
     const profilePromise = writeProfileFromState(userId, finalState);
 

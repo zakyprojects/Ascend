@@ -14,3 +14,18 @@ export function keepIfUnchanged<T extends object>(prev: T, next: T): T {
   }
   return prev;
 }
+
+/**
+ * Key-sorted copy without undefined values. jsonb does not keep key order, so values compared
+ * or hashed after a server round trip use this form.
+ */
+export function canonical(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(canonical);
+  if (value === null || typeof value !== 'object') return value;
+  const sorted: Record<string, unknown> = {};
+  for (const key of Object.keys(value).sort()) {
+    const field = (value as Record<string, unknown>)[key];
+    if (field !== undefined) sorted[key] = canonical(field);
+  }
+  return sorted;
+}

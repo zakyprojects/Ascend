@@ -1,6 +1,6 @@
 // keepIfUnchanged: the 60 s reconcile tick in store.ts (checkUpdates) returns the same state when
 // nothing changed, so the autosave does not fire.
-import { keepIfUnchanged } from '../stateEquality';
+import { canonical, keepIfUnchanged } from '../stateEquality';
 
 function assert(condition: boolean, msg: string) {
   if (!condition) {
@@ -47,6 +47,18 @@ assert(keepIfUnchanged(prev, prev) === prev, 'same object returns prev');
   const a = { v: undefined as number | undefined };
   const b = { v: undefined as number | undefined };
   assert(keepIfUnchanged(a, b) === a, 'undefined values equal');
+}
+
+// canonical: key order and undefined fields do not matter (jsonb round trip); values do.
+{
+  const a = { b: 1, a: { y: [1, { q: 2, p: 1 }], x: undefined } };
+  const b = { a: { y: [1, { p: 1, q: 2 }] }, b: 1 };
+  assert(JSON.stringify(canonical(a)) === JSON.stringify(canonical(b)), 'reordered keys are equal');
+  assert(
+    JSON.stringify(canonical({ a: [1, 2] })) !== JSON.stringify(canonical({ a: [2, 1] })),
+    'array order still counts'
+  );
+  assert(JSON.stringify(canonical({ a: 1 })) !== JSON.stringify(canonical({ a: 2 })), 'changed value differs');
 }
 
 console.log('stateEquality fixtures passed');

@@ -17,6 +17,7 @@ import type {
 import { DEFAULT_TIME_TRACKER_STATE } from '../../types';
 import { isServerOwnedBadHabitLogId } from '../badHabitAwards';
 import { mergeTimeTrackerDays, type TimeTrackerDayDoc } from '../timeTracker';
+import { canonical } from '../stateEquality';
 
 /**
  * Blob collections that also live in a relational table (DB normalization,
@@ -92,21 +93,6 @@ export const withItems = (collection: SyncedCollection, state: AppState, items: 
 const isoTime = (value: unknown): string => new Date(String(value)).toISOString();
 
 type SyncedItem<K extends keyof AppState> = NonNullable<AppState[K]> extends Array<infer T> ? T : never;
-
-/**
- * Key-sorted copy without undefined values. jsonb does not keep key order, so
- * document rows hash on this form to stay equal after a server round trip.
- */
-function canonical(value: unknown): unknown {
-  if (Array.isArray(value)) return value.map(canonical);
-  if (value === null || typeof value !== 'object') return value;
-  const sorted: Record<string, unknown> = {};
-  for (const key of Object.keys(value).sort()) {
-    const field = (value as Record<string, unknown>)[key];
-    if (field !== undefined) sorted[key] = canonical(field);
-  }
-  return sorted;
-}
 
 /**
  * A collection stored as one jsonb document per item (batch C): modules with
