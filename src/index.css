@@ -1373,8 +1373,7 @@ html[data-page-hidden] *::after {
    (a modal) is never trapped. Browsers without scroll timelines show cards as they are.
    Below lg the window scrolls and Android can freeze that timeline mid-fling, so phones get the
    same rise played once on entry instead (lib/scrollRise.ts, data-rise below). Marketing pages
-   (data-page-area="window") scroll the window at every width, and Chrome leaves that timeline
-   stale while the scrollbar is dragged, so they use the played-once rise at every width too. */
+   (data-page-area="window") have no scroll rise at all: their content is always shown. */
 @supports (animation-timeline: view()) {
   @media (min-width: 1024px) and (prefers-reduced-motion: no-preference) {
     [data-page-area]:not([data-page-area='window']) :is(.card, .scroll-rise):not([class*='animate-']) {
