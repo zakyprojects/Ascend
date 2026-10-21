@@ -3018,9 +3018,13 @@ export function useAppState() {
     partnersRefreshRef.current = syncPartnerDataLive;
 
     let pollInterval: any = null;
+    // Set first in the cleanup: removeChannel reports CLOSED to the subscribe callback afterwards,
+    // which must not start a poll that no cleanup would ever stop.
+    let disposed = false;
 
     // No polling while the tab is hidden; a return to it catches up at once (handleVisibilityChange).
     const startFallbackPolling = () => {
+      if (disposed) return;
       if (!pollInterval && (typeof navigator === 'undefined' || navigator.onLine) && !document.hidden) {
         pollInterval = setInterval(syncPartnerDataLive, 10000);
       }
@@ -3178,6 +3182,7 @@ export function useAppState() {
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
+      disposed = true;
       stopFallbackPolling();
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
