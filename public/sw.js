@@ -1,12 +1,12 @@
 // Pages. The app's HTML (app-shell.html, the same for every app page) is kept under one key, so
-// any app page opens offline. The public pages (landing, /features, legal, 404; prerendered, each
+// any app page opens offline. The public pages (landing, /features, /about, legal, 404; prerendered, each
 // its own HTML) are kept per address in their own cache, so visiting one never replaces the app.
 // KEEP IN SYNC: MARKETING_PAGE = the public paths of src/marketing/routes.ts (checked by
 // src/lib/__tests__/vercelConfig.test.ts). /login and /signup are the app shell.
 const SHELL_CACHE_NAME = 'ascend-shell-v1';
 const SHELL_KEY = '/__ascend/app-shell';
 const MARKETING_CACHE_NAME = 'ascend-marketing-v1';
-const MARKETING_PAGE = /^\/(?:|features|features\/[a-z-]+|privacy|terms|404)$/;
+const MARKETING_PAGE = /^\/(?:|features|features\/[a-z-]+|about|privacy|terms|404)$/;
 // Before 2026-10-21 every page was the app under one key here; its copy seeds the shell cache once.
 const OLD_PAGE_CACHE_NAME = 'ascend-pages-v1';
 // Static files from public/ (icons, manifest, fonts): one entry per file, network first.

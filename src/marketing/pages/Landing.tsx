@@ -601,7 +601,7 @@ function About() {
           <blockquote className="mt-4 space-y-4 text-base leading-relaxed text-content-secondary">
             <p>
               People love to compete: in grades, jobs and sport. When real life doesn’t give that drive a good place to
-              go, it finds one anyway. For some of us it’s a ranked game like PUBG or Valorant. For others it’s
+              go, it finds one anyway. For some of us it’s a competitive game. For others it’s
               followers and likes, who has the better phone or bike, or winning every argument in the comments. The
               drive is real; it’s just aimed at things that leave us with nothing at the end.
             </p>
@@ -619,6 +619,9 @@ function About() {
             <span className="font-semibold text-content-primary">{SITE_MAKER}</span>
             <span className="text-content-muted"> · Maker of Ascend, computer science student in Peshawar</span>
           </figcaption>
+          <a href="/about" className={cx(LINK_CLASS, 'mt-4 inline-flex min-h-11 items-center text-sm')}>
+            More about Ascend and its maker
+          </a>
         </figure>
       </div>
     </Section>

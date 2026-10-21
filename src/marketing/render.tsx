@@ -3,6 +3,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { LegalPage } from '@/components/legal/LegalPage';
 import { marketingHead, type PageAssets } from './head';
 import type { MarketingRoute } from './routes';
+import { About } from './pages/About';
 import { FeaturePage } from './pages/FeaturePage';
 import { FeaturesHub } from './pages/FeaturesHub';
 import { Landing } from './pages/Landing';
@@ -23,6 +24,8 @@ function pageElement(route: MarketingRoute): ReactElement {
     case 'feature':
       if (!route.slug) throw new Error(`Feature route without a slug: ${route.path}`);
       return <FeaturePage slug={route.slug} />;
+    case 'about':
+      return <About />;
     case 'notFound':
       return <NotFound />;
     case 'legal':

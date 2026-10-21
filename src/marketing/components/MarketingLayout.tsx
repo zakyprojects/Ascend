@@ -63,9 +63,15 @@ function FeaturesMenu() {
             </div>
           ))}
         </div>
-        <a href="/features" className={cx(LINK_CLASS, 'mt-3 inline-flex min-h-11 items-center px-2 text-sm')}>
-          See all features
-        </a>
+        <div className="mt-3 flex flex-wrap gap-x-4">
+          <a href="/features" className={cx(LINK_CLASS, 'inline-flex min-h-11 items-center px-2 text-sm')}>
+            See all features
+          </a>
+          {/* Phones hide the header's About link, so the menu carries it. */}
+          <a href="/about" className={cx(LINK_CLASS, 'inline-flex min-h-11 items-center px-2 text-sm sm:hidden')}>
+            About Ascend
+          </a>
+        </div>
       </div>
     </details>
   );
@@ -82,6 +88,9 @@ function Header() {
         </a>
         <nav aria-label="Main" className="flex items-center gap-1">
           <FeaturesMenu />
+          <a href="/about" className={cx(NAV_LINK, 'max-sm:hidden')}>
+            About
+          </a>
           <a href="/login" className={cx(NAV_LINK, 'max-[479px]:hidden')}>
             Sign in
           </a>
@@ -132,6 +141,9 @@ function Footer() {
           <nav aria-label="Site" className="flex flex-wrap gap-x-5 gap-y-1">
             <a href="/features" className={cx('inline-flex min-h-9 items-center rounded hover:text-content-primary', FOCUS_RING)}>
               Features
+            </a>
+            <a href="/about" className={cx('inline-flex min-h-9 items-center rounded hover:text-content-primary', FOCUS_RING)}>
+              About
             </a>
             <a href="/privacy" className={cx('inline-flex min-h-9 items-center rounded hover:text-content-primary', FOCUS_RING)}>
               Privacy

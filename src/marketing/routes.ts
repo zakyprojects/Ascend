@@ -5,11 +5,11 @@ import { FEATURE_SLUGS, FEATURES, featurePath, type FeatureSlug } from './featur
  * manifest for the pages, the sitemap, robots.txt and the checks. App pages are not here: they
  * are the app shell (app-shell.html, noindex, vercel.json).
  *
- *   landing / hub / feature / notFound: rendered from React components to static HTML
+ *   landing / hub / feature / about / notFound: rendered from React components to static HTML
  *   legal: the app's LegalPage rendered to static HTML (the app shows the same page in-app)
  *   auth: the app shell with this page's head (the sign-in screen itself needs the app)
  */
-export type MarketingKind = 'landing' | 'hub' | 'feature' | 'legal' | 'auth' | 'notFound';
+export type MarketingKind = 'landing' | 'hub' | 'feature' | 'about' | 'legal' | 'auth' | 'notFound';
 
 export interface MarketingRoute {
   path: string;
@@ -86,6 +86,19 @@ export const MARKETING_ROUTES: MarketingRoute[] = [
     updated: LAUNCH,
   },
   ...featureRoutes,
+  {
+    path: '/about',
+    file: 'about.html',
+    kind: 'about',
+    title: 'About Ascend – Who Makes It and Why',
+    ogTitle: 'About Ascend – Who Makes It and Why',
+    description:
+      'Ascend is made by Zakria Khan, a computer science student in Peshawar, to turn the drive to compete into real habits. The story, the idea and how to support it.',
+    ogImage: 'about',
+    ogAlt: 'About Ascend: who makes it, and why',
+    index: true,
+    updated: '2026-10-21',
+  },
   {
     path: '/login',
     file: 'login.html',

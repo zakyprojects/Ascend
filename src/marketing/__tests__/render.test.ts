@@ -8,6 +8,7 @@ import { LESSONS } from '@/lib/lessons';
 import { SOBRIETY_MILESTONE_POINTS } from '@/lib/pointsConfig';
 import { RECOVERY_MILESTONES } from '@/lib/recoveryAwards';
 import { fmt, pts } from '../features/format';
+import { FUEL_MENU, fuelMailto, MAKER_STORY } from '@/components/settings/makerContent';
 
 /**
  * Every public page renders in plain Node (no window/document/localStorage: an app module that
@@ -71,10 +72,16 @@ assert(landing.indexOf('<script>') < landing.indexOf('<meta name="viewport"'), '
 const landingText = landing.replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>/g, ' ').replace(/<[^>]+>/g, ' ');
 assert(landingText.split(/\s+/).filter(Boolean).length >= 400, 'landing has at least 400 words of text');
 for (const slug of FEATURE_SLUGS) assert(landing.includes(`href="${featurePath(slug)}"`), `landing links ${featurePath(slug)}`);
-for (const href of ['/signup', '/login', '/features', '/privacy']) assert(landing.includes(`href="${href}"`), `landing links ${href}`);
+for (const href of ['/signup', '/login', '/features', '/privacy', '/about']) assert(landing.includes(`href="${href}"`), `landing links ${href}`);
 
 const textOf = (html: string) => html.replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>/g, ' ').replace(/<[^>]+>/g, ' ');
 const wordsOf = (html: string) => textOf(html).split(/\s+/).filter(Boolean).length;
+
+// /about is a real page with the maker's story (the same text as Settings > About us) and the support menu.
+const about = renderMarketingPage(MARKETING_ROUTES.find((r) => r.kind === 'about')!, assets);
+for (const part of MAKER_STORY) for (const text of part.paragraphs) assert(textOf(about).includes(text), `/about has: ${text.slice(0, 30)}`);
+for (const { name } of FUEL_MENU) assert(about.includes(fuelMailto(name).replace(/&/g, '&amp;')), `/about support links ${name}`);
+assert(count(about, /href="\/about"/g) >= 2, '/about is linked from the header and the footer');
 
 // /features links every feature page.
 const hub = renderMarketingPage(MARKETING_ROUTES.find((r) => r.kind === 'hub')!, assets);

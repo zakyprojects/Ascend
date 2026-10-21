@@ -122,6 +122,7 @@ export function structuredData(route: MarketingRoute): object | null {
   }
   const crumbs: { name: string; path: string }[] = [{ name: 'Home', path: '/' }];
   if (route.kind === 'hub' || route.kind === 'feature') crumbs.push({ name: 'Features', path: '/features' });
+  if (route.kind === 'about') crumbs.push({ name: 'About', path: '/about' });
   if (route.kind === 'feature' && route.slug) crumbs.push({ name: FEATURES[route.slug].name, path: route.path });
   if (crumbs.length < 2) return null;
   return {
