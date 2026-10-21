@@ -2,7 +2,7 @@
  * The marketing pages' only script (landing, /features, feature pages, 404). The pages are static
  * HTML and work without it; this adds the theme switch, closes the Features menu on an outside
  * click or Escape, swaps "Get started" for "Open Ascend" when a session is saved on this device,
- * and turns on the app's card spotlight and analytics (no scroll rise: content is never hidden). Also the CSS entry
+ * and turns on the app's scroll rise, card spotlight and analytics. Also the CSS entry
  * (marketing.css: the app's fonts, tokens and components, so the pages look exactly like the app).
  * Imports only DOM-level helpers from lib/ (no React), so the pages load a few KB of script.
  */
@@ -10,6 +10,7 @@ import './marketing.css';
 import { installAnalytics } from '@/lib/analytics';
 import { installCardSpotlight } from '@/lib/cardSpotlight';
 import { installPressGlow } from '@/lib/pressGlow';
+import { installScrollRise } from '@/lib/scrollRise';
 
 const THEME_KEY = 'ascend_theme_preference'; // lib/store.ts LOCAL_THEME_STORAGE_KEY
 const REVEAL_DURATION_MS = 450; // lib/themeTransition.ts
@@ -121,6 +122,7 @@ function swapCallsToAction() {
 installThemeToggle();
 installMenus();
 swapCallsToAction();
+installScrollRise({ everyWidth: true });
 installCardSpotlight();
 installPressGlow();
 installAnalytics();

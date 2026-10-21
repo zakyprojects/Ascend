@@ -151,9 +151,9 @@ function Footer() {
 
 /**
  * The frame of every marketing page: header (logo, Features menu, Sign in, theme, Get started),
- * the app's static atmosphere, the page, and a footer linking every feature page.
- * `data-page-area="window"` keeps the app's page styles but turns the scroll rise off (index.css):
- * marketing content is never hidden while scrolling.
+ * the app's static atmosphere, the page, and a footer linking every feature page. `data-page-area`
+ * gives cards and `.scroll-rise` blocks the app's scroll rise; "window" (the window scrolls here at
+ * every width) selects the played-once version at every width (index.css + lib/scrollRise.ts).
  */
 export function MarketingLayout({ children }: { children: ReactNode }) {
   return (
