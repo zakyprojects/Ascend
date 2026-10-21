@@ -2313,7 +2313,9 @@ export function useAppState() {
               window.dispatchEvent(new CustomEvent('app-network-error'));
             }
           });
-      } else {
+      } else if (!isLoggingOutRef.current) {
+        // A log-out already sent what was unsaved and is about to end the sign-in; a save started
+        // now would reach the server after that and be refused.
         if (debounceTimer.current) clearTimeout(debounceTimer.current);
         debounceTimer.current = setTimeout(async () => {
           try {

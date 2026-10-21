@@ -405,7 +405,12 @@ export async function saveUserDataToSupabase(
   // stats follow the day, and writeOwnProfile sends only a part that changed.
   const inputSnapshot = snapshotOf(state);
   if (!options?.allowDestructiveWipe && sentSnapshots.matches(userId, 'save-input', inputSnapshot)) {
-    await writeProfileFromState(userId, state);
+    try {
+      await writeProfileFromState(userId, state);
+    } catch (e) {
+      if (!(await hasSessionFor(userId))) throw new SessionLostError();
+      throw e;
+    }
     return state;
   }
 
@@ -553,6 +558,9 @@ export async function saveUserDataToSupabase(
     sentSnapshots.remember(userId, 'save-input', inputSnapshot);
     return finalState;
   } catch (e) {
+    // The sign-in ended while this save was on its way (a log-out here or in another tab): the
+    // server refused it for that reason, not the connection. Same handling as a save that never left.
+    if (!(await hasSessionFor(userId))) throw new SessionLostError();
     console.error('Error saving user_data to Supabase:', e);
     throw e;
   }
