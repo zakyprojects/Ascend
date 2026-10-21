@@ -20,6 +20,8 @@ import { PRESET_BAD_HABITS, PRESET_CATEGORIES } from '@/lib/presets';
 import { TIERS } from '@/lib/tiers';
 import { LINK_CLASS, MarketingLayout } from '../components/MarketingLayout';
 import { Screenshot } from '../components/Screenshot';
+import { CtaBand, FaqList, Section, SectionHeading, type FaqItem } from '../components/Sections';
+import { fmt, pts, range } from '../features/format';
 import { FEATURE_GROUPS, FEATURE_SLUGS, featurePath, featuresInGroup } from '../features/catalog';
 import { SITE_MAKER, SITE_TAGLINE } from '../site';
 
@@ -28,13 +30,6 @@ import { SITE_MAKER, SITE_TAGLINE } from '../site';
  * (pointsConfig, presets, tiers, lessons), so the page cannot drift from what the app does.
  */
 
-const range = (values: number[]) => {
-  const lo = Math.min(...values);
-  const hi = Math.max(...values);
-  return lo === hi ? `${lo}` : `${lo}–${hi}`;
-};
-const pts = (n: number | string) => `${n} ${n === 1 || n === '1' ? 'point' : 'points'}`;
-const fmt = (n: number) => n.toLocaleString('en-US');
 /** Hero entrance order (marketing.css .m-enter staggers by --i). */
 const enter = (i: number) => ({ '--i': i }) as CSSProperties;
 
@@ -105,7 +100,7 @@ const EARNS: { what: string; rule: string; href: string }[] = [
   },
 ];
 
-const FAQ: { q: string; a: ReactNode }[] = [
+const FAQ: FaqItem[] = [
   {
     q: 'Is Ascend free?',
     a: 'Yes. Every feature is free while Ascend is in beta, and there are no payments anywhere in the app.',
@@ -162,26 +157,6 @@ const FAQ: { q: string; a: ReactNode }[] = [
     a: `No. Several unrelated apps share the name. This Ascend is the gamified self-improvement web app made by ${SITE_MAKER} at ascend-neon.vercel.app, and it is not connected to any of them.`,
   },
 ];
-
-function SectionHeading({ id, kicker, title, children }: { id: string; kicker?: string; title: string; children?: ReactNode }) {
-  return (
-    <div className="scroll-rise max-w-2xl">
-      {kicker && <p className="text-sm font-medium text-brand-text">{kicker}</p>}
-      <h2 id={id} className="mt-2 text-2xl sm:text-3xl font-semibold tracking-tight text-content-primary">
-        {title}
-      </h2>
-      {children && <p className="mt-3 text-base leading-relaxed text-content-tertiary">{children}</p>}
-    </div>
-  );
-}
-
-function Section({ labelledBy, className, children }: { labelledBy: string; className?: string; children: ReactNode }) {
-  return (
-    <section aria-labelledby={labelledBy} className={cx('mx-auto max-w-6xl px-4 sm:px-6 pt-20 sm:pt-28', className)}>
-      {children}
-    </section>
-  );
-}
 
 /** The rising line from the loading screens, drawn once behind the hero (decorative). */
 function HeroTrace() {
@@ -606,47 +581,16 @@ function Faq() {
   return (
     <Section labelledBy="faq-title">
       <SectionHeading id="faq-title" kicker="FAQ" title="Questions people ask" />
-      <div className="mt-8 divide-y divide-overlay-subtle rounded-2xl border border-overlay-default">
-        {FAQ.map(({ q, a }) => (
-          <details key={q} className="m-faq group">
-            <summary
-              className={cx(
-                'flex min-h-14 cursor-pointer list-none items-center justify-between gap-4 rounded-2xl px-5 py-4 text-left font-medium text-content-primary [&::-webkit-details-marker]:hidden',
-                FOCUS_RING
-              )}
-            >
-              <h3 className="text-base font-medium">{q}</h3>
-              <Plus size={18} aria-hidden="true" className="m-faq-icon shrink-0 text-content-muted transition-transform duration-base" />
-            </summary>
-            <div className="px-5 pb-5 text-sm leading-relaxed text-content-tertiary">{a}</div>
-          </details>
-        ))}
-      </div>
+      <FaqList items={FAQ} />
     </Section>
   );
 }
 
 function FinalCta() {
   return (
-    <Section labelledBy="cta-title">
-      <div className="card scroll-rise overflow-hidden px-6 py-12 text-center sm:px-12 sm:py-16">
-        <h2 id="cta-title" className="text-3xl font-semibold tracking-tight text-content-primary sm:text-4xl">
-          The season is already running
-        </h2>
-        <p className="mx-auto mt-3 max-w-xl text-base leading-relaxed text-content-tertiary">
-          Join now, log today, and see where you stand on Monday. It’s free.
-        </p>
-        <div className="mt-8 flex flex-wrap justify-center gap-3">
-          <a href="/signup" data-cta="" className="btn-primary min-h-12 px-6 text-base">
-            <span data-cta-label="">Start free</span>
-            <ArrowRight size={18} aria-hidden="true" />
-          </a>
-          <a href="/features" className="btn-secondary min-h-12 px-6 text-base">
-            See every feature
-          </a>
-        </div>
-      </div>
-    </Section>
+    <CtaBand id="cta-title" title="The season is already running">
+      Join now, log today, and see where you stand on Monday. It’s free.
+    </CtaBand>
   );
 }
 

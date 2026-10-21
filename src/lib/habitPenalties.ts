@@ -41,18 +41,7 @@ export interface StreakSourceInfo {
   bestDays?: number;
 }
 
-export function getMissPenaltyMultiplier(consecutiveMisses: number, seasonPoints: number = 0): number {
-  const isPerformerOrAbove = seasonPoints >= 2000;
-
-  if (!isPerformerOrAbove) {
-    if (consecutiveMisses <= 1) return 1.0;
-    return 1.5;
-  } else {
-    if (consecutiveMisses <= 1) return 1.0;
-    if (consecutiveMisses === 2) return 2.0;
-    return 2.5;
-  }
-}
+export { getMissPenaltyMultiplier } from './missPenalty';
 
 /**
  * Checks if a habit was completed for a given period key.

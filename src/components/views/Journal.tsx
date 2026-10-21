@@ -7,6 +7,7 @@ import { formatDateLong, calculateStreak, formatWeekdayShort, formatWeekdayDate 
 import { JOURNAL_POINTS } from '@/lib/pointsConfig';
 import { ptsText } from '@/lib/leagues';
 import { isRetiredAppJournalAward } from '@/lib/journalAwards';
+import { MIN_JOURNAL_CONTENT_LENGTH } from '@/lib/journalRules';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { useAsyncAction } from '@/lib/useAsyncAction';
 import { AscendLoadingIndicator } from '@/components/ui/AscendLoadingIndicator';
@@ -22,8 +23,6 @@ import { toUserMessage } from '@/lib/userMessage';
 import { getDailyPrompt } from '@/data/journalPrompts';
 import { MOODS, MOOD_MAP, MoodBadge } from '@/components/journal/moods';
 
-// Minimum non-whitespace characters to save an entry
-const MIN_JOURNAL_CONTENT_LENGTH = 10;
 const PROMPT_PREF_STORAGE_KEY = 'ascend_journal_prompt_mode';
 const ENTRIES_PAGE = 10;
 

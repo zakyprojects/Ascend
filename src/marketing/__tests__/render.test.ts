@@ -1,4 +1,5 @@
-import { FEATURE_SLUGS, featurePath } from '../features/catalog';
+import { FEATURES, FEATURE_SLUGS, featurePath } from '../features/catalog';
+import { FEATURE_CONTENT } from '../features/content';
 import { MARKETING_ROUTES } from '../routes';
 import { isRenderedRoute, renderMarketingPage } from '../render';
 import { absoluteUrl } from '../site';
@@ -66,5 +67,40 @@ const landingText = landing.replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/
 assert(landingText.split(/\s+/).filter(Boolean).length >= 400, 'landing has at least 400 words of text');
 for (const slug of FEATURE_SLUGS) assert(landing.includes(`href="${featurePath(slug)}"`), `landing links ${featurePath(slug)}`);
 for (const href of ['/signup', '/login', '/features', '/privacy']) assert(landing.includes(`href="${href}"`), `landing links ${href}`);
+
+const textOf = (html: string) => html.replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>/g, ' ').replace(/<[^>]+>/g, ' ');
+const wordsOf = (html: string) => textOf(html).split(/\s+/).filter(Boolean).length;
+
+// /features links every feature page.
+const hub = renderMarketingPage(MARKETING_ROUTES.find((r) => r.kind === 'hub')!, assets);
+for (const slug of FEATURE_SLUGS) assert(hub.includes(`href="${featurePath(slug)}"`), `/features links ${featurePath(slug)}`);
+assert(hub.includes('"@type":"BreadcrumbList"'), '/features has a BreadcrumbList');
+
+// Written feature pages are full pages, not doorways: real length, the points section, a visible
+// breadcrumb matching the BreadcrumbList, related pages, sign-up, and no two pages alike.
+const featureTexts: string[] = [];
+for (const route of MARKETING_ROUTES.filter((r) => r.kind === 'feature' && r.slug && FEATURE_CONTENT[r.slug])) {
+  const html = renderMarketingPage(route, assets);
+  const content = FEATURE_CONTENT[route.slug!]!;
+  assert(wordsOf(html) >= 900, `${route.path}: at least 900 words on the page (${wordsOf(html)})`);
+  assert(html.includes('id="how-points-work"'), `${route.path}: has the points section the hero links to`);
+  assert(html.includes('aria-label="Breadcrumb"') && html.includes(`"name":"${FEATURES[route.slug!].name}"`), `${route.path}: breadcrumb`);
+  assert(content.related.length >= 3 && content.related.length <= 4 && !content.related.includes(route.slug!), `${route.path}: 3–4 related pages`);
+  for (const other of content.related) assert(html.includes(`href="${featurePath(other)}"`), `${route.path}: links ${other}`);
+  assert(html.includes('href="/signup"') && html.includes('href="/features"'), `${route.path}: links sign-up and /features`);
+  assert(content.faq.length >= 4 && content.faq.length <= 6, `${route.path}: 4–6 questions`);
+  featureTexts.push(textOf(html));
+}
+assert(featureTexts.length >= 5, 'the written feature pages are checked');
+// No page is another with the names swapped: most of each page's sentences are its own.
+const sentences = (text: string) => new Set(text.split(/[.!?]\s+/).map((s) => s.replace(/\s+/g, ' ').trim()).filter((s) => s.length > 40));
+featureTexts.forEach((text, i) => {
+  const own = sentences(text);
+  featureTexts.forEach((other, j) => {
+    if (i === j) return;
+    const shared = [...sentences(other)].filter((s) => own.has(s)).length;
+    assert(shared / own.size < 0.2, `feature pages ${i} and ${j} share ${shared} of ${own.size} sentences`);
+  });
+});
 
 console.log(`\nMarketing render: ${MARKETING_ROUTES.length} routes checked.`);
