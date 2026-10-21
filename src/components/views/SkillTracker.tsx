@@ -22,18 +22,11 @@ import { CountUp, Reveal } from '@/components/ui/Motion';
 import { lastDayKeys, sumPerDay } from '@/lib/weeklyActivity';
 import { useUnsavedChanges } from '@/lib/unsavedChanges';
 import { nameTaken } from '@/lib/uniqueNames';
+import { SKILL_LEVELS } from '@/lib/skillLevels';
 
 const DAYS_PAGE = 7;
 const QUICK_MINUTES = [45, 60, 120, 180];
 const quickLabel = (m: number) => (m >= 120 && m % 60 === 0 ? `${m / 60} hrs` : `${m} min`);
-
-/** Level thresholds in practice hours (beginner → intermediate → advanced → expert). */
-const LEVELS: { level: SkillLevel; below: number | null; next: string | null }[] = [
-  { level: 'beginner', below: 10, next: 'Intermediate' },
-  { level: 'intermediate', below: 25, next: 'Advanced' },
-  { level: 'advanced', below: 50, next: 'Expert' },
-  { level: 'expert', below: null, next: null },
-];
 
 const LEVEL_BADGE: Record<SkillLevel, string> = {
   beginner: 'badge-emerald',
@@ -49,9 +42,9 @@ const formatHours = (minutes: number): string => `${(Math.round(minutes / 6) / 1
 
 function levelOf(minutes: number) {
   const hours = minutes / 60;
-  const index = LEVELS.findIndex((l) => l.below === null || hours < l.below);
-  const current = LEVELS[index];
-  const from = index > 0 ? (LEVELS[index - 1].below as number) : 0;
+  const index = SKILL_LEVELS.findIndex((l) => l.below === null || hours < l.below);
+  const current = SKILL_LEVELS[index];
+  const from = index > 0 ? (SKILL_LEVELS[index - 1].below as number) : 0;
   const progress = current.below === null ? 100 : Math.min(100, ((hours - from) / (current.below - from)) * 100);
   const text =
     current.below === null ? `${hours.toFixed(1)} hrs, top level` : `${hours.toFixed(1)}/${current.below} hrs to ${current.next}`;
