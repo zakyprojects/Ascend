@@ -248,7 +248,7 @@ function Hero() {
           eager
           width={540}
           height={886}
-          alt="The Ascend dashboard on a phone: 3 of 6 habits done today, 272 season points and the Starter rank"
+          alt="The Ascend dashboard on a phone: 3 of 6 habits done today, 331 season points and the Starter rank"
           className="mx-auto w-full max-w-[280px] rounded-[1.75rem] border-4 border-bg-700 sm:hidden"
         />
         <Screenshot
@@ -257,7 +257,7 @@ function Hero() {
           width={1600}
           height={589}
           className="hidden sm:block"
-          alt="The Ascend dashboard on a computer: 3 of 6 habits done today, 272 season points, the Starter rank and the climb from Beginner to Master"
+          alt="The Ascend dashboard on a computer: 3 of 6 habits done today, 331 season points, the Starter rank and the climb from Beginner to Master"
         />
         <Screenshot
           name="dashboard-phone"
@@ -450,8 +450,8 @@ function PointsRanksLeagues() {
         <Screenshot
           name="ranks-desktop"
           width={1400}
-          height={853}
-          alt="The Ranks page in Ascend: Starter rank at 24% of the way to Learner, the season countdown, all nine ranks with the points they need, and recent points"
+          height={885}
+          alt="The Ranks page in Ascend: Starter rank at 43% of the way to Learner, the season countdown, all nine ranks with the points they need, and recent points"
         />
       </div>
     </Section>
