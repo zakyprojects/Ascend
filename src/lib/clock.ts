@@ -13,6 +13,7 @@
  *
  * Every time read in the app goes through trustedNow() / trustedNowMs() (enforced by ESLint).
  */
+import { isDeviceOffline } from './deviceOffline';
 
 const LAST_TRUSTED_KEY = 'ascend_last_trusted_ms';
 const RESYNC_INTERVAL_MS = 10 * 60 * 1000;
@@ -107,10 +108,14 @@ export function startTrustedClock(): void {
   void clockReady();
   // performance.now() can pause while the device sleeps, so re-read when the app comes back.
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') void syncClock();
-    else remember();
+    // Offline the read can only fail; the online event re-reads.
+    if (document.visibilityState === 'visible') {
+      if (!isDeviceOffline()) void syncClock();
+    } else remember();
   });
   window.addEventListener('online', () => void syncClock());
   window.addEventListener('pagehide', remember);
-  window.setInterval(() => void syncClock(), RESYNC_INTERVAL_MS);
+  window.setInterval(() => {
+    if (!isDeviceOffline()) void syncClock();
+  }, RESYNC_INTERVAL_MS);
 }

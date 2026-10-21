@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { RefreshCw } from 'lucide-react';
 import { APP_BUILD_ID } from '@/lib/version';
 import { trustedNowMs } from '@/lib/clock';
+import { isDeviceOffline } from '@/lib/deviceOffline';
 
 /** True once a newer build is live (version.json differs, or a service worker replaced the old one). */
 export function useUpdateAvailable(): boolean {
@@ -13,7 +14,8 @@ export function useUpdateAvailable(): boolean {
   );
 
   const checkForUpdate = useCallback(async () => {
-    if (hasUpdate) return;
+    // Offline the check can only fail; the next focus or interval tick checks again.
+    if (hasUpdate || isDeviceOffline()) return;
     try {
       const res = await fetch(`/version.json?t=${trustedNowMs()}`, {
         headers: { 'Cache-Control': 'no-cache, no-store' },

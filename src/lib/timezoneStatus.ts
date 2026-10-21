@@ -1,6 +1,7 @@
 import { trustedNow } from './clock';
 import { todayKey, todayKeyInZone } from './dates';
 import { supabase, isSupabaseConfigured, fetchMyPrivateProfile, sendDeviceTimezone } from './supabase';
+import { isDeviceOffline } from './deviceOffline';
 
 /**
  * A westward timezone change waits on the server until the new local date catches up with the
@@ -54,7 +55,8 @@ export function startDeviceTimezoneSync(): void {
   let sending = false;
   const send = async () => {
     timer = null;
-    if (sending) return;
+    // Offline the send can only fail; the online event sends it.
+    if (sending || isDeviceOffline()) return;
     sending = true;
     try {
       const { data } = await supabase.auth.getSession();

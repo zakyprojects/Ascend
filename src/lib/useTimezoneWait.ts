@@ -4,6 +4,7 @@ import { todayKey } from './dates';
 import { DEVICE_TIMEZONE_SENT_EVENT } from './deviceTimezone';
 import { supabase } from './supabase';
 import { readTimezoneWait, type TimezoneWait } from './timezoneStatus';
+import { isDeviceOffline } from './deviceOffline';
 
 const REFRESH_MS = 10 * 60 * 1000;
 
@@ -31,6 +32,8 @@ function publish(next: TimezoneWait | null) {
 }
 
 function refresh() {
+  // Offline the read can only fail; the online event reads again.
+  if (isDeviceOffline()) return;
   const seq = ++readSeq;
   readTimezoneWait()
     .then((next) => {
@@ -47,6 +50,7 @@ function startWatching(): () => void {
   refresh();
   const timer = setInterval(refresh, REFRESH_MS);
   document.addEventListener('visibilitychange', onVisible);
+  window.addEventListener('online', refresh);
   window.addEventListener(DEVICE_TIMEZONE_SENT_EVENT, refresh);
   // Deferred: Supabase must not be called inside its own auth callback.
   const { data: authListener } = supabase.auth.onAuthStateChange(() => {
@@ -57,6 +61,7 @@ function startWatching(): () => void {
     if (resumeTimer) clearTimeout(resumeTimer);
     resumeTimer = null;
     document.removeEventListener('visibilitychange', onVisible);
+    window.removeEventListener('online', refresh);
     window.removeEventListener(DEVICE_TIMEZONE_SENT_EVENT, refresh);
     authListener.subscription.unsubscribe();
   };

@@ -55,6 +55,7 @@ import {
   RankCelebrated,
 } from '@/types';
 import { mergeRankCelebrated } from './rankCelebration';
+import { isDeviceOffline } from './deviceOffline';
 
 /** The on/off UserProfile settings the Settings switches write to the profile row. */
 type ProfileSwitchKey = NotificationPreferenceKey | 'isProfilePublic' | 'acceptPartnerInvites';
@@ -2125,7 +2126,8 @@ export function useAppState() {
     const SYNC_THROTTLE_MS = 180000; // 3 minutes
 
     const handleReconnectAndSync = async (force = false) => {
-      if (isSyncing) return;
+      // Offline every request below fails; the online event forces this sync on return.
+      if (isSyncing || isDeviceOffline()) return;
       const now = trustedNowMs();
       if (!force && now - lastSyncTimeRef.current < SYNC_THROTTLE_MS) {
         return;

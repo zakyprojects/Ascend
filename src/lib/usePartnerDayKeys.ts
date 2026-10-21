@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { getNow, todayKeyInZone } from './dates';
 import { isSupabaseConfigured, supabase } from './supabase';
+import { isDeviceOffline } from './deviceOffline';
 
 const CHECK_INTERVAL_MS = 30000;
 
@@ -46,14 +47,18 @@ export function usePartnerDayKeys(partnerIds: readonly string[]): DayKeys {
       }
       setTimeZones(next);
     };
+    // Offline the read can only fail; the online event reads again.
     const onVisible = () => {
-      if (document.visibilityState === 'visible') void read().catch(() => undefined);
+      if (document.visibilityState === 'visible' && !isDeviceOffline()) void read().catch(() => undefined);
     };
+    const onOnline = () => void read().catch(() => undefined);
     void read().catch(() => undefined);
     document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('online', onOnline);
     return () => {
       active = false;
       document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('online', onOnline);
     };
   }, [idsKey]);
 
