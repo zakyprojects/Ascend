@@ -152,7 +152,8 @@ function Footer() {
 /**
  * The frame of every marketing page: header (logo, Features menu, Sign in, theme, Get started),
  * the app's static atmosphere, the page, and a footer linking every feature page. `data-page-area`
- * gives cards and `.scroll-rise` blocks the app's scroll rise (index.css + lib/scrollRise.ts).
+ * gives cards and `.scroll-rise` blocks the app's scroll rise; "window" (the window scrolls here at
+ * every width) selects the played-once version at every width (index.css + lib/scrollRise.ts).
  */
 export function MarketingLayout({ children }: { children: ReactNode }) {
   return (
@@ -162,7 +163,7 @@ export function MarketingLayout({ children }: { children: ReactNode }) {
       </a>
       <div aria-hidden="true" className="app-atmosphere" />
       <Header />
-      <div data-page-area="">
+      <div data-page-area="window">
         <main id="main" tabIndex={-1} className="outline-none">
           {children}
         </main>

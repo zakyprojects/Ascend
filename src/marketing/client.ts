@@ -122,7 +122,7 @@ function swapCallsToAction() {
 installThemeToggle();
 installMenus();
 swapCallsToAction();
-installScrollRise();
+installScrollRise({ everyWidth: true });
 installCardSpotlight();
 installPressGlow();
 installAnalytics();

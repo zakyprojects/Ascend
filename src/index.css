@@ -1372,10 +1372,12 @@ html[data-page-hidden] *::after {
    Fill is backwards only: after the range the card keeps no transform, so a fixed-position child
    (a modal) is never trapped. Browsers without scroll timelines show cards as they are.
    Below lg the window scrolls and Android can freeze that timeline mid-fling, so phones get the
-   same rise played once on entry instead (lib/scrollRise.ts, data-rise below). */
+   same rise played once on entry instead (lib/scrollRise.ts, data-rise below). Marketing pages
+   (data-page-area="window") scroll the window at every width, and Chrome leaves that timeline
+   stale while the scrollbar is dragged, so they use the played-once rise at every width too. */
 @supports (animation-timeline: view()) {
   @media (min-width: 1024px) and (prefers-reduced-motion: no-preference) {
-    [data-page-area] :is(.card, .scroll-rise):not([class*='animate-']) {
+    [data-page-area]:not([data-page-area='window']) :is(.card, .scroll-rise):not([class*='animate-']) {
       animation: scroll-rise linear backwards;
       animation-timeline: view();
       animation-range: entry 0% entry 260px;

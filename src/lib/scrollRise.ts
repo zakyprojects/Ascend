@@ -7,11 +7,15 @@
  * moment an element enters the screen, and the element never hides again. A fast fling skips the
  * motion and shows content at once, so it is never behind the finger.
  *
+ * Marketing pages scroll the window at every width, and desktop Chrome leaves that timeline stale
+ * while the scrollbar is dragged, so they pass `everyWidth` and get this version on desktop too.
+ *
  * States (data-rise): 'wait' = below the screen, hidden; 'in' = rising; no attribute = at rest.
  */
 
 const SELECTOR = '[data-page-area] :is(.card, .scroll-rise):not([class*="animate-"])';
 const PHONE_QUERY = '(max-width: 1023.98px) and (prefers-reduced-motion: no-preference)';
+const EVERY_WIDTH_QUERY = '(prefers-reduced-motion: no-preference)';
 const RISE_MS = 450;
 /** Scroll speed (px per ms) above which content appears without rising: a fling, not a read. */
 const FAST_SCROLL = 2.5;
@@ -50,11 +54,11 @@ function show(el: HTMLElement) {
   }, RISE_MS);
 }
 
-export function installScrollRise(): void {
+export function installScrollRise({ everyWidth = false }: { everyWidth?: boolean } = {}): void {
   if (typeof window === 'undefined' || typeof IntersectionObserver === 'undefined') return;
   // Same browsers as the CSS version, so Reveal's split (Motion.tsx SCROLL_RISE) still holds.
   if (!CSS.supports('animation-timeline: view()')) return;
-  const phone = window.matchMedia(PHONE_QUERY);
+  const active = window.matchMedia(everyWidth ? EVERY_WIDTH_QUERY : PHONE_QUERY);
 
   const waiting = new IntersectionObserver((entries) => {
     for (const entry of entries) {
@@ -74,7 +78,7 @@ export function installScrollRise(): void {
   };
 
   const scan = (root: ParentNode) => {
-    if (!phone.matches) return;
+    if (!active.matches) return;
     if (root instanceof HTMLElement && root.matches(SELECTOR)) register(root);
     root.querySelectorAll<HTMLElement>(SELECTOR).forEach(register);
   };
@@ -94,8 +98,8 @@ export function installScrollRise(): void {
     }
   }).observe(document.body, { childList: true, subtree: true });
 
-  // Leaving the phone layout (rotation, resize) must never strand hidden content.
-  phone.addEventListener('change', () => {
+  // Leaving the phone layout (rotation, resize) or turning on reduced motion must never strand hidden content.
+  active.addEventListener('change', () => {
     document.querySelectorAll<HTMLElement>('[data-rise]').forEach((el) => {
       waiting.unobserve(el);
       settle(el);
