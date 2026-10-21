@@ -1054,6 +1054,8 @@ export interface FetchPublicPlansParams {
   sortBy?: 'recent' | 'followed' | 'creator_rank';
 }
 
+const DISCOVER_PLAN_LIMIT = 100;
+
 /**
  * Public plans for Discover, filtered and sorted on the server. Resolves null when the request
  * fails, so the page can tell "no matches" from "couldn't load". copy_count is kept by the
@@ -1089,7 +1091,8 @@ export async function fetchPublicPlansFromSupabase(options?: FetchPublicPlansPar
         ? query.order('copy_count', { ascending: false }).order('created_at', { ascending: false })
         : query.order('created_at', { ascending: false });
 
-    const { data, error } = await query;
+    // Discover shows the first DISCOVER_PLAN_LIMIT matches; each poll would otherwise grow with every public plan.
+    const { data, error } = await query.limit(DISCOVER_PLAN_LIMIT);
     if (error || !data) {
       console.warn('Error querying public plans from Supabase:', error);
       return null;

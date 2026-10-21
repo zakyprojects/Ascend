@@ -106,6 +106,8 @@ export function useDiscoverPlans(store: AppStore, active: boolean) {
   useEffect(() => {
     if (!active) return;
     const poll = () => {
+      // A hidden tab waits: coming back to Discover refetches through the next tick or the online event.
+      if (typeof document !== 'undefined' && document.hidden) return;
       if (typeof navigator === 'undefined' || navigator.onLine) void load(true);
     };
     const interval = window.setInterval(poll, POLL_MS);
