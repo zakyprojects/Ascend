@@ -14,6 +14,7 @@
  */
 
 const SELECTOR = '[data-page-area] :is(.card, .scroll-rise):not([class*="animate-"])';
+const RISE_ITEM = ':is(.card, .scroll-rise):not([class*="animate-"])';
 const PHONE_QUERY = '(max-width: 1023.98px) and (prefers-reduced-motion: no-preference)';
 const EVERY_WIDTH_QUERY = '(prefers-reduced-motion: no-preference)';
 const RISE_MS = 450;
@@ -69,9 +70,11 @@ export function installScrollRise({ everyWidth = false }: { everyWidth?: boolean
   });
 
   // Elements already on screen when they mount are left alone (the page's open stagger covers
-  // them); only those below the screen wait to rise.
+  // them); only those below the screen wait to rise. On marketing pages (everyWidth) a card inside
+  // a rising block rises with it, so a block never shows up with its inner cards still missing.
   const register = (el: HTMLElement) => {
     if (el.hasAttribute('data-rise')) return;
+    if (everyWidth && el.parentElement?.closest(RISE_ITEM)) return;
     if (el.getBoundingClientRect().top < window.innerHeight) return;
     el.setAttribute('data-rise', 'wait');
     waiting.observe(el);
