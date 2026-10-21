@@ -76,7 +76,7 @@ interface AppShellProps {
   store: AppStore;
   /** Absent in local-only mode (no Supabase): there is no sign-in to open. */
   onOpenAuth?: () => void;
-  /** Opens Quick log when it turns true (the home-screen shortcut, `/?quick-log`). */
+  /** Opens Quick log when it turns true (the home-screen shortcut, `/dashboard?quick-log`). */
   openQuickLog?: boolean;
   children: ReactNode;
 }
@@ -199,7 +199,7 @@ export function AppShell({ currentView, navigationKind, pendingView = null, onVi
   );
 
   useEffect(() => {
-    document.title = currentView === 'dashboard' ? 'Ascend - Self-Improvement' : `${getViewLabel(currentView)} · Ascend`;
+    document.title = currentView === 'dashboard' ? 'Today · Ascend' : `${getViewLabel(currentView)} · Ascend`;
   }, [currentView]);
 
   const isDarkTheme = store.state.themePreference !== 'light';

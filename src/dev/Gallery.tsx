@@ -279,7 +279,7 @@ function BrandDemo() {
           <BrandItem label="browser tab">
             <span className="flex items-center gap-2 rounded-t-lg border border-b-0 border-overlay-default bg-bg-700 px-3 py-1.5 text-xs text-content-secondary">
               <img src="/favicon-32x32.png" alt="" width={16} height={16} />
-              Ascend - Self-Improvement
+              Today · Ascend
             </span>
           </BrandItem>
         </div>
@@ -439,7 +439,7 @@ function LoadersDemo({ theme }: { theme: string }) {
             <div className="hidden h-[34px] sm:block" aria-hidden="true" />
             <iframe
               key={theme}
-              src="/?splash-preview"
+              src="/dashboard?splash-preview"
               title="Pre-React splash preview"
               className="w-full h-[420px] rounded-xl border border-bg-700"
             />

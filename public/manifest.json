@@ -1,7 +1,8 @@
 {
   "name": "Ascend - Self-Improvement",
   "short_name": "Ascend",
-  "start_url": "/",
+  "id": "/",
+  "start_url": "/dashboard",
   "display": "standalone",
   "background_color": "#07110E",
   "theme_color": "#0a0b0f",
@@ -30,7 +31,7 @@
       "name": "Quick log",
       "short_name": "Quick log",
       "description": "Tick today's habits and log the rest",
-      "url": "/?quick-log",
+      "url": "/dashboard?quick-log",
       "icons": [
         {
           "src": "/shortcut-quick-log-96x96.png?v=5",

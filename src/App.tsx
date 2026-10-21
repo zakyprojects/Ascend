@@ -2,7 +2,7 @@ import { Suspense, lazy, useEffect, useLayoutEffect, useRef, useState, type Comp
 import { useAppState } from '@/lib/store';
 import { useViewRoute } from '@/lib/useViewRoute';
 import { confirmLeave } from '@/lib/unsavedChanges';
-import { authPathWithNext, nextFromSearch, pathForAuthRoute, pathForView, viewFromPath } from '@/lib/routes';
+import { authPathWithNext, DASHBOARD_PATH, nextFromSearch, pathForAuthRoute, pathForView, viewFromPath } from '@/lib/routes';
 import { consumeSignOutByUser, logoutUser } from '@/lib/auth';
 import type { View } from '@/lib/views';
 import { isSupabaseConfigured, storedAuthSession } from '@/lib/supabase';
@@ -52,7 +52,7 @@ const ResetPasswordPage = lazy(() =>
   import('@/components/auth/ResetPasswordPage').then((m) => ({ default: m.ResetPasswordPage }))
 );
 
-/** The query flag the "Quick log" home-screen shortcut opens with (`/?quick-log`). */
+/** The query flag the "Quick log" home-screen shortcut opens with (`/dashboard?quick-log`). */
 const QUICK_LOG_PARAM = 'quick-log';
 
 function App() {
@@ -105,7 +105,7 @@ function App() {
     if (legal) {
       // Stays put: the page links back to the app.
     } else if (!authGate) {
-      if (auth) target = '/';
+      if (auth) target = DASHBOARD_PATH;
     } else if (onResetPassword) {
       // Stays put: the page itself offers the way on (sign in, new link, the app).
     } else if (auth) {
@@ -240,7 +240,7 @@ function App() {
   // a sign-in page takes (signed in, or local-only mode).
   const showApp = authReady && !authScreen && !auth && !legal;
 
-  // The home-screen shortcut "Quick log" (public/manifest.json) opens `/?quick-log`. Once the app
+  // The home-screen shortcut "Quick log" (public/manifest.json) opens `/dashboard?quick-log`. Once the app
   // and the account's data are on screen (a signed-out launch first signs in: `next` keeps the
   // query), the shell opens Quick log and the flag leaves the address, so a refresh, back, or a
   // later sign-in redirect never opens it again.

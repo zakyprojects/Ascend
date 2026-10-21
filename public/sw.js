@@ -112,7 +112,7 @@ self.addEventListener('push', (event) => {
       icon: '/android-chrome-192x192.png',
       // Android draws the badge from its alpha only: a white Streak silhouette on transparent.
       badge: '/notification-badge.png',
-      data: { url: data.url || '/' },
+      data: { url: data.url || '/dashboard' },
     })
   );
 });
@@ -154,7 +154,7 @@ self.addEventListener('pushsubscriptionchange', (event) => {
 // its notification's page (send-push), the focus timer's is PFC.
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-  const url = (event.notification.data && event.notification.data.url) || '/';
+  const url = (event.notification.data && event.notification.data.url) || '/dashboard';
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
       for (const client of clientList) {

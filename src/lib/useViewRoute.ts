@@ -137,7 +137,7 @@ export function useViewRoute(prepare?: (view: View) => Promise<unknown>) {
     kind: 'push',
     search: window.location.search,
   }));
-  // Read before the address is rewritten to `/`, for a one-time "That page doesn't exist" (App).
+  // Read before the address is rewritten to the dashboard's, for a one-time "That page doesn't exist" (App).
   const [startedOnUnknownPath] = useState(namesNoScreen);
   const viewRef = useRef(route.view);
   viewRef.current = route.view;

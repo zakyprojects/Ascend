@@ -5,6 +5,7 @@ import { endPasswordRecoverySession, isPasswordRecoverySession, passwordRecovery
 import { newPasswordProblem } from '@/lib/passwordRules';
 import { toUserMessage } from '@/lib/userMessage';
 import { settingsSectionPath } from '@/lib/settingsSections';
+import { DASHBOARD_PATH } from '@/lib/routes';
 import { PasswordInput } from '@/components/ui/PasswordInput';
 import { PasswordStaircase } from '@/components/ui/PasswordStaircase';
 import { AscendLoadingIndicator } from '@/components/ui/AscendLoadingIndicator';
@@ -45,7 +46,7 @@ export function ResetPasswordPage({ signedIn, onNavigate }: ResetPasswordPagePro
 
   useEffect(() => {
     if (!done) return;
-    const timer = setTimeout(() => onNavigate('/', true), DONE_MS);
+    const timer = setTimeout(() => onNavigate(DASHBOARD_PATH, true), DONE_MS);
     return () => clearTimeout(timer);
   }, [done, onNavigate]);
 
@@ -165,7 +166,7 @@ export function ResetPasswordPage({ signedIn, onNavigate }: ResetPasswordPagePro
                   <button type="button" onClick={() => onNavigate(settingsSectionPath('account'))} className="btn-primary w-full min-h-11">
                     Open Settings
                   </button>
-                  <button type="button" onClick={() => onNavigate('/')} className="btn-ghost w-full min-h-11 text-xs">
+                  <button type="button" onClick={() => onNavigate(DASHBOARD_PATH)} className="btn-ghost w-full min-h-11 text-xs">
                     Back to Ascend
                   </button>
                 </>

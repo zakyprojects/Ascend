@@ -1,5 +1,6 @@
 import {
   authPathWithNext,
+  DASHBOARD_PATH,
   authRouteFromPath,
   legalRouteFromPath,
   nextFromSearch,
@@ -23,7 +24,9 @@ function runFixtures() {
   for (const view of VIEWS) {
     assert(viewFromPath(pathForView(view)) === view, `${view} round-trips through its path`);
   }
-  assert(pathForView('dashboard') === '/', 'dashboard is /');
+  assert(pathForView('dashboard') === '/dashboard' && DASHBOARD_PATH === '/dashboard', 'dashboard is /dashboard');
+  assert(viewFromPath('/') === 'dashboard', '/ (the landing page) is a dashboard alias inside the app');
+  assert(viewFromPath('/dashboard/') === 'dashboard', '/dashboard/');
   assert(pathForView('prefrontal') === '/prefrontal-cortex', 'PFC lives at /prefrontal-cortex');
 
   assert(viewFromPath('/habits/') === 'habits', 'trailing slash');
@@ -53,7 +56,7 @@ function runFixtures() {
   assert(authRouteFromPath('/login/extra') === null, 'nested path is not a sign-in page');
   assert(authRouteFromPath('/reset-password') === 'reset-password', '/reset-password');
   assert(pathForAuthRoute('reset-password') === '/reset-password', 'reset path');
-  assert(safeNextPath('/reset-password') === '/', 'no loop through the reset page');
+  assert(safeNextPath('/reset-password') === '/dashboard', 'no loop through the reset page');
   assert(viewFromPath('/login') === null, '/login is not a page');
 
   // Legal pages
@@ -66,26 +69,30 @@ function runFixtures() {
   assert(safeNextPath('/habits') === '/habits', 'plain path');
   assert(safeNextPath('/prefrontal-cortex?tab=live') === '/prefrontal-cortex?tab=live', 'query kept');
   assert(safeNextPath('/habits#x') === '/habits', 'hash dropped');
-  assert(safeNextPath('/') === '/', 'root');
-  assert(safeNextPath(null) === '/' && safeNextPath(undefined) === '/' && safeNextPath('') === '/', 'missing');
-  assert(safeNextPath('https://evil.com') === '/', 'absolute URL');
-  assert(safeNextPath('//evil.com') === '/', 'protocol-relative');
-  assert(safeNextPath('///evil.com') === '/', 'triple slash');
-  assert(safeNextPath('/\\evil.com') === '/', 'slash backslash');
-  assert(safeNextPath('\\evil.com') === '/', 'backslashes');
-  assert(safeNextPath('/\t/evil.com') === '/', 'tab trick');
-  assert(safeNextPath('/\n/evil.com') === '/', 'newline trick');
-  assert(safeNextPath(' /habits') === '/', 'leading space');
-  assert(safeNextPath('javascript:alert(1)') === '/', 'javascript scheme');
-  assert(safeNextPath('habits') === '/', 'relative path');
-  assert(safeNextPath('/login') === '/' && safeNextPath('/signup?next=%2Fhabits') === '/', 'no loop through a sign-in page');
+  assert(safeNextPath('/') === '/dashboard', 'root (old ?next=%2F) gives the dashboard');
+  assert(safeNextPath('/?quick-log') === '/dashboard?quick-log', 'root keeps its query');
+  assert(safeNextPath('/dashboard') === '/dashboard', 'dashboard');
+  assert(safeNextPath(null) === '/dashboard' && safeNextPath(undefined) === '/dashboard' && safeNextPath('') === '/dashboard', 'missing');
+  assert(safeNextPath('https://evil.com') === '/dashboard', 'absolute URL');
+  assert(safeNextPath('//evil.com') === '/dashboard', 'protocol-relative');
+  assert(safeNextPath('///evil.com') === '/dashboard', 'triple slash');
+  assert(safeNextPath('/\\evil.com') === '/dashboard', 'slash backslash');
+  assert(safeNextPath('\\evil.com') === '/dashboard', 'backslashes');
+  assert(safeNextPath('/\t/evil.com') === '/dashboard', 'tab trick');
+  assert(safeNextPath('/\n/evil.com') === '/dashboard', 'newline trick');
+  assert(safeNextPath(' /habits') === '/dashboard', 'leading space');
+  assert(safeNextPath('javascript:alert(1)') === '/dashboard', 'javascript scheme');
+  assert(safeNextPath('habits') === '/dashboard', 'relative path');
+  assert(safeNextPath('/login') === '/dashboard' && safeNextPath('/signup?next=%2Fhabits') === '/dashboard', 'no loop through a sign-in page');
   assert(nextFromSearch('?next=%2Fhabits') === '/habits', 'next from query');
   assert(nextFromSearch('?next=%2Fprefrontal-cortex%3Ftab%3Dlive') === '/prefrontal-cortex?tab=live', 'encoded query in next');
-  assert(nextFromSearch('?next=https%3A%2F%2Fevil.com') === '/', 'encoded absolute URL rejected');
-  assert(nextFromSearch('?next=%2F%2Fevil.com') === '/', 'encoded // rejected');
-  assert(nextFromSearch('') === '/', 'no query');
+  assert(nextFromSearch('?next=https%3A%2F%2Fevil.com') === '/dashboard', 'encoded absolute URL rejected');
+  assert(nextFromSearch('?next=%2F%2Fevil.com') === '/dashboard', 'encoded // rejected');
+  assert(nextFromSearch('') === '/dashboard', 'no query');
   assert(authPathWithNext('login', '/habits') === '/login?next=%2Fhabits', 'login with next');
-  assert(authPathWithNext('login', '/') === '/login', 'dashboard needs no next');
+  assert(authPathWithNext('login', '/dashboard') === '/login', 'dashboard needs no next');
+  assert(authPathWithNext('login', '/') === '/login', 'old root needs no next');
+  assert(authPathWithNext('login', '/dashboard?quick-log') === '/login?next=%2Fdashboard%3Fquick-log', 'dashboard query kept');
   assert(authPathWithNext('signup', '//evil.com') === '/signup', 'unsafe next dropped');
   assert(
     authPathWithNext('login', '/prefrontal-cortex?tab=live') === '/login?next=%2Fprefrontal-cortex%3Ftab%3Dlive',

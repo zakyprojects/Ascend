@@ -1,18 +1,21 @@
 import { DEFAULT_VIEW, isView, View, VIEWS } from './views';
 
 /**
- * The URL of every page: `/` for the dashboard, `/habits`, `/prefrontal-cortex`, … One path per
- * page; the view ids stay as they are (the PFC page is `prefrontal` in code).
+ * The URL of every page: `/dashboard`, `/habits`, `/prefrontal-cortex`, … One path per page; the
+ * view ids stay as they are (the PFC page is `prefrontal` in code). `/` is the public landing page
+ * (prerendered, src/marketing); inside the app it is an alias of the dashboard.
  */
 const PATHS: Record<View, string> = Object.fromEntries(
   VIEWS.map((view) => [view, `/${view}`])
 ) as Record<View, string>;
-PATHS.dashboard = '/';
 PATHS.prefrontal = '/prefrontal-cortex';
 
 // Old names that still resolve, so links made before a rename keep working (rewritten in place).
-// (The view ids themselves also resolve: `/prefrontal`, `/dashboard`.)
+// (The view ids themselves also resolve: `/prefrontal`.) `/` was the dashboard until the public
+// landing page took it: old bookmarks, installed apps and pushes that reach the app there still
+// open the dashboard.
 const ALIASES: Record<string, View> = {
+  '': 'dashboard',
   books: 'reading',
   'index.html': 'dashboard',
 };
@@ -24,6 +27,9 @@ const VIEW_BY_SEGMENT: Record<string, View> = Object.fromEntries(
 export function pathForView(view: View): string {
   return PATHS[view];
 }
+
+/** The dashboard's address: where the app lands when nothing else is asked for. */
+export const DASHBOARD_PATH = PATHS.dashboard;
 
 /** A page name from a path or an old hash: case and slashes at either end do not matter. */
 function viewFromSegment(raw: string): View | null {
@@ -102,27 +108,29 @@ export function legalRouteFromPath(pathname: string): LegalRoute | null {
 
 /**
  * A `next` value made safe to send the browser to: only a path on this site (`/habits`,
- * `/prefrontal-cortex?tab=live`). Anything else gives `/`: an absolute URL, `//host`, a backslash
- * (`/\host`, which browsers read as `//host`), whitespace or control characters (browsers drop
- * tabs and newlines, so `/\t/host` would become `//host`), a scheme, or a sign-in page (a loop).
- * The query is kept; a hash is dropped (it is never part of a page's address here).
+ * `/prefrontal-cortex?tab=live`). Anything else gives the dashboard: an absolute URL, `//host`, a
+ * backslash (`/\host`, which browsers read as `//host`), whitespace or control characters (browsers
+ * drop tabs and newlines, so `/\t/host` would become `//host`), a scheme, or a sign-in page (a
+ * loop). `/` (the landing page; old `?next=%2F` links) also gives the dashboard. The query is kept;
+ * a hash is dropped (it is never part of a page's address here).
  */
 export function safeNextPath(raw: string | null | undefined): string {
-  if (typeof raw !== 'string' || !raw.startsWith('/') || raw.startsWith('//')) return '/';
+  if (typeof raw !== 'string' || !raw.startsWith('/') || raw.startsWith('//')) return DASHBOARD_PATH;
   // eslint-disable-next-line no-control-regex -- control characters are exactly what is rejected
-  if (/[\\\u0000-\u0020\u007f]/.test(raw)) return '/';
+  if (/[\\\u0000-\u0020\u007f]/.test(raw)) return DASHBOARD_PATH;
   let url: URL;
   try {
     url = new URL(raw, 'https://ascend.invalid');
   } catch {
-    return '/';
+    return DASHBOARD_PATH;
   }
-  if (url.origin !== 'https://ascend.invalid') return '/';
-  if (authRouteFromPath(url.pathname)) return '/';
+  if (url.origin !== 'https://ascend.invalid') return DASHBOARD_PATH;
+  if (authRouteFromPath(url.pathname)) return DASHBOARD_PATH;
+  if (url.pathname === '/') return DASHBOARD_PATH + url.search;
   return url.pathname + url.search;
 }
 
-/** The safe `next` page carried in a sign-in page's query (`?next=%2Fhabits`), `/` when none. */
+/** The safe `next` page carried in a sign-in page's query (`?next=%2Fhabits`), the dashboard when none. */
 export function nextFromSearch(search: string): string {
   return safeNextPath(new URLSearchParams(search).get('next'));
 }
@@ -130,5 +138,5 @@ export function nextFromSearch(search: string): string {
 /** A sign-in page's address that returns to `next` afterwards (no `next` when it is the dashboard). */
 export function authPathWithNext(route: Exclude<AuthRoute, 'reset-password'>, next: string): string {
   const safe = safeNextPath(next);
-  return safe === '/' ? AUTH_PATHS[route] : `${AUTH_PATHS[route]}?next=${encodeURIComponent(safe)}`;
+  return safe === DASHBOARD_PATH ? AUTH_PATHS[route] : `${AUTH_PATHS[route]}?next=${encodeURIComponent(safe)}`;
 }

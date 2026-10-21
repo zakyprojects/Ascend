@@ -42,7 +42,7 @@ const PAGE_BY_TYPE: Record<string, string> = {
   missed_exercise_target: '/exercise',
   missed_book_deadline: '/reading',
   addiction_milestone: '/recovery',
-  daily_reminder: '/',
+  daily_reminder: '/dashboard',
   sunday_planning: '/weekly-goals',
 };
 
@@ -144,7 +144,7 @@ Deno.serve(async (req) => {
     id: notice.id,
     title: notice.title || 'Ascend',
     body: notice.message || '',
-    url: PAGE_BY_TYPE[notice.type] ?? '/',
+    url: PAGE_BY_TYPE[notice.type] ?? '/dashboard',
   });
 
   let sent = 0;

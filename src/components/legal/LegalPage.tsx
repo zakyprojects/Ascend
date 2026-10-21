@@ -1,13 +1,15 @@
 import { useEffect, useRef, type ReactNode } from 'react';
 import { AppLockup } from '@/components/ui/AppLogo';
-import { cx, FOCUS_RING } from '@/components/ui/primitives';
+import { cx, FOCUS_RING } from '@/components/ui/primitives/shared';
 import { LEGAL_CONTACT_EMAIL, LEGAL_OPERATOR, LEGAL_UPDATED, MIN_AGE } from '@/lib/legal';
-import { pathForLegalRoute, type LegalRoute } from '@/lib/routes';
+import { DASHBOARD_PATH, pathForLegalRoute, type LegalRoute } from '@/lib/routes';
 
 export interface LegalPageProps {
   page: LegalRoute;
   /** Goes to an address on this site. */
   onNavigate: (path: string) => void;
+  /** Where the logo and "Back to Ascend" go: the dashboard in the app, the landing page when prerendered. */
+  homeHref?: string;
 }
 
 const TITLES: Record<LegalRoute, string> = { privacy: 'Privacy Policy', terms: 'Terms' };
@@ -382,7 +384,7 @@ function Terms({ onNavigate }: { onNavigate: (path: string) => void }) {
  * `/privacy` and `/terms`: shown to anyone, signed in or not, outside the app shell. Plain text in
  * one readable column, with links to the other page and back to the app.
  */
-export function LegalPage({ page, onNavigate }: LegalPageProps) {
+export function LegalPage({ page, onNavigate, homeHref = DASHBOARD_PATH }: LegalPageProps) {
   const mainRef = useRef<HTMLElement>(null);
   const otherPage: LegalRoute = page === 'privacy' ? 'terms' : 'privacy';
   const otherPath = pathForLegalRoute(otherPage);
@@ -406,7 +408,7 @@ export function LegalPage({ page, onNavigate }: LegalPageProps) {
     >
       <div aria-hidden="true" className="app-atmosphere" />
       <div className="mx-auto w-full max-w-2xl">
-        <a href="/" onClick={inAppClick('/', onNavigate)} aria-label="Ascend" className={cx('inline-flex rounded-lg', FOCUS_RING)}>
+        <a href={homeHref} onClick={inAppClick(homeHref, onNavigate)} aria-label="Ascend" className={cx('inline-flex rounded-lg', FOCUS_RING)}>
           <AppLockup className="h-6 w-auto shrink-0 text-content-primary" />
         </a>
 
@@ -423,7 +425,7 @@ export function LegalPage({ page, onNavigate }: LegalPageProps) {
           <a href={otherPath} onClick={inAppClick(otherPath, onNavigate)} className={cx(LINK_CLASS, 'inline-flex min-h-11 items-center')}>
             {TITLES[otherPage]}
           </a>
-          <a href="/" onClick={inAppClick('/', onNavigate)} className={cx(LINK_CLASS, 'inline-flex min-h-11 items-center')}>
+          <a href={homeHref} onClick={inAppClick(homeHref, onNavigate)} className={cx(LINK_CLASS, 'inline-flex min-h-11 items-center')}>
             Back to Ascend
           </a>
         </nav>

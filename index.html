@@ -11,9 +11,9 @@
           var h = location.hash;
           if (h.indexOf('#/') !== 0) return;
           var id = decodeURIComponent(h.slice(2)).replace(/^\/+|\/+$/g, '').toLowerCase();
-          var renamed = { dashboard: '', 'index.html': '', books: 'reading', prefrontal: 'prefrontal-cortex' };
+          var renamed = { '': 'dashboard', 'index.html': 'dashboard', books: 'reading', prefrontal: 'prefrontal-cortex' };
           if (Object.prototype.hasOwnProperty.call(renamed, id)) id = renamed[id];
-          if (!/^[a-z0-9-]*$/.test(id)) id = '';
+          if (!/^[a-z0-9-]+$/.test(id)) id = 'dashboard';
           history.replaceState(history.state, '', '/' + id + location.search);
         } catch (e) {}
       })();
@@ -23,6 +23,8 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg?v=5" />
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png?v=5" />
     <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png?v=5" />
+    <!-- Search results show a site icon of at least 48px (Google): the 192px app icon. -->
+    <link rel="icon" type="image/png" sizes="192x192" href="/android-chrome-192x192.png?v=5" />
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=5" />
     <meta name="msapplication-config" content="/browserconfig.xml" />
     
