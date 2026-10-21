@@ -136,6 +136,17 @@ export async function checkSite(files: Map<string, string>, config: VercelConfig
   }
   if (!/noindex/.test(headersFor(config, '/api/feedback')['x-robots-tag'] ?? '')) errors.push('/api/*: no X-Robots-Tag noindex');
 
+  // Pictures on the public pages: the file is in the build, with its size (no layout shift) and alt text.
+  for (const [file, text] of files) {
+    if (!file.endsWith('.html')) continue;
+    for (const [tag] of text.matchAll(/<img\b[^>]*>/g)) {
+      const src = tag.match(/\ssrc="([^"]+)"/)?.[1] ?? '';
+      if (!src.startsWith('/') || !exists(src.slice(1).replace(/\?.*$/, ''))) errors.push(`${file}: picture ${src || '(no src)'} is not in the build`);
+      if (!/\swidth="\d+"/.test(tag) || !/\sheight="\d+"/.test(tag)) errors.push(`${file}: picture ${src} has no width/height`);
+      if (!/\salt="[^"]{10,}"/.test(tag)) errors.push(`${file}: picture ${src} has no real alt text`);
+    }
+  }
+
   // Sitemap: every URL is a public page that exists; robots.txt points at it.
   const sitemap = files.get('sitemap.xml') ?? '';
   for (const [, loc] of sitemap.matchAll(/<loc>([^<]+)<\/loc>/g)) {

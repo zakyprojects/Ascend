@@ -42,7 +42,9 @@ const assetFiles = ['assets/marketing-test.js', 'assets/marketing-test.css', 'as
 const written = buildSite({ shellHtml: appShell, manifest, assetFiles });
 
 const files = new Map<string, string>(Object.entries(written));
-for (const file of [...assetFiles, 'sw.js', 'manifest.json', 'version.json', 'favicon.svg']) files.set(file, '');
+// public/ is copied into the build as is (the pictures the pages show included).
+const publicFiles = Object.keys(import.meta.glob('../../../public/screens/*')).map((path) => path.replace('../../../public/', ''));
+for (const file of [...assetFiles, ...publicFiles, 'sw.js', 'manifest.json', 'version.json', 'favicon.svg']) files.set(file, '');
 
 assert(written['app-shell.html'] === appShell, 'the app shell is written unchanged');
 assert(written['login.html'].includes('<title>Sign in – Ascend</title>') && written['login.html'].includes('id="root"'), 'login = app shell with its own title');

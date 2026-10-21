@@ -1,3 +1,4 @@
+import { FEATURE_SLUGS, featurePath } from '../features/catalog';
 import { MARKETING_ROUTES } from '../routes';
 import { isRenderedRoute, renderMarketingPage } from '../render';
 import { absoluteUrl } from '../site';
@@ -60,5 +61,10 @@ const types = (ld['@graph'] as { '@type': string }[]).map((node) => node['@type'
 assert(types.join() === 'Organization,WebApplication,WebSite', 'landing graph: WebSite + Organization + WebApplication');
 assert(!/aggregateRating|review/i.test(JSON.stringify(ld)), 'no ratings or reviews in structured data');
 assert(landing.indexOf('<script>') < landing.indexOf('<meta name="viewport"'), 'landing redirect runs first');
+// The landing page is a real page: its text in the HTML, and plain links to every feature, sign-up and sign-in.
+const landingText = landing.replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>/g, ' ').replace(/<[^>]+>/g, ' ');
+assert(landingText.split(/\s+/).filter(Boolean).length >= 400, 'landing has at least 400 words of text');
+for (const slug of FEATURE_SLUGS) assert(landing.includes(`href="${featurePath(slug)}"`), `landing links ${featurePath(slug)}`);
+for (const href of ['/signup', '/login', '/features', '/privacy']) assert(landing.includes(`href="${href}"`), `landing links ${href}`);
 
 console.log(`\nMarketing render: ${MARKETING_ROUTES.length} routes checked.`);

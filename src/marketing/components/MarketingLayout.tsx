@@ -80,7 +80,7 @@ function Header() {
         </a>
         <nav aria-label="Main" className="flex items-center gap-1">
           <FeaturesMenu />
-          <a href="/login" className={cx(NAV_LINK, 'max-[380px]:hidden')}>
+          <a href="/login" className={cx(NAV_LINK, 'max-[439px]:hidden')}>
             Sign in
           </a>
         </nav>
