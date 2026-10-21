@@ -1,6 +1,9 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { WifiOff, Wifi } from 'lucide-react';
-import { trustedNowMs } from '@/lib/clock';
+import { elapsedMark, isMarkOlderThan, trustedNowMs } from '@/lib/clock';
+
+/** A tab return re-checks only when the server last answered at least this long ago. */
+const VISIBLE_STALE_MS = 60 * 1000;
 
 export type ConnectionStatus = 'online' | 'offline' | 'restored';
 
@@ -11,6 +14,7 @@ export function useConnectionStatus(): ConnectionStatus {
   );
   const [showRestored, setShowRestored] = useState<boolean>(false);
   const wasOfflineRef = useRef<boolean>(!isOnline);
+  const lastReachableMarkRef = useRef<number | null>(null);
 
   /** True when the app's own server answered. */
   const performHeartbeatCheck = useCallback(async (): Promise<boolean> => {
@@ -40,6 +44,7 @@ export function useConnectionStatus(): ConnectionStatus {
       clearTimeout(timeoutId);
 
       if (res.ok) {
+        lastReachableMarkRef.current = elapsedMark();
         setIsOnline((prev) => {
           if (!prev || wasOfflineRef.current) {
             setShowRestored(true);
@@ -72,7 +77,8 @@ export function useConnectionStatus(): ConnectionStatus {
     // A check still on its way at cleanup must not start a heartbeat afterwards.
     let disposed = false;
 
-    // One check on start, on a return to the tab, back online and after a failed app request. The
+    // One check on start, on a return to the tab (when the last answer is a minute or more old, or
+    // the app shows offline), back online and after a failed app request. The
     // 12 s heartbeat runs only while a check fails although the browser reports a network
     // (connected without internet), until the server answers; never while the tab is hidden.
     const check = async () => {
@@ -118,7 +124,10 @@ export function useConnectionStatus(): ConnectionStatus {
     const handleVisibilityChange = () => {
       if (document.hidden) {
         stopHeartbeat();
-      } else if (typeof navigator === 'undefined' || navigator.onLine) {
+      } else if (
+        (typeof navigator === 'undefined' || navigator.onLine) &&
+        (wasOfflineRef.current || isMarkOlderThan(lastReachableMarkRef.current, VISIBLE_STALE_MS))
+      ) {
         void check();
       }
     };

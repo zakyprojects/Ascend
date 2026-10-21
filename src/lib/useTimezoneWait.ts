@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from 'react';
-import { trustedNow, trustedNowMs } from './clock';
+import { elapsedMark, isMarkOlderThan, trustedNow, trustedNowMs } from './clock';
 import { todayKey } from './dates';
 import { DEVICE_TIMEZONE_SENT_EVENT } from './deviceTimezone';
 import { supabase } from './supabase';
@@ -7,17 +7,21 @@ import { readTimezoneWait, type TimezoneWait } from './timezoneStatus';
 import { isDeviceOffline } from './deviceOffline';
 
 const REFRESH_MS = 10 * 60 * 1000;
+/** A tab return re-reads only when the last read started at least this long ago. */
+const VISIBLE_STALE_MS = 60 * 1000;
 
 /**
  * One app-wide read of the server's timezone wait, shared by the banner and every points preview
- * (no extra request per reader). Re-read every 10 min, on tab show, on auth change, after a new
- * device timezone was sent, and once the wait should be over (so it ends on its own).
+ * (no extra request per reader). Re-read every 10 min, back online, when the signed-in user
+ * changes, after a new device timezone was sent, once the wait should be over (so it ends on its
+ * own), and on tab show when the last read is a minute or more old.
  */
 let current: TimezoneWait | null = null;
 const listeners = new Set<() => void>();
 let stopWatching: (() => void) | null = null;
 let readSeq = 0;
 let resumeTimer: ReturnType<typeof setTimeout> | null = null;
+let lastReadMark: number | null = null;
 
 function publish(next: TimezoneWait | null) {
   if (resumeTimer) clearTimeout(resumeTimer);
@@ -35,6 +39,7 @@ function refresh() {
   // Offline the read can only fail; the online event reads again.
   if (isDeviceOffline()) return;
   const seq = ++readSeq;
+  lastReadMark = elapsedMark();
   readTimezoneWait()
     .then((next) => {
       // Only the newest read counts (an older, slower one must not undo it).
@@ -45,15 +50,24 @@ function refresh() {
 
 function startWatching(): () => void {
   const onVisible = () => {
-    if (document.visibilityState === 'visible') refresh();
+    if (document.visibilityState === 'visible' && isMarkOlderThan(lastReadMark, VISIBLE_STALE_MS)) refresh();
   };
+  // undefined = no auth event yet. Token refreshes and session re-checks keep the same user and
+  // change nothing the wait depends on, so only a different user (sign in, out, switch) re-reads.
+  let authUserId: string | null | undefined;
   refresh();
   const timer = setInterval(refresh, REFRESH_MS);
   document.addEventListener('visibilitychange', onVisible);
   window.addEventListener('online', refresh);
   window.addEventListener(DEVICE_TIMEZONE_SENT_EVENT, refresh);
   // Deferred: Supabase must not be called inside its own auth callback.
-  const { data: authListener } = supabase.auth.onAuthStateChange(() => {
+  const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+    const userId = session?.user?.id ?? null;
+    if (userId === authUserId) return;
+    const firstEvent = authUserId === undefined;
+    authUserId = userId;
+    // The first event is the session the start-up read already used, unless it ended or changed.
+    if (firstEvent && userId && !isMarkOlderThan(lastReadMark, VISIBLE_STALE_MS)) return;
     setTimeout(refresh, 0);
   });
   return () => {

@@ -5,7 +5,8 @@
  * move every streak, milestone and day boundary with it. Here the time comes from the server
  * (public.server_now) and is carried forward with performance.now(), a monotonic timer that
  * changing the device clock does not touch. It is re-read from the server on start, when the
- * page comes back into view or online, and every 10 minutes.
+ * page comes back online, every 10 minutes, and when the page comes back into view after the
+ * device slept (performance.now() paused, so it fell behind the device clock).
  *
  * Before the first server read (offline start) the device clock is used, but never earlier
  * than the last trusted time this device saw. The database rejects writes dated in the
@@ -20,8 +21,11 @@ const RESYNC_INTERVAL_MS = 10 * 60 * 1000;
 const READY_TIMEOUT_MS = 3000;
 /** A server read whose round trip takes longer than this is too imprecise to use. */
 const MAX_ROUND_TRIP_MS = 10_000;
+/** performance.now() behind the device clock by more than this since the last read = the device slept. */
+const SLEEP_DRIFT_MS = 2000;
 
-let anchor: { serverMs: number; perfMs: number } | null = null;
+// deviceMs: the device clock at the read, used only to notice that performance.now() paused.
+let anchor: { serverMs: number; perfMs: number; deviceMs: number } | null = null;
 let syncing: Promise<void> | null = null;
 let readyPromise: Promise<void> | null = null;
 
@@ -68,7 +72,8 @@ async function readServerTime(): Promise<void> {
   const serverMs = Date.parse(data);
   if (!Number.isFinite(serverMs) || receivedAt - sentAt > MAX_ROUND_TRIP_MS) return;
   // The server read its clock about half way through the round trip.
-  anchor = { serverMs, perfMs: (sentAt + receivedAt) / 2 };
+  // eslint-disable-next-line no-restricted-syntax -- device clock kept only to detect sleep
+  anchor = { serverMs, perfMs: (sentAt + receivedAt) / 2, deviceMs: Date.now() - (receivedAt - sentAt) / 2 };
   remember();
 }
 
@@ -99,6 +104,33 @@ export function clockReady(): Promise<void> {
   return readyPromise;
 }
 
+/**
+ * True when performance.now() and the device clock no longer agree since the last server read:
+ * the device slept (performance.now() can pause) or its clock was moved. Either way, re-read.
+ */
+function anchorDrifted(): boolean {
+  if (!anchor) return true;
+  // eslint-disable-next-line no-restricted-syntax -- compared with performance.now(), never used as the time
+  const deviceElapsed = Date.now() - anchor.deviceMs;
+  return Math.abs(deviceElapsed - (performance.now() - anchor.perfMs)) > SLEEP_DRIFT_MS;
+}
+
+/**
+ * A mark for "how long ago" checks that must also count time the device slept (performance.now()
+ * can pause then). Device clock based, so only compare it with isMarkOlderThan(), never show it.
+ */
+export function elapsedMark(): number {
+  // eslint-disable-next-line no-restricted-syntax -- elapsed time only, never a date
+  return Date.now();
+}
+
+/** True when no mark yet, or `ms` or more passed since it (a device clock moved back also counts). */
+export function isMarkOlderThan(mark: number | null, ms: number): boolean {
+  if (mark === null) return true;
+  const elapsed = elapsedMark() - mark;
+  return elapsed < 0 || elapsed >= ms;
+}
+
 let started = false;
 
 /** Starts the first server read and the resync triggers. Called once from main.tsx. */
@@ -106,11 +138,12 @@ export function startTrustedClock(): void {
   if (started || typeof window === 'undefined') return;
   started = true;
   void clockReady();
-  // performance.now() can pause while the device sleeps, so re-read when the app comes back.
+  // performance.now() can pause while the device sleeps, so re-read when the app comes back from
+  // a sleep. A plain tab switch keeps the anchor: performance.now() kept running, nothing drifted.
   document.addEventListener('visibilitychange', () => {
     // Offline the read can only fail; the online event re-reads.
     if (document.visibilityState === 'visible') {
-      if (!isDeviceOffline()) void syncClock();
+      if (!isDeviceOffline() && anchorDrifted()) void syncClock();
     } else remember();
   });
   window.addEventListener('online', () => void syncClock());
