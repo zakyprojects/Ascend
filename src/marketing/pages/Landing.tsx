@@ -107,7 +107,7 @@ const FAQ: FaqItem[] = [
   },
   {
     q: 'Is there an Ascend app for Android, iPhone or PC?',
-    a: 'Ascend is a web app, so it runs in the browser on any phone, tablet or computer. You can add it to your home screen or install it from the browser, and it then opens like any other app. It is not in the app stores.',
+    a: 'Ascend is a web app, so it runs in the browser on any phone, tablet or computer. You can add it to your home screen or install it from the browser, and it then opens like any other app. It isn’t in the app stores yet.',
   },
   {
     q: 'Do I need an account?',
@@ -545,8 +545,7 @@ function About() {
             ))}
           </dl>
           <p className="mt-6 border-t border-overlay-subtle pt-4 text-sm leading-relaxed text-content-muted">
-            Not to be confused with other apps named Ascend, such as Ascend Habits, Ascend – Daily Habit Tracker or
-            Ascend: Daily. This Ascend is not affiliated with them.
+            Other apps also use the name Ascend. This Ascend is not affiliated with any of them.
           </p>
         </div>
 
@@ -554,13 +553,15 @@ function About() {
           <h3 className="text-lg font-semibold text-content-primary">Why I built Ascend</h3>
           <blockquote className="mt-4 space-y-4 text-base leading-relaxed text-content-secondary">
             <p>
-              People love to compete: in grades, jobs, sport and games. When real life doesn’t give us much of it, a lot
-              of us find it in ranked games like PUBG or Valorant. You grind for a rank, you want to beat the other side,
-              and you come back the next day.
+              People love to compete: in grades, jobs and sport. When real life doesn’t give that drive a good place to
+              go, it finds one anyway. For some of us it’s a ranked game like PUBG or Valorant. For others it’s
+              followers and likes, who has the better phone or bike, or winning every argument in the comments. The
+              drive is real; it’s just aimed at things that leave us with nothing at the end.
             </p>
             <p>
-              I kept asking what would happen if that same drive went into real life. You’d still get the competition,
-              but at the end of a season you’d also have read more, trained more and kept more of your habits.
+              I kept asking what would happen if that same drive went into the right place. You’d still get the
+              competition, but at the end of a season you’d also have read more, trained more and kept more of your
+              habits.
             </p>
             <p>
               The league gets you started, but the one really worth beating is who you were yesterday. It only works if
