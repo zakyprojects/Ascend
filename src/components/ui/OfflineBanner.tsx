@@ -4,7 +4,7 @@ import { trustedNowMs } from '@/lib/clock';
 
 export type ConnectionStatus = 'online' | 'offline' | 'restored';
 
-/** Watches the connection (browser events + a light heartbeat). "restored" lasts 4 s after a return. */
+/** Watches the connection (browser events + checks; a heartbeat only while unreachable). "restored" lasts 4 s after a return. */
 export function useConnectionStatus(): ConnectionStatus {
   const [isOnline, setIsOnline] = useState<boolean>(
     typeof navigator !== 'undefined' ? navigator.onLine : true
@@ -12,8 +12,9 @@ export function useConnectionStatus(): ConnectionStatus {
   const [showRestored, setShowRestored] = useState<boolean>(false);
   const wasOfflineRef = useRef<boolean>(!isOnline);
 
-  const performHeartbeatCheck = useCallback(async () => {
-    if (typeof window === 'undefined') return;
+  /** True when the app's own server answered. */
+  const performHeartbeatCheck = useCallback(async (): Promise<boolean> => {
+    if (typeof window === 'undefined') return true;
 
     // Fast check: if browser explicitly says offline, set false immediately
     if (typeof navigator !== 'undefined' && navigator.onLine === false) {
@@ -22,7 +23,7 @@ export function useConnectionStatus(): ConnectionStatus {
         return false;
       });
       setShowRestored(false);
-      return;
+      return false;
     }
 
     // Active reachability check via HEAD fetch to local asset
@@ -47,12 +48,14 @@ export function useConnectionStatus(): ConnectionStatus {
           }
           return true;
         });
+        return true;
       } else {
         setIsOnline((prev) => {
           if (prev) wasOfflineRef.current = true;
           return false;
         });
         setShowRestored(false);
+        return false;
       }
     } catch {
       setIsOnline((prev) => {
@@ -60,20 +63,31 @@ export function useConnectionStatus(): ConnectionStatus {
         return false;
       });
       setShowRestored(false);
+      return false;
     }
   }, []);
 
   useEffect(() => {
     let heartbeatInterval: any = null;
+    // A check still on its way at cleanup must not start a heartbeat afterwards.
+    let disposed = false;
 
-    // No heartbeat while the tab is hidden; a return to it checks at once (handleVisibilityChange).
+    // One check on start, on a return to the tab, back online and after a failed app request. The
+    // 12 s heartbeat runs only while a check fails although the browser reports a network
+    // (connected without internet), until the server answers; never while the tab is hidden.
+    const check = async () => {
+      if (await performHeartbeatCheck()) stopHeartbeat();
+      else startHeartbeat();
+    };
+
     const startHeartbeat = () => {
       if (
+        !disposed &&
         !heartbeatInterval &&
         (typeof navigator === 'undefined' || navigator.onLine) &&
         !document.hidden
       ) {
-        heartbeatInterval = setInterval(performHeartbeatCheck, 12000);
+        heartbeatInterval = setInterval(() => void check(), 12000);
       }
     };
 
@@ -85,8 +99,7 @@ export function useConnectionStatus(): ConnectionStatus {
     };
 
     const handleOnline = () => {
-      startHeartbeat();
-      performHeartbeatCheck();
+      void check();
     };
 
     const handleOffline = () => {
@@ -98,7 +111,7 @@ export function useConnectionStatus(): ConnectionStatus {
 
     const handleNetworkErrorEvent = () => {
       if (typeof navigator === 'undefined' || navigator.onLine) {
-        performHeartbeatCheck();
+        void check();
       }
     };
 
@@ -106,8 +119,7 @@ export function useConnectionStatus(): ConnectionStatus {
       if (document.hidden) {
         stopHeartbeat();
       } else if (typeof navigator === 'undefined' || navigator.onLine) {
-        startHeartbeat();
-        performHeartbeatCheck();
+        void check();
       }
     };
 
@@ -118,8 +130,7 @@ export function useConnectionStatus(): ConnectionStatus {
 
     // Initial check on mount
     if (typeof navigator === 'undefined' || navigator.onLine) {
-      startHeartbeat();
-      performHeartbeatCheck();
+      void check();
     } else {
       setIsOnline(false);
       wasOfflineRef.current = true;
@@ -127,6 +138,7 @@ export function useConnectionStatus(): ConnectionStatus {
     }
 
     return () => {
+      disposed = true;
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
       window.removeEventListener('app-network-error', handleNetworkErrorEvent);
