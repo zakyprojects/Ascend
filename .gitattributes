@@ -1,0 +1,3 @@
+# LF everywhere, also on Windows checkouts: the build hashes inline scripts for the CSP in
+# vercel.json, and CRLF line endings would change those hashes.
+* text=auto eol=lf
