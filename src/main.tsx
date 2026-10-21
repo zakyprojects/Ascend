@@ -13,6 +13,7 @@ import { startTrustedClock } from './lib/clock';
 import { startDeviceTimezoneSync } from './lib/timezoneStatus';
 import { installAssetRecovery } from './lib/assetRecovery';
 import { installErrorReporting } from './lib/errorReporting';
+import { installAnalytics } from './lib/analytics';
 import { installPageVisibilityFlag, installWindowFocusFlag } from './lib/motion';
 import { installScrollRise } from './lib/scrollRise';
 import { installCardSpotlight } from './lib/cardSpotlight';
@@ -27,6 +28,8 @@ import { preloadLegalPage } from './components/legal/lazyLegalPage';
 installAssetRecovery();
 // Next, so a crash anywhere after this point reaches the crash reports (production only).
 installErrorReporting();
+// Anonymous page-view counts (production only).
+installAnalytics();
 // First, so the server time is known before the session's days and periods are worked out.
 startTrustedClock();
 // The server's "today" follows the device timezone (sign-in, app start, back to the tab, online).

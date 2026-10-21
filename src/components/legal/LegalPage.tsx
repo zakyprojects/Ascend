@@ -54,8 +54,8 @@ function PrivacyPolicy({ onNavigate }: { onNavigate: (path: string) => void }) {
   return (
     <>
       <p>
-        This policy explains what Ascend collects, why, who can see it, and how to delete it. We don’t sell your data or use
-        analytics or tracking tools. It goes with our{' '}
+        This policy explains what Ascend collects, why, who can see it, and how to delete it. We don’t sell your data, track
+        you across other sites, or record your screen. It goes with our{' '}
         <a href={termsPath} onClick={inAppClick(termsPath, onNavigate)} className={LINK_CLASS}>
           Terms
         </a>
@@ -99,6 +99,12 @@ function PrivacyPolicy({ onNavigate }: { onNavigate: (path: string) => void }) {
             wrong, the page, your browser and device type, the app version, and your account ID. Sentry works out a
             rough city and country from your IP address but doesn’t keep the address itself. Nothing on your screen
             is recorded.
+          </li>
+          <li>
+            <Term>Page visits.</Term> We count visits to each page with Vercel Web Analytics: the page address
+            (without anything after it), the referring site, your country, and your browser, system and device type.
+            It uses no cookies and isn’t linked to your account. Your IP address is only used to tell visits apart
+            within one day and isn’t stored.
           </li>
           <li>
             <Term>Notifications.</Term> In-app notices (from partners, leagues and reminders) are kept in your account.
@@ -154,7 +160,7 @@ function PrivacyPolicy({ onNavigate }: { onNavigate: (path: string) => void }) {
             <Term>Supabase:</Term> database, sign-in and server functions. Your data is stored in Sydney, Australia.
           </li>
           <li>
-            <Term>Vercel:</Term> hosts the app and its small server functions.
+            <Term>Vercel:</Term> hosts the app and its small server functions, and counts page visits.
           </li>
           <li>
             <Term>Sentry:</Term> crash reports, stored in the EU (Germany).
@@ -189,6 +195,7 @@ function PrivacyPolicy({ onNavigate }: { onNavigate: (path: string) => void }) {
           <li>Failed sign-in records: 1 hour.</li>
           <li>Notifications: until you delete your account.</li>
           <li>Crash reports: for a limited time, under Sentry’s retention rules.</li>
+          <li>Page-visit counts: anonymous, under Vercel’s retention rules.</li>
           <li>Bug reports and ideas: until you ask us to remove them.</li>
         </List>
       </Section>
