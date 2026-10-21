@@ -48,6 +48,10 @@ export function FeaturesHub() {
               groups them: Track, Mind, Plan and Play. What you log in one part earns points, the points build your rank
               across {TIERS.length} ranks, and the leagues show how your week compares with everyone else’s.
             </p>
+            <p>
+              Most apps cover one of these. Ascend puts all {FEATURE_SLUGS.length} in one app, so everything you do counts
+              toward the same score.
+            </p>
             <p>Each part below has its own page with how it works, the exact points rules, and who it suits.</p>
           </div>
         </div>

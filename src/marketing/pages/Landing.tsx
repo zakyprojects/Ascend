@@ -1,5 +1,5 @@
 import type { CSSProperties, ReactNode } from 'react';
-import { ArrowRight, CalendarDays, Plus, Trophy, TrendingUp } from 'lucide-react';
+import { ArrowRight, CalendarDays, Layers, MonitorSmartphone, Plus, Scale, Swords, Trophy, TrendingUp } from 'lucide-react';
 import { cx, FOCUS_RING } from '@/components/ui/primitives/shared';
 import { LEGAL_CONTACT_EMAIL, MIN_AGE } from '@/lib/legal';
 import { LESSONS } from '@/lib/lessons';
@@ -193,9 +193,10 @@ function Hero() {
           className="m-enter mx-auto mt-6 max-w-2xl text-base leading-relaxed text-content-tertiary sm:text-lg"
           style={enter(2)}
         >
-          Ascend is a free self-improvement app that plays like a game. Log your habits, workouts, reading, skills and
-          journal, earn points for each one, rise through {TIERS.length} ranks and climb weekly, monthly and 90-day
-          leagues against real people.
+          Ascend is a free self-improvement app that plays like a game. Instead of one app for habits, another for your
+          journal and another for goals, you log your habits, workouts, reading, skills and journal in one place, earn
+          points for each one, rise through {TIERS.length} ranks and climb weekly, monthly and 90-day leagues against
+          real people.
         </p>
         <div className="m-enter mt-8 flex flex-wrap justify-center gap-3" style={enter(3)}>
           <a href="/signup" data-cta="" className="btn-primary min-h-12 px-6 text-base">
@@ -257,8 +258,10 @@ function WhatItIs() {
   return (
     <Section labelledBy="what-title">
       <SectionHeading id="what-title" kicker="What Ascend is" title="Self-improvement with a scoreboard">
-        Most habit apps give you a checklist. Ascend turns your whole day into a season: the work you put in becomes
-        points, the points become a rank, and the leagues show how your week compares with everyone else’s.
+        Most self-improvement apps do one thing: one tracks habits, another holds your journal, another tracks your
+        time, another your goals. Ascend puts all of it in one app and turns your whole day into a season: the work
+        you put in becomes points, the points become a rank, and the leagues show how your week compares with
+        everyone else’s.
       </SectionHeading>
       <ol className="mt-10 grid gap-4 grid-cols-1 md:grid-cols-3">
         {LOOP.map(({ icon: Icon, title, text }, i) => (
@@ -278,11 +281,55 @@ function WhatItIs() {
   );
 }
 
+const REASONS = [
+  {
+    icon: Layers,
+    title: 'All in one app',
+    text: 'Habits, bad habits, workouts, reading, skills, journal, time blocks, weekly goals and projects live together. No switching between five apps, and nothing forgotten because it was in the wrong one.',
+  },
+  {
+    icon: Swords,
+    title: 'Competition that builds you',
+    text: 'You compete with real people in weekly, monthly and 90-day leagues. Beating someone feels as good as it does in a game, but every point came from something that made you better.',
+  },
+  {
+    icon: Scale,
+    title: 'An honest score',
+    text: 'Everything you log adds to one total, and skipping a habit you chose costs points. Doing nothing is never neutral, so your rank shows how you really did.',
+  },
+  {
+    icon: MonitorSmartphone,
+    title: 'Free, on phone and PC',
+    text: 'No download and no payment. Open it in the browser or install it like an app.',
+  },
+];
+
+function WhyAscend() {
+  return (
+    <Section labelledBy="why-title">
+      <SectionHeading id="why-title" kicker="One app, and a reason to keep going" title="Why Ascend" />
+      <ul className="mt-10 grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+        {REASONS.map(({ icon: Icon, title, text }) => (
+          <li key={title} className="card card-hover p-6">
+            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary-500/10 text-brand-text">
+              <Icon size={20} aria-hidden="true" />
+            </span>
+            <h3 className="mt-4 text-lg font-semibold text-content-primary">{title}</h3>
+            <p className="mt-2 text-sm leading-relaxed text-content-tertiary">{text}</p>
+          </li>
+        ))}
+      </ul>
+    </Section>
+  );
+}
+
 function Features() {
   return (
     <Section labelledBy="features-title">
       <SectionHeading id="features-title" kicker="Features" title="Everything you work on, in one app">
-        {FEATURE_SLUGS.length} parts, grouped the way the app groups them. Each one has its own page with the exact rules.
+        Habits, journal, time tracking, goals, reading and more: things you would usually need a separate app for, in
+        one place. {FEATURE_SLUGS.length} parts, grouped the way the app groups them. Each one has its own page with
+        the exact rules.
       </SectionHeading>
       <div className="mt-10 space-y-12">
         {FEATURE_GROUPS.map((group) => (
@@ -600,6 +647,7 @@ export function Landing() {
     <MarketingLayout>
       <Hero />
       <WhatItIs />
+      <WhyAscend />
       <Features />
       <PointsRanksLeagues />
       <Platforms />
