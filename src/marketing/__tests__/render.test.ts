@@ -3,6 +3,8 @@ import { FEATURE_CONTENT } from '../features/content';
 import { MARKETING_ROUTES } from '../routes';
 import { isRenderedRoute, renderMarketingPage } from '../render';
 import { absoluteUrl } from '../site';
+import { TIERS } from '@/lib/tiers';
+import { fmt, pts } from '../features/format';
 
 /**
  * Every public page renders in plain Node (no window/document/localStorage: an app module that
@@ -92,6 +94,10 @@ for (const route of MARKETING_ROUTES.filter((r) => r.kind === 'feature' && r.slu
   featureTexts.push(textOf(html));
 }
 assert(featureTexts.length >= 5, 'the written feature pages are checked');
+
+// The ranks page's ladder is the app's own (lib/tiers.ts), rank for rank.
+const ranksPage = renderMarketingPage(MARKETING_ROUTES.find((r) => r.slug === 'ranks')!, assets);
+TIERS.forEach((tier, i) => assert(ranksPage.includes(`${i + 1}. ${tier.name}`) && ranksPage.includes(pts(fmt(tier.minPoints))), `ranks page lists ${tier.name} at ${tier.minPoints}`));
 // No page is another with the names swapped: most of each page's sentences are its own.
 const sentences = (text: string) => new Set(text.split(/[.!?]\s+/).map((s) => s.replace(/\s+/g, ' ').trim()).filter((s) => s.length > 40));
 featureTexts.forEach((text, i) => {

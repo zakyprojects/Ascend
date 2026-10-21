@@ -14,6 +14,7 @@ import { TAP_TARGET, cx } from '@/components/ui/primitives/shared';
 import { leagueNow } from '@/lib/leagueTime';
 import { getProfileSeasonPointsByUsername } from '@/lib/auth';
 import { isPartnershipUser1 } from '@/lib/partnershipSide';
+import { CHALLENGE_LENGTH_OPTIONS, MAX_PARTNERS } from '@/lib/partnerRules';
 import { calculateElapsedDays } from '@/lib/dates';
 import { useLocalDayKey } from '@/lib/useLocalDayKey';
 import { usePartnerDayKeys } from '@/lib/usePartnerDayKeys';
@@ -29,8 +30,6 @@ const EMPTY_PARTNERSHIPS: Partnership[] = [];
 const EMPTY_INVITES: PartnerInvite[] = [];
 const EMPTY_CHALLENGES: SharedChallenge[] = [];
 
-const MAX_PARTNERS = 5;
-const LENGTH_OPTIONS = [7, 14, 30];
 // One nudge per partner per day (partnerKey -> dateKey of the last nudge, this device).
 const NUDGE_STORAGE_KEY = 'ascend_partner_nudged_on';
 
@@ -236,7 +235,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
     setMyGoal(mine);
     setPartnerGoal(theirs === mine ? '' : theirs);
     setDifferentGoal(Boolean(from) && theirs !== mine);
-    setLengthDays(from && LENGTH_OPTIONS.includes(from.durationDays) ? from.durationDays : 14);
+    setLengthDays(from && CHALLENGE_LENGTH_OPTIONS.includes(from.durationDays) ? from.durationDays : 14);
     setChallengeModalOpen(true);
   };
 
@@ -921,7 +920,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
           <div role="group" aria-labelledby="challenge-length-label">
             <p id="challenge-length-label" className="block label mb-1.5">How long?</p>
             <div className="grid grid-cols-3 gap-2">
-              {LENGTH_OPTIONS.map((days) => (
+              {CHALLENGE_LENGTH_OPTIONS.map((days) => (
                 <button
                   key={days}
                   type="button"
