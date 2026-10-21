@@ -1,8 +1,10 @@
 import vercelJson from '../../../vercel.json?raw';
 import appShell from '../../../index.html?raw';
+import serviceWorker from '../../../public/sw.js?raw';
 import { pathForAuthRoute, pathForView } from '../routes';
 import { VIEWS } from '../views';
 import { buildSite } from '@/marketing/prerender';
+import { MARKETING_ROUTES } from '@/marketing/routes';
 import { APP_PATHS, checkSite } from '@/marketing/seoChecks';
 import type { VercelConfig } from '@/marketing/vercelRules';
 
@@ -49,5 +51,14 @@ assert(!/Ascend - Self-Improvement/.test(written['signup.html']), 'signup lost t
 
 const errors = await checkSite(files, config);
 assert(errors.length === 0, `site checks:\n  ${errors.join('\n  ')}`);
+
+// The service worker keeps public pages apart from the app shell: its list = the public pages.
+const swPattern = serviceWorker.match(/const MARKETING_PAGE = \/(.+)\/;/)?.[1];
+assert(Boolean(swPattern), 'sw.js has MARKETING_PAGE');
+const marketingPage = new RegExp(swPattern!);
+for (const route of MARKETING_ROUTES) {
+  assert(marketingPage.test(route.path) === (route.kind !== 'auth'), `sw.js MARKETING_PAGE ${route.kind === 'auth' ? 'excludes' : 'includes'} ${route.path}`);
+}
+for (const path of APP_PATHS) assert(!marketingPage.test(path), `sw.js MARKETING_PAGE excludes app page ${path}`);
 
 console.log(`\nvercel.json: ${APP_PATHS.length} app pages, ${Object.keys(written).length} built files checked.`);

@@ -1,6 +1,14 @@
-// Pages: the app's HTML, kept under one key so any page opens offline.
-const PAGE_CACHE_NAME = 'ascend-pages-v1';
-const OFFLINE_PAGE_KEY = '/';
+// Pages. The app's HTML (app-shell.html, the same for every app page) is kept under one key, so
+// any app page opens offline. The public pages (landing, /features, legal, 404; prerendered, each
+// its own HTML) are kept per address in their own cache, so visiting one never replaces the app.
+// KEEP IN SYNC: MARKETING_PAGE = the public paths of src/marketing/routes.ts (checked by
+// src/lib/__tests__/vercelConfig.test.ts). /login and /signup are the app shell.
+const SHELL_CACHE_NAME = 'ascend-shell-v1';
+const SHELL_KEY = '/__ascend/app-shell';
+const MARKETING_CACHE_NAME = 'ascend-marketing-v1';
+const MARKETING_PAGE = /^\/(?:|features|features\/[a-z-]+|privacy|terms|404)$/;
+// Before 2026-10-21 every page was the app under one key here; its copy seeds the shell cache once.
+const OLD_PAGE_CACHE_NAME = 'ascend-pages-v1';
 // Static files from public/ (icons, manifest, fonts): one entry per file, network first.
 const STATIC_CACHE_NAME = 'ascend-static-v1';
 const STATIC_FILE = /\.(?:png|svg|ico|webp|jpg|jpeg|woff2|webmanifest)$|^\/manifest\.json$/;
@@ -15,7 +23,7 @@ const PUSH_CACHE_NAME = 'ascend-push-v1';
 const OLD_ENDPOINT_KEY = '/__ascend/push-old-endpoint';
 // Same public VAPID key as src/lib/push.ts (must match the send-push secret).
 const VAPID_PUBLIC_KEY = 'BCm0FKHm8dST6fMA1txExLaijZvgYrl20Zy_jmS9oCDazA7lyEVVsnrYiNxXTw829zeFvaDoEl_VzMSgkP8ydGU';
-const CURRENT_CACHES = [PAGE_CACHE_NAME, STATIC_CACHE_NAME, ASSET_CACHE_NAME, PUSH_CACHE_NAME];
+const CURRENT_CACHES = [SHELL_CACHE_NAME, MARKETING_CACHE_NAME, STATIC_CACHE_NAME, ASSET_CACHE_NAME, PUSH_CACHE_NAME];
 
 // Install event - skip waiting to activate immediately
 self.addEventListener('install', () => {
@@ -26,13 +34,24 @@ self.addEventListener('install', () => {
 // ever saw, version.json?t=… polls included, and grew too large to list), then take control.
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches
-      .keys()
+    seedShellFromOldCache()
+      .catch(() => undefined)
+      .then(() => caches.keys())
       .then((names) => Promise.all(names.filter((name) => !CURRENT_CACHES.includes(name)).map((name) => caches.delete(name))))
       .catch(() => undefined)
       .then(() => self.clients.claim())
   );
 });
+
+// The old single page copy is the app (it had #root) unless the landing page replaced it: keep it
+// as the shell so an installed app still opens offline right after this update.
+async function seedShellFromOldCache() {
+  if (!(await caches.has(OLD_PAGE_CACHE_NAME))) return;
+  const shell = await caches.open(SHELL_CACHE_NAME);
+  if (await shell.match(SHELL_KEY)) return;
+  const old = await (await caches.open(OLD_PAGE_CACHE_NAME)).match('/');
+  if (old && (await old.clone().text()).includes('id="root"')) await shell.put(SHELL_KEY, old);
+}
 
 self.addEventListener('fetch', (event) => {
   const { request } = event;
@@ -43,7 +62,7 @@ self.addEventListener('fetch', (event) => {
   if (url.pathname.startsWith('/assets/')) {
     event.respondWith(cacheFirstAsset(request));
   } else if (request.mode === 'navigate') {
-    event.respondWith(networkFirst(request, PAGE_CACHE_NAME, OFFLINE_PAGE_KEY));
+    event.respondWith(MARKETING_PAGE.test(url.pathname) ? marketingPage(request, url.pathname) : appPage(request));
   } else if (!url.search && STATIC_FILE.test(url.pathname)) {
     event.respondWith(networkFirst(request, STATIC_CACHE_NAME, request));
   }
@@ -61,6 +80,41 @@ async function networkFirst(request, cacheName, cacheKey) {
     return response;
   } catch (error) {
     const cached = await caches.match(cacheKey);
+    if (cached) return cached;
+    throw error;
+  }
+}
+
+// An app page: network first; a good answer is the shell to keep; offline, the kept shell.
+async function appPage(request) {
+  try {
+    const response = await fetch(request);
+    if (response.ok) {
+      const copy = response.clone();
+      caches.open(SHELL_CACHE_NAME).then((cache) => cache.put(SHELL_KEY, copy)).catch(() => undefined);
+    }
+    return response;
+  } catch (error) {
+    const cached = await caches.match(SHELL_KEY, { cacheName: SHELL_CACHE_NAME });
+    if (cached) return cached;
+    throw error;
+  }
+}
+
+// A public page: network first, kept per address; offline, its copy, else the app (so `/` still
+// opens the installed app: inside the app it is the dashboard).
+async function marketingPage(request, path) {
+  try {
+    const response = await fetch(request);
+    if (response.ok) {
+      const copy = response.clone();
+      caches.open(MARKETING_CACHE_NAME).then((cache) => cache.put(path, copy)).catch(() => undefined);
+    }
+    return response;
+  } catch (error) {
+    const cached =
+      (await caches.match(path, { cacheName: MARKETING_CACHE_NAME })) ||
+      (await caches.match(SHELL_KEY, { cacheName: SHELL_CACHE_NAME }));
     if (cached) return cached;
     throw error;
   }
