@@ -234,7 +234,7 @@ function Hero() {
         <p className="m-enter mt-4 text-sm text-content-muted" style={enter(4)}>
           Free · In beta · On your phone and PC · No download needed
         </p>
-        <p className="m-enter mt-2 text-sm text-content-muted min-[440px]:hidden" style={enter(4)}>
+        <p className="m-enter mt-2 text-sm text-content-muted min-[480px]:hidden" style={enter(4)}>
           Already have an account?{' '}
           <a href="/login" className={LINK_CLASS}>
             Sign in

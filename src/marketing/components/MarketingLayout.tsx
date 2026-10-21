@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { ChevronDown, Moon, Sun } from 'lucide-react';
-import { AppLockup } from '@/components/ui/AppLogo';
+import { AppLockup, AppLogo } from '@/components/ui/AppLogo';
 import { cx, FOCUS_RING } from '@/components/ui/primitives/shared';
 import { FEATURE_GROUPS, featurePath, featuresInGroup } from '../features/catalog';
 import { SITE_DESCRIPTOR, SITE_MAKER } from '../site';
@@ -74,13 +74,15 @@ function FeaturesMenu() {
 function Header() {
   return (
     <header className="sticky top-0 z-sticky border-b border-overlay-subtle bg-bg-900/80 backdrop-blur-xl pt-[env(safe-area-inset-top)]">
-      <div className="mx-auto flex h-16 max-w-6xl items-center gap-2 pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] sm:px-6">
+      <div className="mx-auto flex h-16 max-w-6xl items-center gap-1 sm:gap-2 pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] sm:px-6">
+        {/* Narrow phones: smaller lockup below 400px, the mark alone below 360px, so the header never overflows. */}
         <a href="/" aria-label="Ascend home" className={cx('mr-auto inline-flex min-h-11 items-center rounded-lg', FOCUS_RING)}>
-          <AppLockup className="h-5 w-auto text-content-primary" />
+          <AppLockup className="h-5 w-auto text-content-primary max-[399px]:h-4 max-[359px]:hidden" />
+          <AppLogo variant="small" className="hidden h-7 w-auto max-[359px]:block" />
         </a>
         <nav aria-label="Main" className="flex items-center gap-1">
           <FeaturesMenu />
-          <a href="/login" className={cx(NAV_LINK, 'max-[439px]:hidden')}>
+          <a href="/login" className={cx(NAV_LINK, 'max-[479px]:hidden')}>
             Sign in
           </a>
         </nav>
