@@ -1,5 +1,6 @@
 import type { ReactElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
+import { LegalPage } from '@/components/legal/LegalPage';
 import { marketingHead, type PageAssets } from './head';
 import type { MarketingRoute } from './routes';
 import { FeaturePage } from './pages/FeaturePage';
@@ -24,13 +25,17 @@ function pageElement(route: MarketingRoute): ReactElement {
       return <FeaturePage slug={route.slug} />;
     case 'notFound':
       return <NotFound />;
+    case 'legal':
+      // The same page the app shows in-app; links are plain addresses here, home is the landing page.
+      if (!route.legal) throw new Error(`Legal route without a page: ${route.path}`);
+      return <LegalPage page={route.legal} onNavigate={() => undefined} homeHref="/" />;
     default:
       throw new Error(`Not a rendered page: ${route.path} (${route.kind})`);
   }
 }
 
 /** Routes rendered by renderMarketingPage (auth pages are the app shell with their own head). */
-export const isRenderedRoute = (route: MarketingRoute): boolean => route.kind !== 'auth' && route.kind !== 'legal';
+export const isRenderedRoute = (route: MarketingRoute): boolean => route.kind !== 'auth';
 
 export function renderMarketingPage(route: MarketingRoute, assets: PageAssets): string {
   const body = renderToStaticMarkup(pageElement(route));

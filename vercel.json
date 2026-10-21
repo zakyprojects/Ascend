@@ -8,8 +8,7 @@
   ],
   "rewrites": [
     { "source": "/assets/(.*)", "destination": "/api/missing-asset" },
-    { "source": "/:view(dashboard|habits|time-tracker|weekly-goals|projects-goals|journal|exercise|reading|skills|bad-habits|recovery|prefrontal-cortex|neuroplasticity|lessons|plans|partner|leagues|tiers|settings|report-bug|suggest-idea|reset-password)", "destination": "/app-shell.html" },
-    { "source": "/(privacy|terms)", "destination": "/app-shell.html" }
+    { "source": "/:view(dashboard|habits|time-tracker|weekly-goals|projects-goals|journal|exercise|reading|skills|bad-habits|recovery|prefrontal-cortex|neuroplasticity|lessons|plans|partner|leagues|tiers|settings|report-bug|suggest-idea|reset-password)", "destination": "/app-shell.html" }
   ],
   "headers": [
     {

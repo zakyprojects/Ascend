@@ -51,7 +51,7 @@ export async function checkSite(files: Map<string, string>, config: VercelConfig
   // Public pages: their file, 200, no noindex header, self canonical.
   for (const route of MARKETING_ROUTES) {
     if (!exists(route.file)) {
-      if (route.kind !== 'legal') errors.push(`${route.path}: ${route.file} was not written`);
+      errors.push(`${route.path}: ${route.file} was not written`);
       continue;
     }
     const resolved = resolveRoute(config, route.path, exists);
@@ -90,13 +90,6 @@ export async function checkSite(files: Map<string, string>, config: VercelConfig
     }
   }
 
-  // Legal pages: their prerendered file, or the app shell until they are prerendered.
-  for (const path of ['/privacy', '/terms']) {
-    const resolved = resolveRoute(config, path, exists);
-    if (resolved.type !== 'file' || ![`${path.slice(1)}.html`, 'app-shell.html'].includes(resolved.file)) {
-      errors.push(`${path}: served as ${JSON.stringify(resolved)}`);
-    }
-  }
 
   // Static files: served as themselves, with their cache rules.
   const statics: [string, RegExp][] = [

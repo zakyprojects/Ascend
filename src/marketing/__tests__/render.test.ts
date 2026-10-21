@@ -32,7 +32,7 @@ for (const route of MARKETING_ROUTES) {
   const html = renderMarketingPage(route, assets);
   assert(count(html, /<h1[\s>]/g) === 1, `${route.path}: exactly one <h1>`);
   assert(count(html, /<title>/g) === 1, `${route.path}: one <title>`);
-  assert(html.includes('<main id="main"'), `${route.path}: has <main>`);
+  assert(/<main[\s>]/.test(html), `${route.path}: has <main>`);
   const canonical = attr(html, /<link rel="canonical" href="([^"]+)"/);
   const ogUrl = attr(html, /<meta property="og:url" content="([^"]+)"/);
   if (route.index) {
@@ -45,6 +45,13 @@ for (const route of MARKETING_ROUTES) {
   assert(/<meta property="og:image" content="https:\/\/[^"]+\.png\?v=\d+"/.test(html), `${route.path}: absolute og:image`);
   for (const m of html.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)) JSON.parse(m[1]);
   assert(!/href="#"|href=""/.test(html), `${route.path}: no empty links`);
+}
+
+// Legal pages carry the whole text, not an app shell (bots without JavaScript read it).
+for (const route of MARKETING_ROUTES.filter((r) => r.kind === 'legal')) {
+  const html = renderMarketingPage(route, assets);
+  assert(!html.includes('id="root"') && html.length > 8000, `${route.path}: full static text`);
+  assert(html.includes('href="/"') && !html.includes('href="/dashboard"'), `${route.path}: home links go to the landing page`);
 }
 
 const landing = renderMarketingPage(MARKETING_ROUTES[0], assets);
