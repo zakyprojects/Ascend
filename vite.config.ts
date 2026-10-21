@@ -2,7 +2,9 @@ import { defineConfig, loadEnv, Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
 import { sentryVitePlugin } from '@sentry/vite-plugin';
 import { fileURLToPath, URL } from 'node:url';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync, statSync } from 'node:fs';
+import { join } from 'node:path';
+import { headersFor, resolveRoute, type VercelConfig } from './src/marketing/vercelRules';
 
 const pkg = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf-8'));
 
@@ -127,6 +129,73 @@ function signInPreloadPlugin(): Plugin {
 }
 
 /**
+ * The public pages (src/marketing) in `npm run dev`: `/`, `/features` and `/features/<slug>` are
+ * rendered on each request from the same code the build prerenders; every other address (the app,
+ * `/login`, `/privacy`, `/?gallery`, `/?splash-preview`) falls through to the app as before.
+ */
+function marketingDevPlugin(): Plugin {
+  return {
+    name: 'marketing-dev',
+    apply: 'serve',
+    configureServer(server) {
+      server.middlewares.use(async (req, res, next) => {
+        const url = new URL(req.originalUrl ?? req.url ?? '/', 'http://localhost');
+        if (req.method !== 'GET' || url.searchParams.has('gallery') || url.searchParams.has('splash-preview')) return next();
+        try {
+          const routes = await server.ssrLoadModule('/src/marketing/routes.ts');
+          const route = routes.routeByPath(url.pathname);
+          const render = await server.ssrLoadModule('/src/marketing/render.tsx');
+          if (!route || !render.isRenderedRoute(route) || route.kind === 'notFound') return next();
+          const html = render.renderMarketingPage(route, { css: [], js: '/src/marketing/client.ts', modules: [], fonts: [] });
+          res.setHeader('Content-Type', 'text/html; charset=utf-8');
+          res.end(await server.transformIndexHtml(url.pathname, html));
+        } catch (err) {
+          next(err);
+        }
+      });
+    },
+  };
+}
+
+/**
+ * `npm run preview` answers like Vercel: vercel.json's redirects, clean URLs, rewrites, headers
+ * and the 404 page (src/marketing/vercelRules.ts), instead of Vite's send-index.html-for-all.
+ * So `/dashboard` gets the app shell and `/` the landing page locally too.
+ */
+function vercelPreviewPlugin(): Plugin {
+  return {
+    name: 'vercel-preview',
+    configurePreviewServer(server) {
+      const dist = server.config.build.outDir;
+      const config = JSON.parse(readFileSync(new URL('./vercel.json', import.meta.url), 'utf-8')) as VercelConfig;
+      const exists = (file: string) => {
+        const path = join(dist, file);
+        return existsSync(path) && statSync(path).isFile();
+      };
+      server.middlewares.use((req, res, next) => {
+        const url = new URL(req.originalUrl ?? req.url ?? '/', 'http://localhost');
+        if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/@')) return next();
+        for (const [key, value] of Object.entries(headersFor(config, url.pathname))) res.setHeader(key, value);
+        const route = resolveRoute(config, url.pathname, exists);
+        if (route.type === 'redirect') {
+          res.statusCode = route.status;
+          res.setHeader('Location', route.location + url.search);
+          res.end();
+          return;
+        }
+        if (!route.file.endsWith('.html')) {
+          req.url = `/${route.file}${url.search}`;
+          return next();
+        }
+        res.statusCode = route.status;
+        res.setHeader('Content-Type', 'text/html; charset=utf-8');
+        res.end(readFileSync(join(dist, route.file)));
+      });
+    },
+  };
+}
+
+/**
  * Crash reports show real file names and lines: on a build with SENTRY_AUTH_TOKEN (Vercel only,
  * never .env.local), source maps are made, uploaded to Sentry under this release, then deleted
  * from dist so they are never served. Without the token nothing is made or uploaded.
@@ -140,6 +209,8 @@ export default defineConfig({
     versionFilePlugin(),
     signInPreloadPlugin(),
     apiFunctionsPlugin(),
+    marketingDevPlugin(),
+    vercelPreviewPlugin(),
     sentryUpload &&
       sentryVitePlugin({
         org: process.env.SENTRY_ORG,
@@ -169,7 +240,14 @@ export default defineConfig({
   },
   build: {
     sourcemap: sentryUpload ? 'hidden' : false,
+    // dist/.vite/manifest.json: the prerender (scripts/prerender.ts) reads the marketing entry's files.
+    manifest: true,
     rollupOptions: {
+      // The app (index.html, becomes app-shell.html) and the public pages' small script + styles.
+      input: {
+        index: fileURLToPath(new URL('./index.html', import.meta.url)),
+        marketing: fileURLToPath(new URL('./src/marketing/client.ts', import.meta.url)),
+      },
       output: {
         // Libraries in their own chunks: they change far less often than the app, so a deploy
         // leaves them cached (assets are immutable for a year, vercel.json).

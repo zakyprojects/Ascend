@@ -15,7 +15,7 @@ const attr = (html: string, pattern: RegExp) => html.match(pattern)?.[1] ?? null
 
 assert(typeof window === 'undefined' && typeof document === 'undefined', 'runs without a DOM');
 
-const assets = { css: ['/assets/marketing.css'], js: '/assets/marketing.js', fonts: [] };
+const assets = { css: ['/assets/marketing.css'], js: '/assets/marketing.js', modules: [], fonts: [] };
 const titles = new Set<string>();
 const descriptions = new Set<string>();
 

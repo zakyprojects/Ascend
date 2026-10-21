@@ -1,0 +1,50 @@
+/* The marketing pages' stylesheet: the app's fonts and its whole index.css (tokens, themes,
+   components), inlined here so the pages get one stylesheet of their own and the app's CSS files
+   stay as they are. Then the few things the app has no class for. Motion is transform/opacity
+   only (no layout shift) and stops under reduced motion. */
+@import '@fontsource-variable/geist/index.css';
+@import '@fontsource/instrument-serif/400.css';
+@import '../index.css';
+
+/* Theme switch: the icon of the theme you would switch to, turning as it swaps (as the app's). */
+.m-theme-icon {
+  transition: opacity var(--duration-base) var(--ease-emphasized), transform var(--duration-base) var(--ease-emphasized);
+}
+.m-theme-moon { opacity: 0; transform: rotate(90deg) scale(0.5); }
+[data-theme='light'] .m-theme-sun { opacity: 0; transform: rotate(-90deg) scale(0.5); }
+[data-theme='light'] .m-theme-moon { opacity: 1; transform: none; }
+
+/* Features menu (<details>): chevron turns, the panel rises in. */
+.m-menu[open] .m-menu-chevron { transform: rotate(180deg); }
+.m-menu[open] .m-menu-panel { animation: m-pop var(--duration-enter) var(--ease-emphasized) both; }
+@keyframes m-pop {
+  from { opacity: 0; transform: translateY(-6px) scale(0.98); }
+}
+
+/* Hero entrance: text and picture rise once on load. Transform only (never hidden), so the first
+   paint and the largest paint are not delayed. */
+.m-enter { animation: m-rise 700ms var(--ease-emphasized) both; animation-delay: calc(var(--i, 0) * 70ms); }
+@keyframes m-rise {
+  from { transform: translateY(14px); }
+}
+
+/* Growth trace behind the hero: the boot screen's rising line (ui/growthTrace.ts), drawn once. */
+.m-trace path { stroke-dasharray: 1; stroke-dashoffset: 1; animation: m-draw 1.8s var(--ease-emphasized) 200ms forwards; }
+.m-trace .m-trace-level { stroke-dasharray: 2 6; stroke-dashoffset: 0; animation: none; }
+@keyframes m-draw {
+  to { stroke-dashoffset: 0; }
+}
+
+/* Screenshot frame: a light and a dark capture, the one for the current theme shown. */
+.m-shot-light { display: none; }
+[data-theme='light'] .m-shot-light { display: block; }
+[data-theme='light'] .m-shot-dark { display: none; }
+
+/* FAQ (<details>): the plus turns into a cross. */
+.m-faq[open] .m-faq-icon { transform: rotate(45deg); }
+
+@media (prefers-reduced-motion: reduce) {
+  .m-enter, .m-menu[open] .m-menu-panel { animation: none; }
+  .m-trace path { animation: none; stroke-dashoffset: 0; }
+  .m-theme-icon, .m-menu-chevron, .m-faq-icon { transition: none; }
+}

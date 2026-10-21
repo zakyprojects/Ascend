@@ -7,6 +7,8 @@ export interface PageAssets {
   css: string[];
   /** The page's module script (src/marketing/client.ts once built). */
   js: string | null;
+  /** Chunks the module script imports (modulepreload, fetched alongside it). */
+  modules: string[];
   /** Font files to preload (the faces on the first screen). */
   fonts: string[];
 }
@@ -30,9 +32,10 @@ export const THEME_SCRIPT = `(function(){try{var t=localStorage.getItem('ascend_
  * anything paints. Old `#/habits` links (KEEP IN SYNC with index.html's shim), a Supabase auth
  * hash or `?code=`, the old `/?quick-log` shortcut, and anyone with a saved session (signed in or
  * guest; same test as lib/supabase.ts storedAuthSession) go to the app; everyone else sees the
- * landing page. The app never sends anyone back to `/`, so this cannot loop.
+ * landing page. The app never sends anyone back to `/`, and the script acts only at `/` (so a
+ * misrouted app address that got this page can never bounce), so it cannot loop.
  */
-export const LANDING_REDIRECT_SCRIPT = `(function(){try{var h=location.hash,s=location.search,go=null;if(h.indexOf('#/')===0){var id=decodeURIComponent(h.slice(2)).replace(/^\\/+|\\/+$/g,'').toLowerCase();var r={'':'dashboard','index.html':'dashboard',books:'reading',prefrontal:'prefrontal-cortex'};if(Object.prototype.hasOwnProperty.call(r,id))id=r[id];if(!/^[a-z0-9-]+$/.test(id))id='dashboard';go='/'+id+s;}else if(/[#&](access_token|error)=/.test(h)||/[?&](code|quick-log)(=|&|$)/.test(s)){go='/dashboard'+s+h;}else{for(var i=0;i<localStorage.length;i++){var k=localStorage.key(i);if(!k||!/^sb-[a-z0-9]+-auth-token$/.test(k))continue;var v=JSON.parse(localStorage.getItem(k)||'null');if(v&&typeof v.refresh_token==='string'&&v.refresh_token){go='/dashboard'+s+h;break;}}}if(go){document.documentElement.style.visibility='hidden';location.replace(go);}}catch(e){}})();`;
+export const LANDING_REDIRECT_SCRIPT = `(function(){try{if(location.pathname!=='/')return;var h=location.hash,s=location.search,go=null;if(h.indexOf('#/')===0){var id=decodeURIComponent(h.slice(2)).replace(/^\\/+|\\/+$/g,'').toLowerCase();var r={'':'dashboard','index.html':'dashboard',books:'reading',prefrontal:'prefrontal-cortex'};if(Object.prototype.hasOwnProperty.call(r,id))id=r[id];if(!/^[a-z0-9-]+$/.test(id))id='dashboard';go='/'+id+s;}else if(/[#&](access_token|error)=/.test(h)||/[?&](code|quick-log)(=|&|$)/.test(s)){go='/dashboard'+s+h;}else{for(var i=0;i<localStorage.length;i++){var k=localStorage.key(i);if(!k||!/^sb-[a-z0-9]+-auth-token$/.test(k))continue;var v=JSON.parse(localStorage.getItem(k)||'null');if(v&&typeof v.refresh_token==='string'&&v.refresh_token){go='/dashboard'+s+h;break;}}}if(go){document.documentElement.style.visibility='hidden';location.replace(go);}}catch(e){}})();`;
 
 /** Every inline executable script a marketing page can carry (checkSeo hashes them into the CSP). */
 export const MARKETING_INLINE_SCRIPTS = [THEME_SCRIPT, LANDING_REDIRECT_SCRIPT];
@@ -150,6 +153,7 @@ export function marketingHead(route: MarketingRoute, assets: PageAssets): string
     ...assets.fonts.map((href) => `<link rel="preload" as="font" type="font/woff2" crossorigin href="${href}" />`),
     ...assets.css.map((href) => `<link rel="stylesheet" crossorigin href="${href}" />`),
     ...(assets.js ? [`<script type="module" crossorigin src="${assets.js}"></script>`] : []),
+    ...assets.modules.map((href) => `<link rel="modulepreload" crossorigin href="${href}" />`),
     ...(data ? [`<script type="application/ld+json">${jsonLd(data)}</script>`] : []),
   ];
   return parts.join('\n    ');
