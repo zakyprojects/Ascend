@@ -64,6 +64,7 @@ export async function checkSite(files: Map<string, string>, config: VercelConfig
     if (route.index && !files.get(route.file)!.includes(`<link rel="canonical" href="${absoluteUrl(route.path)}"`)) {
       errors.push(`${route.path}: no self canonical`);
     }
+    if (!exists(`og/${route.ogImage}.png`)) errors.push(`${route.path}: link preview og/${route.ogImage}.png is not in the build`);
   }
 
   // App pages: the app shell, noindex.

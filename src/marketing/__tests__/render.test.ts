@@ -119,4 +119,18 @@ featureTexts.forEach((text, i) => {
   });
 });
 
+// Link previews: each page that can be shared has its own card (only the 404 borrows home's), a
+// 1200×630 PNG under 300 KB (public/og, read from the PNG header).
+for (const route of MARKETING_ROUTES) {
+  if (route.kind !== 'notFound' && route.kind !== 'landing') assert(route.ogImage !== 'home', `${route.path}: its own link-preview image`);
+}
+const ogFiles = import.meta.glob<string>('../../../public/og/*.png', { query: '?inline', import: 'default', eager: true });
+const u32 = (bytes: string, at: number) => ((bytes.charCodeAt(at) << 24) | (bytes.charCodeAt(at + 1) << 16) | (bytes.charCodeAt(at + 2) << 8) | bytes.charCodeAt(at + 3)) >>> 0;
+for (const name of new Set(MARKETING_ROUTES.map((r) => r.ogImage))) {
+  const dataUrl = ogFiles[`../../../public/og/${name}.png`];
+  assert(Boolean(dataUrl), `og/${name}.png exists`);
+  const png = atob(dataUrl.slice(dataUrl.indexOf(',') + 1));
+  assert(png.slice(1, 4) === 'PNG' && u32(png, 16) === 1200 && u32(png, 20) === 630, `og/${name}.png is a 1200×630 PNG`);
+  assert(png.length < 300 * 1024, `og/${name}.png is under 300 KB (${Math.round(png.length / 1024)} KB)`);
+}
 console.log(`\nMarketing render: ${MARKETING_ROUTES.length} routes checked.`);

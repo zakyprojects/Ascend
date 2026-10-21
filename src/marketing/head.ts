@@ -14,7 +14,7 @@ export interface PageAssets {
 }
 
 /** Bump with the files in public/og so link previews fetch the new image. */
-export const OG_IMAGE_VERSION = 1;
+export const OG_IMAGE_VERSION = 2;
 
 export const escapeHtml = (value: string): string =>
   value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
