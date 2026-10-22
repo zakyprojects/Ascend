@@ -11,7 +11,7 @@ export interface PageHeroStat {
   value: ReactNode;
   /** A short line under the value (unit, context). */
   hint?: ReactNode;
-  /** Colour for the value (e.g. text-brand-text, text-secondary-400); neutral when left out. */
+  /** Colour for the value; brand emerald when left out (only the lead number carries the module colour). */
   valueClassName?: string;
 }
 
@@ -70,7 +70,7 @@ export function PageHero({ ring, lead, stats = [], side, ariaLabel, className }:
                 <div key={stat.label} className="flex min-w-0 flex-col sm:px-6 sm:first:pl-0 md:first:pl-8 sm:[&:not(:first-child)]:border-l sm:[&:not(:first-child)]:border-overlay-subtle">
                   {/* flex-1 keeps the values on one line when a long label wraps on a phone. */}
                   <dt className="stat-label flex-1">{stat.label}</dt>
-                  <dd className={cx('mt-1 text-2xl font-medium leading-none tabular-nums sm:text-3xl', stat.valueClassName ?? 'text-content-primary')}>{stat.value}</dd>
+                  <dd className={cx('mt-1 text-2xl font-medium leading-none tabular-nums sm:text-3xl', stat.valueClassName ?? 'text-brand-text')}>{stat.value}</dd>
                   {stat.hint && <dd className="mt-0.5 text-micro text-content-muted">{stat.hint}</dd>}
                 </div>
               ))}
