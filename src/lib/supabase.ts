@@ -1334,21 +1334,14 @@ export async function deletePartnershipSupabase(partnershipId: string) {
   if (!isSupabaseConfigured || !partnershipId) return;
   try {
     // One server step: tells the partner, then removes the pair's challenges and the partnership.
+    // The only way to remove a partner, so the partner always gets the notice.
     const { data: rpcData, error: rpcErr } = await supabase.rpc('end_partnership_atomic', { p_partnership_id: partnershipId });
-    if (!rpcErr) {
-      if (rpcData?.success === false) {
-        throw new Error(rpcData.error || "Couldn't remove the partner. Try again.");
-      }
-      return;
+    if (rpcErr) {
+      console.error('RPC end_partnership_atomic failed:', rpcErr);
+      throw new Error("Couldn't remove the partner. Try again.");
     }
-    console.warn('RPC end_partnership_atomic unavailable, falling back to direct delete:', rpcErr);
-
-    // Fallback (database without the RPC yet): the pair's shared challenges go with the
-    // partnership (FK cascade); members cannot delete them directly.
-    const { error } = await supabase.from('partnerships').delete().eq('id', partnershipId);
-    if (error) {
-      console.error('Supabase partnership delete error:', error);
-      throw new Error(error.message || "Couldn't end the pairing. Try again.");
+    if (rpcData?.success === false) {
+      throw new Error(rpcData.error || "Couldn't remove the partner. Try again.");
     }
   } catch (e) {
     console.error('deletePartnershipSupabase failed:', e);
