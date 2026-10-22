@@ -93,10 +93,12 @@ function formatUtcDay(d: Date, withYear = false): string {
 
 /**
  * "Oct 12 – Oct 18": first and last day of a half-open period [start, end). The end instant is the
- * next period's first moment, so the last day shown is the one just before it.
+ * next period's first moment, so the last day shown is the one just before it. A one-day period
+ * (a week a Tuesday season start cuts to its Monday) is that day alone: "Jul 26".
  */
 function formatUtcRange(start: Date, end: Date, withYear = false): string {
   const last = new Date(end.getTime() - 1);
+  if (formatUtcDay(start, true) === formatUtcDay(last, true)) return formatUtcDay(last, withYear);
   const startYear = withYear && start.getUTCFullYear() !== last.getUTCFullYear();
   return `${formatUtcDay(start, startYear)} – ${formatUtcDay(last, withYear)}`;
 }

@@ -217,6 +217,9 @@ function runFixtures() {
     ['monthly', utc(2026, 10, 31), 'Oct 30 – Oct 31'],
     ['monthly', utc(2026, 9, 15), 'September 2026'],
     ['monthly', utc(2026, 11, 15), 'November 2026'],
+    // One-day week parts show one day (Season 5 starts Tue Jul 27, 2027; Season 7 Sun Jan 23, 2028).
+    ['weekly', utc(2027, 7, 26, 12), 'Jul 26'],
+    ['weekly', utc(2028, 1, 23, 12), 'Jan 23'],
   ];
   for (const [type, at, want] of labelCases) {
     const got = getLeaguePeriodLabel(type, at);
@@ -248,6 +251,12 @@ function runFixtures() {
     ['W:2027-W04@S2', 'weekly', utc(2027, 1, 25), utc(2027, 1, 28), 'Jan 25 – Jan 27 (Season 2)'],
     ['M:2027-01@S2', 'monthly', utc(2027, 1, 1), utc(2027, 1, 28), 'Jan 1 – Jan 27, 2027 (Season 2)'],
     ['S:1', 'ninetyDay', utc(2026, 8, 1), utc(2026, 10, 30), 'Season 1 (Aug 1 – Oct 29, 2026)'],
+    // Season 5 starts Tue Jul 27, 2027: the week's part before it is one day, shown as that day.
+    ['W:2027-W30@S4', 'weekly', utc(2027, 7, 26), utc(2027, 7, 27), 'Jul 26 (Season 4)'],
+    ['W:2027-W30', 'weekly', utc(2027, 7, 26), utc(2027, 8, 2), 'Jul 27 – Aug 1'],
+    // Season 7 starts Sun Jan 23, 2028: the week's in-season part is one day.
+    ['W:2028-W03', 'weekly', utc(2028, 1, 17), utc(2028, 1, 24), 'Jan 23'],
+    ['W:2028-W03@S6', 'weekly', utc(2028, 1, 17), utc(2028, 1, 23), 'Jan 17 – Jan 22 (Season 6)'],
   ];
   for (const [id, type, wantStart, wantEnd, wantLabel] of archiveCases) {
     const a = archive(id, type);
