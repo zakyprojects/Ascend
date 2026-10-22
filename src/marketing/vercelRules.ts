@@ -56,6 +56,9 @@ export function resolveRoute(config: VercelConfig, path: string, exists: (file: 
   if (file) return { type: 'file', file, status: 200 };
   for (const rewrite of config.rewrites ?? []) {
     if (!sourceMatches(rewrite.source, path)) continue;
+    // With cleanUrls, Vercel serves an .html file only at its clean path, so a rewrite whose
+    // destination ends in .html finds nothing and answers 404 (seen live 2026-10-22).
+    if (config.cleanUrls && /\.html$/.test(rewrite.destination)) return { type: 'notFound', file: '404.html', status: 404 };
     const target = fileFor(config, rewrite.destination, exists);
     if (target) return { type: 'file', file: target, status: 200 };
     // A rewrite to a function (/api/…): not a file here.

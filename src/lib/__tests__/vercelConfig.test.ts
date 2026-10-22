@@ -25,7 +25,7 @@ const config = JSON.parse(vercelJson) as VercelConfig;
 const viewSource = `/:view(${[...VIEWS.map((view) => pathForView(view)), pathForAuthRoute('reset-password')].map((p) => p.slice(1)).join('|')})`;
 assert(APP_PATHS.length === VIEWS.length + 1, 'every view plus /reset-password');
 assert(
-  (config.rewrites ?? []).some((r) => r.source === viewSource && r.destination === '/app-shell.html'),
+  (config.rewrites ?? []).some((r) => r.source === viewSource && r.destination === '/app-shell'),
   `app-shell rewrite is ${viewSource} (update vercel.json when views.ts changes)`
 );
 assert(
