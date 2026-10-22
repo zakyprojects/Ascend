@@ -39,7 +39,7 @@ export const recovery: FeatureContent = {
     name: 'recovery-phone',
     width: 540,
     height: 1246,
-    alt: `The Recovery page on a phone: 46 days smoking free, 43 days 3 hours left to the ${days(ninety.hours)}-day milestone, 35 of ${cap} recovery points this season and 2 cravings this week`,
+    alt: `The Recovery page on a phone: 46 days smoking free, 43 days 11 hours left to the ${days(ninety.hours)}-day milestone, 35 of ${cap} recovery points this season and 2 cravings this week`,
   },
   body: (
     <>

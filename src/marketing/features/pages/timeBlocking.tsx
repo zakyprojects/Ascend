@@ -39,7 +39,7 @@ export const timeBlocking: FeatureContent = {
     name: 'time-blocking-phone',
     width: 540,
     height: 1246,
-    alt: 'The Time Tracker on a phone: Wednesday with 5 of 9 blocks done, 3 of 5 points today, and the current block, Python practice, with Done, Skip and Open Skills buttons',
+    alt: 'The Time Tracker on a phone: a day with 5 of 9 blocks done, 3 of 5 points today, and the current block, Python practice, with Done, Skip and Open Skills buttons',
   },
   body: (
     <>

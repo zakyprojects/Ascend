@@ -56,7 +56,7 @@ export const ranks: FeatureContent = {
     name: 'ranks-phone',
     width: 540,
     height: 1246,
-    alt: `The Ranks page on a phone: Ali is a Learner with 510 season points, 390 points to Trainer, the season countdown, and the ladder from ${first.name} to Achiever`,
+    alt: `The Ranks page on a phone: Ali is a Learner with 575 season points, 325 points to Trainer, the season countdown, and the ladder from ${first.name} to Achiever`,
   },
   body: (
     <>
@@ -196,7 +196,7 @@ export const ranks: FeatureContent = {
     name: 'ranks-ladder-desktop',
     width: 1400,
     height: 1081,
-    alt: `The Ranks page on a computer: Learner with 510 season points and 2% of the way to Trainer, the ladder from ${first.name} (0) to Performer (${fmt(performer.minPoints)}), and recent points such as Reading: 6 pts`,
+    alt: `The Ranks page on a computer: Learner with 575 season points and 18% of the way to Trainer, the ladder from ${first.name} (0) to Performer (${fmt(performer.minPoints)}), and recent points such as Reading: 6 pts`,
     caption: 'The Ranks page on a computer, with the demo user Ali’s season.',
   },
   facts: [

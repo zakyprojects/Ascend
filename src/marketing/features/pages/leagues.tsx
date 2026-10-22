@@ -37,7 +37,7 @@ export const leagues: FeatureContent = {
     name: 'leagues-phone',
     width: 540,
     height: 1246,
-    alt: 'The weekly league on a phone: Ali in 2nd place of 8 members with 88 points, a reset countdown of 4 days 9 hours, and a table led by Sara with 96 points',
+    alt: 'The weekly league on a phone: Ali in 1st place of 8 members with 112 points, a reset countdown of 3 days 15 hours, and Sara 2nd with 96 points',
   },
   body: (
     <>
@@ -177,7 +177,7 @@ export const leagues: FeatureContent = {
     name: 'leagues-desktop',
     width: 1400,
     height: 1228,
-    alt: 'The Leagues page on a computer: the weekly table for Oct 19 – Oct 25 with eight members and their rank badges, Ali 2nd with 88 points, and past weeks where Ali finished 2nd and 1st',
+    alt: 'The Leagues page on a computer: the weekly table for Oct 19 – Oct 25 with eight members and their rank badges, Ali 1st with 112 points, and past weeks where Ali finished 2nd and 1st',
     caption: 'Leagues on a computer. Ali is the demo user; the other members are invented for this picture.',
   },
   facts: [

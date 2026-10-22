@@ -43,7 +43,7 @@ export const skills: FeatureContent = {
     name: 'skills-phone',
     width: 540,
     height: 1246,
-    alt: 'Skills on a phone: 5 of 10 skill points today, 3.4 hours of practice this week on 3 of 7 days, 51.9 hours in total across 3 skills',
+    alt: 'Skills on a phone: 5 of 10 skill points today, 4.2 hours of practice this week on 4 of 7 days, 51.9 hours in total across 3 skills',
   },
   body: (
     <>

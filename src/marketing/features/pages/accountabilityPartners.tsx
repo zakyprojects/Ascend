@@ -37,7 +37,7 @@ export const accountabilityPartners: FeatureContent = {
     name: 'partners-phone',
     width: 540,
     height: 1246,
-    alt: 'Partners on a phone: Ali with 2 partners and 3 of 3 challenges ticked today, Sara 232 points ahead this season, and a Read 20 pages challenge at 10 of 30 days together',
+    alt: 'Partners on a phone: Ali with 2 partners and 3 of 3 challenges ticked today, Sara 167 points ahead this season, and a Read 20 pages challenge at 10 of 30 days together',
   },
   body: (
     <>
@@ -163,7 +163,7 @@ export const accountabilityPartners: FeatureContent = {
     name: 'partners-desktop',
     width: 1400,
     height: 1339,
-    alt: 'Partners on a computer: the card for partner Sara with 742 season points and a 31-day streak next to Ali’s 510 and 21 days, a Nudge Sara button, and two challenges, Read 20 pages and Morning walk',
+    alt: 'Partners on a computer: the card for partner Sara with 742 season points and a 31-day streak next to Ali’s 575 and 21 days, a Nudge Sara button, and two challenges, Read 20 pages and Morning walk',
     caption: 'Partners on a computer. Ali is the demo user; Sara and Omar are invented for this picture.',
   },
   facts: [
