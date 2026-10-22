@@ -105,7 +105,14 @@ export function ClimbPanel({
         />
       ))}
 
-      <AppLockup className="self-start h-5 lg:h-6 w-auto shrink-0 text-primary-50" markClassName="text-primary-500" />
+      {/* The landing page is static HTML outside the app, so this is a full page load. */}
+      <a
+        href="/"
+        aria-label="Ascend home"
+        className="flex self-start shrink-0 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-50"
+      >
+        <AppLockup className="h-5 lg:h-6 w-auto text-primary-50" markClassName="text-primary-500" />
+      </a>
 
       {/* Phones: headline and Ember side by side in the band. Desktop: headline centred, Ember below. */}
       <div className="flex-1 flex items-end gap-3 lg:flex-col lg:items-start lg:gap-0">
