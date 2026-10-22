@@ -77,7 +77,7 @@ import { findCuratedBook } from './books';
 import { uid, generateUUID, generateNumericUID, periodKey, todayKey, isPlanJourneyDoneThisPeriod, calculateActivePlanStreak, getWeekDates, parseDate, getNow, getNextDateKey, weekKey, addDays } from './dates';
 import { computeLinkedGoalProgress, linkedEntryPresent, linkedGoalCrossing, linkedItemExists, linkedGoalUnit } from './linkedGoalMetrics';
 import { autoStatusChanges } from './projectProgress';
-import { reconcileSharedChallengeLifecycle, applyPledgeToggle, mergeSharedChallenge } from './pactLifecycle';
+import { reconcileSharedChallengeLifecycle, applyPledgeToggle, mergeSharedChallenge, linkedHabitFor } from './pactLifecycle';
 import { isPartnershipUser1 } from './partnershipSide';
 import { PresetHabit } from './presets';
 import { sameName } from './uniqueNames';
@@ -1802,6 +1802,12 @@ export function useAppState() {
       }
     });
   }, []);
+  // Habit-linked pacts follow their habit (planLinkedPactRepairs, run every minute): pacts that
+  // differed from their habit on the last pass, the day of each pact's last repair, and pacts whose
+  // save from a habit tick failed (resent until it goes through, at most PACT_RETRY_LIMIT times a day).
+  const pactDiverged = useRef(new Set<string>());
+  const pactRepairedOn = useRef(new Map<string, string>());
+  const pactRetry = useRef(new Map<string, { day: string; failures: number }>());
   // The initial check found no session while this device still holds a saved sign-in (a phone's
   // network not ready yet): the boot loader stays up until Supabase signs it in or drops it, rather
   // than flashing the sign-in page. 'failed' once that takes too long (offline).
@@ -2510,6 +2516,9 @@ export function useAppState() {
       }
       pendingImmediateResolvers.current = [];
       pledgeWrites.current.clear();
+      pactDiverged.current.clear();
+      pactRepairedOn.current.clear();
+      pactRetry.current.clear();
       isHydrated.current = false;
       setIsServerDataApplied(false);
       canPersistLocally.current = false;
@@ -3831,6 +3840,8 @@ export function useAppState() {
             if (habit && prev.sharedChallenges.length > 0) {
 
               updatedChallenges = prev.sharedChallenges.map((target) => {
+                // A finished pact takes no more ticks.
+                if (target.status !== 'active') return target;
                 const challengePartnership =
                   (prev.partnerships || []).find((p) => p.id === target.partnershipId) || prev.partnership;
 
@@ -3838,10 +3849,7 @@ export function useAppState() {
 
                 const isUser1 = isPartnershipUser1(challengePartnership, prev.currentUser?.id, prev.username);
 
-                const myCategory = isUser1 ? (target.user1Category || 'habit') : (target.user2Category || 'habit');
-                const myTarget = (isUser1 ? (target.user1Target || target.targetHabitName) : (target.user2Target || target.targetHabitName)).trim().toLowerCase();
-
-                if (myCategory === 'habit' && myTarget === habit.name.trim().toLowerCase()) {
+                if (linkedHabitFor(target, isUser1, [habit])) {
                   const { updated } = applyPledgeToggle(target, isUser1, completed);
                   challengesToSync.push(updated);
                   return updated;
@@ -3861,9 +3869,21 @@ export function useAppState() {
         );
 
         for (const updated of challengesToSync) {
-          trackPledgeWrite(updated.id, saveSharedChallengeSupabase(updated)).catch((err) => {
-            console.error('Failed to sync shared challenge from toggleHabit:', err);
-          });
+          trackPledgeWrite(updated.id, saveSharedChallengeSupabase(updated)).then(
+            () => {
+              pactRetry.current.delete(updated.id);
+            },
+            (err) => {
+              console.error('Failed to sync shared challenge from toggleHabit:', err);
+              // The habit is saved (outbox); the pact keeps the tick on screen and is resent
+              // by the linked-pact pass until the server has it.
+              pactRetry.current.set(updated.id, { day: todayKey(), failures: 0 });
+              dispatchToastError(
+                "Challenge tick didn't save",
+                `Your habit is saved. "${updated.title}" will try again soon.`
+              );
+            }
+          );
           syncBroadcaster.broadcast('CHALLENGE_UPDATED', updated);
         }
       } finally {
@@ -7974,6 +7994,11 @@ export function useAppState() {
       }
       const target = state.sharedChallenges[idx];
       const previousChallenge = target;
+      // A finished pact takes no more ticks.
+      if (target.status !== 'active') {
+        pendingPledgeRequests.delete(challengeId);
+        return;
+      }
 
       const challengePartnership =
         (state.partnerships || []).find((p) => p.id === target.partnershipId) || state.partnership;
