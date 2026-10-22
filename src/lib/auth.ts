@@ -375,6 +375,9 @@ export function consumeSignOutByUser(): boolean {
   return value;
 }
 
+/** Realtime channels scoped to the signed-in account (named in store.ts). */
+const ACCOUNT_CHANNEL_TOPIC = /^realtime:(synced_tables|social_realtime)_/;
+
 /**
  * Logout current user session from Supabase.
  * `scope: 'local'` only clears this device's session (used after account deletion,
@@ -383,6 +386,15 @@ export function consumeSignOutByUser(): boolean {
 export async function logoutUser({ scope = 'global' }: { scope?: 'global' | 'local' } = {}): Promise<void> {
   signOutByUser = true;
   if (isSupabaseConfigured) {
+    // Close this account's live channels first. Left open, they rejoin without a user once the
+    // session ends and the server refuses their user filters (a harmless but noisy Realtime error).
+    // The app's cleanup removes them again afterwards, which is a no-op.
+    await Promise.all(
+      supabase
+        .getChannels()
+        .filter((channel) => ACCOUNT_CHANNEL_TOPIC.test(channel.topic))
+        .map((channel) => supabase.removeChannel(channel))
+    );
     const { error } = await supabase.auth.signOut({ scope });
     if (error) {
       console.error('Error signing out from Supabase:', error);

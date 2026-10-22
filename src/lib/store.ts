@@ -2136,6 +2136,7 @@ export function useAppState() {
   const syncedUserId = state.currentUser?.id;
   useEffect(() => {
     if (!syncedUserId || !isSupabaseConfigured) return;
+    // The name is matched by ACCOUNT_CHANNEL_TOPIC in auth.ts (closed before sign-out).
     let channel = supabase.channel(`synced_tables_${syncedUserId}`);
     for (const collection of SYNCED_COLLECTIONS) {
       channel = channel.on(
@@ -3184,6 +3185,7 @@ export function useAppState() {
     let isSubscribed = false;
     let channel: any = null;
     if (isSupabaseConfigured) {
+      // The name is matched by ACCOUNT_CHANNEL_TOPIC in auth.ts (closed before sign-out).
       channel = supabase
         .channel(`social_realtime_${userId}`)
         .on('postgres_changes', { event: '*', schema: 'public', table: 'partner_invites' }, (payload) => {
