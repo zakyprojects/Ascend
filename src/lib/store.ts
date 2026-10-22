@@ -1829,6 +1829,9 @@ export function useAppState() {
     }>
   >([]);
   const isLoggingOutRef = useRef(false);
+  // Set while the account is being deleted on the server: no new autosave starts, and a save that
+  // fails in that window stays silent (the account is going away).
+  const isClosingAccountRef = useRef(false);
   const lastPersistedStateRef = useRef<AppState>(state);
   const lastKnownGoodStateRef = useRef<AppState>(state);
 
@@ -2267,6 +2270,10 @@ export function useAppState() {
               void checkLostSession();
               return;
             }
+            if (isClosingAccountRef.current) {
+              console.warn('[AUTOSAVE IMMEDIATE] Save failed while the account is being deleted:', err);
+              return;
+            }
             console.error('[AUTOSAVE IMMEDIATE] Failed to persist state:', err);
             if (typeof window !== 'undefined') {
               const isGuard = err instanceof GuardBlockedError;
@@ -2334,9 +2341,10 @@ export function useAppState() {
               window.dispatchEvent(new CustomEvent('app-network-error'));
             }
           });
-      } else if (!isLoggingOutRef.current) {
+      } else if (!isLoggingOutRef.current && !isClosingAccountRef.current) {
         // A log-out already sent what was unsaved and is about to end the sign-in; a save started
-        // now would reach the server after that and be refused.
+        // now would reach the server after that and be refused. The same holds while the account
+        // is being deleted.
         if (debounceTimer.current) clearTimeout(debounceTimer.current);
         debounceTimer.current = setTimeout(async () => {
           try {
@@ -2348,6 +2356,10 @@ export function useAppState() {
             if (err instanceof SessionLostError) {
               // Not a connection problem: kept on the device (dirty flag); no toast.
               void checkLostSession();
+              return;
+            }
+            if (isClosingAccountRef.current) {
+              console.warn('[AUTOSAVE DEBOUNCED] Save failed while the account is being deleted:', err);
               return;
             }
             console.error('[AUTOSAVE DEBOUNCED] Failed to persist state:', err);
@@ -3427,6 +3439,44 @@ export function useAppState() {
   }, []);
 
   /**
+   * Deletes the signed-in account on the server, then signs out. While the server deletes it no
+   * new autosave starts, and a save that fails then stays silent. When the server refuses, the
+   * user stays signed in, the save that was cancelled starts again, and the error is rethrown.
+   */
+  const deleteAccount = useCallback(async (): Promise<void> => {
+    const userId = stateRef.current.currentUser?.id;
+    if (!userId) throw new Error("Couldn't delete your account. Try again.");
+
+    isClosingAccountRef.current = true;
+    const stateAtStart = stateRef.current;
+    const hadPendingSave = Boolean(debounceTimer.current);
+    if (debounceTimer.current) {
+      clearTimeout(debounceTimer.current);
+      debounceTimer.current = null;
+    }
+
+    try {
+      await deleteOwnAccount(userId);
+    } catch (err) {
+      isClosingAccountRef.current = false;
+      // Changes made while the delete ran started no save either.
+      if (hadPendingSave || stateRef.current !== stateAtStart) {
+        const stateToSave = stateRef.current;
+        enqueuePersist(stateToSave)
+          .then(() => localStorage.removeItem(`ascend_dirty_${userId}`))
+          .catch((saveErr) => console.error('Failed to save after a refused account deletion:', saveErr));
+      }
+      throw err;
+    }
+
+    try {
+      await logout({ accountDeleted: true });
+    } finally {
+      isClosingAccountRef.current = false;
+    }
+  }, [logout, enqueuePersist]);
+
+  /**
    * Logging out of a guest account deletes it: a guest cannot sign back in, so the account would
    * stay behind in the leagues forever. When the server refuses, the guest stays signed in.
    * Returns false on failure (an error toast is shown).
@@ -3438,15 +3488,14 @@ export function useAppState() {
       return true;
     }
     try {
-      await deleteOwnAccount(user.id);
+      await deleteAccount();
     } catch (err) {
       console.error('Guest account deletion failed:', err);
       dispatchToastError("Couldn't delete your guest account", 'Check your connection and try again.');
       return false;
     }
-    await logout({ accountDeleted: true });
     return true;
-  }, [logout]);
+  }, [logout, deleteAccount]);
 
   const addPresetHabit = useCallback((preset: PresetHabit) => {
     const normalizedName = preset.name.trim().toLowerCase();
@@ -9195,6 +9244,7 @@ export function useAppState() {
     storedSessionWait,
     setAuthSessionState,
     logout,
+    deleteAccount,
     logoutGuest,
     addPresetHabit,
     addCustomHabit,

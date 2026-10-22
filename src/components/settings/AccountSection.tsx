@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { LogOut, Trash2 } from 'lucide-react';
 import { AppStore } from '@/lib/store';
-import { changeUserPassword, deleteOwnAccount, WrongCurrentPasswordError } from '@/lib/auth';
+import { changeUserPassword, WrongCurrentPasswordError } from '@/lib/auth';
 import { verifyAccountPassword } from '@/lib/supabase';
 import { newPasswordProblem } from '@/lib/passwordRules';
 import { PasswordInput } from '@/components/ui/PasswordInput';
@@ -26,7 +26,6 @@ interface AccountSectionProps {
 export function AccountSection({ store, onOpenAuth }: AccountSectionProps) {
   const currentUser = store.state.currentUser;
   const isGuest = Boolean(currentUser?.isAnonymous);
-  const userId = currentUser?.id || '';
   const { showSuccessToast } = useToast();
 
   // ── Password (asks for the current one first, D-S3) ──
@@ -124,14 +123,14 @@ export function AccountSection({ store, onOpenAuth }: AccountSectionProps) {
         if ((await verifyAccountPassword(currentUser.email, password)) === 'wrong') {
           throw new WrongCurrentPasswordError();
         }
-        await deleteOwnAccount(userId);
+        // The password check stays outside the delete: a wrong password must not hold back saves.
+        await store.deleteAccount();
       });
     } catch (err) {
       console.error('Account deletion failed in Settings:', err);
       return;
     }
     setShowDeleteConfirm(false);
-    await store.logout({ accountDeleted: true });
   };
 
   return (
