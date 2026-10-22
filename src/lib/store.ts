@@ -219,6 +219,7 @@ import { applyRemoteChanges, prepareRemoteRows, pullSyncedRows, type RemoteChang
 import { SYNCED_COLLECTIONS, itemsOf, rowIdOf, syncKeyOf } from './sync/syncedCollections';
 import { mergeAppState, deduplicatePresetHabits, mergeAppStateWithGuardResult, isLegitimateTombstoneId } from './stateMerger';
 import { toUserMessage } from './userMessage';
+import { ilikeExact } from './usernameRules';
 import { disablePush } from './push';
 import { keepIfUnchanged } from './stateEquality';
 
@@ -7482,7 +7483,7 @@ export function useAppState() {
       let fromUserId = state.currentUser?.id;
       const isSenderUuid = fromUserId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(fromUserId);
       if (!isSenderUuid && isSupabaseConfigured) {
-        const { data: selfProf } = await supabase.from('profiles').select('id').ilike('username', state.username).maybeSingle();
+        const { data: selfProf } = await supabase.from('profiles').select('id').ilike('username', ilikeExact(state.username)).maybeSingle();
         if (selfProf?.id) {
           fromUserId = selfProf.id;
         }
@@ -7543,12 +7544,12 @@ export function useAppState() {
       // Ensure both user IDs are canonical profile UUIDs from Supabase
       const isFromUuid = fromId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(fromId);
       if (!isFromUuid && isSupabaseConfigured && fromUsername) {
-        const { data: p1 } = await supabase.from('profiles').select('id').ilike('username', fromUsername).maybeSingle();
+        const { data: p1 } = await supabase.from('profiles').select('id').ilike('username', ilikeExact(fromUsername)).maybeSingle();
         if (p1?.id) fromId = p1.id;
       }
       const isToUuid = toId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(toId);
       if (!isToUuid && isSupabaseConfigured && toUsername) {
-        const { data: p2 } = await supabase.from('profiles').select('id').ilike('username', toUsername).maybeSingle();
+        const { data: p2 } = await supabase.from('profiles').select('id').ilike('username', ilikeExact(toUsername)).maybeSingle();
         if (p2?.id) toId = p2.id;
       }
 

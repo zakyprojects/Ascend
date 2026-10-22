@@ -31,6 +31,14 @@ export function usernameFrom(value: string): string {
   return cleaned ? `${cleaned}_user` : 'user';
 }
 
+/**
+ * Text for an `ilike` filter that matches exactly that text, without regard to case: the LIKE
+ * signs \, % and _ are escaped (_ is allowed in usernames and would match any character).
+ */
+export function ilikeExact(value: string): string {
+  return value.replace(/[\\%_]/g, '\\$&');
+}
+
 /** Two usernames are the same name when they match without regard to case (after trimming). */
 export function sameUsername(a: string, b: string): boolean {
   return a.trim().toLowerCase() === b.trim().toLowerCase();

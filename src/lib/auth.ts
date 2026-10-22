@@ -13,7 +13,7 @@ import {
   verifyAccountPassword,
 } from './supabase';
 import { trustedNow, trustedNowMs } from './clock';
-import { isUsernameTakenError, looksLikeUsername, sameUsername, USERNAME_TAKEN, usernameFormatProblem } from './usernameRules';
+import { ilikeExact, isUsernameTakenError, looksLikeUsername, sameUsername, USERNAME_TAKEN, usernameFormatProblem } from './usernameRules';
 import { NETWORK_MESSAGE } from './userMessage';
 import { clearDrafts } from './unsavedChanges';
 import { FunctionsHttpError } from '@supabase/supabase-js';
@@ -91,8 +91,8 @@ export async function isUsernameAvailable(
       const { data, error } = await supabase
         .from('profiles')
         .select('id, username')
-        // No wildcards = case-insensitive equality; "_" is a LIKE wildcard, so it is escaped.
-        .ilike('username', trimmed.replace(/_/g, '\\_'));
+        // No wildcards = case-insensitive equality.
+        .ilike('username', ilikeExact(trimmed));
 
       if (error) {
         // Not known: the server still refuses a taken name when it is saved.
