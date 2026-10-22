@@ -134,17 +134,28 @@ export const brainLessons: FeatureContent = {
             },
           ]}
         />
-        <figure className="scroll-rise mt-8">
-          <Screenshot
-            name="schedule-desktop"
-            width={1400}
-            height={727}
-            alt="The Prefrontal Cortex page on the Schedule tab: the live block Python practice, 6:30 PM to 8:00 PM, with 37:51 left, 58% done, and Take a break, Skip block and Mark completed buttons"
-          />
-          <figcaption className="mt-3 text-center text-sm text-content-muted">
-            The Schedule tab during a planned block: the countdown, how far through it you are, and what you can do next.
-          </figcaption>
-        </figure>
+        <div className="mt-8 grid items-start gap-6 grid-cols-1 lg:grid-cols-[minmax(0,3fr)_minmax(0,1fr)]">
+          <figure className="scroll-rise">
+            <Screenshot
+              name="schedule-desktop"
+              width={1400}
+              height={727}
+              alt="The Prefrontal Cortex page on the Schedule tab: the live block Python practice, 6:30 PM to 8:00 PM, with 37:51 left, 58% done, and Take a break, Skip block and Mark completed buttons"
+            />
+            <figcaption className="mt-3 text-center text-sm text-content-muted">
+              The Schedule tab during a planned block: the countdown, how far through it you are, and what you can do next.
+            </figcaption>
+          </figure>
+          <figure className="scroll-rise mx-auto w-full max-w-xs lg:max-w-none">
+            <Screenshot
+              name="schedule-day-phone"
+              width={540}
+              height={1202}
+              alt="The same day in Time Tracker on a phone: Praying, Exercise, Classes, DBMS assignment and Reading done, Break skipped, Python practice 6:30 PM to 8:00 PM marked Now, then Dinner with family, Reading and Sleep still to come"
+            />
+            <figcaption className="mt-3 text-center text-sm text-content-muted">The day it follows, from Time Tracker.</figcaption>
+          </figure>
+        </div>
         <Note title="One plan, two views.">
           Completing a block here is the same as ticking it off in the Time Tracker, so it counts toward that page’s daily
           points. Stopping the schedule takes you back to the Focus tab and leaves your blocks as they are.
