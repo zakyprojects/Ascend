@@ -13,12 +13,16 @@ import {
   getSeasonPeriodId,
 } from '../leagueTime';
 import {
+  compareArchivesNewestFirst,
+  getArchivePeriodEnd,
+  getArchivePeriodLabel,
+  getArchivePeriodStart,
   getLeaguePeriodEnd,
   getLeaguePeriodLabel,
   getLeaguePointsPeriods,
   getTimeUntilReset,
 } from '../leagues';
-import type { LeagueType } from '@/types';
+import type { LeagueArchive, LeagueType } from '@/types';
 
 function assert(condition: boolean, msg: string) {
   if (!condition) {
@@ -228,6 +232,53 @@ function runFixtures() {
   const pointsAfter = getLeaguePointsPeriods(utc(2026, 10, 31));
   assert(pointsAfter[0].start.getTime() === utc(2026, 10, 30).getTime() && pointsAfter[0].end.getTime() === utc(2026, 11, 2).getTime(),
     'Points window for W:2026-W44 on Oct 31 must be [Oct 30, Nov 2)');
+
+  // Test 11: archive ids, including '<id>@S<n>' parts (the part before season n + 1 began).
+  const archive = (id: string, type: LeagueType): LeagueArchive =>
+    ({ id, type, periodLabel: 'stored', competitors: [], userRank: 1, userPoints: 1, archivedAt: utc(2026, 11, 2).toISOString() });
+  const archiveCases: [string, LeagueType, Date, Date, string][] = [
+    ['W:2026-W44@S1', 'weekly', utc(2026, 10, 26), utc(2026, 10, 30), 'Oct 26 – Oct 29 (Season 1)'],
+    ['W:2026-W44', 'weekly', utc(2026, 10, 26), utc(2026, 11, 2), 'Oct 30 – Nov 1'],
+    ['M:2026-10@S1', 'monthly', utc(2026, 10, 1), utc(2026, 10, 30), 'Oct 1 – Oct 29, 2026 (Season 1)'],
+    ['M:2026-10', 'monthly', utc(2026, 10, 1), utc(2026, 11, 1), 'Oct 30 – Oct 31, 2026 (Season 2)'],
+    ['M:2026-09', 'monthly', utc(2026, 9, 1), utc(2026, 10, 1), 'September 2026'],
+    ['M:2026-08', 'monthly', utc(2026, 8, 1), utc(2026, 9, 1), 'August 2026'],
+    ['W:2026-W31', 'weekly', utc(2026, 7, 27), utc(2026, 8, 3), 'Aug 1 – Aug 2'],
+    ['W:2026-W43', 'weekly', utc(2026, 10, 19), utc(2026, 10, 26), 'Oct 19 – Oct 25'],
+    ['W:2027-W04@S2', 'weekly', utc(2027, 1, 25), utc(2027, 1, 28), 'Jan 25 – Jan 27 (Season 2)'],
+    ['M:2027-01@S2', 'monthly', utc(2027, 1, 1), utc(2027, 1, 28), 'Jan 1 – Jan 27, 2027 (Season 2)'],
+    ['S:1', 'ninetyDay', utc(2026, 8, 1), utc(2026, 10, 30), 'Season 1 (Aug 1 – Oct 29, 2026)'],
+  ];
+  for (const [id, type, wantStart, wantEnd, wantLabel] of archiveCases) {
+    const a = archive(id, type);
+    assert(getArchivePeriodStart(a) === wantStart.getTime(), `getArchivePeriodStart(${id}) expected ${wantStart.toISOString()}`);
+    assert(getArchivePeriodEnd(a) === wantEnd.getTime(), `getArchivePeriodEnd(${id}) expected ${wantEnd.toISOString()}`);
+    const label = getArchivePeriodLabel(a);
+    assert(label === wantLabel, `getArchivePeriodLabel(${id}) expected "${wantLabel}", got "${label}"`);
+  }
+  assert(getArchivePeriodLabel(archive('W:2026-W44@X1', 'weekly')) === 'stored', 'An unknown id falls back to the stored label');
+
+  // Newest first; the in-season part leads its pre-season part (whatever the store order).
+  const weeklyIds = ['W:2026-W44@S1', 'W:2026-W43', 'W:2026-W44', 'W:2026-W45'];
+  for (const order of [weeklyIds, [...weeklyIds].reverse()]) {
+    const sorted = order.map((id) => archive(id, 'weekly')).sort(compareArchivesNewestFirst).map((a) => a.id).join(',');
+    assert(sorted === 'W:2026-W45,W:2026-W44,W:2026-W44@S1,W:2026-W43', `Weekly archive order wrong: ${sorted}`);
+  }
+  const monthlyIds = ['M:2026-10@S1', 'M:2026-11', 'M:2026-09', 'M:2026-10'];
+  for (const order of [monthlyIds, [...monthlyIds].reverse()]) {
+    const sorted = order.map((id) => archive(id, 'monthly')).sort(compareArchivesNewestFirst).map((a) => a.id).join(',');
+    assert(sorted === 'M:2026-11,M:2026-10,M:2026-10@S1,M:2026-09', `Monthly archive order wrong: ${sorted}`);
+  }
+
+  // ISO week 53 and week-year parity: the id the app builds parses back to the same Monday,
+  // across 2026-W53 (Dec 28) and the 2027 / 2028 year turns (values match Postgres IYYY-IW).
+  assert(getArchivePeriodStart(archive('W:2026-W53', 'weekly')) === utc(2026, 12, 28).getTime(), 'W:2026-W53 must start Mon Dec 28, 2026');
+  assert(getArchivePeriodStart(archive('W:2027-W01', 'weekly')) === utc(2027, 1, 4).getTime(), 'W:2027-W01 must start Mon Jan 4, 2027');
+  assert(getWeekPeriodId(utc(2028, 1, 2)) === 'W:2027-W52', 'Sun Jan 2, 2028 must be W:2027-W52');
+  for (let monday = utc(2026, 7, 27).getTime(); monday < utc(2029, 1, 8).getTime(); monday += 7 * 24 * HOUR_MS) {
+    const id = getWeekPeriodId(new Date(monday + 3 * 24 * HOUR_MS));
+    assert(getArchivePeriodStart(archive(id, 'weekly')) === monday, `Week id ${id} must parse back to ${new Date(monday).toISOString()}`);
+  }
 
   console.log('\nAll leagueTime fixture assertions PASSED successfully!');
 }

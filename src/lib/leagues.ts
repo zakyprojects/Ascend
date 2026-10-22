@@ -129,11 +129,23 @@ export function getLeaguePeriodLabel(type: LeagueType, now: Date): string {
 }
 
 /**
- * Label for a finished period, built from the archive id (W:/M:/S:) so it shows the period's last
- * day (stored server labels print the next period's first day). Falls back to the stored label.
+ * '<week or month id>@S<n>': the part of that week or month before season n + 1 began. The server
+ * archives it as its own record; the plain id is the part inside the new season.
+ */
+const SEASON_PART_ID = /^(W:\d{4}-W\d{1,2}|M:\d{4}-\d{1,2})@S(\d+)$/;
+
+/**
+ * Label for a finished period, built from the archive id (W:/M:/S:, optionally @S<n>) so it shows
+ * the period's last day (stored server labels print the next period's first day). Falls back to
+ * the stored label.
  */
 export function getArchivePeriodLabel(a: LeagueArchive): string {
   const id = a.id ?? '';
+  const part = SEASON_PART_ID.exec(id);
+  if (part) {
+    const range = formatUtcRange(new Date(getArchivePeriodStart(a)), new Date(getArchivePeriodEnd(a)), part[1].startsWith('M:'));
+    return `${range} (Season ${parseInt(part[2], 10)})`;
+  }
   const start = id ? getArchivePeriodStart(a) : 0;
   if (id.startsWith('W:') && /^W:\d{4}-W\d{1,2}$/.test(id)) {
     const weekStart = new Date(start);
@@ -141,6 +153,12 @@ export function getArchivePeriodLabel(a: LeagueArchive): string {
     return formatUtcRange(clampToSeasonStart(weekStart, new Date(weekEnd.getTime() - 1)), weekEnd);
   }
   if (id.startsWith('M:') && /^M:\d{4}-\d{1,2}$/.test(id)) {
+    // A month a season start cut short counts from that start (as on the server).
+    const monthEnd = new Date(getArchivePeriodEnd(a));
+    const season = getSeasonNumber(new Date(monthEnd.getTime() - 1));
+    if (getSeasonNumber(new Date(start)) < season) {
+      return `${formatUtcRange(getSeasonStartByNumber(season), monthEnd, true)} (Season ${season})`;
+    }
     return new Date(start).toLocaleDateString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' });
   }
   if (/^S:\d+$/.test(id)) {
@@ -361,11 +379,12 @@ export function toArchivedCompetitor(competitor: LeagueCompetitor): LeagueCompet
 /** Archives the Leagues page lists per league type (newest first); the server keeps every one. */
 export const ARCHIVES_SHOWN_PER_TYPE = 12;
 
-/** First instant of an archive's period, from its id (W:/M:/S:), for newest-first ordering. */
+/** First instant of an archive's period, from its id (W:/M:/S:, optionally @S<n>), for newest-first ordering. */
 export function getArchivePeriodStart(a: LeagueArchive): number {
-  if (a.id) {
-    if (a.id.startsWith('W:')) {
-      const parts = a.id.slice(2).split('-W');
+  const id = a.id ? SEASON_PART_ID.exec(a.id)?.[1] ?? a.id : '';
+  if (id) {
+    if (id.startsWith('W:')) {
+      const parts = id.slice(2).split('-W');
       if (parts.length === 2) {
         const year = parseInt(parts[0], 10);
         const week = parseInt(parts[1], 10);
@@ -375,15 +394,15 @@ export function getArchivePeriodStart(a: LeagueArchive): number {
         const mon = new Date(firstMon.getTime() + (week - 1) * 7 * 24 * 60 * 60 * 1000);
         return mon.getTime();
       }
-    } else if (a.id.startsWith('M:')) {
-      const parts = a.id.slice(2).split('-');
+    } else if (id.startsWith('M:')) {
+      const parts = id.slice(2).split('-');
       if (parts.length === 2) {
         const year = parseInt(parts[0], 10);
         const month = parseInt(parts[1], 10) - 1;
         return Date.UTC(year, month, 1, 0, 0, 0, 0);
       }
-    } else if (a.id.startsWith('S:')) {
-      const sNum = parseInt(a.id.slice(2), 10);
+    } else if (id.startsWith('S:')) {
+      const sNum = parseInt(id.slice(2), 10);
       if (!isNaN(sNum)) {
         return getSeasonStartByNumber(sNum).getTime();
       }
@@ -393,6 +412,33 @@ export function getArchivePeriodStart(a: LeagueArchive): number {
     return new Date(a.archivedAt).getTime();
   }
   return 0;
+}
+
+/**
+ * Instant an archive's period ended (exclusive), from its id; an @S<n> part ends where season
+ * n + 1 begins. Ids that are not W:/M:/S: end where they start.
+ */
+export function getArchivePeriodEnd(a: LeagueArchive): number {
+  const start = getArchivePeriodStart(a);
+  const part = a.id ? SEASON_PART_ID.exec(a.id) : null;
+  const id = part ? part[1] : a.id ?? '';
+  let end: number;
+  if (/^W:\d{4}-W\d{1,2}$/.test(id)) {
+    end = start + 7 * DAY_MS;
+  } else if (/^M:\d{4}-\d{1,2}$/.test(id)) {
+    const monthStart = new Date(start);
+    end = Date.UTC(monthStart.getUTCFullYear(), monthStart.getUTCMonth() + 1, 1);
+  } else if (/^S:\d+$/.test(id)) {
+    end = getSeasonStartByNumber(parseInt(id.slice(2), 10) + 1).getTime();
+  } else {
+    return start;
+  }
+  return part ? Math.min(end, getSeasonStartByNumber(parseInt(part[2], 10) + 1).getTime()) : end;
+}
+
+/** Newest period first; a week or month and its @S<n> part start together, so the later-ending (in-season) one leads. */
+export function compareArchivesNewestFirst(a: LeagueArchive, b: LeagueArchive): number {
+  return getArchivePeriodStart(b) - getArchivePeriodStart(a) || getArchivePeriodEnd(b) - getArchivePeriodEnd(a);
 }
 
 /** "Resets Mon, Oct 19 · 5:00 AM your time": the end instant in the device's own zone, with its date. */

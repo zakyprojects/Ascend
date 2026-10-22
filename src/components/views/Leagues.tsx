@@ -6,8 +6,8 @@ import { LeagueArchive, LeagueCompetitor, LeagueType } from '@/types';
 import {
   LEAGUE_CONFIG,
   ARCHIVES_SHOWN_PER_TYPE,
+  compareArchivesNewestFirst,
   getArchivePeriodLabel,
-  getArchivePeriodStart,
   getLeaguePeriodLabel,
   getLocalResetDetail,
   pointsText,
@@ -138,7 +138,7 @@ export function Leagues({ store, onOpenAuth }: LeaguesProps) {
 
   const archives = store.state.leagueArchives
     .filter((a) => a.type === activeLeague)
-    .sort((a, b) => getArchivePeriodStart(b) - getArchivePeriodStart(a))
+    .sort(compareArchivesNewestFirst)
     .slice(0, ARCHIVES_SHOWN_PER_TYPE);
   // Looked up live so a sync that removes the archive closes the dialog instead of leaving it empty.
   const openArchive = openArchiveId ? store.state.leagueArchives.find((a) => a.id === openArchiveId) ?? null : null;
