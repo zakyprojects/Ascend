@@ -479,9 +479,11 @@ export function calculateSeasonalTotal(history: PointsEntry[], seasonStart: Date
     return 0;
   }
 
-  // Sort chronological
+  // Sort chronological; same-instant entries by id, as ascend_season_points orders them
   const sorted = [...history].sort(
-    (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+    (a, b) =>
+      new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime() ||
+      entryIdOrder.compare(a.id || '', b.id || '')
   );
   let current = 0;
 
