@@ -286,7 +286,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
     }
     await executeCreateChallenge(async () => {
       try {
-        await store.createSharedChallenge(
+        const { startedTicked, todayTickFailed } = await store.createSharedChallenge(
           mine,
           lengthDays,
           'habit',
@@ -296,7 +296,14 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
           activePartnership.id
         );
         setChallengeModalOpen(false);
-        showSuccessToast('Challenge started', `${lengthDays} days with ${partnerName}. Day 1 is today.`);
+        if (todayTickFailed) {
+          showErrorToast('Challenge started', "Today's tick from your habit didn't save. It will try again soon.");
+        } else {
+          showSuccessToast(
+            'Challenge started',
+            `${lengthDays} days with ${partnerName}. Day 1 is today${startedTicked ? ', already ticked from your habit' : ''}.`
+          );
+        }
       } catch (err: any) {
         challengeIssues.showError(toUserMessage(err, "Couldn't start the challenge. Try again."));
       }

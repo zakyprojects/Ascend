@@ -77,7 +77,7 @@ import { findCuratedBook } from './books';
 import { uid, generateUUID, generateNumericUID, periodKey, todayKey, isPlanJourneyDoneThisPeriod, calculateActivePlanStreak, getWeekDates, parseDate, getNow, getNextDateKey, weekKey, addDays } from './dates';
 import { computeLinkedGoalProgress, linkedEntryPresent, linkedGoalCrossing, linkedItemExists, linkedGoalUnit } from './linkedGoalMetrics';
 import { autoStatusChanges } from './projectProgress';
-import { reconcileSharedChallengeLifecycle, applyPledgeToggle, mergeSharedChallenge, linkedHabitFor, planLinkedPactRepairs } from './pactLifecycle';
+import { reconcileSharedChallengeLifecycle, applyPledgeToggle, mergeSharedChallenge, linkedHabitFor, habitDoneOn, planLinkedPactRepairs } from './pactLifecycle';
 import { isPartnershipUser1 } from './partnershipSide';
 import { PresetHabit } from './presets';
 import { sameName } from './uniqueNames';
@@ -7909,15 +7909,41 @@ export function useAppState() {
         createdAt: getNow().toISOString(),
       };
 
+      // Your goal is one of your habits and it is already done today: the pact starts with today
+      // ticked. The server starts every pact empty, so today goes in with a second save (the same
+      // own-side, own-today rule as any tick). Both saves count as one pact write, so the server's
+      // empty first copy (realtime, poll) never shows in between.
+      const latest = stateRef.current;
+      const creatorPartnership =
+        (latest.partnerships || []).find((p) => p.id === pId) || (latest.partnership?.id === pId ? latest.partnership : null);
+      const isUser1 = creatorPartnership
+        ? isPartnershipUser1(creatorPartnership, latest.currentUser?.id, latest.username)
+        : true;
+      const linkedHabit = linkedHabitFor(challenge, isUser1, latest.habits || []);
+      const startsTicked = Boolean(linkedHabit && habitDoneOn(linkedHabit));
+      const shown = startsTicked ? applyPledgeToggle(challenge, isUser1, true).updated : challenge;
+
       // Optimistically update local UI state
       setState((prev) => ({
         ...prev,
-        sharedChallenges: [challenge, ...prev.sharedChallenges],
+        sharedChallenges: [shown, ...prev.sharedChallenges],
       }));
 
+      let todayTickFailed = false;
       try {
-        await saveSharedChallengeSupabase(challenge);
-        syncBroadcaster.broadcast('CHALLENGE_UPDATED', challenge);
+        await trackPledgeWrite(
+          challenge.id,
+          (async () => {
+            await saveSharedChallengeSupabase(challenge);
+            if (!startsTicked) return;
+            try {
+              await saveSharedChallengeSupabase(shown);
+            } catch (err) {
+              console.error("Failed to save today's tick on a new joint pact:", err);
+              todayTickFailed = true;
+            }
+          })()
+        );
       } catch (err: any) {
         console.error('Failed to create joint pact in Supabase:', err);
         // Rollback only this specific challenge object by ID
@@ -7927,6 +7953,20 @@ export function useAppState() {
         }));
         throw err;
       }
+
+      if (todayTickFailed) {
+        // The pact exists; only today's tick goes back (the linked-pact pass tries it again).
+        setState((prev) => ({
+          ...prev,
+          sharedChallenges: prev.sharedChallenges.map((c) =>
+            c.id === challenge.id ? applyPledgeToggle(c, isUser1, false).updated : c
+          ),
+        }));
+        syncBroadcaster.broadcast('CHALLENGE_UPDATED', challenge);
+      } else {
+        syncBroadcaster.broadcast('CHALLENGE_UPDATED', shown);
+      }
+      return { startedTicked: startsTicked && !todayTickFailed, todayTickFailed };
     },
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
     // eslint-disable-next-line react-hooks/exhaustive-deps
