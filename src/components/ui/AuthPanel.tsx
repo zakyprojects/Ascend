@@ -41,6 +41,10 @@ const STATUS_LINES: Record<'login' | 'signup-form' | 'upgrade', Record<'empty' |
   },
 };
 
+/** After this long a request still running shows the slow-connection line instead of its usual one. */
+const SLOW_HINT_MS = 6000;
+const SLOW_STATUS_LINE = 'Slow connection, still trying…';
+
 /** Wraps a promise with an 8-second hard timeout. */
 function withTimeout<T>(promise: Promise<T>, ms = 8000): Promise<T> {
   return Promise.race([
@@ -269,6 +273,8 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
   const [loading, setLoading] = useState(false);
+  // True once the current request has run for SLOW_HINT_MS; reset when it ends.
+  const [slow, setSlow] = useState(false);
   const [successTitle, setSuccessTitle] = useState('');
   // Set when the request succeeded: the submit button turns into a check just before the success screen.
   const [submitDone, setSubmitDone] = useState(false);
@@ -283,6 +289,15 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
   // The field values when the last error was shown; the mascot stays upset until one changes.
   const [errorInputs, setErrorInputs] = useState<string | null>(null);
   const inputsKey = [email, password, confirmPassword, username, avatar, termsAccepted].join('\u0000');
+
+  useEffect(() => {
+    if (!loading) {
+      setSlow(false);
+      return;
+    }
+    const timer = window.setTimeout(() => setSlow(true), SLOW_HINT_MS);
+    return () => window.clearTimeout(timer);
+  }, [loading]);
 
   // Sign-in, sign-up, guest and reset pass the bot check (saving a guest's progress does not).
   useEffect(() => {
@@ -666,10 +681,12 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
   };
 
   const formScreen = screen === 'signup-choice' ? null : screen;
-  const statusLine = formScreen
-    ? STATUS_LINES[formScreen][phase === 'idle' ? (formReady ? 'ready' : 'empty') : phase]
-    : '';
-  const forgotStatus = loading ? 'Sending…' : emailValid ? 'Ready.' : 'Enter the email you sign in with.';
+  const statusLine = !formScreen
+    ? ''
+    : phase === 'submitting' && slow
+    ? SLOW_STATUS_LINE
+    : STATUS_LINES[formScreen][phase === 'idle' ? (formReady ? 'ready' : 'empty') : phase];
+  const forgotStatus = loading ? (slow ? SLOW_STATUS_LINE : 'Sending…') : emailValid ? 'Ready.' : 'Enter the email you sign in with.';
 
   return (
     <div>
