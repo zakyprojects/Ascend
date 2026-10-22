@@ -9,15 +9,19 @@
  * - A wrong password and an unknown username get the same 401 { error: 'invalid_credentials' }.
  * - Failed attempts are counted per username and per caller IP (public.ascend_sign_in_blocked /
  *   ascend_sign_in_result, migration 20261019230100); over the limit the answer is 429
- *   { error: 'rate_limited' } before Auth is called. Supabase Auth's own limit sees this
- *   function's address (one bucket for everyone); its 429 is passed on the same way.
+ *   { error: 'rate_limited' } before Auth is called. Supabase Auth's own per-IP limit sees the
+ *   caller's address when SIGN_IN_SECRET_KEY is set (the sign-in then runs with that secret key
+ *   and an Sb-Forwarded-For header, with IP Address Forwarding on under Auth > Rate Limits);
+ *   without it, Auth sees this function's address (one bucket for everyone). Its 429 is passed on
+ *   the same way.
  * - The app's Turnstile token (`captchaToken`) is passed to Auth, which verifies it; it is never
  *   checked here (a token works once). A refused token = 400 { error: 'captcha_failed' }, and the
  *   app retries with a fresh one.
  * - The email is never returned, logged or put in an error.
  *
  * Deploy with "Verify JWT" OFF (a sign-in endpoint: callers have no user token).
- * No secrets to set: SUPABASE_URL, SUPABASE_ANON_KEY and SUPABASE_SERVICE_ROLE_KEY are provided.
+ * SUPABASE_URL, SUPABASE_ANON_KEY and SUPABASE_SERVICE_ROLE_KEY are provided. Optional
+ * SIGN_IN_SECRET_KEY: an sb_secret_ key, for the IP forwarding above.
  * Optional ALLOWED_ORIGINS: comma-separated browser origins allowed by CORS (default: production
  * plus http://localhost / 127.0.0.1 on any port).
  */
@@ -44,6 +48,20 @@ const configuredOrigins = (Deno.env.get('ALLOWED_ORIGINS') ?? '')
   .map((origin) => origin.trim())
   .filter(Boolean);
 const allowedOrigins = configuredOrigins.length ? configuredOrigins : DEFAULT_ORIGINS;
+
+// Auth trusts Sb-Forwarded-For only on a request made with a secret (sb_secret_) key.
+const forwardingKey = Deno.env.get('SIGN_IN_SECRET_KEY') ?? '';
+
+/** A client for the password sign-in: with the caller's IP forwarded when it can be. */
+function signInClient(ip: string) {
+  if (forwardingKey && ip) {
+    return createClient(env('SUPABASE_URL'), forwardingKey, {
+      ...noSession,
+      global: { headers: { 'sb-forwarded-for': ip } },
+    });
+  }
+  return createClient(env('SUPABASE_URL'), env('SUPABASE_ANON_KEY'), noSession);
+}
 
 /** CORS for the app's own origins only; other sites' pages get no Allow-Origin. */
 function corsHeaders(req: Request): Record<string, string> {
@@ -137,8 +155,7 @@ Deno.serve(async (req) => {
       return invalid();
     }
 
-    const auth = createClient(env('SUPABASE_URL'), env('SUPABASE_ANON_KEY'), noSession);
-    const { data, error } = await auth.auth.signInWithPassword({
+    const { data, error } = await signInClient(ip).auth.signInWithPassword({
       email,
       password,
       options: { captchaToken: captchaToken as string | undefined },
