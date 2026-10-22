@@ -171,12 +171,12 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                 label: 'Journeys done',
                 value: journeys.length > 0 ? `${journeysDone}/${journeys.length}` : '0',
                 hint: journeys.length > 0 ? 'this day or week' : 'none running',
-                valueClassName: journeys.length > 0 && journeysDone === journeys.length ? 'text-success-text' : undefined,
+                valueClassName: journeys.length > 0 && journeysDone === journeys.length ? 'text-brand-text' : undefined,
               },
               {
                 label: 'Check-ins due',
                 value: <CountUp value={reviewsDue} />,
-                valueClassName: reviewsDue > 0 ? 'text-purple-hierarchy' : undefined,
+                valueClassName: reviewsDue > 0 ? 'text-brand-text' : undefined,
               },
             ]}
           />

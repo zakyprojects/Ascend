@@ -79,7 +79,7 @@ function TimerDisplay({ session, readySeconds }: { session: FocusSession | null;
       </div>
       {session && (
         <div className="max-w-sm mx-auto">
-          <ProgressBar value={done} label={session.mode === 'break' ? 'Break time passed' : 'Session time passed'} tone={session.mode === 'break' ? 'success' : 'cyan'} size="sm" />
+          <ProgressBar value={done} label={session.mode === 'break' ? 'Break time passed' : 'Session time passed'} tone={session.mode === 'break' ? 'success' : 'brand'} size="sm" />
         </div>
       )}
     </div>

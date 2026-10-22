@@ -268,7 +268,7 @@ export function WeeklyGoalsView({ store, onNavigate }: { store: AppStore; onNavi
           }}
           stats={[
             { label: 'Average progress', value: <><CountUp value={stats.averagePercent} />%</>, valueClassName: 'text-brand-text' },
-            { label: 'High priority', value: <>{stats.highAchieved}/{stats.highTotal}</>, hint: 'achieved', valueClassName: 'text-rose-theme' },
+            { label: 'High priority', value: <>{stats.highAchieved}/{stats.highTotal}</>, hint: 'achieved', valueClassName: 'text-brand-text' },
           ]}
           side={
             isFutureWeek ? undefined : (

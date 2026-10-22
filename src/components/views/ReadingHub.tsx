@@ -215,7 +215,6 @@ export function ReadingHub({ store }: { store: AppStore }) {
               </>
             ),
             caption: 'points today',
-            tone: 'warning',
           }}
           lead={{
             label: 'Reading streak',
@@ -225,8 +224,8 @@ export function ReadingHub({ store }: { store: AppStore }) {
           }}
           stats={[
             { label: 'Reading now', value: <CountUp value={readingBooks.length} />, valueClassName: 'text-brand-text' },
-            { label: 'Finished', value: <CountUp value={finishedBooks.length} />, valueClassName: 'text-success-text' },
-            { label: 'Points earned', value: <>{readingPoints > 0 && '+'}<CountUp value={Math.max(0, readingPoints)} /></>, valueClassName: 'text-purple-hierarchy' },
+            { label: 'Finished', value: <CountUp value={finishedBooks.length} />, valueClassName: 'text-brand-text' },
+            { label: 'Points earned', value: <>{readingPoints > 0 && '+'}<CountUp value={Math.max(0, readingPoints)} /></>, valueClassName: 'text-brand-text' },
           ]}
           side={<CapMeterConnected state={store.state} capId="reading" bare />}
         />
@@ -247,7 +246,6 @@ export function ReadingHub({ store }: { store: AppStore }) {
                 <BarChart
                   data={pageDays.map((day, i) => ({ label: formatWeekdayShort(day), value: pagesByDay[i] }))}
                   label={`Pages read per day, last 7 days: ${pagesThisWeek} total`}
-                  tone="warning"
                   highlightIndex={pageDays.length - 1}
                   formatTooltip={(datum, i) => `${formatWeekdayDate(pageDays[i])}: ${datum.value} pages`}
                 />
@@ -416,9 +414,9 @@ export function ReadingHub({ store }: { store: AppStore }) {
                           <span className="figure text-sm text-content-secondary">
                             <span className="text-lg font-semibold text-content-primary">{p.current}</span> / {formatAmount(p.total, p.unit)}
                           </span>
-                          <span className="figure text-xs text-warning-text">{p.percent}%</span>
+                          <span className="figure text-xs text-brand-text">{p.percent}%</span>
                         </div>
-                        <ProgressBar value={p.percent} label={`Reading progress: ${p.percent}%`} tone="warning" />
+                        <ProgressBar value={p.percent} label={`Reading progress: ${p.percent}%`} />
                         <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs">
                           <span className="text-content-muted">{p.left > 0 ? `${formatAmount(p.left, p.unit)} left` : 'All read'}</span>
                           {target && <span className={TARGET_TONE[target.tone]}>{target.text}</span>}
@@ -491,7 +489,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
                         </>
                       }
                     >
-                      {started && <ProgressBar value={p.percent} label={`Reading progress: ${p.percent}%`} tone="warning" />}
+                      {started && <ProgressBar value={p.percent} label={`Reading progress: ${p.percent}%`} />}
                       <ClampedText text={book.description} />
                     </BookCard>
                   );

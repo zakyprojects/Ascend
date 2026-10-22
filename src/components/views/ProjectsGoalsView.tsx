@@ -498,8 +498,8 @@ export function ProjectsGoalsView({
         : { label: 'New goal', onClick: () => setGoalForm({ key: nextKey(), editing: null }) };
 
   const heroStats = [
-    { key: 'projects', label: 'Active projects', value: stats.activeProjects, valueClassName: 'text-cyan-hierarchy' },
-    { key: 'goals', label: 'Active goals', value: stats.activeGoals, valueClassName: 'text-purple-hierarchy' },
+    { key: 'projects', label: 'Active projects', value: stats.activeProjects, valueClassName: 'text-brand-text' },
+    { key: 'goals', label: 'Active goals', value: stats.activeGoals, valueClassName: 'text-brand-text' },
   ];
   if (tabOrder === 'goalFirst') heroStats.reverse();
 
@@ -538,7 +538,6 @@ export function ProjectsGoalsView({
             label: `Average progress of active goals: ${stats.avgGoal}%`,
             center: stats.activeGoals ? `${stats.avgGoal}%` : '–',
             caption: stats.activeGoals ? 'goal progress' : 'no goals yet',
-            tone: 'purple',
           }}
           lead={{
             label: 'Tasks to do',

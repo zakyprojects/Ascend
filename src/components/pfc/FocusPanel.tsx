@@ -36,7 +36,6 @@ export function FocusPanel({ store, today }: { store: AppStore; today: string })
               <BarChart
                 data={days.map((day, i) => ({ label: formatWeekdayShort(day), value: minutesByDay[i] }))}
                 label={`Focus minutes per day, last 7 days: ${weekTotal} total`}
-                tone="cyan"
                 highlightIndex={days.length - 1}
                 formatTooltip={(datum, i) => `${formatWeekdayDate(days[i])}: ${datum.value} min`}
               />

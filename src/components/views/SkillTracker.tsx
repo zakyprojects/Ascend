@@ -197,7 +197,7 @@ export function SkillTracker({ store }: { store: AppStore }) {
   const renderRow = (log: SkillSessionLog) => (
     <div key={log.id} className="enter-item p-3.5 flex items-center justify-between gap-3 transition-colors hover:bg-overlay-subtle">
       <div className="flex min-w-0 flex-1 items-center gap-3">
-        <div className="w-9 h-9 rounded-xl bg-purple-500/15 flex items-center justify-center text-purple-hierarchy shrink-0">
+        <div className="w-9 h-9 rounded-xl bg-primary-500/15 flex items-center justify-center text-brand-text shrink-0">
           <Clock size={18} />
         </div>
         <div className="min-w-0">
@@ -209,7 +209,7 @@ export function SkillTracker({ store }: { store: AppStore }) {
       </div>
       <div className="flex shrink-0 items-center gap-2">
         {(log.pointsAwarded || 0) > 0 && (
-          <span className="figure text-xs text-purple-hierarchy whitespace-nowrap">{ptsText(log.pointsAwarded, true)}</span>
+          <span className="figure text-xs text-brand-text whitespace-nowrap">{ptsText(log.pointsAwarded, true)}</span>
         )}
         <button
           onClick={() => setDeleteModalLog(log)}
@@ -269,8 +269,8 @@ export function SkillTracker({ store }: { store: AppStore }) {
             valueClassName: 'text-purple-hierarchy',
           }}
           stats={[
-            { label: 'Total practice', value: formatHours(totalMinutes), valueClassName: 'text-blue-theme' },
-            { label: 'Skills', value: <CountUp value={skills.length} />, valueClassName: 'text-success-text' },
+            { label: 'Total practice', value: formatHours(totalMinutes), valueClassName: 'text-brand-text' },
+            { label: 'Skills', value: <CountUp value={skills.length} />, valueClassName: 'text-brand-text' },
           ]}
           side={<CapMeterConnected state={store.state} capId="skills" bare />}
         />
@@ -291,7 +291,6 @@ export function SkillTracker({ store }: { store: AppStore }) {
                 <BarChart
                   data={practiceDays.map((day, i) => ({ label: formatWeekdayShort(day), value: practiceMinutes[i] }))}
                   label={`Skill practice minutes per day, last 7 days: ${practiceWeekTotal} total`}
-                  tone="purple"
                   highlightIndex={practiceDays.length - 1}
                   formatTooltip={(datum, i) => `${formatWeekdayDate(practiceDays[i])}: ${datum.value} min`}
                 />
@@ -339,7 +338,7 @@ export function SkillTracker({ store }: { store: AppStore }) {
                         className={cx(
                           'min-h-9 sm:min-h-0 px-2.5 py-1 rounded-lg text-xs border transition-colors',
                           activeCategory === cat
-                            ? 'bg-purple-500/15 text-purple-hierarchy border-purple-500/40 font-medium'
+                            ? 'bg-primary-500/15 text-brand-text border-primary-500/40 font-medium'
                             : 'text-content-muted border-transparent hover:text-content-secondary hover:bg-overlay-subtle'
                         )}
                       >
@@ -388,7 +387,7 @@ export function SkillTracker({ store }: { store: AppStore }) {
                             </span>
                           )}
                         </div>
-                        <ProgressBar value={progress} label={`${skill.name} level progress`} tone="purple" size="sm" />
+                        <ProgressBar value={progress} label={`${skill.name} level progress`} size="sm" />
                       </div>
 
                       <button
@@ -499,7 +498,7 @@ export function SkillTracker({ store }: { store: AppStore }) {
                     className={cx(
                       'min-h-9 sm:min-h-0 text-xs px-2.5 py-1 rounded-lg border transition-colors',
                       category.trim() === cat
-                        ? 'bg-purple-500/15 text-purple-hierarchy border-purple-500/40'
+                        ? 'bg-primary-500/15 text-brand-text border-primary-500/40'
                         : 'text-content-muted border-overlay-subtle hover:border-overlay-strong hover:text-content-secondary'
                     )}
                   >
@@ -563,7 +562,7 @@ export function SkillTracker({ store }: { store: AppStore }) {
                   className={cx(
                     'min-h-10 rounded-xl border text-sm font-medium transition-colors figure',
                     duration === m
-                      ? 'bg-purple-500/15 border-purple-500/50 text-purple-hierarchy'
+                      ? 'bg-primary-500/15 border-primary-500/50 text-brand-text'
                       : 'border-overlay-subtle text-content-muted hover:bg-overlay-subtle'
                   )}
                 >
@@ -593,7 +592,7 @@ export function SkillTracker({ store }: { store: AppStore }) {
                     ? `Only ${ptsText(remainingCap)} left today.`
                     : 'Points to earn'}
             </span>
-            {!timezoneWait && <span className="figure text-purple-hierarchy shrink-0">{ptsText(previewPoints, true)}</span>}
+            {!timezoneWait && <span className="figure text-brand-text shrink-0">{ptsText(previewPoints, true)}</span>}
           </div>
         </Form>
       </Dialog>

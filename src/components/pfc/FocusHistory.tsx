@@ -46,7 +46,7 @@ export function FocusHistory({ store, today }: { store: AppStore; today: string 
       <div key={log.id} className="p-3.5 space-y-2">
         <div className="flex items-center justify-between gap-3 min-w-0">
           <div className="flex min-w-0 flex-1 items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-cyan-500/15 flex items-center justify-center text-cyan-hierarchy shrink-0" aria-hidden="true">
+            <div className="w-9 h-9 rounded-xl bg-primary-500/15 flex items-center justify-center text-brand-text shrink-0" aria-hidden="true">
               <Timer size={18} />
             </div>
             <div className="min-w-0">
@@ -59,7 +59,7 @@ export function FocusHistory({ store, today }: { store: AppStore; today: string 
             </div>
           </div>
           <div className="flex shrink-0 items-center gap-2">
-            {log.pointsAwarded > 0 && <span className="figure text-xs text-cyan-hierarchy whitespace-nowrap">+{log.pointsAwarded} pts</span>}
+            {log.pointsAwarded > 0 && <span className="figure text-xs text-brand-text whitespace-nowrap">+{log.pointsAwarded} pts</span>}
             <button
               type="button"
               onClick={() => setToDelete(log)}

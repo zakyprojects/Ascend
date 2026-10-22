@@ -181,7 +181,7 @@ export function Journal({ store }: { store: AppStore }) {
             <p className="text-xs text-content-muted mt-1 truncate">{hasNotes ? entry.content : 'Mood only, no notes'}</p>
           </div>
           {entry.pointsAwarded && (
-            <span className="figure text-xs text-purple-hierarchy whitespace-nowrap shrink-0">{ptsText(JOURNAL_POINTS.entryCompleted, true)}</span>
+            <span className="figure text-xs text-brand-text whitespace-nowrap shrink-0">{ptsText(JOURNAL_POINTS.entryCompleted, true)}</span>
           )}
         </button>
         <button
@@ -215,7 +215,7 @@ export function Journal({ store }: { store: AppStore }) {
           lead={{ label: 'Journal streak', value: <CountUp value={journalStreak} />, hint: journalStreak === 1 ? 'day in a row' : 'days in a row', valueClassName: 'text-warning-text' }}
           stats={[
             { label: 'Entries', value: <CountUp value={entries.length} />, valueClassName: 'text-brand-text' },
-            { label: 'Points earned', value: <>{journalPoints > 0 && '+'}<CountUp value={Math.max(0, journalPoints)} /></>, valueClassName: 'text-purple-hierarchy' },
+            { label: 'Points earned', value: <>{journalPoints > 0 && '+'}<CountUp value={Math.max(0, journalPoints)} /></>, valueClassName: 'text-brand-text' },
           ]}
           side={<CapMeterConnected state={store.state} capId="journal" bare />}
         />
@@ -333,7 +333,7 @@ export function Journal({ store }: { store: AppStore }) {
                   </div>
                   <div className="flex items-center gap-2">
                     {existingToday.pointsAwarded && (
-                      <span className="figure text-xs text-purple-hierarchy">+{JOURNAL_POINTS.entryCompleted} pts</span>
+                      <span className="figure text-xs text-brand-text">+{JOURNAL_POINTS.entryCompleted} pts</span>
                     )}
                     <button
                       id="journal-edit"
@@ -512,7 +512,7 @@ export function Journal({ store }: { store: AppStore }) {
               <MoodBadge mood={selectedEntry.mood} />
               <span className="figure text-xs text-content-muted">
                 {selectedEntry.pointsAwarded ? (
-                  <span className="text-purple-hierarchy">+{JOURNAL_POINTS.entryCompleted} pts</span>
+                  <span className="text-brand-text">+{JOURNAL_POINTS.entryCompleted} pts</span>
                 ) : (
                   'No points'
                 )}

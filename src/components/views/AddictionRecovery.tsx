@@ -202,7 +202,7 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
               valueClassName: 'text-success-text',
             }}
             stats={[
-              { label: 'Points this season', value: <>{heldSeasonPoints > 0 && '+'}<CountUp value={heldSeasonPoints} /></>, valueClassName: 'text-purple-hierarchy' },
+              { label: 'Points this season', value: <>{heldSeasonPoints > 0 && '+'}<CountUp value={heldSeasonPoints} /></>, valueClassName: 'text-brand-text' },
               { label: 'Cravings this week', value: <CountUp value={cravingsThisWeek} />, valueClassName: 'text-brand-text' },
             ]}
             side={<CapMeter variant="bar" label="Recovery points this season" earned={heldSeasonPoints} cap={RECOVERY_POINTS.seasonCap} />}

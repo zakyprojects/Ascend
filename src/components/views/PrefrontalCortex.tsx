@@ -107,7 +107,6 @@ export function PrefrontalCortex({ store, onNavigate }: { store: AppStore; onNav
               </>
             ),
             caption: 'points today',
-            tone: 'cyan',
           }}
           lead={{
             label: 'Focus today',
@@ -116,9 +115,9 @@ export function PrefrontalCortex({ store, onNavigate }: { store: AppStore; onNav
             valueClassName: 'text-cyan-hierarchy',
           }}
           stats={[
-            { label: 'This week', value: <CountUp value={focusMinutesWeek} />, hint: 'min of focus', valueClassName: 'text-cyan-hierarchy' },
-            { label: 'To revisit', value: <CountUp value={dueCount} />, hint: 'decisions', valueClassName: 'text-purple-hierarchy' },
-            { label: 'Emotions', value: <CountUp value={emotionsWeek} />, hint: 'last 7 days', valueClassName: 'text-rose-theme' },
+            { label: 'This week', value: <CountUp value={focusMinutesWeek} />, hint: 'min of focus', valueClassName: 'text-brand-text' },
+            { label: 'To revisit', value: <CountUp value={dueCount} />, hint: 'decisions', valueClassName: 'text-brand-text' },
+            { label: 'Emotions', value: <CountUp value={emotionsWeek} />, hint: 'last 7 days', valueClassName: 'text-brand-text' },
           ]}
           side={<CapMeterConnected state={store.state} capId="pfc" bare />}
         />

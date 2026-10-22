@@ -85,7 +85,7 @@ export function Lessons({ store }: { store: AppStore }) {
                     hint: `${nextUnread.readTime} min · ${pointsLabel(nextUnread.points)}`,
                   },
                 ]
-              : [{ label: 'This season', value: 'All read', valueClassName: 'text-success-text' }]
+              : [{ label: 'This season', value: 'All read', valueClassName: 'text-brand-text' }]
           }
         />
       </Reveal>
