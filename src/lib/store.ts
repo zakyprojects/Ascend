@@ -2137,11 +2137,30 @@ export function useAppState() {
 
       if (!data.state) return;
 
+      // Pacts this tab is still saving a tick to: the other tab's copy may predate it, so ours stays
+      // on screen and the refresh after our write settles brings in the rest (as for realtime rows).
+      const pledgesInFlight = new Set<string>();
+      for (const [challengeId, write] of pledgeWrites.current) {
+        if (write.inFlight > 0) {
+          write.skipped = true;
+          pledgesInFlight.add(challengeId);
+        }
+      }
+
       isRemoteBroadcastUpdate.current = true;
       setStateRaw((current) => {
         // When receiving a state broadcast from another tab, that tab's state is the authoritative
         // recent snapshot of user mutations. Set directly to prevent un-deleting items via union merge.
-        const targetState = data.state;
+        let targetState = data.state;
+        if (pledgesInFlight.size > 0 && Array.isArray(targetState.sharedChallenges)) {
+          const ours = new Map((current.sharedChallenges || []).map((c) => [c.id, c]));
+          targetState = {
+            ...targetState,
+            sharedChallenges: targetState.sharedChallenges.map((c) =>
+              pledgesInFlight.has(c.id) ? ours.get(c.id) ?? c : c
+            ),
+          };
+        }
         if (current.currentUser && !targetState.currentUser) {
           return { ...targetState, currentUser: current.currentUser };
         }
@@ -2747,6 +2766,15 @@ export function useAppState() {
   // Real-time synchronization listener for cross-tab / multi-user updates
   useEffect(() => {
     const unsubscribe = syncBroadcaster.subscribe((event, payload) => {
+      // Another tab's pact copy while this tab's own write to that pact is on its way: ours stays;
+      // the refresh after the write settles brings the other tab's change in from the server.
+      if (event === 'CHALLENGE_UPDATED') {
+        const write = payload?.id ? pledgeWrites.current.get(payload.id) : undefined;
+        if (write && write.inFlight > 0) {
+          write.skipped = true;
+          return;
+        }
+      }
       // A plan deleted in another tab leaves this tab's plan list too.
       setState((prev) => {
         if (event === 'PLAN_DELETED') {
