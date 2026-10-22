@@ -39,6 +39,15 @@ export function ilikeExact(value: string): string {
   return value.replace(/[\\%_]/g, '\\$&');
 }
 
+/**
+ * ilikeExact as a value inside a PostgREST `.or()` filter: wrapped in double quotes, so commas,
+ * dots and parentheses stay part of the value, and with \ and " escaped by a backslash, which
+ * PostgREST removes before the LIKE match (so the LIKE escapes reach Postgres intact).
+ */
+export function ilikeExactOrValue(value: string): string {
+  return `"${ilikeExact(value).replace(/[\\"]/g, '\\$&')}"`;
+}
+
 /** Two usernames are the same name when they match without regard to case (after trimming). */
 export function sameUsername(a: string, b: string): boolean {
   return a.trim().toLowerCase() === b.trim().toLowerCase();

@@ -19,6 +19,7 @@ import { trustedNow, trustedNowMs } from './clock';
 import { CaptchaRejectedError, isCaptchaRejection, withCaptcha } from './captcha';
 import { SentSnapshots, snapshotOf } from './sentSnapshots';
 import { canonical } from './stateEquality';
+import { ilikeExactOrValue } from './usernameRules';
 
 function getValidSupabaseUrl(url: unknown): string | null {
   if (typeof url !== 'string') return null;
@@ -1147,7 +1148,8 @@ export async function fetchPartnerInvitesSupabase(userId: string, username: stri
   if (!isSupabaseConfigured) return [];
   try {
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId);
-    let filterString = `to_username.ilike.${username},from_username.ilike.${username}`;
+    const name = ilikeExactOrValue(username);
+    let filterString = `to_username.ilike.${name},from_username.ilike.${name}`;
     if (isUuid) {
       filterString += `,to_user_id.eq.${userId},from_user_id.eq.${userId}`;
     }
@@ -1190,7 +1192,9 @@ export async function cleanupPendingInvitesBetweenUsersSupabase(
     const isUuid1 = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(user1Id);
     const isUuid2 = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(user2Id);
 
-    let orFilter = `and(from_username.ilike.${user1Username},to_username.ilike.${user2Username}),and(from_username.ilike.${user2Username},to_username.ilike.${user1Username})`;
+    const name1 = ilikeExactOrValue(user1Username);
+    const name2 = ilikeExactOrValue(user2Username);
+    let orFilter = `and(from_username.ilike.${name1},to_username.ilike.${name2}),and(from_username.ilike.${name2},to_username.ilike.${name1})`;
     if (isUuid1 && isUuid2) {
       orFilter += `,and(from_user_id.eq.${user1Id},to_user_id.eq.${user2Id}),and(from_user_id.eq.${user2Id},to_user_id.eq.${user1Id})`;
     }
@@ -1265,7 +1269,8 @@ export async function fetchPartnershipSupabase(userId: string, username?: string
       filterString = `user1_id.eq.${userId},user2_id.eq.${userId}`;
     }
     if (username) {
-      const userFilter = `user1_username.ilike.${username},user2_username.ilike.${username}`;
+      const name = ilikeExactOrValue(username);
+      const userFilter = `user1_username.ilike.${name},user2_username.ilike.${name}`;
       filterString = filterString ? `${filterString},${userFilter}` : userFilter;
     }
     if (!filterString) return null;
