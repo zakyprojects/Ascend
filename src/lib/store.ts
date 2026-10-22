@@ -2025,14 +2025,27 @@ export function useAppState() {
           callResolve = resolve;
           callReject = reject;
         });
-        pendingImmediateResolvers.current.push({
+        const entry = {
           resolve: callResolve,
           reject: callReject,
           actionLabel: options.actionLabel,
           entityId: options.entityId,
-        });
+        };
+        pendingImmediateResolvers.current.push(entry);
         // Suppress unhandled rejection on the promise itself so non-awaiting callers never produce console warnings
         immediatePromise.catch(() => {});
+        setStateRaw((prev) => {
+          const next = typeof updater === 'function' ? updater(prev) : updater;
+          // An update that changes nothing has nothing to save. React skips that render, so the
+          // save effect never runs for it: settle its wait here. Safe to run twice (StrictMode).
+          if (next === prev) {
+            const index = pendingImmediateResolvers.current.indexOf(entry);
+            if (index !== -1) pendingImmediateResolvers.current.splice(index, 1);
+            entry.resolve();
+          }
+          return next;
+        });
+        return immediatePromise;
       }
       setStateRaw(updater);
       return immediatePromise;
@@ -3248,10 +3261,8 @@ export function useAppState() {
         });
 
         const next = { ...weeklyGoalsReconciledState, sharedChallenges: reconciledChallenges };
-        // A tick that changed nothing keeps the same state, so nothing re-renders or saves. While
-        // an immediate save waits (its own update changed nothing), the tick still runs the
-        // autosave as before, which settles that wait.
-        return pendingImmediateResolvers.current.length > 0 ? next : keepIfUnchanged(prev, next);
+        // A tick that changed nothing keeps the same state, so nothing re-renders or saves.
+        return keepIfUnchanged(prev, next);
       });
 
       for (const updated of challengesToSync) {
