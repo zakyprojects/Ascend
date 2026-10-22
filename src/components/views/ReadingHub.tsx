@@ -8,7 +8,7 @@ import { CURATED_BOOKS, BOOK_CATEGORIES } from '@/lib/books';
 import type { BookCategory, CuratedBook, UserBook } from '@/types';
 import { formatDateLong, getNow, weekKey, formatWeekdayDate, formatWeekdayShort, calculateStreak, parseDate } from '@/lib/dates';
 import { READING_POINTS } from '@/lib/pointsConfig';
-import { READING_BONUS_COOLDOWN_DAYS, READING_BONUS_MIN_LOG_DAYS, READING_BONUS_MIN_SPAN_DAYS, bookRemovalPoints, isRetiredAppReadingAward } from '@/lib/readingAwards';
+import { READING_BONUS_COOLDOWN_DAYS, READING_BONUS_MIN_LOG_DAYS, READING_BONUS_MIN_SPAN_DAYS, bookRemovalPoints, isChapterBook, isRetiredAppReadingAward } from '@/lib/readingAwards';
 import { getCapStatus } from '@/lib/capStatus';
 import { CapMeterConnected } from '@/components/ui/CapMeterConnected';
 import { PageHero } from '@/components/ui/PageHero';
@@ -98,8 +98,26 @@ export function ReadingHub({ store }: { store: AppStore }) {
   // Rolls at local midnight like the other day-scoped pages (streak, Last 7 days, points today).
   const today = useLocalDayKey();
   const pageDays = lastDayKeys(7, today);
-  const pagesByDay = sumPerDay(readingLogs, pageDays, (l) => l.pagesRead);
+  // A log is in chapters when its book counts chapters (as for points and weekly goals); a log
+  // whose book is gone counts as pages.
+  const chapterBookIds = useMemo(
+    () => new Set(libraryBooks.filter((b) => b && isChapterBook(b)).map((b) => b.id)),
+    [libraryBooks]
+  );
+  const pagesByDay = sumPerDay(readingLogs, pageDays, (l) => (chapterBookIds.has(l.bookId ?? '') ? 0 : l.pagesRead));
+  const chaptersByDay = sumPerDay(readingLogs, pageDays, (l) => (chapterBookIds.has(l.bookId ?? '') ? l.pagesRead : 0));
   const pagesThisWeek = pagesByDay.reduce((sum, p) => sum + p, 0);
+  const chaptersThisWeek = chaptersByDay.reduce((sum, c) => sum + c, 0);
+  // Bars show pages, unless the week has only chapters.
+  const chartInChapters = pagesThisWeek === 0 && chaptersThisWeek > 0;
+  const chartByDay = chartInChapters ? chaptersByDay : pagesByDay;
+  const readOnDay = (i: number) =>
+    [pagesByDay[i] !== 0 && formatAmount(pagesByDay[i], 'pages'), chaptersByDay[i] !== 0 && formatAmount(chaptersByDay[i], 'chapters')]
+      .filter(Boolean)
+      .join(', ') || formatAmount(0, chartInChapters ? 'chapters' : 'pages');
+  const weekTotals = [!chartInChapters && `${pagesThisWeek} pages`, chaptersThisWeek > 0 && formatAmount(chaptersThisWeek, 'chapters')]
+    .filter(Boolean)
+    .join(' and ');
 
   // Any logged day counts, as before (older logs carry their amount under another field).
   const streak = useMemo(
@@ -240,14 +258,24 @@ export function ReadingHub({ store }: { store: AppStore }) {
                 <div className="flex items-baseline justify-between gap-3">
                   <h2 className="section-title">Last 7 days</h2>
                   <span className="figure text-xs text-content-muted">
-                    <CountUp value={pagesThisWeek} /> pages
+                    {!chartInChapters && (
+                      <>
+                        <CountUp value={pagesThisWeek} /> pages
+                      </>
+                    )}
+                    {chaptersThisWeek > 0 && (
+                      <>
+                        {!chartInChapters && ' · '}
+                        <CountUp value={chaptersThisWeek} /> {chaptersThisWeek === 1 ? 'chapter' : 'chapters'}
+                      </>
+                    )}
                   </span>
                 </div>
                 <BarChart
-                  data={pageDays.map((day, i) => ({ label: formatWeekdayShort(day), value: pagesByDay[i] }))}
-                  label={`Pages read per day, last 7 days: ${pagesThisWeek} total`}
+                  data={pageDays.map((day, i) => ({ label: formatWeekdayShort(day), value: chartByDay[i] }))}
+                  label={`${chartInChapters ? 'Chapters' : 'Pages'} read per day, last 7 days: ${weekTotals} total`}
                   highlightIndex={pageDays.length - 1}
-                  formatTooltip={(datum, i) => `${formatWeekdayDate(pageDays[i])}: ${datum.value} pages`}
+                  formatTooltip={(_datum, i) => `${formatWeekdayDate(pageDays[i])}: ${readOnDay(i)}`}
                 />
               </Reveal>
             )}
