@@ -74,10 +74,10 @@ import {
   lastBlockOfDay,
 } from './timeTracker';
 import { findCuratedBook } from './books';
-import { uid, generateUUID, generateNumericUID, periodKey, todayKey, isPlanJourneyDoneThisPeriod, calculateActivePlanStreak, getWeekDates, parseDate, getNow, getNextDateKey, weekKey, addDays } from './dates';
+import { uid, generateUUID, generateNumericUID, periodKey, todayKey, isPlanJourneyDoneThisPeriod, calculateActivePlanStreak, getWeekDates, parseDate, getNow, getNextDateKey, weekKey, addDays, formatWeekdayDate } from './dates';
 import { computeLinkedGoalProgress, linkedEntryPresent, linkedGoalCrossing, linkedItemExists, linkedGoalUnit } from './linkedGoalMetrics';
 import { autoStatusChanges } from './projectProgress';
-import { reconcileSharedChallengeLifecycle, applyPledgeToggle, mergeSharedChallenge, linkedHabitFor, habitDoneOn, planLinkedPactRepairs } from './pactLifecycle';
+import { reconcileSharedChallengeLifecycle, applyPledgeToggle, mergeSharedChallenge, linkedHabitFor, habitDoneOn, planLinkedPactRepairs, pactTickRefused } from './pactLifecycle';
 import { isPartnershipUser1 } from './partnershipSide';
 import { PresetHabit } from './presets';
 import { sameName } from './uniqueNames';
@@ -199,6 +199,7 @@ import {
   deletePartnerInviteSupabase,
   declinePartnerInviteSupabase,
   saveSharedChallengeSupabase,
+  type SharedChallengeSaveResult,
   fetchSharedChallengesSupabase,
   deleteSharedChallengeSupabase,
   acceptPartnerInviteAtomicSupabase,
@@ -1804,6 +1805,38 @@ export function useAppState() {
       }
     });
   }, []);
+  // A pact save answers with the row the server stored. The guard takes the viewer's tick only for
+  // today in their profile time zone (and none on a finished pact), so a tick for another device
+  // day (after a time-zone change the account's day never goes back, or a wrong device clock) is left out: the stored row is shown instead, with one toast per pact per day naming why.
+  // Skipped while another write for the pact is on its way (that one answers with a newer row).
+  const pactRefusedToastOn = useRef(new Map<string, string>());
+  const settlePactSave = useCallback(
+    (sent: SharedChallenge, result: SharedChallengeSaveResult, isUser1: boolean): boolean => {
+      const { stored, serverToday } = result;
+      if (!stored || (pledgeWrites.current.get(sent.id)?.inFlight ?? 0) > 0) return false;
+      const deviceToday = todayKey();
+      const refused = pactTickRefused(sent, stored, isUser1, deviceToday);
+      if (!refused) return false;
+      setState((prev) => ({
+        ...prev,
+        sharedChallenges: (prev.sharedChallenges || []).map((c) => (c.id === sent.id ? mergeSharedChallenge(c, stored) : c)),
+      }));
+      syncBroadcaster.broadcast('CHALLENGE_UPDATED', stored);
+      if (pactRefusedToastOn.current.get(sent.id) !== deviceToday) {
+        pactRefusedToastOn.current.set(sent.id, deviceToday);
+        dispatchToastError(
+          `"${sent.title}" didn't change`,
+          serverToday && serverToday !== deviceToday
+            ? `Your device's date (${formatWeekdayDate(deviceToday)}) isn't your account's date (${formatWeekdayDate(serverToday)}), so this couldn't be saved. It works again once both dates match.`
+            : 'This challenge has ended, so its days no longer change.'
+        );
+      }
+      return true;
+    },
+    // False positive: setState is stable; everything else is read from refs.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    []
+  );
   // Habit-linked pacts follow their habit (planLinkedPactRepairs, run every minute): pacts that
   // differed from their habit on the last pass, the day of each pact's last repair, and pacts whose
   // save from a habit tick failed (resent until it goes through, at most PACT_RETRY_LIMIT times a day).
@@ -3780,7 +3813,7 @@ export function useAppState() {
       inFlightHabitToggles.current.add(habitId);
 
       let completed = false;
-      const challengesToSync: SharedChallenge[] = [];
+      const challengesToSync: { updated: SharedChallenge; isUser1: boolean }[] = [];
 
       try {
         setState(
@@ -3853,7 +3886,7 @@ export function useAppState() {
 
                 if (linkedHabitFor(target, isUser1, [habit])) {
                   const { updated } = applyPledgeToggle(target, isUser1, completed);
-                  challengesToSync.push(updated);
+                  challengesToSync.push({ updated, isUser1 });
                   return updated;
                 }
 
@@ -3870,10 +3903,11 @@ export function useAppState() {
           { immediate: true }
         );
 
-        for (const updated of challengesToSync) {
+        for (const { updated, isUser1 } of challengesToSync) {
           trackPledgeWrite(updated.id, saveSharedChallengeSupabase(updated)).then(
-            () => {
+            (result) => {
               pactRetry.current.delete(updated.id);
+              settlePactSave(updated, result, isUser1);
             },
             (err) => {
               console.error('Failed to sync shared challenge from toggleHabit:', err);
@@ -7930,6 +7964,7 @@ export function useAppState() {
       }));
 
       let todayTickFailed = false;
+      let todayTickResult: SharedChallengeSaveResult | null = null;
       try {
         await trackPledgeWrite(
           challenge.id,
@@ -7937,7 +7972,7 @@ export function useAppState() {
             await saveSharedChallengeSupabase(challenge);
             if (!startsTicked) return;
             try {
-              await saveSharedChallengeSupabase(shown);
+              todayTickResult = await saveSharedChallengeSupabase(shown);
             } catch (err) {
               console.error("Failed to save today's tick on a new joint pact:", err);
               todayTickFailed = true;
@@ -7963,10 +7998,12 @@ export function useAppState() {
           ),
         }));
         syncBroadcaster.broadcast('CHALLENGE_UPDATED', challenge);
-      } else {
-        syncBroadcaster.broadcast('CHALLENGE_UPDATED', shown);
+        return { startedTicked: false, todayTickFailed };
       }
-      return { startedTicked: startsTicked && !todayTickFailed, todayTickFailed };
+      syncBroadcaster.broadcast('CHALLENGE_UPDATED', shown);
+      // A tick the server left out (another day than the account's) goes back with its own toast.
+      const tickRefused = todayTickResult !== null && settlePactSave(shown, todayTickResult, isUser1);
+      return { startedTicked: startsTicked && !tickRefused, todayTickFailed };
     },
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -8069,8 +8106,9 @@ export function useAppState() {
       }));
 
       try {
-        await trackPledgeWrite(challengeId, saveSharedChallengeSupabase(updated));
+        const result = await trackPledgeWrite(challengeId, saveSharedChallengeSupabase(updated));
         syncBroadcaster.broadcast('CHALLENGE_UPDATED', updated);
+        settlePactSave(updated, result, isUser1);
         // The partner's notices come from the server (shared_challenges trigger).
       } catch (err: any) {
         console.error('Failed to log shared challenge day in Supabase:', err);
@@ -8133,9 +8171,11 @@ export function useAppState() {
           sharedChallenges: prev.sharedChallenges.map((c) => (c.id === challenge.id ? updated : c)),
         }));
         trackPledgeWrite(challenge.id, saveSharedChallengeSupabase(updated)).then(
-          () => {
+          (result) => {
             pactRetry.current.delete(challenge.id);
             syncBroadcaster.broadcast('CHALLENGE_UPDATED', updated);
+            // A day the server left out is not sent again today (a retry marks the day too).
+            if (settlePactSave(updated, result, isUser1)) pactRepairedOn.current.set(challenge.id, today);
           },
           (err) => {
             console.error('Failed to bring a linked pact in step with its habit:', err);

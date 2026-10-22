@@ -357,3 +357,17 @@ export function planLinkedPactRepairs(input: LinkedPactReconcileInput): {
   }
   return { repairs, diverged };
 }
+
+/**
+ * Whether the server left out the viewer's tick or untick for their day: the pact guard only
+ * changes the viewer's side for today in their profile time zone, and never on a finished pact.
+ * Compared on the viewer's own side for the device's day, the one day the app ever changes.
+ */
+export function pactTickRefused(
+  sent: SharedChallenge,
+  stored: SharedChallenge,
+  isUser1: boolean,
+  deviceToday: string
+): boolean {
+  return pactSideDoneOn(sent, isUser1, deviceToday) !== pactSideDoneOn(stored, isUser1, deviceToday);
+}

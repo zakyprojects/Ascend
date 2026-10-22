@@ -1354,8 +1354,42 @@ export async function deletePartnershipSupabase(partnershipId: string) {
   }
 }
 
-export async function saveSharedChallengeSupabase(challenge: SharedChallenge) {
-  if (!isSupabaseConfigured) return;
+/** A shared_challenges row (PostgREST or the save RPC's to_jsonb) as the app's SharedChallenge. */
+function mapSharedChallengeRow(row: any): SharedChallenge {
+  return {
+    id: row.id,
+    partnershipId: row.partnership_id,
+    title: row.title,
+    targetHabitName: row.target_habit_name,
+    durationDays: row.duration_days,
+    jointStreak: row.joint_streak,
+    totalJointDaysCompleted: row.total_joint_days_completed ?? 0,
+    user1Category: (row.user1_category as any) || 'habit',
+    user1Target: row.user1_target || row.target_habit_name,
+    user2Category: (row.user2_category as any) || 'habit',
+    user2Target: row.user2_target || row.target_habit_name,
+    user1DoneDate: row.user1_done_date || undefined,
+    user2DoneDate: row.user2_done_date || undefined,
+    user1DoneDates: (Array.isArray(row.user1_done_dates) && row.user1_done_dates.length)
+      ? row.user1_done_dates
+      : (row.user1_done_date ? [row.user1_done_date] : []),
+    user2DoneDates: (Array.isArray(row.user2_done_dates) && row.user2_done_dates.length)
+      ? row.user2_done_dates
+      : (row.user2_done_date ? [row.user2_done_date] : []),
+    status: row.status as 'active' | 'completed' | 'expired',
+    createdAt: row.created_at,
+  };
+}
+
+/** What the server stored on a pact save: null when it could not say (older server, direct-upsert fallback). */
+export interface SharedChallengeSaveResult {
+  stored: SharedChallenge | null;
+  /** The caller's day on the server (their profile time zone), the only day it takes a tick for. */
+  serverToday: string | null;
+}
+
+export async function saveSharedChallengeSupabase(challenge: SharedChallenge): Promise<SharedChallengeSaveResult> {
+  if (!isSupabaseConfigured) return { stored: null, serverToday: null };
   try {
     const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     const challengeId = uuidPattern.test(challenge.id) ? challenge.id : crypto.randomUUID();
@@ -1387,7 +1421,10 @@ export async function saveSharedChallengeSupabase(challenge: SharedChallenge) {
     // 1. Try atomic SECURITY DEFINER RPC first to bypass client RLS discrepancies
     const { data: rpcData, error: rpcError } = await supabase.rpc('save_shared_challenge_atomic', rpcParams);
     if (!rpcError && rpcData?.success) {
-      return;
+      return {
+        stored: rpcData.challenge ? mapSharedChallengeRow(rpcData.challenge) : null,
+        serverToday: typeof rpcData.today === 'string' ? rpcData.today : null,
+      };
     }
 
     if (rpcError) {
@@ -1429,6 +1466,7 @@ export async function saveSharedChallengeSupabase(challenge: SharedChallenge) {
       console.error('Error saving shared challenge to Supabase:', error);
       throw new Error(error.message || "Couldn't save the pact. Try again.");
     }
+    return { stored: null, serverToday: null };
   } catch (e: any) {
     console.error('saveSharedChallengeSupabase failed:', e);
     throw e;
@@ -1450,29 +1488,7 @@ export async function fetchSharedChallengesSupabase(partnershipIds: string | str
     if (error || !data) return null;
 
     const mapped = data
-      .map((row) => ({
-        id: row.id,
-        partnershipId: row.partnership_id,
-        title: row.title,
-        targetHabitName: row.target_habit_name,
-        durationDays: row.duration_days,
-        jointStreak: row.joint_streak,
-        totalJointDaysCompleted: row.total_joint_days_completed ?? 0,
-        user1Category: (row.user1_category as any) || 'habit',
-        user1Target: row.user1_target || row.target_habit_name,
-        user2Category: (row.user2_category as any) || 'habit',
-        user2Target: row.user2_target || row.target_habit_name,
-        user1DoneDate: row.user1_done_date || undefined,
-        user2DoneDate: row.user2_done_date || undefined,
-        user1DoneDates: (Array.isArray(row.user1_done_dates) && row.user1_done_dates.length)
-          ? row.user1_done_dates
-          : (row.user1_done_date ? [row.user1_done_date] : []),
-        user2DoneDates: (Array.isArray(row.user2_done_dates) && row.user2_done_dates.length)
-          ? row.user2_done_dates
-          : (row.user2_done_date ? [row.user2_done_date] : []),
-        status: row.status as 'active' | 'completed' | 'expired',
-        createdAt: row.created_at,
-      }))
+      .map(mapSharedChallengeRow)
       .map((c) => reconcileSharedChallengeLifecycle(c));
 
     // Deduplicate active challenges by (partnershipId + normalized title)

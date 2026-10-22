@@ -4,6 +4,7 @@ import {
   habitForPactGoal,
   linkedHabitFor,
   pactSideDoneOn,
+  pactTickRefused,
   planLinkedPactRepairs,
   type LinkedPactReconcileInput,
 } from '../pactLifecycle';
@@ -146,3 +147,17 @@ function runFixtures() {
 }
 
 runFixtures();
+
+// ── pactTickRefused: the server's stored row against what the app sent ──
+{
+  const sent = pact('r1', 'Run', 'Read', { user1DoneDates: [TODAY], user2DoneDates: [] });
+  const keptTick = pact('r1', 'Run', 'Read', { user1DoneDates: [TODAY], user2DoneDates: [] });
+  const droppedTick = pact('r1', 'Run', 'Read', { user1DoneDates: [], user2DoneDates: [] });
+  assert(!pactTickRefused(sent, keptTick, true, TODAY), 'a tick the server kept is not refused');
+  assert(pactTickRefused(sent, droppedTick, true, TODAY), 'a tick the server dropped is refused');
+  const untickSent = pact('r1', 'Run', 'Read', { user1DoneDates: [], user2DoneDates: [] });
+  assert(pactTickRefused(untickSent, keptTick, true, TODAY), 'an untick the server ignored is refused');
+  const partnerTicked = pact('r1', 'Run', 'Read', { user1DoneDates: [TODAY], user2DoneDates: [TODAY] });
+  assert(!pactTickRefused(sent, partnerTicked, true, TODAY), "the partner's side never counts");
+  assert(pactTickRefused(sent, droppedTick, true, TODAY) && !pactTickRefused(sent, droppedTick, false, TODAY), 'only the viewer side is compared');
+}
