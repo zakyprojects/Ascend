@@ -1,5 +1,6 @@
-import { SharedChallenge } from '@/types';
+import { Habit, SharedChallenge } from '@/types';
 import { todayKey, previousPeriodKey, calculateElapsedDays, getNow } from './dates';
+import { sameName } from './uniqueNames';
 
 const safeNum = (val: any): number => {
   const n = Number(val);
@@ -248,4 +249,111 @@ export function mergeSharedChallenge(baseC: SharedChallenge, incC: SharedChallen
   };
 
   return reconcileSharedChallengeLifecycle(merged);
+}
+
+// ── Habit-linked pacts ────────────────────────────────────────────────────────────────────────
+// A side of a pact is linked to a habit when its goal text is that habit's name (the same name
+// rule as everywhere else: trimmed, inner spaces collapsed, any case). Only daily habits link:
+// a pact is ticked day by day. The Reading habit is left out: reading logs, not taps, tick it,
+// and they do not reach pacts.
+
+/** One side's goal text, the text its habit link is read from. */
+export function pactSideGoal(challenge: SharedChallenge, isUser1: boolean): string {
+  return (isUser1 ? challenge.user1Target : challenge.user2Target) || challenge.targetHabitName || '';
+}
+
+/** Whether this habit can be linked to a pact. */
+export function isPactLinkableHabit(habit: Habit): boolean {
+  return habit.frequency === 'daily' && habit.linkedModule !== 'reading';
+}
+
+/** The linkable habit this goal text names, if any (the New challenge dialog's habit picker). */
+export function habitForPactGoal(goal: string, habits: readonly Habit[]): Habit | null {
+  if (!goal.trim()) return null;
+  return habits.find((h) => isPactLinkableHabit(h) && sameName(h.name, goal)) ?? null;
+}
+
+/** The habit this side of the pact is linked to, if any. */
+export function linkedHabitFor(
+  challenge: SharedChallenge,
+  isUser1: boolean,
+  habits: readonly Habit[]
+): Habit | null {
+  const category = (isUser1 ? challenge.user1Category : challenge.user2Category) || 'habit';
+  if (category !== 'habit') return null;
+  return habitForPactGoal(pactSideGoal(challenge, isUser1), habits);
+}
+
+/** Whether a daily habit is done on this day (today unless given). */
+export function habitDoneOn(habit: Habit, day: string = todayKey()): boolean {
+  const completions = habit.completions as Habit['completions'] | string[] | undefined;
+  if (!completions) return false;
+  if (Array.isArray(completions)) return completions.includes(day);
+  return completions[day]?.done === true;
+}
+
+/** Whether this side of the pact has this day ticked. */
+export function pactSideDoneOn(challenge: SharedChallenge, isUser1: boolean, day: string): boolean {
+  const norm = normalizeChallengeDates(challenge);
+  return (isUser1 ? norm.user1DoneDates : norm.user2DoneDates).includes(day);
+}
+
+export interface LinkedPactReconcileInput {
+  challenges: readonly SharedChallenge[];
+  habits: readonly Habit[];
+  /** The viewer's side of a pact, or null when its partnership is not known here. */
+  sideOf: (challenge: SharedChallenge) => boolean | null;
+  /** The viewer's local day. */
+  today: string;
+  /** Pacts with one of our own writes on its way: left alone until it settles. */
+  isBusy: (challengeId: string) => boolean;
+  /** Pacts that differed from their habit on the previous pass. */
+  divergedBefore: ReadonlySet<string>;
+  /** Day of the last repair attempt per pact. */
+  attemptedOn: ReadonlyMap<string, string>;
+  /** Pacts whose last save from a habit tick failed today: sent again on every pass. */
+  retry: ReadonlySet<string>;
+}
+
+export interface LinkedPactRepair {
+  challenge: SharedChallenge;
+  isUser1: boolean;
+  /** What today should be on the viewer's side: the habit's state. */
+  done: boolean;
+  /** A resend of a failed save (not a repair, so it does not use up the day's attempt). */
+  isRetry: boolean;
+}
+
+/**
+ * One pass of keeping running, habit-linked pacts in step with their habit (the viewer's own side
+ * only; the partner's device does theirs). A pact that differs from its habit is repaired only
+ * when it also differed on the previous pass (about a minute earlier), so a habit change still on
+ * its way from another device is not undone; and at most once per pact per day, so a day the
+ * server will not take (device day not the server's day) is not sent again every minute. A failed
+ * save from a habit tick is resent on every pass until it goes through.
+ */
+export function planLinkedPactRepairs(input: LinkedPactReconcileInput): {
+  repairs: LinkedPactRepair[];
+  diverged: Set<string>;
+} {
+  const repairs: LinkedPactRepair[] = [];
+  const diverged = new Set<string>();
+  for (const challenge of input.challenges) {
+    if (challenge.status !== 'active' || input.isBusy(challenge.id)) continue;
+    const isUser1 = input.sideOf(challenge);
+    if (isUser1 === null) continue;
+    const habit = linkedHabitFor(challenge, isUser1, input.habits);
+    if (!habit) continue;
+    const done = habitDoneOn(habit, input.today);
+    if (input.retry.has(challenge.id)) {
+      repairs.push({ challenge, isUser1, done, isRetry: true });
+      continue;
+    }
+    if (pactSideDoneOn(challenge, isUser1, input.today) === done) continue;
+    diverged.add(challenge.id);
+    if (input.divergedBefore.has(challenge.id) && input.attemptedOn.get(challenge.id) !== input.today) {
+      repairs.push({ challenge, isUser1, done, isRetry: false });
+    }
+  }
+  return { repairs, diverged };
 }
