@@ -195,7 +195,7 @@ function PrivacyPolicy({ onNavigate }: { onNavigate: (path: string) => void }) {
             guest who logs out loses the account at once.
           </li>
           <li>Failed sign-in records: 1 hour.</li>
-          <li>Notifications: until you delete your account.</li>
+          <li>Notifications: 30 days, then deleted automatically.</li>
           <li>Crash reports: for a limited time, under Sentry’s retention rules.</li>
           <li>Page-visit counts: anonymous, under Vercel’s retention rules.</li>
           <li>Bug reports and ideas: until you ask us to remove them.</li>
