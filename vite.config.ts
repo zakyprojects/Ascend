@@ -146,7 +146,9 @@ function marketingDevPlugin(): Plugin {
           const route = routes.routeByPath(url.pathname);
           const render = await server.ssrLoadModule('/src/marketing/render.tsx');
           if (!route || !render.isRenderedRoute(route) || route.kind === 'notFound') return next();
-          const html = render.renderMarketingPage(route, { css: [], js: '/src/marketing/client.ts', modules: [], fonts: [] });
+          // The stylesheet is linked in <head> (as the build does) so the page never paints unstyled
+          // while client.ts loads; client.ts's own import of it then only adds HMR.
+          const html = render.renderMarketingPage(route, { css: ['/src/marketing/marketing.css'], js: '/src/marketing/client.ts', modules: [], fonts: [] });
           res.setHeader('Content-Type', 'text/html; charset=utf-8');
           res.end(await server.transformIndexHtml(url.pathname, html));
         } catch (err) {
