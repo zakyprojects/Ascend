@@ -94,12 +94,48 @@ export const brainLessons: FeatureContent = {
             },
           ]}
         />
-        <Note title="Follow your day plan.">
-          The Schedule tab runs the timer along today’s blocks from the{' '}
-          <a href={featurePath('time-blocking')} className={LINK_CLASS}>
-            time blocking planner
-          </a>
-          , so a planned study or work block can start as a focus session.
+      </Block>
+
+      <Block
+        id="schedule-title"
+        title="Following today’s schedule"
+        lead={
+          <p>
+            The Schedule tab turns the timer into a guide for your whole day. It reads today’s blocks from the{' '}
+            <a href={featurePath('time-blocking')} className={LINK_CLASS}>
+              time blocking planner
+            </a>{' '}
+            and counts down each one as it happens, so you never start a timer by hand.
+          </p>
+        }
+      >
+        <Steps
+          items={[
+            {
+              title: 'Start the day',
+              text: 'The tab shows how many blocks today has and how long they run in total. Press Start today’s schedule once, and it keeps following for the rest of that day on that device.',
+            },
+            {
+              title: 'Work the block you are in',
+              text: 'A large countdown shows the time left in the current block, with a bar for how far through it you are. When the block’s category is linked to an Ascend page, such as Reading or Exercise, one tap opens that page.',
+            },
+            {
+              title: 'Take a short break',
+              text: 'In a linked block, once half of it is done and enough time is left, you can pause for 5, 10 or 15 minutes, or any length up to 15. You can end the break early.',
+            },
+            {
+              title: 'Finish or skip',
+              text: 'Mark the block completed or skip it. A block that runs out of time without either stops at 00:00 as overdue and waits for your answer.',
+            },
+            {
+              title: 'Between blocks',
+              text: 'A countdown shows when the next block begins. Ready early? Start it now and keep its length, or start now and keep its planned end. An early start can be undone.',
+            },
+          ]}
+        />
+        <Note title="One plan, two views.">
+          Completing a block here is the same as ticking it off in the Time Tracker, so it counts toward that page’s daily
+          points. Stopping the schedule takes you back to the Focus tab and leaves your blocks as they are.
         </Note>
       </Block>
 
