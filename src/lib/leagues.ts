@@ -454,22 +454,19 @@ export function getLocalResetDetail(type: LeagueType, now: Date): string {
   return `${type === 'ninetyDay' ? 'Ends' : 'Resets'} ${day} · ${time} your time`;
 }
 
-export const LEAGUE_CONFIG: Record<LeagueType, { name: string; description: string; icon: string; color: string }> = {
+export const LEAGUE_CONFIG: Record<LeagueType, { name: string; icon: string; color: string }> = {
   weekly: {
     name: 'Weekly League',
-    description: 'Compete every week based on points earned.',
     icon: 'Calendar',
     color: '#34d399',
   },
   monthly: {
     name: 'Monthly League',
-    description: 'Monthly competition tracking consistency.',
     icon: 'CalendarDays',
     color: '#0ea5e9',
   },
   ninetyDay: {
     name: '90-Day League',
-    description: 'A 90-day season: long enough for many habits to settle in.',
     icon: 'Brain',
     color: '#a855f7',
   },
