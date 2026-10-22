@@ -150,8 +150,8 @@ export const brainLessons: FeatureContent = {
             <Screenshot
               name="schedule-day-phone"
               width={540}
-              height={1202}
-              alt="The same day in Time Tracker on a phone: Praying, Exercise, Classes, DBMS assignment and Reading done, Break skipped, Python practice 6:30 PM to 8:00 PM marked Now, then Dinner with family, Reading and Sleep still to come"
+              height={1736}
+              alt="Time Tracker on a phone, the same day: Praying, Exercise, Classes, DBMS assignment and Reading done, Break skipped, Python practice 6:30 PM to 8:00 PM marked Now, then Dinner with family, Reading and Sleep still to come"
             />
             <figcaption className="mt-3 text-center text-sm text-content-muted">The day it follows, from Time Tracker.</figcaption>
           </figure>
