@@ -6,7 +6,7 @@ import { AppStore } from '@/lib/store';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { TierBadge } from '@/components/ui/TierBadge';
 import { useToast } from '@/components/ui/Toast';
-import { Button, Dialog, Disclosure, EmptyState, Form, Input, Skeleton, StaticTabPanel, Switch, Tabs, useFormController } from '@/components/ui/primitives';
+import { Button, Dialog, Disclosure, EmptyState, Form, Input, Select, Skeleton, StaticTabPanel, Switch, Tabs, useFormController } from '@/components/ui/primitives';
 import { useUnsavedChanges } from '@/lib/unsavedChanges';
 import { CountUp, Reveal } from '@/components/ui/Motion';
 import { PageHero } from '@/components/ui/PageHero';
@@ -23,6 +23,7 @@ import { createNotificationSupabase } from '@/lib/supabase';
 import { calculateUnifiedStreak } from '@/lib/streakLogic';
 import { toUserMessage } from '@/lib/userMessage';
 import { sameName } from '@/lib/uniqueNames';
+import { habitForPactGoal, isPactLinkableHabit, linkedHabitFor } from '@/lib/pactLifecycle';
 import { Partnership, SharedChallenge, PartnerInvite } from '@/types';
 import { actionFeedback } from '@/lib/actionFeedback';
 
@@ -219,10 +220,12 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
     return { running, doneToday, together };
   }, [partnerships, challengesFor, currentUser?.id, currentUsername, today]);
 
-  const myHabitNames = useMemo(
-    () => Array.from(new Set((store.state.habits || []).map((h) => h.name.trim()).filter(Boolean))),
-    [store.state.habits]
-  );
+  const habits = store.state.habits;
+  // Habits a challenge can link to (daily, not Reading), in Habits page order.
+  const linkableHabits = useMemo(() => (habits || []).filter(isPactLinkableHabit), [habits]);
+  // The picker shows the habit the goal text links to (the same rule a tick uses), so it always
+  // tells the truth: pick a habit and the goal becomes its name; edit the text and it shows Not linked.
+  const pickedHabitId = habitForPactGoal(myGoal, linkableHabits)?.id ?? '';
 
   const inviteForm = useUnsavedChanges(inviteModalOpen, partnerUidInput);
   const challengeForm = useUnsavedChanges(challengeModalOpen, [myGoal, differentGoal, partnerGoal, lengthDays]);
@@ -329,14 +332,22 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
       }
     });
 
-  const handleToggleToday = (challenge: SharedChallenge) =>
-    executeWithKey(`log_${challenge.id}`, async () => {
+  const handleToggleToday = (challenge: SharedChallenge) => {
+    // A challenge linked to your habit ticks through the habit, so the two never disagree (and the
+    // habit's points come and go as on the Habits page).
+    const linkedHabit = linkedHabitFor(challenge, amUser1, habits || []);
+    if (linkedHabit) {
+      store.toggleHabit(linkedHabit.id);
+      return;
+    }
+    return executeWithKey(`log_${challenge.id}`, async () => {
       try {
         await store.logSharedChallengeHabit(challenge.id);
       } catch (err: any) {
         showErrorToast("Couldn't save", toUserMessage(err, 'Try again.'));
       }
     });
+  };
 
   const nudgeKey = activePartnership ? activePartnership.id : '';
   const nudgedToday = Boolean(nudgeKey) && nudgedOn[nudgeKey] === today;
@@ -380,6 +391,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
     const mine = goalOf(c, amUser1);
     const theirs = goalOf(c, !amUser1);
     const busy = isKeyLoading(`log_${c.id}`);
+    const linked = Boolean(linkedHabitFor(c, amUser1, habits || []));
 
     return (
       <div key={c.id} className="card enter-item p-4 card-hover">
@@ -392,7 +404,9 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
               handleToggleToday(c);
             }}
             aria-pressed={mineDone}
-            aria-label={mineDone ? `Undo today for ${mine}` : `Mark ${mine} done today`}
+            aria-label={
+              (mineDone ? `Undo today for ${mine}` : `Mark ${mine} done today`) + (linked ? ' (your habit too)' : '')
+            }
             className={cx(
               'shrink-0 w-11 h-11 rounded-xl flex items-center justify-center transition-all duration-300 active:scale-90',
               mineDone
@@ -417,6 +431,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
               <span className={theirsDone ? 'text-success-text' : 'text-content-muted'}>
                 {partnerName}: {theirsDone ? 'done' : 'not yet'}
               </span>
+              {linked && <span className="text-content-muted">Linked to your habit</span>}
               {(c.jointStreak || 0) > 0 && (
                 <span className="flex items-center gap-1 text-brand-text">
                   <Flame size={13} aria-hidden="true" />
@@ -748,7 +763,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                   <ul className="list-disc pl-4 space-y-0.5">
                     <li>Tick your challenge each day you do it. A day counts when you both tick it.</li>
                     <li>Fill every day of the challenge together to finish it.</li>
-                    <li>If your goal is one of your habits, ticking the habit ticks the challenge too.</li>
+                    <li>If your goal is one of your daily habits, the habit and the challenge tick together, here or on Habits.</li>
                     <li>Challenges don't give points. They're for keeping each other going.</li>
                   </ul>
                 </Disclosure>
@@ -850,6 +865,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
         dirty={challengeForm.dirty}
         onClose={() => setChallengeModalOpen(false)}
         title={`New challenge with ${partnerName || 'partner'}`}
+        initialFocus="challenge-my-goal"
         footer={
           <>
             <button
@@ -868,40 +884,37 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
         }
       >
         <Form id="challenge-create-form" onSubmit={handleCreateChallenge} controller={challengeIssues} className="space-y-5">
-          <div className="space-y-2">
-            <Input
-              id="challenge-my-goal"
-              label={differentGoal ? 'What will you do every day?' : 'What will you both do every day?'}
-              placeholder="e.g. Read 20 pages"
-              value={myGoal}
-              onChange={(e) => setMyGoal(e.target.value)}
-              maxLength={60}
-              autoComplete="off"
-            />
-            {myHabitNames.length > 0 && (
-              <div className="space-y-1">
-                <p className="text-xs text-content-muted">Your habits (ticking the habit ticks the challenge too)</p>
-                <div className="flex flex-wrap gap-1.5">
-                  {myHabitNames.slice(0, 8).map((name) => (
-                    <button
-                      key={name}
-                      type="button"
-                      onClick={() => setMyGoal(name)}
-                      aria-pressed={myGoal.trim() === name}
-                      className={cx(
-                        'min-h-9 sm:min-h-0 text-xs px-2.5 py-1 rounded-lg border transition-colors',
-                        myGoal.trim() === name
-                          ? 'bg-primary-500/15 text-brand-text border-primary-500/40'
-                          : 'text-content-muted border-overlay-subtle hover:border-overlay-strong hover:text-content-secondary'
-                      )}
-                    >
-                      {name}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
+          {linkableHabits.length > 0 && (
+            <Select
+              id="challenge-my-habit"
+              label="Link one of your habits"
+              optional
+              hint="The habit and the challenge tick together."
+              value={pickedHabitId}
+              onChange={(e) => {
+                const picked = linkableHabits.find((h) => h.id === e.target.value);
+                // Not linked clears a linked goal (the picker follows the text, so it would snap back).
+                setMyGoal(picked ? picked.name : pickedHabitId ? '' : myGoal);
+              }}
+            >
+              <option value="">Not linked</option>
+              {linkableHabits.map((h) => (
+                <option key={h.id} value={h.id}>
+                  {h.name}
+                </option>
+              ))}
+            </Select>
+          )}
+
+          <Input
+            id="challenge-my-goal"
+            label={differentGoal ? 'What will you do every day?' : 'What will you both do every day?'}
+            placeholder="e.g. Read 20 pages"
+            value={myGoal}
+            onChange={(e) => setMyGoal(e.target.value)}
+            maxLength={80}
+            autoComplete="off"
+          />
 
           <div className="flex items-center justify-between gap-3">
             <span className="text-sm text-content-secondary">{partnerName} does something different</span>
@@ -919,7 +932,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
               placeholder="e.g. 30 min workout"
               value={partnerGoal}
               onChange={(e) => setPartnerGoal(e.target.value)}
-              maxLength={60}
+              maxLength={80}
               autoComplete="off"
             />
           )}
