@@ -1782,6 +1782,25 @@ export function useAppState() {
   // Partners page: whether partnerships, invites and challenges came back from the last fetch.
   const [partnersStatus, setPartnersStatus] = useState<'loading' | 'ready' | 'failed'>('loading');
   const partnersRefreshRef = useRef<(() => Promise<void>) | null>(null);
+  // Our own pact tick/untick writes, per challenge. A partner snapshot read while one was on its
+  // way (or before it) would put the old done-dates back on screen, so it is held back for that
+  // pact and one refresh runs once the writes settle. A sequence counter, not a clock.
+  const pledgeWriteSeq = useRef(0);
+  const pledgeWrites = useRef(new Map<string, { inFlight: number; lastSeq: number; skipped: boolean }>());
+  const trackPledgeWrite = useCallback(<T>(challengeId: string, write: Promise<T>): Promise<T> => {
+    const entry = pledgeWrites.current.get(challengeId) ?? { inFlight: 0, lastSeq: 0, skipped: false };
+    pledgeWrites.current.set(challengeId, entry);
+    entry.inFlight++;
+    entry.lastSeq = ++pledgeWriteSeq.current;
+    return write.finally(() => {
+      entry.inFlight--;
+      entry.lastSeq = ++pledgeWriteSeq.current;
+      if (entry.inFlight === 0 && entry.skipped) {
+        entry.skipped = false;
+        void partnersRefreshRef.current?.();
+      }
+    });
+  }, []);
   // The initial check found no session while this device still holds a saved sign-in (a phone's
   // network not ready yet): the boot loader stays up until Supabase signs it in or drops it, rather
   // than flashing the sign-in page. 'failed' once that takes too long (offline).
@@ -2470,6 +2489,7 @@ export function useAppState() {
         debounceTimer.current = null;
       }
       pendingImmediateResolvers.current = [];
+      pledgeWrites.current.clear();
       isHydrated.current = false;
       setIsServerDataApplied(false);
       canPersistLocally.current = false;
@@ -2940,6 +2960,7 @@ export function useAppState() {
         return;
       }
       try {
+        const seqAtStart = pledgeWriteSeq.current;
         // Each fetch gives null when it failed: that part keeps what is on screen (N1).
         const fetchedInvites = await fetchPartnerInvitesSupabase(userId, username);
         const activePartnerships = await fetchPartnershipsSupabase(userId);
@@ -2964,6 +2985,18 @@ export function useAppState() {
             seen.add(key);
             cleanupPendingInvitesBetweenUsersSupabase(p.user1Id, p.user1Username, p.user2Id, p.user2Username).catch(() => {});
           }
+        }
+
+        // Pacts we wrote to while these reads ran keep what is on screen (the read may predate the
+        // write). A write still on its way refreshes once it settles; a settled one refreshes now.
+        const heldBackChallengeIds = new Set<string>();
+        let refreshAfterHoldBack = false;
+        for (const c of challenges ?? []) {
+          const write = c && pledgeWrites.current.get(c.id);
+          if (!c || !write || (write.inFlight === 0 && write.lastSeq <= seqAtStart)) continue;
+          heldBackChallengeIds.add(c.id);
+          if (write.inFlight > 0) write.skipped = true;
+          else refreshAfterHoldBack = true;
         }
 
         setState((prev) => {
@@ -3022,6 +3055,10 @@ export function useAppState() {
               if (!c || currentTombstones.has(c.id) || currentTombstones.has(c.partnershipId)) continue;
               if (!finalActivePartnershipIds.has(c.partnershipId)) continue;
               const existing = (prev.sharedChallenges || []).find((sc) => sc.id === c.id);
+              if (existing && heldBackChallengeIds.has(c.id)) {
+                challengeMap.set(c.id, existing);
+                continue;
+              }
               const merged = existing ? mergeSharedChallenge(existing, c) : c;
               challengeMap.set(c.id, reconcileSharedChallengeLifecycle(merged));
             }
@@ -3043,6 +3080,7 @@ export function useAppState() {
           if (unchanged) return prev;
           return { ...prev, ...next };
         });
+        if (refreshAfterHoldBack) void syncPartnerDataLive();
       } catch (e) {
         // Background sync error: what is on screen stays; the Partners page offers Retry.
         setPartnersStatus('failed');
@@ -3147,6 +3185,14 @@ export function useAppState() {
                 status: row.status as 'active' | 'completed' | 'expired',
                 createdAt: row.created_at,
               });
+
+              // Our own write to this pact is still on its way: keep the tick on screen; the
+              // refresh after it settles brings this change in.
+              const write = pledgeWrites.current.get(incomingChallenge.id);
+              if (write && write.inFlight > 0) {
+                write.skipped = true;
+                return;
+              }
 
               setState((prev) => {
                 if (
@@ -3786,7 +3832,7 @@ export function useAppState() {
         );
 
         for (const updated of challengesToSync) {
-          saveSharedChallengeSupabase(updated).catch((err) => {
+          trackPledgeWrite(updated.id, saveSharedChallengeSupabase(updated)).catch((err) => {
             console.error('Failed to sync shared challenge from toggleHabit:', err);
           });
           syncBroadcaster.broadcast('CHALLENGE_UPDATED', updated);
@@ -7927,7 +7973,7 @@ export function useAppState() {
       }));
 
       try {
-        await saveSharedChallengeSupabase(updated);
+        await trackPledgeWrite(challengeId, saveSharedChallengeSupabase(updated));
         syncBroadcaster.broadcast('CHALLENGE_UPDATED', updated);
         // The partner's notices come from the server (shared_challenges trigger).
       } catch (err: any) {
