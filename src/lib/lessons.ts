@@ -10,7 +10,7 @@ export const LESSONS: Lesson[] = [
     content: `Discipline isn't something you're born with — it's a skill you build through repetition, just like a muscle.
 
 \`\`\`
-The key insight: discipline is not about willpower. Willpower is a finite resource that depletes throughout the day. Discipline is about systems and habits that reduce the need for willpower.
+The key insight: discipline is not about willpower. Willpower is unreliable: it rises and falls with sleep, stress and mood. Discipline is about systems and habits that reduce the need for willpower.
 \`\`\`
 
 **How to build it:**
@@ -138,7 +138,7 @@ Most people skip this because it feels like "extra work." But the 30 minutes you
     category: 'Mindset',
     readTime: 4,
     points: 1,
-    content: `A "growth mindset" — the belief that abilities can be developed through effort — isn't just a motivational slogan. It's backed by neuroscience.
+    content: `A "growth mindset" — the belief that abilities can be developed through effort — isn't just a slogan: practice really does change the brain.
 
 **The science:** Every time you practice a skill, your brain strengthens the neural pathways involved. Neurons that fire together wire together (Hebb's Law). Over time, these pathways become faster and more efficient — this is physical, measurable change in the brain called neuroplasticity.
 
@@ -152,7 +152,7 @@ The word "yet" is the most powerful word in growth mindset. It transforms a perm
 
 **How to practice it:**
 1. Praise effort, not outcome. "I worked hard on that" not "I'm smart."
-2. Refframe failure as data. Each failure tells you what to adjust.
+2. Reframe failure as data. Each failure tells you what to adjust.
 3. Focus on the process, not just the result. The process is what rewires your brain.
 
 Your brain is physically changing right now, with every habit you complete on this app. That's not motivation — that's biology.`,
@@ -193,7 +193,7 @@ The habits in this app are all things within your control. That's the point.`,
 
 **Neuroplasticity** is the brain's ability to reorganize itself by forming new neural connections throughout life. This happens in two ways:
 
-1. **Structural plasticity:** The brain physically changes its structure in response to learning. London taxi drivers have enlarged hippocampi (the memory center) from memorizing the city's layout.
+1. **Structural plasticity:** The brain physically changes its structure in response to learning. London taxi drivers have a larger rear hippocampus (a memory area used for navigation) from learning the city's layout.
 
 2. **Functional plasticity:** The brain can move functions from a damaged area to an undamaged one. Stroke patients can recover speech by training other brain regions to take over.
 
@@ -208,7 +208,7 @@ This means:
 - Every time you avoid a behavior, that pathway weakens
 - Repetition is the currency of brain change — not intensity
 
-This is why doing 5 minutes of meditation daily for 90 days is far more powerful than doing 2 hours once a week. The daily repetition keeps those neurons firing together, wiring them into a permanent pathway.
+This is why doing 5 minutes of meditation daily for 90 days is far more powerful than doing 2 hours once a week. The daily repetition keeps those neurons firing together, wiring them into a strong, lasting pathway.
 
 **How long it takes:** In a well-known study (Lally, 2009), a new daily habit took a median of 66 days to feel automatic, with a range from 18 to 254 days. Simple habits come sooner; harder ones take longer. A 90-day season gives most habits time to settle in, which is why the 90-Day League is 90 days long.`,
   },
@@ -255,7 +255,7 @@ Practice is the input. Sleep is where the brain actually does the rewiring.
 
 **What this means:**
 - Pulling an all-nighter to study is counterproductive — you're skipping the phase where memories get consolidated
-- Consistent 7-8 hours of sleep isn't just "rest" — it's active brain maintenance
+- Consistent sleep of 7 or more hours isn't just "rest" — it's active brain maintenance
 - If you're trying to build a new habit or learn a skill, protecting your sleep is part of the process
 
 This is why "Sleep 7-8 hours" is a preset habit in this app. It's not just a health metric — it's the foundation of neuroplasticity itself. Without good sleep, your daily habit repetitions don't consolidate as effectively.`,
@@ -296,13 +296,13 @@ The PFC is like a CEO. It manages impulses from lower brain regions (like the am
 \`\`\`
 
 **Why the PFC gets exhausted:**
-- Decision fatigue: making dozens of small choices drains PFC energy
+- Decision fatigue: many small choices in a row can leave you tired and more likely to take the easy option
 - Stress and lack of sleep drastically reduce PFC activity, allowing impulse-driven brain regions to take over
 - Constant notifications fragment focus and overload executive working memory
 
 **How to strengthen your PFC:**
-1. **Single-task with focus blocks (Pomodoro):** Training sustained attention strengthens prefrontal neural networks.
-2. **Use a decision journal:** Slowing down to write your rationale engages deliberate, high-level prefrontal analysis rather than knee-jerk impulses.
+1. **Single-task with focus blocks (Pomodoro):** One task at a time, with short breaks, makes deep focus easier to keep up.
+2. **Use a decision journal:** Writing your reasons down slows you down, so you decide on purpose instead of on impulse.
 3. **Label emotions:** When you name an emotion, prefrontal activity increases while amygdala reactivity drops (affect labeling).`,
   },
   {

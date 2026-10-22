@@ -233,8 +233,9 @@ export function Leagues({ store, onOpenAuth }: LeaguesProps) {
 
         {activeLeague === 'ninetyDay' && (
           <Disclosure title="Why 90 days" icon={Brain}>
-            A new habit usually takes about 66–90 days of steady repetition to become automatic. This league
-            rewards that long-term consistency.
+            In one well-known study, a new daily habit took a median of 66 days to feel automatic, anywhere from 18
+            to 254 days. A 90-day season gives many habits time to settle in, and this league rewards that long-term
+            consistency.
           </Disclosure>
         )}
 

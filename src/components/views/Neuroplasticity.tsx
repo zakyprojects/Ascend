@@ -70,7 +70,7 @@ const STEPS: { title: string; text: string }[] = [
   { title: 'Start small, repeat daily', text: 'Five minutes every day beats two hours once a week. Frequency is what wires it in.' },
   { title: 'Stay just past easy', text: 'Aim for practice that is a little hard. Too easy teaches nothing new; too hard makes you quit.' },
   { title: 'Tie it to a cue', text: 'Same time or same trigger each day ("after coffee, I read") so the brain links the two.' },
-  { title: 'Sleep 7–9 hours', text: 'Sleep is when the brain keeps the useful links from the day and clears the rest.' },
+  { title: 'Sleep 7 or more hours', text: 'Sleep is when the brain keeps the useful links from the day and clears the rest.' },
   { title: 'Move your body', text: 'Exercise raises BDNF, a protein that helps new connections grow. Even a brisk walk helps.' },
   { title: 'Add something new', text: 'New places, skills and people tell the brain to pay attention and stay flexible.' },
   { title: 'Give it a reason', text: 'Effort that matters to you sticks better. Remember why you started when it gets dull.' },
@@ -94,8 +94,8 @@ const TIMELINE: { when: string; title: string; text: string }[] = [
   },
   {
     when: '3 months and on',
-    title: 'The brain itself changes',
-    text: 'Scans show measurable changes after about three months of steady practice, like new jugglers in one study. Stop practising and they slowly fade, so keep going.',
+    title: 'Keep it going',
+    text: 'Brain scans of people learning to juggle showed changes within a few weeks, and the changes shrank after they stopped practising. Keep going so it stays.',
   },
 ];
 
@@ -178,7 +178,7 @@ export function Neuroplasticity({ store, onViewChange }: { store: AppStore; onVi
                     <h3 className="item-name text-sm">Structural change</h3>
                     <p className="mt-0.5 text-xs leading-relaxed text-content-muted">
                       The brain’s shape changes with use. London taxi drivers, who memorise thousands of streets, have a larger
-                      memory area (hippocampus) than average.
+                      back part of the hippocampus, a memory area used for finding your way.
                     </p>
                   </div>
                   <div>

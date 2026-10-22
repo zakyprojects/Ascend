@@ -404,7 +404,7 @@ export const LEAGUE_CONFIG: Record<LeagueType, { name: string; description: stri
   },
   ninetyDay: {
     name: '90-Day League',
-    description: 'The neuroplasticity league. 90 days of sustained effort rewires your brain.',
+    description: 'A 90-day season: long enough for many habits to settle in.',
     icon: 'Brain',
     color: '#a855f7',
   },
