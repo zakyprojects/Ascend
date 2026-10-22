@@ -1,6 +1,6 @@
 // Fixtures for the shared local-midnight-safe date utilities: day keys, Monday weeks,
 // week stepping across year ends, and streaks. CI runs them in more than one time zone.
-import { addDays, addWeeks, calculateBestStreak, calculateStreak, todayKey, weekKey } from '../dates';
+import { addDays, addWeeks, calculateBestStreak, calculateStreak, todayKey, uid, weekKey } from '../dates';
 
 function assert(condition: boolean, msg: string) {
   if (!condition) {
@@ -53,6 +53,15 @@ const local = (key: string, hour = 0, minute = 0) => {
   assert(calculateBestStreak(done(['2026-12-30', '2026-12-31', '2027-01-01', '2027-01-05']), 'daily') === 3, 'best across year end');
   const w = (k: string) => weekKey(local(k, 12));
   assert(calculateStreak([w('2026-12-21'), w('2026-12-28'), w('2027-01-04')], 'weekly', local('2027-01-06', 9)) === 3, 'weekly streak across year end');
+}
+
+// 4. uid(): the time part is a whole number (the trusted clock is fractional), so new ids
+//    hold only base-36 characters.
+{
+  for (let i = 0; i < 50; i++) {
+    const id = uid();
+    assert(/^[0-9a-z]+$/.test(id), `uid has no dot (${id})`);
+  }
 }
 
 console.log('dates fixtures: all passed');

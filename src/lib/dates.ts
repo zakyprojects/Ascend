@@ -300,7 +300,7 @@ export function calculateActivePlanStreak(
 }
 
 export function uid(): string {
-  return trustedNowMs().toString(36) + Math.random().toString(36).slice(2, 8);
+  return Math.floor(trustedNowMs()).toString(36) + Math.random().toString(36).slice(2, 8);
 }
 
 /** Generates a padded 6-digit numeric UID string (e.g. "049201" or "849201") */
