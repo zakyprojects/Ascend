@@ -133,6 +133,7 @@ export function HabitTracker({ store }: { store: AppStore }) {
           lead={{
             label: 'To do',
             value: <CountUp value={toDo.length} />,
+            valueClassName: 'text-brand-text',
             hint:
               habits.length === 0
                 ? 'Add a habit to start.'

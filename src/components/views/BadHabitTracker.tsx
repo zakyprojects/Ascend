@@ -118,6 +118,7 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
             label: 'To log today',
             value: <CountUp value={toLog.length} />,
             hint: toLog.length === 0 && habits.length > 0 ? 'All logged for today.' : undefined,
+            valueClassName: 'text-brand-text',
           }}
           stats={[{ label: 'Bad habits', value: <CountUp value={habits.length} /> }]}
           side={<CapMeterConnected state={store.state} capId="badHabitsResisted" bare />}
