@@ -3,6 +3,7 @@ import { COMMON_EMOTIONS } from '@/components/pfc/pfcLists';
 import { LESSONS, LESSON_CATEGORIES } from '@/lib/lessons';
 import { PFC_POINTS } from '@/lib/pointsConfig';
 import { LINK_CLASS } from '../../components/MarketingLayout';
+import { Screenshot } from '../../components/Screenshot';
 import { featurePath } from '../catalog';
 import { Block, Cards, Note, Rules, Steps, type FeatureContent } from '../blocks';
 import { pts, range } from '../format';
@@ -133,6 +134,17 @@ export const brainLessons: FeatureContent = {
             },
           ]}
         />
+        <figure className="scroll-rise mt-8">
+          <Screenshot
+            name="schedule-desktop"
+            width={1400}
+            height={727}
+            alt="The Prefrontal Cortex page on the Schedule tab: the live block Python practice, 6:30 PM to 8:00 PM, with 37:51 left, 58% done, and Take a break, Skip block and Mark completed buttons"
+          />
+          <figcaption className="mt-3 text-center text-sm text-content-muted">
+            The Schedule tab during a planned block: the countdown, how far through it you are, and what you can do next.
+          </figcaption>
+        </figure>
         <Note title="One plan, two views.">
           Completing a block here is the same as ticking it off in the Time Tracker, so it counts toward that page’s daily
           points. Stopping the schedule takes you back to the Focus tab and leaves your blocks as they are.
