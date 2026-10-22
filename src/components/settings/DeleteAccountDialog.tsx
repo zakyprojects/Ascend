@@ -7,6 +7,8 @@ import { CaptchaSlot } from '@/components/ui/CaptchaSlot';
 interface DeleteAccountDialogProps {
   open: boolean;
   username: string;
+  /** The account's email, for password managers (hidden field before the password). */
+  email: string;
   isDeleting: boolean;
   error: string | null;
   onClose: () => void;
@@ -18,7 +20,7 @@ interface DeleteAccountDialogProps {
  * (D-S1; the password is checked before the server deletes, Security B1). The text names what
  * goes with the account, including shared plans and partners.
  */
-export function DeleteAccountDialog({ open, username, isDeleting, error, onClose, onConfirm }: DeleteAccountDialogProps) {
+export function DeleteAccountDialog({ open, username, email, isDeleting, error, onClose, onConfirm }: DeleteAccountDialogProps) {
   const [typed, setTyped] = useState('');
   const [password, setPassword] = useState('');
   // Every open starts empty.
@@ -76,6 +78,9 @@ export function DeleteAccountDialog({ open, username, isDeleting, error, onClose
           autoCapitalize="none"
           spellCheck={false}
         />
+        {/* Tells password managers whose password this is, so they fill the account here and not
+            into the "type your username" field above. */}
+        <input type="hidden" autoComplete="username" value={email} readOnly />
         <PasswordInput
           id="delete-account-password"
           label="Your password"

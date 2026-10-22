@@ -166,6 +166,8 @@ export function AccountSection({ store, onOpenAuth }: AccountSectionProps) {
               alert="manual"
               className="space-y-3 pb-2"
             >
+              {/* Tells password managers which saved login this password change is for. */}
+              <input type="hidden" autoComplete="username" value={currentUser?.email || ''} readOnly />
               <PasswordInput
                 id="settings-current-password"
                 label="Current password"
@@ -266,6 +268,7 @@ export function AccountSection({ store, onOpenAuth }: AccountSectionProps) {
         <DeleteAccountDialog
           open={showDeleteConfirm}
           username={currentUser?.username || ''}
+          email={currentUser?.email || ''}
           isDeleting={isDeletingAccount}
           error={deleteAccountError ? toUserMessage(deleteAccountError, "Couldn't delete your account. Try again.") : null}
           onClose={() => setShowDeleteConfirm(false)}

@@ -310,6 +310,12 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
     setSignupStep('choice');
     setLoginStep('form');
     setResetSentTo(null);
+    // Each screen starts with empty credentials: a login (or browser-autofilled) email and
+    // password never carry into Create account, and back.
+    setEmail('');
+    setPassword('');
+    setConfirmPassword('');
+    setTermsAccepted(false);
   }
   const forgot = mode === 'login' && loginStep === 'forgot';
   const screen: AuthScreen = mode === 'signup' ? `signup-${signupStep}` : mode;
@@ -937,6 +943,9 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
                         placeholder="e.g. Alex_Mastery"
                         value={username}
                         onChange={(e) => setUsername(e.target.value)}
+                        autoComplete="off"
+                        autoCapitalize="none"
+                        spellCheck={false}
                         className={`${INPUT_CLASS} input-has-icon pr-24`}
                       />
                       <FocusLine />
