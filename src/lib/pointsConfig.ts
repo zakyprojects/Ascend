@@ -211,20 +211,6 @@ export const TIME_TRACKER_POINTS = {
 } as const;
 
 /**
- * Calculates raw points for reading pages.
- * 2 pages = 1 point (Math.floor).
- */
-export function calculateReadingPoints(
-  pagesRead: number,
-  dailyCapRemaining: number = READING_POINTS.dailyCap
-): { rawPoints: number; pointsToAward: number } {
-  const safePages = Math.max(0, Number(pagesRead) || 0);
-  const rawPoints = Math.floor(safePages / READING_POINTS.pagesPerPoint);
-  const pointsToAward = Math.min(rawPoints, Math.max(0, dailyCapRemaining));
-  return { rawPoints, pointsToAward };
-}
-
-/**
  * Calculates the percentage of routine completed and the corresponding points awarded.
  * Formula:
  * totalBlocks = count of all blocks in today's dailyLogs[date]
