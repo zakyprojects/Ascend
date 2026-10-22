@@ -12,6 +12,13 @@ import {
   getMonthPeriodId,
   getSeasonPeriodId,
 } from '../leagueTime';
+import {
+  getLeaguePeriodEnd,
+  getLeaguePeriodLabel,
+  getLeaguePointsPeriods,
+  getTimeUntilReset,
+} from '../leagues';
+import type { LeagueType } from '@/types';
 
 function assert(condition: boolean, msg: string) {
   if (!condition) {
@@ -170,6 +177,57 @@ function runFixtures() {
     const se = getSeasonEnd(s);
     assert(s.getTime() >= ss.getTime() && s.getTime() < se.getTime(), `Sample ${s.toISOString()} must satisfy ss <= s < se`);
   }
+
+  // Test 10: a season start inside a week or month (Season 2 begins Fri 2026-10-30 00:00 UTC,
+  // inside W:2026-W44 Oct 26 - Nov 2 and M:2026-10). The running period resets at the season start.
+  const utc = (y: number, m: number, d: number, h = 0, min = 0) => new Date(Date.UTC(y, m - 1, d, h, min));
+  const HOUR_MS = 60 * 60 * 1000;
+  const endCases: [LeagueType, Date, Date][] = [
+    ['weekly', utc(2026, 10, 28), utc(2026, 10, 30)],
+    ['monthly', utc(2026, 10, 22), utc(2026, 10, 30)],
+    ['weekly', utc(2026, 10, 31), utc(2026, 11, 2)],
+    ['monthly', utc(2026, 10, 31), utc(2026, 11, 1)],
+    ['weekly', utc(2026, 11, 4), utc(2026, 11, 9)],
+    ['monthly', utc(2026, 9, 15), utc(2026, 10, 1)],
+    ['weekly', utc(2026, 10, 21), utc(2026, 10, 26)],
+    ['ninetyDay', utc(2026, 10, 28), utc(2026, 10, 30)],
+    ['weekly', utc(2027, 1, 26), utc(2027, 1, 28)],
+  ];
+  for (const [type, at, want] of endCases) {
+    const got = getLeaguePeriodEnd(type, at);
+    assert(got.getTime() === want.getTime(), `getLeaguePeriodEnd(${type}, ${at.toISOString()}) expected ${want.toISOString()}, got ${got.toISOString()}`);
+  }
+
+  // Countdown just before and just after the season start.
+  assert(getTimeUntilReset('weekly', utc(2026, 10, 29, 23)) === HOUR_MS, 'Weekly countdown 1 h before the season start must be 1 h');
+  assert(getTimeUntilReset('monthly', utc(2026, 10, 29, 23)) === HOUR_MS, 'Monthly countdown 1 h before the season start must be 1 h');
+  assert(getTimeUntilReset('weekly', utc(2026, 10, 30)) === 3 * 24 * HOUR_MS, 'Weekly countdown at the season start must run to Mon Nov 2');
+  assert(getTimeUntilReset('monthly', utc(2026, 10, 30)) === 2 * 24 * HOUR_MS, 'Monthly countdown at the season start must run to Nov 1');
+
+  // Live labels follow the cut.
+  const labelCases: [LeagueType, Date, string][] = [
+    ['weekly', utc(2026, 10, 28), 'Oct 26 – Oct 29'],
+    ['weekly', utc(2026, 10, 31), 'Oct 30 – Nov 1'],
+    ['weekly', utc(2026, 10, 21), 'Oct 19 – Oct 25'],
+    ['monthly', utc(2026, 10, 22), 'Oct 1 – Oct 29'],
+    ['monthly', utc(2026, 10, 31), 'Oct 30 – Oct 31'],
+    ['monthly', utc(2026, 9, 15), 'September 2026'],
+    ['monthly', utc(2026, 11, 15), 'November 2026'],
+  ];
+  for (const [type, at, want] of labelCases) {
+    const got = getLeaguePeriodLabel(type, at);
+    assert(got === want, `getLeaguePeriodLabel(${type}, ${at.toISOString()}) expected "${want}", got "${got}"`);
+  }
+
+  // The points windows the server accepts keep true week/month ends.
+  const pointsBefore = getLeaguePointsPeriods(utc(2026, 10, 28));
+  assert(pointsBefore[0].id === 'W:2026-W44' && pointsBefore[0].start.getTime() === utc(2026, 10, 26).getTime()
+    && pointsBefore[0].end.getTime() === utc(2026, 11, 2).getTime(), 'Points window for W:2026-W44 on Oct 28 must stay [Oct 26, Nov 2)');
+  assert(pointsBefore[13].id === 'M:2026-10' && pointsBefore[13].start.getTime() === utc(2026, 10, 1).getTime()
+    && pointsBefore[13].end.getTime() === utc(2026, 11, 1).getTime(), 'Points window for M:2026-10 on Oct 28 must stay [Oct 1, Nov 1)');
+  const pointsAfter = getLeaguePointsPeriods(utc(2026, 10, 31));
+  assert(pointsAfter[0].start.getTime() === utc(2026, 10, 30).getTime() && pointsAfter[0].end.getTime() === utc(2026, 11, 2).getTime(),
+    'Points window for W:2026-W44 on Oct 31 must be [Oct 30, Nov 2)');
 
   console.log('\nAll leagueTime fixture assertions PASSED successfully!');
 }

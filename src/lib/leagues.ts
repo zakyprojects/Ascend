@@ -62,12 +62,22 @@ export function getLiveLeaguePointsPeriods(now: Date): LeaguePointsPeriod[] {
   return [periods[0], periods[LEAGUE_POINTS_LOOKBACK + 1]];
 }
 
+/**
+ * When the running period resets: a week or month that a season start cuts short ends at that
+ * start, because the new season restarts every league. Not for getLeaguePointsPeriods: the
+ * server only accepts true week/month ends there.
+ */
 export function getLeaguePeriodEnd(type: LeagueType, now: Date): Date {
   switch (type) {
-    case 'weekly': return getWeekEnd(now);
-    case 'monthly': return getMonthEnd(now);
+    case 'weekly': return capAtSeasonEnd(getWeekEnd(now), now);
+    case 'monthly': return capAtSeasonEnd(getMonthEnd(now), now);
     case 'ninetyDay': return getSeasonEnd(now);
   }
+}
+
+function capAtSeasonEnd(periodEnd: Date, now: Date): Date {
+  const seasonEnd = getSeasonEnd(now);
+  return periodEnd.getTime() < seasonEnd.getTime() ? periodEnd : seasonEnd;
 }
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -97,13 +107,22 @@ function seasonRangeLabel(seasonNumber: number): string {
   return `Season ${seasonNumber} (${formatUtcRange(start, end, true)})`;
 }
 
-/** The running period's dates; a week that began before the season starts at the season's first day. */
+/**
+ * The running period's dates. A season start cuts a week or month short: before it the period ends
+ * the day before the season starts, after it the period begins on the season's first day.
+ */
 export function getLeaguePeriodLabel(type: LeagueType, now: Date): string {
   switch (type) {
     case 'weekly':
-      return formatUtcRange(getLeaguePeriodStart('weekly', now), getWeekEnd(now));
-    case 'monthly':
-      return now.toLocaleDateString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' });
+      return formatUtcRange(getLeaguePeriodStart('weekly', now), getLeaguePeriodEnd('weekly', now));
+    case 'monthly': {
+      const start = getLeaguePeriodStart('monthly', now);
+      const end = getLeaguePeriodEnd('monthly', now);
+      if (start.getTime() === getMonthStart(now).getTime() && end.getTime() === getMonthEnd(now).getTime()) {
+        return now.toLocaleDateString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' });
+      }
+      return formatUtcRange(start, end);
+    }
     case 'ninetyDay':
       return seasonRangeLabel(getSeasonNumber(now));
   }
