@@ -77,7 +77,7 @@ import { findCuratedBook } from './books';
 import { uid, generateUUID, generateNumericUID, periodKey, todayKey, isPlanJourneyDoneThisPeriod, calculateActivePlanStreak, getWeekDates, parseDate, getNow, getNextDateKey, weekKey, addDays } from './dates';
 import { computeLinkedGoalProgress, linkedEntryPresent, linkedGoalCrossing, linkedItemExists, linkedGoalUnit } from './linkedGoalMetrics';
 import { autoStatusChanges } from './projectProgress';
-import { reconcileSharedChallengeLifecycle, applyPledgeToggle, mergeSharedChallenge, linkedHabitFor } from './pactLifecycle';
+import { reconcileSharedChallengeLifecycle, applyPledgeToggle, mergeSharedChallenge, linkedHabitFor, planLinkedPactRepairs } from './pactLifecycle';
 import { isPartnershipUser1 } from './partnershipSide';
 import { PresetHabit } from './presets';
 import { sameName } from './uniqueNames';
@@ -228,6 +228,8 @@ export const STATE_SYNC_CHANNEL_NAME = 'ascend-state-sync';
 
 // Global in-flight pledge request lock to prevent double-click race conditions
 const pendingPledgeRequests = new Set<string>();
+/** How many times a day a linked pact's failed save is resent (while online) before it waits for tomorrow. */
+const PACT_RETRY_LIMIT = 3;
 
 export interface StateSyncMessage {
   type: 'ASCEND_STATE_SYNC';
@@ -8046,6 +8048,71 @@ export function useAppState() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [state.sharedChallenges, state.partnerships, state.partnership, state.currentUser, state.username]
   );
+
+  // Habit-linked pacts follow their habit: every minute, a running pact whose own side differs from
+  // its linked habit today is brought in step (planLinkedPactRepairs: a difference seen on two passes
+  // in a row, once per pact per day; a failed save from a habit tick is resent). This covers what a
+  // tick on this device can't: a habit ticked on another device or offline, a pact that arrived from
+  // the partner, a habit added or renamed to the goal later. Only against this session's server copy
+  // of the habits and the pacts: a device cache could be behind (it would undo a tick made elsewhere,
+  // or re-create a pact that was deleted).
+  const pactRepairReady = useRef(false);
+  pactRepairReady.current = isServerDataApplied && partnersStatus === 'ready';
+  const linkedPactUserId = state.currentUser?.id;
+  useEffect(() => {
+    if (!linkedPactUserId || !isSupabaseConfigured) return;
+    const run = () => {
+      if (!pactRepairReady.current || isDeviceOffline()) return;
+      const current = stateRef.current;
+      if (current.currentUser?.id !== linkedPactUserId) return;
+      const today = todayKey();
+      for (const [id, entry] of pactRetry.current) {
+        if (entry.day !== today || entry.failures >= PACT_RETRY_LIMIT) pactRetry.current.delete(id);
+      }
+      const { repairs, diverged } = planLinkedPactRepairs({
+        challenges: current.sharedChallenges || [],
+        habits: current.habits || [],
+        sideOf: (c) => {
+          const partnership =
+            (current.partnerships || []).find((p) => p.id === c.partnershipId) ||
+            (current.partnership?.id === c.partnershipId ? current.partnership : null);
+          return partnership ? isPartnershipUser1(partnership, current.currentUser?.id, current.username) : null;
+        },
+        today,
+        isBusy: (id) => (pledgeWrites.current.get(id)?.inFlight ?? 0) > 0 || pendingPledgeRequests.has(id),
+        divergedBefore: pactDiverged.current,
+        attemptedOn: pactRepairedOn.current,
+        retry: new Set(pactRetry.current.keys()),
+      });
+      pactDiverged.current = diverged;
+      for (const { challenge, isUser1, done, isRetry } of repairs) {
+        if (!isRetry) pactRepairedOn.current.set(challenge.id, today);
+        const { updated } = applyPledgeToggle(challenge, isUser1, done);
+        setState((prev) => ({
+          ...prev,
+          sharedChallenges: prev.sharedChallenges.map((c) => (c.id === challenge.id ? updated : c)),
+        }));
+        trackPledgeWrite(challenge.id, saveSharedChallengeSupabase(updated)).then(
+          () => {
+            pactRetry.current.delete(challenge.id);
+            syncBroadcaster.broadcast('CHALLENGE_UPDATED', updated);
+          },
+          (err) => {
+            console.error('Failed to bring a linked pact in step with its habit:', err);
+            const entry = pactRetry.current.get(challenge.id);
+            pactRetry.current.set(challenge.id, {
+              day: today,
+              failures: (entry?.day === today ? entry.failures : 0) + 1,
+            });
+          }
+        );
+      }
+    };
+    const timer = window.setInterval(run, 60_000);
+    return () => window.clearInterval(timer);
+    // False positive: setState/trackPledgeWrite are stable; everything else is read from refs.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [linkedPactUserId]);
 
   /** Marks these notices read at once; a failed save puts them back as unread with a toast (N7). */
   const markNotificationsRead = useCallback((notificationIds: string[]) => {
