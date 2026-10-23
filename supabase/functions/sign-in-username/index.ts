@@ -22,7 +22,7 @@
  * Deploy with "Verify JWT" OFF (a sign-in endpoint: callers have no user token).
  * SUPABASE_URL, SUPABASE_ANON_KEY and SUPABASE_SERVICE_ROLE_KEY are provided. Optional
  * SIGN_IN_SECRET_KEY: an sb_secret_ key, for the IP forwarding above.
- * Optional ALLOWED_ORIGINS: comma-separated browser origins allowed by CORS (default: production
+ * Optional ALLOWED_ORIGINS: comma-separated browser origins allowed by CORS (default: both production addresses
  * plus http://localhost / 127.0.0.1 on any port).
  */
 import { createClient } from 'npm:@supabase/supabase-js@2';
@@ -31,7 +31,7 @@ import { createClient } from 'npm:@supabase/supabase-js@2';
 const USERNAME_PATTERN = /^[A-Za-z0-9_-]{3,20}$/;
 const MAX_PASSWORD_LENGTH = 256;
 const MAX_CAPTCHA_TOKEN_LENGTH = 4096;
-const DEFAULT_ORIGINS = ['https://ascend-neon.vercel.app'];
+const DEFAULT_ORIGINS = ['https://ascendday.com', 'https://ascend-neon.vercel.app'];
 const LOCAL_ORIGIN = /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/;
 
 const env = (name: string): string => {
