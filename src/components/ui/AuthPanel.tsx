@@ -636,7 +636,7 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
       } else if (authErr.status === 500 || authErr.message?.toLowerCase().includes('error sending')) {
         // The mail service refused it (for example its daily cap); Supabase gives the same error for every
         // such cause, so the text names no exact time.
-        showError(`We couldn’t send the email right now. Try again later. If it keeps failing, write to ${LEGAL_CONTACT_EMAIL}.`);
+        showError(`We couldn’t send the email right now. Try again later, or use Continue with Google if your account uses the same email. If it keeps failing, write to ${LEGAL_CONTACT_EMAIL}.`);
       } else {
         showError(toUserMessage(err, 'Couldn’t send the email. Try again.'));
       }
