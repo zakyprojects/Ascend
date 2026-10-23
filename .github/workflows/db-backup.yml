@@ -19,6 +19,9 @@ concurrency:
 jobs:
   backup:
     name: Dump, encrypt, upload
+    # Runs only in the studio repo, which holds the DB secrets. Production gets this file with every
+    # push but has no secrets, so there the job is skipped instead of failing (same database).
+    if: github.repository == 'ZakriaKhan55/ascend-studio'
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
