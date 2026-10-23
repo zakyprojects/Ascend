@@ -924,7 +924,30 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
                   </span>
                   <ArrowRight size={18} className="shrink-0 transition-transform duration-base group-hover:translate-x-0.5" />
                 </button>
-                {googleButton}
+                {/* Same card shape as the two choices around it. */}
+                <button
+                  type="button"
+                  onClick={handleGoogleSignIn}
+                  disabled={loading || googleLoading}
+                  className="group w-full p-4 bg-bg-700 hover:bg-bg-600 border border-overlay-default text-content-primary rounded-xl transition-colors duration-base flex items-center gap-3 text-left disabled:opacity-50"
+                >
+                  <span className="w-9 h-9 shrink-0 rounded-lg bg-bg-800 border border-overlay-subtle flex items-center justify-center">
+                    <GoogleIcon />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm font-semibold">Continue with Google</span>
+                    <span className="block text-micro text-content-muted mt-0.5">Use your Google account. No password to remember.</span>
+                  </span>
+                  {googleLoading ? (
+                    <>
+                      <AscendLoadingIndicator size="sm" />
+                      <span className="sr-only">Opening Google…</span>
+                    </>
+                  ) : (
+                    <ArrowRight size={18} className="shrink-0 text-content-muted transition-transform duration-base group-hover:translate-x-0.5" />
+                  )}
+                </button>
+                {googleError && <FieldErrorBubble message={googleError} attached={false} />}
                 <button
                   type="button"
                   onClick={handleGuestSignIn}
@@ -1164,6 +1187,16 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
               <FormAlert />
               <CaptchaSlot />
 
+              {/* The form's status sits above its button, so the Google option below stays apart. */}
+              <p
+                aria-live="polite"
+                className={`text-xs text-center transition-colors duration-base ${
+                  phase === 'success' || (phase === 'idle' && formReady) ? 'text-brand-text' : 'text-content-muted'
+                }`}
+              >
+                {statusLine}
+              </p>
+
               {/* Muted until every required field is valid, then primary. Always clickable, so the
                   form's own messages still show for a missing field. */}
               <button
@@ -1194,14 +1227,6 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
                   </>
                 )}
               </button>
-              <p
-                aria-live="polite"
-                className={`text-xs text-center transition-colors duration-base ${
-                  phase === 'success' || (phase === 'idle' && formReady) ? 'text-brand-text' : 'text-content-muted'
-                }`}
-              >
-                {statusLine}
-              </p>
             </Form>
 
             {mode === 'login' && (
