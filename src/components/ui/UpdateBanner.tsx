@@ -4,6 +4,34 @@ import { APP_BUILD_ID } from '@/lib/version';
 import { trustedNowMs } from '@/lib/clock';
 import { isDeviceOffline } from '@/lib/deviceOffline';
 
+// A browser can open the app from its own copy of an old build (a tab restored at browser start
+// is not revalidated). Found that early, before the user has done anything, the newer build loads
+// at once instead of waiting behind the banner. Once per build per tab, so it can never loop.
+const BOOT_UPDATE_WINDOW_MS = 10_000;
+const BOOT_RELOAD_KEY = 'ascend-boot-reload-build';
+let userHasInteracted = false;
+if (typeof window !== 'undefined') {
+  const markInteracted = () => {
+    userHasInteracted = true;
+  };
+  for (const type of ['pointerdown', 'keydown'] as const) {
+    window.addEventListener(type, markInteracted, { once: true, capture: true });
+  }
+}
+
+/** Reloads into the newer build when the page has only just opened; false when the banner should show. */
+function reloadIfJustOpened(buildId: string): boolean {
+  if (userHasInteracted || performance.now() > BOOT_UPDATE_WINDOW_MS) return false;
+  try {
+    if (sessionStorage.getItem(BOOT_RELOAD_KEY) === buildId) return false;
+    sessionStorage.setItem(BOOT_RELOAD_KEY, buildId);
+  } catch {
+    return false;
+  }
+  window.location.reload();
+  return true;
+}
+
 /** True once a newer build is live (version.json differs, or a service worker replaced the old one). */
 export function useUpdateAvailable(): boolean {
   const [hasUpdate, setHasUpdate] = useState(false);
@@ -23,6 +51,7 @@ export function useUpdateAvailable(): boolean {
       if (!res.ok) return;
       const data = await res.json();
       if (data && data.buildId && data.buildId !== APP_BUILD_ID) {
+        if (reloadIfJustOpened(String(data.buildId))) return;
         setHasUpdate(true);
       }
     } catch {
