@@ -2,8 +2,13 @@ name: DB backup
 
 # Encrypted copy of the live Supabase database every 3 days (~02:00 PKT), kept for 30 days
 # as a workflow artifact. Free-plan Supabase has no managed backups; this is the restore point.
-# Contents: public schema (structure + data, minus pure log tables) and auth users/identities (data).
-# Restore needs BACKUP_PASSPHRASE: gpg -d ascend-db-*.tar.gpg | tar -x, then pg_restore.
+# Contents (one consistent snapshot): public schema (structure + data, minus pure log tables),
+# auth users/identities (table definitions + data), cron jobs, roles, and a manifest of row
+# counts, object counts, API-role privileges and the realtime table list.
+# restore-test then proves every new backup decrypts and restores into an empty Postgres 17 and
+# matches its manifest exactly. It gets only BACKUP_PASSPHRASE, never the database URL.
+# Manual restore needs BACKUP_PASSPHRASE: gpg -d ascend-db-*.tar.gpg | tar -x, then the order
+# in the restore-test steps.
 on:
   schedule:
     - cron: '0 21 */3 * *' # 21:00 UTC = 02:00 PKT
@@ -16,6 +21,10 @@ concurrency:
   group: db-backup
   cancel-in-progress: false
 
+env:
+  # Public tables whose rows are not backed up (structure only).
+  DATA_EXCLUDED_TABLES: ascend_guest_cleanup_log sign_in_failures
+
 jobs:
   backup:
     name: Dump, encrypt, upload
@@ -24,7 +33,13 @@ jobs:
     if: github.repository == 'ZakriaKhan55/ascend-studio'
     runs-on: ubuntu-24.04
     timeout-minutes: 15
+    outputs:
+      name: ${{ steps.encrypt.outputs.name }}
     steps:
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: scripts/db-backup
+
       - name: Install PostgreSQL 17 client (must match the server major version)
         run: |
           sudo apt-get update -qq
@@ -32,29 +47,58 @@ jobs:
           sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
           sudo apt-get install -y -qq postgresql-client-17
 
-      - name: Dump public schema and auth users
+      - name: Dump database, cron jobs, roles and manifest (one snapshot)
         env:
           DB_URL: ${{ secrets.SUPABASE_DB_URL }}
         run: |
           set -euo pipefail
-          PG_DUMP=/usr/lib/postgresql/17/bin/pg_dump
+          BIN=/usr/lib/postgresql/17/bin
           mkdir dump
-          "$PG_DUMP" "$DB_URL" --format=custom --no-owner --schema=public \
-            --exclude-table-data=public.ascend_guest_cleanup_log \
-            --exclude-table-data=public.sign_in_failures \
-            --file=dump/public.dump
-          "$PG_DUMP" "$DB_URL" --format=custom --data-only \
-            --table=auth.users --table=auth.identities \
-            --file=dump/auth.dump
+
+          # Hold one read-only transaction open and export its snapshot, so every dump and the
+          # manifest below see exactly the same data.
+          coproc HOLD { "$BIN/psql" "$DB_URL" -XAtq -v ON_ERROR_STOP=1; }
+          echo "BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY; SELECT pg_export_snapshot();" >&"${HOLD[1]}"
+          read -r SNAP <&"${HOLD[0]}"
+
+          EXCLUDE=()
+          for t in $DATA_EXCLUDED_TABLES; do EXCLUDE+=(--exclude-table-data="public.$t"); done
+          "$BIN/pg_dump" "$DB_URL" --snapshot="$SNAP" --format=custom --no-owner --schema=public \
+            "${EXCLUDE[@]}" --file=dump/public.dump
+          "$BIN/pg_dump" "$DB_URL" --snapshot="$SNAP" --format=custom --schema-only \
+            --table=auth.users --table=auth.identities --file=dump/auth-schema.dump
+          "$BIN/pg_dump" "$DB_URL" --snapshot="$SNAP" --format=custom --data-only \
+            --table=auth.users --table=auth.identities --file=dump/auth.dump
+
+          "$BIN/psql" "$DB_URL" -XAtq -v ON_ERROR_STOP=1 -F $'\t' \
+            -v snap="$SNAP" -v excluded="$DATA_EXCLUDED_TABLES" <<'SQL'
+          BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY;
+          SET TRANSACTION SNAPSHOT :'snap';
+          \o dump/manifest.tsv
+          \i scripts/db-backup/manifest.sql
+          \o dump/cron-jobs.json
+          SELECT json_agg(json_build_object('jobname', jobname, 'schedule', schedule, 'active', active,
+                                            'command', command) ORDER BY jobname) FROM cron.job;
+          \o dump/roles.txt
+          SELECT rolname FROM pg_roles WHERE rolname !~ '^pg_' AND rolname <> 'postgres' ORDER BY 1;
+          \o
+          COMMIT;
+          SQL
+
+          exec {HOLD[1]}>&-
+          wait "$HOLD_PID"
           ls -l dump
+          grep -E '^(rows|objects)' dump/manifest.tsv | cut -f2,3
 
       - name: Encrypt
+        id: encrypt
         env:
           PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
         run: |
           set -euo pipefail
           NAME="ascend-db-$(date -u +%Y-%m-%d)"
           echo "NAME=$NAME" >> "$GITHUB_ENV"
+          echo "name=$NAME" >> "$GITHUB_OUTPUT"
           tar -cf - -C dump . \
             | gpg --batch --yes --pinentry-mode loopback --passphrase-fd 3 \
                 --symmetric --cipher-algo AES256 --output "$NAME.tar.gpg" 3<<<"$PASSPHRASE"
@@ -69,3 +113,114 @@ jobs:
           retention-days: 30
           compression-level: 0
           if-no-files-found: error
+
+  restore-test:
+    name: Restore into empty Postgres 17 and compare
+    needs: backup
+    if: github.repository == 'ZakriaKhan55/ascend-studio'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: throwaway
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      # The throwaway container only; this job has no access to the real database.
+      PGHOST: localhost
+      PGUSER: postgres
+      PGPASSWORD: throwaway
+      PGDATABASE: postgres
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: scripts/db-backup
+
+      - name: Install PostgreSQL 17 client
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-common
+          sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
+          sudo apt-get install -y -qq postgresql-client-17
+
+      - name: Download this run's backup
+        uses: actions/download-artifact@v8
+        with:
+          name: ${{ needs.backup.outputs.name }}
+
+      - name: Decrypt
+        env:
+          PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+        run: |
+          set -euo pipefail
+          mkdir dump
+          gpg --batch --pinentry-mode loopback --passphrase-fd 3 \
+              --decrypt "${{ needs.backup.outputs.name }}.tar.gpg" 3<<<"$PASSPHRASE" \
+            | tar -x -C dump
+          ls -l dump
+
+      - name: Restore (roles and stubs, auth tables, auth data, public)
+        run: |
+          set -euo pipefail
+          BIN=/usr/lib/postgresql/17/bin
+          PSQL=("$BIN/psql" -X -q -v ON_ERROR_STOP=1)
+
+          # 1. What Supabase provides and a public-schema dump does not: roles, the auth and
+          #    extensions schemas, the extensions column defaults use, and auth.uid()/jwt()/role()
+          #    (policies call them; plain stubs are enough to create them). The dump creates
+          #    schema public itself, so the empty default one goes.
+          while read -r role; do "${PSQL[@]}" -c "CREATE ROLE \"$role\" NOLOGIN"; done < dump/roles.txt
+          "${PSQL[@]}" <<'SQL'
+          CREATE SCHEMA auth;
+          CREATE SCHEMA extensions;
+          CREATE EXTENSION pgcrypto SCHEMA extensions;
+          CREATE EXTENSION "uuid-ossp" SCHEMA extensions;
+          CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql STABLE AS 'SELECT NULL::uuid';
+          CREATE FUNCTION auth.jwt() RETURNS jsonb LANGUAGE sql STABLE AS 'SELECT NULL::jsonb';
+          CREATE FUNCTION auth.role() RETURNS text LANGUAGE sql STABLE AS 'SELECT NULL::text';
+          DROP SCHEMA public;
+          SQL
+
+          # 2. auth tables, 3. auth rows (public tables reference auth.users), 4. public.
+          "$BIN/pg_restore" --exit-on-error --no-owner --no-privileges -d "$PGDATABASE" dump/auth-schema.dump
+          "$BIN/pg_restore" --exit-on-error -d "$PGDATABASE" dump/auth.dump
+          "$BIN/pg_restore" --exit-on-error --no-owner -d "$PGDATABASE" dump/public.dump
+
+      - name: Compare with the manifest
+        run: |
+          set -euo pipefail
+          export LC_ALL=C
+          /usr/lib/postgresql/17/bin/psql -XAtq -v ON_ERROR_STOP=1 -F $'\t' \
+            -v excluded="$DATA_EXCLUDED_TABLES" -f scripts/db-backup/manifest.sql > restored.tsv
+
+          fail=0
+          # Rows, object counts and privileges must be identical (realtime exists only live).
+          if ! diff <(grep -v '^realtime' dump/manifest.tsv) restored.tsv > manifest.diff; then
+            echo "::error::Restored database differs from the manifest:"; cat manifest.diff; fail=1
+          fi
+          # Every table in the realtime publication must exist in the restored copy.
+          while IFS=$'\t' read -r _ table _; do
+            grep -qxF "$table" <(cut -f2 restored.tsv) \
+              || { echo "::error::Realtime table $table is missing after restore"; fail=1; }
+          done < <(grep '^realtime' dump/manifest.tsv)
+          # The cron export must list jobs (a real restore re-creates them from it by hand).
+          cron_jobs=$(jq length dump/cron-jobs.json)
+          [ "$cron_jobs" -gt 0 ] || { echo "::error::cron-jobs.json lists no jobs"; fail=1; }
+
+          {
+            echo "### Restore test: $([ $fail = 0 ] && echo passed || echo FAILED)"
+            echo "| Check | Live (manifest) | Restored |"
+            echo "|---|---|---|"
+            join -t $'\t' -j1 \
+                <(grep -E '^(rows|objects)' dump/manifest.tsv | awk -F'\t' '{print $1" "$2"\t"$3}' | sort) \
+                <(grep -E '^(rows|objects)' restored.tsv | awk -F'\t' '{print $1" "$2"\t"$3}' | sort) \
+              | awk -F'\t' '{print "| "$1" | "$2" | "$3" |"}'
+            echo
+            echo "Privilege lines compared: $(grep -c '^grant' restored.tsv)." \
+                 "Realtime tables: $(grep -c '^realtime' dump/manifest.tsv)." \
+                 "Cron jobs exported: $cron_jobs."
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit $fail
