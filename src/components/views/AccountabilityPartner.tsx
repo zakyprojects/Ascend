@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { Check, Clock, Flame, Plus, RotateCcw, Trash2, UserPlus, UserMinus, Users, WifiOff, Zap } from 'lucide-react';
+import { BookOpen, Check, Clock, Flame, Plus, RotateCcw, Trash2, UserPlus, UserMinus, Users, WifiOff, Zap } from 'lucide-react';
 import { AscendLoadingIndicator } from '@/components/ui/AscendLoadingIndicator';
 import { useAsyncAction, useAsyncActionKey } from '@/lib/useAsyncAction';
 import { AppStore } from '@/lib/store';
@@ -25,6 +25,7 @@ import { toUserMessage } from '@/lib/userMessage';
 import { sameName } from '@/lib/uniqueNames';
 import { habitForPactGoal, isPactLinkableHabit, linkedHabitFor } from '@/lib/pactLifecycle';
 import { Partnership, SharedChallenge, PartnerInvite } from '@/types';
+import type { View } from '@/components/AppShell';
 import { actionFeedback } from '@/lib/actionFeedback';
 
 const EMPTY_PARTNERSHIPS: Partnership[] = [];
@@ -48,7 +49,7 @@ function initial(name: string | null | undefined): string {
   return (name || '?').charAt(0).toUpperCase();
 }
 
-export function AccountabilityPartner({ store }: { store: AppStore }) {
+export function AccountabilityPartner({ store, onNavigate }: { store: AppStore; onNavigate?: (view: View) => void }) {
   const { showSuccessToast, showInfoToast, showErrorToast } = useToast();
   const { isLoading: isStatsLoading, executeFn: executeStatsFetch } = useAsyncAction();
   const { isLoading: isSubmittingInvite, executeFn: executeSendInvite } = useAsyncAction();
@@ -221,7 +222,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
   }, [partnerships, challengesFor, currentUser?.id, currentUsername, today]);
 
   const habits = store.state.habits;
-  // Habits a challenge can link to (daily, not Reading), in Habits page order.
+  // Habits a challenge can link to (daily ones, Reading included), in Habits page order.
   const linkableHabits = useMemo(() => (habits || []).filter(isPactLinkableHabit), [habits]);
   // The picker shows the habit the goal text links to (the same rule a tick uses), so it always
   // tells the truth: pick a habit and the goal becomes its name; edit the text and it shows Not linked.
@@ -337,7 +338,9 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
     // habit's points come and go as on the Habits page).
     const linkedHabit = linkedHabitFor(challenge, amUser1, habits || []);
     if (linkedHabit) {
-      store.toggleHabit(linkedHabit.id);
+      // The Reading habit (and its challenges) tick only from logged pages, so this opens Reading.
+      if (linkedHabit.linkedModule === 'reading') onNavigate?.('reading');
+      else store.toggleHabit(linkedHabit.id);
       return;
     }
     return executeWithKey(`log_${challenge.id}`, async () => {
@@ -391,7 +394,9 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
     const mine = goalOf(c, amUser1);
     const theirs = goalOf(c, !amUser1);
     const busy = isKeyLoading(`log_${c.id}`);
-    const linked = Boolean(linkedHabitFor(c, amUser1, habits || []));
+    const linkedHabit = linkedHabitFor(c, amUser1, habits || []);
+    const linked = Boolean(linkedHabit);
+    const readingLinked = linkedHabit?.linkedModule === 'reading';
 
     return (
       <div key={c.id} className="card enter-item p-4 card-hover">
@@ -400,13 +405,16 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
             type="button"
             disabled={busy}
             onClick={() => {
-              if (!mineDone) actionFeedback('tick');
+              if (!mineDone && !readingLinked) actionFeedback('tick');
               handleToggleToday(c);
             }}
-            aria-pressed={mineDone}
+            aria-pressed={readingLinked ? undefined : mineDone}
             aria-label={
-              (mineDone ? `Undo today for ${mine}` : `Mark ${mine} done today`) + (linked ? ' (your habit too)' : '')
+              readingLinked
+                ? `${mine}: ${mineDone ? 'done today' : 'not done yet'}. Open Reading to log pages.`
+                : (mineDone ? `Undo today for ${mine}` : `Mark ${mine} done today`) + (linked ? ' (your habit too)' : '')
             }
+            title={readingLinked ? 'Log pages in Reading to tick this' : undefined}
             className={cx(
               'shrink-0 w-11 h-11 rounded-xl flex items-center justify-center transition-all duration-300 active:scale-90',
               mineDone
@@ -414,7 +422,13 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                 : 'bg-bg-600 text-content-muted hover:bg-bg-500 hover:text-content-secondary'
             )}
           >
-            {busy ? <AscendLoadingIndicator size="sm" /> : <Check size={22} />}
+            {busy ? (
+              <AscendLoadingIndicator size="sm" />
+            ) : readingLinked && !mineDone ? (
+              <BookOpen size={20} aria-hidden="true" />
+            ) : (
+              <Check size={22} />
+            )}
           </button>
 
           <div className="flex-1 min-w-0">
@@ -431,7 +445,11 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
               <span className={theirsDone ? 'text-success-text' : 'text-content-muted'}>
                 {partnerName}: {theirsDone ? 'done' : 'not yet'}
               </span>
-              {linked && <span className="text-content-muted">Linked to your habit</span>}
+              {linked && (
+                <span className="text-content-muted">
+                  {readingLinked ? 'Log pages in Reading to tick this' : 'Linked to your habit'}
+                </span>
+              )}
               {(c.jointStreak || 0) > 0 && (
                 <span className="flex items-center gap-1 text-brand-text">
                   <Flame size={13} aria-hidden="true" />
@@ -764,6 +782,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                     <li>Tick your challenge each day you do it. A day counts when you both tick it.</li>
                     <li>Fill every day of the challenge together to finish it.</li>
                     <li>If your goal is one of your daily habits, the habit and the challenge tick together, here or on Habits.</li>
+                    <li>A Reading (Books) challenge ticks when you log pages or chapters in Reading.</li>
                     <li>Challenges don't give points. They're for keeping each other going.</li>
                   </ul>
                 </Disclosure>

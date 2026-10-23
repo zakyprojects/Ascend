@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Info, ListChecks, Plus } from 'lucide-react';
-import { AppStore } from '@/lib/store';
+import { AppStore, runningPactsLinkedTo } from '@/lib/store';
+import { pactUnlinkNote } from '@/lib/pactLifecycle';
 import { Habit } from '@/types';
 import { getNow, weekKey, formatWeekdayDate, formatWeekdayShort } from '@/lib/dates';
 import { getEffectiveSeasonPoints, ptsText } from '@/lib/leagues';
@@ -99,7 +100,8 @@ export function HabitTracker({ store }: { store: AppStore }) {
       linkedGoalsCount > 0
         ? ` ${linkedGoalsCount} linked weekly goal${linkedGoalsCount > 1 ? 's' : ''} for this week and later go too.`
         : '';
-    return `This removes its history and streak.${points}${goals}`;
+    const pacts = pactUnlinkNote(runningPactsLinkedTo(store.state, habit));
+    return `This removes its history and streak.${points}${goals}${pacts}`;
   };
 
   return (

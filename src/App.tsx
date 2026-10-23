@@ -340,7 +340,7 @@ function App() {
                   {view === 'recovery' && <AddictionRecovery store={store} />}
                   {view === 'prefrontal' && <PrefrontalCortex store={store} onNavigate={setView} />}
                   {view === 'plans' && <ImprovementPlans store={store} />}
-                  {view === 'partner' && <AccountabilityPartner store={store} />}
+                  {view === 'partner' && <AccountabilityPartner store={store} onNavigate={setView} />}
                   {view === 'tiers' && <TierView store={store} />}
                   {view === 'leagues' && <Leagues store={store} onOpenAuth={openAuth} />}
                   {view === 'lessons' && <Lessons store={store} />}

@@ -5,7 +5,9 @@ import {
   linkedHabitFor,
   pactSideDoneOn,
   pactTickRefused,
+  pactUnlinkNote,
   planLinkedPactRepairs,
+  tickLinkedPacts,
   type LinkedPactReconcileInput,
 } from '../pactLifecycle';
 
@@ -75,8 +77,8 @@ function runFixtures() {
   assert(habitForPactGoal('', [steps]) === null, 'empty goal links nothing');
   assert(habitForPactGoal('Gym', [habit('w', 'Gym', { frequency: 'weekly' })]) === null, 'weekly habits do not link');
   assert(
-    habitForPactGoal('Reading (Books)', [habit('r', 'Reading (Books)', { linkedModule: 'reading', isSystemLinked: true })]) === null,
-    'the Reading habit does not link'
+    habitForPactGoal('Reading (Books)', [habit('r', 'Reading (Books)', { linkedModule: 'reading', isSystemLinked: true })])?.id === 'r',
+    'the Reading habit links'
   );
 
   // Each side reads its own goal; a side whose category is not 'habit' links nothing.
@@ -160,4 +162,36 @@ runFixtures();
   const partnerTicked = pact('r1', 'Run', 'Read', { user1DoneDates: [TODAY], user2DoneDates: [TODAY] });
   assert(!pactTickRefused(sent, partnerTicked, true, TODAY), "the partner's side never counts");
   assert(pactTickRefused(sent, droppedTick, true, TODAY) && !pactTickRefused(sent, droppedTick, false, TODAY), 'only the viewer side is compared');
+}
+
+// ── tickLinkedPacts: a habit's today change ticks its running linked pacts (viewer side only) ──
+{
+  const reading = habit('r', 'Reading (Books)', { linkedModule: 'reading', isSystemLinked: true, points: 0 });
+  const linkedMine = pact('t1', 'Reading (Books)', 'Run');
+  const linkedTheirs = pact('t2', 'Run', 'reading (books)');
+  const unlinked = pact('t3', 'Run', 'Walk');
+  const finished = pact('t4', 'Reading (Books)', 'Run', { status: 'completed' });
+  const unknown = pact('t5', 'Reading (Books)', 'Run', { partnershipId: 'other' });
+  const all = [linkedMine, linkedTheirs, unlinked, finished, unknown];
+  const sideOf = (c: SharedChallenge) => (c.partnershipId === 'p1' ? c.id !== 't2' : null);
+
+  const on = tickLinkedPacts(all, sideOf, reading, true);
+  assert(on.ticks.length === 2, 'both running pacts linked on the viewer side tick');
+  assert(on.ticks[0].updated.id === 't1' && on.ticks[0].isUser1, 'user1 side ticked');
+  assert(on.ticks[1].updated.id === 't2' && !on.ticks[1].isUser1, 'user2 side ticked (case-insensitive name)');
+  const t1 = on.challenges[0];
+  assert((t1.user1DoneDates || []).length === 1 && (t1.user2DoneDates || []).length === 0, "the partner's side is never touched");
+  assert(on.challenges[2] === unlinked && on.challenges[3] === finished && on.challenges[4] === unknown, 'unlinked, finished and unknown pacts unchanged');
+
+  const off = tickLinkedPacts(on.challenges, sideOf, reading, false);
+  assert(off.ticks.length === 2 && (off.challenges[0].user1DoneDates || []).length === 0, 'untick removes today again');
+  assert((off.challenges[1].user2DoneDates || []).length === 0, 'user2 untick');
+
+  const none = tickLinkedPacts([unlinked], sideOf, reading, true);
+  assert(none.ticks.length === 0 && none.challenges[0] === unlinked, 'nothing linked, nothing sent');
+
+  assert(pactUnlinkNote(0) === '', 'no running pacts, no note');
+  assert(pactUnlinkNote(1) === ' 1 running challenge uses this habit; it keeps going and you tick it by hand.', 'one pact note');
+  assert(pactUnlinkNote(3) === ' 3 running challenges use this habit; they keep going and you tick them by hand.', 'several pacts note');
+  console.log('tickLinkedPacts fixtures passed');
 }

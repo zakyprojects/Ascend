@@ -77,7 +77,7 @@ import { findCuratedBook } from './books';
 import { uid, generateUUID, generateNumericUID, periodKey, todayKey, isPlanJourneyDoneThisPeriod, calculateActivePlanStreak, getWeekDates, parseDate, getNow, getNextDateKey, weekKey, addDays, formatWeekdayDate } from './dates';
 import { computeLinkedGoalProgress, linkedEntryPresent, linkedGoalCrossing, linkedItemExists, linkedGoalUnit } from './linkedGoalMetrics';
 import { autoStatusChanges } from './projectProgress';
-import { reconcileSharedChallengeLifecycle, applyPledgeToggle, mergeSharedChallenge, linkedHabitFor, habitDoneOn, planLinkedPactRepairs, pactTickRefused } from './pactLifecycle';
+import { reconcileSharedChallengeLifecycle, applyPledgeToggle, mergeSharedChallenge, linkedHabitFor, habitDoneOn, planLinkedPactRepairs, pactTickRefused, tickLinkedPacts, type LinkedPactTick } from './pactLifecycle';
 import { isPartnershipUser1 } from './partnershipSide';
 import { PresetHabit } from './presets';
 import { sameName } from './uniqueNames';
@@ -231,6 +231,24 @@ export const STATE_SYNC_CHANNEL_NAME = 'ascend-state-sync';
 const pendingPledgeRequests = new Set<string>();
 /** How many times a day a linked pact's failed save is resent (while online) before it waits for tomorrow. */
 const PACT_RETRY_LIMIT = 3;
+
+/** The viewer's side of a pact in this state (its partnership, else the current one), or null. */
+function pactSideIn(state: AppState): (challenge: SharedChallenge) => boolean | null {
+  return (challenge) => {
+    const partnership = (state.partnerships || []).find((p) => p.id === challenge.partnershipId) || state.partnership;
+    return partnership ? isPartnershipUser1(partnership, state.currentUser?.id, state.username) : null;
+  };
+}
+
+/** Running pacts linked to this habit, ticked with its new state for today (inside a state update). */
+function tickPactsLinkedTo(state: AppState, habit: Habit, done: boolean) {
+  return tickLinkedPacts(state.sharedChallenges || [], pactSideIn(state), habit, done);
+}
+
+/** How many running pacts this habit ticks (the delete / stop warnings: they become hand-ticked). */
+export function runningPactsLinkedTo(state: AppState, habit: Habit): number {
+  return tickPactsLinkedTo(state, habit, true).ticks.length;
+}
 
 export interface StateSyncMessage {
   type: 'ASCEND_STATE_SYNC';
@@ -1843,6 +1861,29 @@ export function useAppState() {
   const pactDiverged = useRef(new Set<string>());
   const pactRepairedOn = useRef(new Map<string, string>());
   const pactRetry = useRef(new Map<string, { day: string; failures: number }>());
+  // Saves the pacts a habit change ticked (tickPactsLinkedTo), after the state update. `saved`
+  // names what is already kept when a pact save fails (the pact is resent by the linked-pact pass).
+  const sendLinkedPactTicks = useCallback(
+    (ticks: readonly LinkedPactTick[], saved: string) => {
+      for (const { updated, isUser1 } of ticks) {
+        trackPledgeWrite(updated.id, saveSharedChallengeSupabase(updated)).then(
+          (result) => {
+            pactRetry.current.delete(updated.id);
+            settlePactSave(updated, result, isUser1);
+          },
+          (err) => {
+            console.error('Failed to sync a habit-linked shared challenge:', err);
+            // The habit is saved (outbox); the pact keeps the tick on screen and is resent
+            // by the linked-pact pass until the server has it.
+            pactRetry.current.set(updated.id, { day: todayKey(), failures: 0 });
+            dispatchToastError("Challenge tick didn't save", `${saved} "${updated.title}" will try again soon.`);
+          }
+        );
+        syncBroadcaster.broadcast('CHALLENGE_UPDATED', updated);
+      }
+    },
+    [trackPledgeWrite, settlePactSave]
+  );
   // The initial check found no session while this device still holds a saved sign-in (a phone's
   // network not ready yet): the boot loader stays up until Supabase signs it in or drops it, rather
   // than flashing the sign-in page. 'failed' once that takes too long (offline).
@@ -3803,12 +3844,12 @@ export function useAppState() {
       inFlightHabitToggles.current.add(habitId);
 
       let completed = false;
-      const challengesToSync: { updated: SharedChallenge; isUser1: boolean }[] = [];
+      let pactTicks: LinkedPactTick[] = [];
 
       try {
         setState(
           (prev) => {
-            challengesToSync.length = 0;
+            pactTicks = [];
             const habit = prev.habits.find((h) => h.id === habitId);
             if (habit?.linkedModule === 'reading') {
               return prev;
@@ -3862,26 +3903,10 @@ export function useAppState() {
             }
 
             let updatedChallenges = prev.sharedChallenges;
-            if (habit && prev.sharedChallenges.length > 0) {
-
-              updatedChallenges = prev.sharedChallenges.map((target) => {
-                // A finished pact takes no more ticks.
-                if (target.status !== 'active') return target;
-                const challengePartnership =
-                  (prev.partnerships || []).find((p) => p.id === target.partnershipId) || prev.partnership;
-
-                if (!challengePartnership) return target;
-
-                const isUser1 = isPartnershipUser1(challengePartnership, prev.currentUser?.id, prev.username);
-
-                if (linkedHabitFor(target, isUser1, [habit])) {
-                  const { updated } = applyPledgeToggle(target, isUser1, completed);
-                  challengesToSync.push({ updated, isUser1 });
-                  return updated;
-                }
-
-                return target;
-              });
+            if (habit) {
+              const linked = tickPactsLinkedTo(prev, habit, completed);
+              updatedChallenges = linked.challenges;
+              pactTicks = linked.ticks;
             }
 
             return reconcileLinkedWeeklyGoals({
@@ -3893,25 +3918,7 @@ export function useAppState() {
           { immediate: true }
         );
 
-        for (const { updated, isUser1 } of challengesToSync) {
-          trackPledgeWrite(updated.id, saveSharedChallengeSupabase(updated)).then(
-            (result) => {
-              pactRetry.current.delete(updated.id);
-              settlePactSave(updated, result, isUser1);
-            },
-            (err) => {
-              console.error('Failed to sync shared challenge from toggleHabit:', err);
-              // The habit is saved (outbox); the pact keeps the tick on screen and is resent
-              // by the linked-pact pass until the server has it.
-              pactRetry.current.set(updated.id, { day: todayKey(), failures: 0 });
-              dispatchToastError(
-                "Challenge tick didn't save",
-                `Your habit is saved. "${updated.title}" will try again soon.`
-              );
-            }
-          );
-          syncBroadcaster.broadcast('CHALLENGE_UPDATED', updated);
-        }
+        sendLinkedPactTicks(pactTicks, 'Your habit is saved.');
       } finally {
         inFlightHabitToggles.current.delete(habitId);
       }
@@ -4320,7 +4327,10 @@ export function useAppState() {
   const updateReadingProgress = useCallback((bookId: string, pagesDelta: number, newCurrentPage: number) => {
     const date = todayKey();
     const nowIso = trustedNow().toISOString();
+    // Pacts linked to the Reading habit, ticked when the habit's today flips.
+    let pactTicks: LinkedPactTick[] = [];
     setState((prev) => {
+      pactTicks = [];
       const targetUserBook = prev.libraryBooks.find((lb) => lb.id === bookId || lb.linkedBookId === bookId);
       if (!targetUserBook) return prev;
 
@@ -4389,6 +4399,7 @@ export function useAppState() {
       });
 
       let updatedHabits = prev.habits;
+      let updatedChallenges = prev.sharedChallenges;
       let updatedDeletedEntityIds = prev.deletedEntityIds || [];
       if (removedLogIds.length > 0) {
         updatedDeletedEntityIds = Array.from(new Set([...updatedDeletedEntityIds, ...removedLogIds])).slice(-500);
@@ -4404,6 +4415,7 @@ export function useAppState() {
 
         const nowIso = trustedNow().toISOString();
         if (totalPagesToday > 0 && !isCheckedToday) {
+          ({ challenges: updatedChallenges, ticks: pactTicks } = tickPactsLinkedTo(prev, readingHabit, true));
           // Auto-check habit (linked reading habit is zero-point system indicator or tracks completions)
           updatedHabits = prev.habits.map((h) =>
             h.id === readingHabit.id
@@ -4420,6 +4432,7 @@ export function useAppState() {
               : h
           );
         } else if (totalPagesToday <= 0 && isCheckedToday) {
+          ({ challenges: updatedChallenges, ticks: pactTicks } = tickPactsLinkedTo(prev, readingHabit, false));
           // Auto-uncheck habit
           updatedHabits = prev.habits.map((h) =>
             h.id === readingHabit.id
@@ -4444,19 +4457,23 @@ export function useAppState() {
         books: [],
         readingLogs: updatedReadingLogs,
         habits: updatedHabits,
+        sharedChallenges: updatedChallenges,
         deletedEntityIds: updatedDeletedEntityIds,
         ...awards.points,
       });
     },
     { immediate: true }
   );
+    sendLinkedPactTicks(pactTicks, 'Your reading is saved.');
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const finishBook = useCallback((bookId: string, reflection: string) => {
+    let pactTicks: LinkedPactTick[] = [];
     setState(
       (prev) => {
+        pactTicks = [];
         const targetUserBook = prev.libraryBooks.find((lb) => lb.id === bookId || lb.linkedBookId === bookId);
         if (!targetUserBook) return prev;
 
@@ -4521,8 +4538,10 @@ export function useAppState() {
           return lb;
         });
 
-        // The finish log is a reading day, so it ticks the linked Reading habit like logging pages does.
+        // The finish log is a reading day, so it ticks the linked Reading habit (and its pacts) like
+        // logging pages does.
         let updatedHabits = prev.habits;
+        let updatedChallenges = prev.sharedChallenges;
         const readingHabit = prev.habits.find((h) => h.linkedModule === 'reading');
         if (readingHabit && unreadDelta > 0) {
           const key = periodKey(readingHabit.frequency || 'daily');
@@ -4535,6 +4554,7 @@ export function useAppState() {
                 ? { ...h, completions: { ...completions, [key]: { done: true, updatedAt: now } }, updatedAt: now }
                 : h
             );
+            ({ challenges: updatedChallenges, ticks: pactTicks } = tickPactsLinkedTo(prev, readingHabit, true));
           }
         }
 
@@ -4558,21 +4578,25 @@ export function useAppState() {
           libraryBooks: updatedLibraryBooks,
           readingLogs: awards.readingLogs,
           habits: updatedHabits,
+          sharedChallenges: updatedChallenges,
           books: [],
           ...points,
         });
       },
       { immediate: true }
     );
+    sendLinkedPactTicks(pactTicks, 'Your reading is saved.');
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const deleteBook = useCallback((bookId: string) => {
     const currentWeekKey = weekKey(getNow());
+    let pactTicks: LinkedPactTick[] = [];
     void (
       setState(
         (prev) => {
+          pactTicks = [];
           const targetUserBook = prev.libraryBooks.find((lb) => lb.id === bookId || lb.linkedBookId === bookId);
           if (!targetUserBook) return prev;
 
@@ -4612,6 +4636,7 @@ export function useAppState() {
 
         const readingHabit = prev.habits.find((h) => h.linkedModule === 'reading');
         let updatedHabits = prev.habits;
+        let updatedChallenges = prev.sharedChallenges;
         let habitExcisedIds: string[] = [];
 
         if (readingHabit) {
@@ -4626,6 +4651,7 @@ export function useAppState() {
             .reduce((sum, l) => sum + (l.pagesRead || 0), 0);
 
           if (remainingPagesToday <= 0 && isCheckedToday) {
+            ({ challenges: updatedChallenges, ticks: pactTicks } = tickPactsLinkedTo(prev, readingHabit, false));
             const nowIso = trustedNow().toISOString();
             updatedHabits = prev.habits.map((h) =>
               h.id === readingHabit.id
@@ -4660,6 +4686,7 @@ export function useAppState() {
           libraryBooks: remainingBooks,
           readingLogs: updatedReadingLogs,
           habits: updatedHabits,
+          sharedChallenges: updatedChallenges,
           weeklyGoals: linkedRemoval.weeklyGoals,
           deletedEntityIds: updatedDeletedEntityIds,
           ...awards.points,
@@ -4668,6 +4695,7 @@ export function useAppState() {
       { immediate: true, actionLabel: 'Book deletion', entityId: bookId }
     )
   );
+  sendLinkedPactTicks(pactTicks, 'Your reading is saved.');
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
     // eslint-disable-next-line react-hooks/exhaustive-deps
 }, []);

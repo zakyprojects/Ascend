@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { BookOpen, CheckCircle2, ListTodo, Pause, Pencil, PlayCircle, Plus, RotateCcw, Search, Trash2 } from 'lucide-react';
-import { AppStore } from '@/lib/store';
+import { AppStore, runningPactsLinkedTo } from '@/lib/store';
+import { pactUnlinkNote } from '@/lib/pactLifecycle';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { Badge, Dialog, Disclosure, EmptyState, PageColumns, ProgressBar, Switch, TabPanel, Tabs, ToolbarInput, ToolbarSelect } from '@/components/ui/primitives';
 import { TAP_TARGET, cx } from '@/components/ui/primitives/shared';
@@ -716,7 +717,9 @@ export function ReadingHub({ store }: { store: AppStore }) {
         open={unlinkConfirmOpen}
         onClose={() => setUnlinkConfirmOpen(false)}
         title="Stop the Reading habit?"
-        description="This deletes the Reading habit and its ticks from your Habit Tracker. Your books and reading logs stay."
+        description={`This deletes the Reading habit and its ticks from your Habit Tracker. Your books and reading logs stay.${
+          readingHabit ? pactUnlinkNote(runningPactsLinkedTo(store.state, readingHabit)) : ''
+        }`}
         footer={
           <>
             <button type="button" onClick={() => setUnlinkConfirmOpen(false)} className="btn-secondary">

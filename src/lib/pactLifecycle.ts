@@ -254,8 +254,8 @@ export function mergeSharedChallenge(baseC: SharedChallenge, incC: SharedChallen
 // ── Habit-linked pacts ────────────────────────────────────────────────────────────────────────
 // A side of a pact is linked to a habit when its goal text is that habit's name (the same name
 // rule as everywhere else: trimmed, inner spaces collapsed, any case). Only daily habits link:
-// a pact is ticked day by day. The Reading habit is left out: reading logs, not taps, tick it,
-// and they do not reach pacts.
+// a pact is ticked day by day. The Reading habit links too: reading logs tick it (any page or
+// chapter logged today, a Finish that fills unread pages included), and its pacts with it.
 
 /** One side's goal text, the text its habit link is read from. */
 export function pactSideGoal(challenge: SharedChallenge, isUser1: boolean): string {
@@ -264,7 +264,7 @@ export function pactSideGoal(challenge: SharedChallenge, isUser1: boolean): stri
 
 /** Whether this habit can be linked to a pact. */
 export function isPactLinkableHabit(habit: Habit): boolean {
-  return habit.frequency === 'daily' && habit.linkedModule !== 'reading';
+  return habit.frequency === 'daily';
 }
 
 /** The linkable habit this goal text names, if any (the New challenge dialog's habit picker). */
@@ -282,6 +282,43 @@ export function linkedHabitFor(
   const category = (isUser1 ? challenge.user1Category : challenge.user2Category) || 'habit';
   if (category !== 'habit') return null;
   return habitForPactGoal(pactSideGoal(challenge, isUser1), habits);
+}
+
+/** A linked pact ticked or unticked here, to be saved: the pact as it now is and the viewer's side. */
+export interface LinkedPactTick {
+  updated: SharedChallenge;
+  isUser1: boolean;
+}
+
+/**
+ * A habit's today changed (done or not): every running pact whose viewer side links to it takes
+ * the same state for today. The partner's side is never touched (their device ticks theirs).
+ */
+export function tickLinkedPacts(
+  challenges: readonly SharedChallenge[],
+  /** The viewer's side of a pact, or null when its partnership is not known here. */
+  sideOf: (challenge: SharedChallenge) => boolean | null,
+  habit: Habit,
+  done: boolean
+): { challenges: SharedChallenge[]; ticks: LinkedPactTick[] } {
+  const ticks: LinkedPactTick[] = [];
+  const next = challenges.map((challenge) => {
+    // A finished pact takes no more ticks.
+    if (challenge.status !== 'active') return challenge;
+    const isUser1 = sideOf(challenge);
+    if (isUser1 === null || !linkedHabitFor(challenge, isUser1, [habit])) return challenge;
+    const { updated } = applyPledgeToggle(challenge, isUser1, done);
+    ticks.push({ updated, isUser1 });
+    return updated;
+  });
+  return { challenges: next, ticks };
+}
+
+/** The delete / stop warning for a habit that running pacts tick (empty when none do). */
+export function pactUnlinkNote(runningLinked: number): string {
+  if (runningLinked <= 0) return '';
+  const one = runningLinked === 1;
+  return ` ${runningLinked} running challenge${one ? ' uses' : 's use'} this habit; ${one ? 'it keeps' : 'they keep'} going and you tick ${one ? 'it' : 'them'} by hand.`;
 }
 
 /** Whether a daily habit is done on this day (today unless given). */
