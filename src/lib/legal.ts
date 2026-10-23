@@ -4,7 +4,7 @@
  */
 
 /** Where people write about their data, the Terms, or anything else. */
-export const LEGAL_CONTACT_EMAIL = 'mzakriakhan55@gmail.com';
+export const LEGAL_CONTACT_EMAIL = 'hello@ascendday.com';
 
 /** Who runs Ascend. */
 export const LEGAL_OPERATOR = 'Ascend, run by Zakria Khan, Pakistan';
