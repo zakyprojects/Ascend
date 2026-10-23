@@ -3366,7 +3366,6 @@ export function useAppState() {
       const leagueTarget = simulatedLeagueNow || leagueNow();
       // Weekly goals and pacts run on the user's own days, never on league time.
       const personalNow = getNow();
-      const challengesToSync: SharedChallenge[] = [];
 
       // A new week, month or season: other members' points for it (and final ones for the period
       // that just closed, which archiving waits for) need a fresh fetch.
@@ -3376,34 +3375,23 @@ export function useAppState() {
       }
 
       setState((prev) => {
-        challengesToSync.length = 0;
         // League archives and missed-habit, no-report and exercise-target penalties come from hourly server jobs.
         const weeklyGoalsReconciledState = reconcileWeeklyGoalsPointsForAllWeeks(
           reconcileLinkedWeeklyGoals(prev, personalNow),
           personalNow
         );
 
-        const reconciledChallenges = (weeklyGoalsReconciledState.sharedChallenges || []).map((c) => {
-          const updated = reconcileSharedChallengeLifecycle(c, personalNow);
-          // A pact that ends here only shows as ended: the server stores the status once both
-          // members' last day is over (hourly pact expiry), so a status change is never saved.
-          if (updated.status === 'active' && updated.jointStreak !== c.jointStreak) {
-            challengesToSync.push(updated);
-          }
-          return updated;
-        });
+        // Streak and ended status are only re-derived for the screen, never saved from here: the
+        // server stores the status itself (guard + hourly pact expiry), nothing reads the stored
+        // joint streak, and a save from this possibly stale copy could undo a tick made elsewhere.
+        const reconciledChallenges = (weeklyGoalsReconciledState.sharedChallenges || []).map((c) =>
+          reconcileSharedChallengeLifecycle(c, personalNow)
+        );
 
         const next = { ...weeklyGoalsReconciledState, sharedChallenges: reconciledChallenges };
         // A tick that changed nothing keeps the same state, so nothing re-renders or saves.
         return keepIfUnchanged(prev, next);
       });
-
-      for (const updated of challengesToSync) {
-        saveSharedChallengeSupabase(updated).catch((err) => {
-          console.error('Failed to sync shared challenge from checkUpdates:', err);
-        });
-        syncBroadcaster.broadcast('CHALLENGE_UPDATED', updated);
-      }
 
       // RETRY PENDING OR FAILED IMPROVEMENT PLANS (Outside setState)
       retryUnconfirmedPlans();
