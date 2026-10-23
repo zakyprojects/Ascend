@@ -4,7 +4,10 @@
  */
 
 /** The production address. Canonicals, og:url, the sitemap and robots.txt use it. */
-export const SITE_URL = 'https://ascend-neon.vercel.app';
+export const SITE_URL = 'https://ascendday.com';
+
+/** The address as people type it (no scheme), for page copy. */
+export const SITE_HOST = new URL(SITE_URL).host;
 
 export const SITE_NAME = 'Ascend';
 

@@ -23,7 +23,7 @@ import { Screenshot } from '../components/Screenshot';
 import { CtaBand, FaqList, Section, SectionHeading, type FaqItem } from '../components/Sections';
 import { fmt, pts, range } from '../features/format';
 import { FEATURE_GROUPS, FEATURE_SLUGS, featurePath, featuresInGroup } from '../features/catalog';
-import { SITE_MAKER, SITE_TAGLINE } from '../site';
+import { SITE_HOST, SITE_MAKER, SITE_TAGLINE } from '../site';
 
 /*
  * `/`: the public landing page. Every number on it is read from the app's own reward code
@@ -154,7 +154,7 @@ const FAQ: FaqItem[] = [
   },
   {
     q: 'Is this the same as other apps called Ascend?',
-    a: `No. Several unrelated apps share the name. This Ascend is the gamified self-improvement web app made by ${SITE_MAKER} at ascend-neon.vercel.app, and it is not connected to any of them.`,
+    a: `No. Several unrelated apps share the name. This Ascend is the gamified self-improvement web app made by ${SITE_MAKER} at ${SITE_HOST}, and it is not connected to any of them.`,
   },
 ];
 
@@ -565,7 +565,7 @@ function About() {
   const facts: [string, ReactNode][] = [
     ['What it is', 'A gamified self-improvement web app'],
     ['Made by', `${SITE_MAKER}, a computer science student in Peshawar, Pakistan`],
-    ['Website', 'ascend-neon.vercel.app'],
+    ['Website', SITE_HOST],
     ['Price', 'Free (beta)'],
     ['Works on', 'Any modern browser on phone, tablet and computer; installable as an app'],
     ['Account', `Free account or guest; age ${MIN_AGE} and up`],
