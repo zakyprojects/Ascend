@@ -11,7 +11,7 @@ import { toUserMessage } from '@/lib/userMessage';
 import { looksLikeUsername } from '@/lib/usernameRules';
 import { preloadCaptcha, withCaptcha } from '@/lib/captcha';
 import { CaptchaSlot } from '@/components/ui/CaptchaSlot';
-import { MIN_AGE } from '@/lib/legal';
+import { LEGAL_CONTACT_EMAIL, MIN_AGE } from '@/lib/legal';
 import { pathForLegalRoute } from '@/lib/routes';
 
 /** How long the sign-in/sign-up success screen shows before `onDone` runs. */
@@ -631,7 +631,12 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
       console.error('Password reset email failed:', err);
       const authErr = err as { code?: string; status?: number; message?: string };
       if (authErr.code === 'over_email_send_rate_limit' || authErr.status === 429 || authErr.message?.includes('rate limit')) {
-        showError('Too many reset emails. Wait a few minutes and try again.');
+        // Supabase's hourly cap for auth emails.
+        showError('Too many reset emails right now. Try again in about an hour.');
+      } else if (authErr.status === 500 || authErr.message?.toLowerCase().includes('error sending')) {
+        // The mail service refused it (for example its daily cap); Supabase gives the same error for every
+        // such cause, so the text names no exact time.
+        showError(`We couldn’t send the email right now. Try again later. If it keeps failing, write to ${LEGAL_CONTACT_EMAIL}.`);
       } else {
         showError(toUserMessage(err, 'Couldn’t send the email. Try again.'));
       }
