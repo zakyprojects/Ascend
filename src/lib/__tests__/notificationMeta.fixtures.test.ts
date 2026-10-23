@@ -40,6 +40,7 @@ const SAMPLES: AppNotification[] = [
   n({ type: 'addiction_milestone', title: 'Sobriety Milestone Reached! 🎉', message: 'Congratulations! You unlocked milestone(s): 1 Week Clean for Smoking.', payload: { substance: 'Smoking', milestones: ['1 Week Clean'] } }),
   n({ type: 'daily_reminder', actorUsername: 'Ascend System', actorAvatar: '⚡', title: 'Evening Tracker Check-in 🌙', message: "Don't break your momentum!", payload: { date: '2026-10-17', missing: ['Journal', 'Read'] } }),
   n({ type: 'sunday_planning', actorUsername: 'Ascend Executive System', actorAvatar: '🎯', title: 'Sunday Evening Goal Planning', message: "Take 5 minutes to set your top 3 measurable goals and review last week's velocity.", payload: { weekKey: '2026-W42' } }),
+  n({ type: 'challenge_created', actorUsername: 'ali', actorAvatar: '🦊', title: 'New challenge', message: 'ali started the challenge "Run 5k" with you.', payload: { challengeId: 'c1' } }),
 ];
 
 function runFixtures() {
@@ -65,6 +66,9 @@ function runFixtures() {
   assert(byType('addiction_milestone').message === '1 week clean from Smoking.', 'milestone copy');
   assert(byType('daily_reminder').showActor === false, 'system notices hide their emoji avatar');
   assert(byType('partner_invite').showActor === true, 'partner notices show the avatar');
+  assert(byType('challenge_created').link === 'partner', 'new challenge opens Partners');
+  assert(byType('challenge_created').title === 'New challenge' && byType('challenge_created').message === 'ali started “Run 5k” with you.', 'new challenge copy');
+  assert(byType('challenge_created').showActor === true, 'new challenge shows the partner avatar');
 
   assert(notificationPenalty(SAMPLES[9]) === 3, 'penalty parsed');
   assert(notificationPenalty(SAMPLES[11]) === null, 'no penalty when none deducted');

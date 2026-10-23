@@ -152,7 +152,7 @@ export const accountabilityPartners: FeatureContent = {
         }
       >
         <Note title="Notices between partners.">
-          Ascend tells your partners when you finish today’s part of a challenge, when you finish a challenge together,
+          Ascend tells your partners when you start a challenge with them, when you finish today’s part of it, when you finish it together,
           and when you miss a habit that costs you points, with the habit’s name so they can check in. You can turn
           these off under Partner activity in Settings, and switch off Partner invites to stop new requests.
         </Note>

@@ -7,6 +7,7 @@ import {
   CalendarCheck,
   CheckCircle2,
   Dumbbell,
+  Flag,
   Hand,
   Heart,
   ShieldAlert,
@@ -57,6 +58,7 @@ const PARTNER_TYPES = new Set([
   'partner_nudge',
   'partner_pledge_done',
   'partner_missed_habit',
+  'challenge_created',
   'challenge_completed',
   'challenge_deleted',
 ]);
@@ -126,6 +128,17 @@ export function describeNotification(n: AppNotification): NotificationView {
         link: 'partner',
         title: `${who} did today's part`,
         message: challenge ? `${who} finished today's target for “${challenge}”. Your turn.` : `${who} finished today's target. Your turn.`,
+      };
+    }
+    case 'challenge_created': {
+      const challenge = quoted(n.message);
+      return {
+        ...base,
+        icon: Flag,
+        tone: 'sky',
+        link: 'partner',
+        title: 'New challenge',
+        message: challenge ? `${who} started “${challenge}” with you.` : `${who} started a challenge with you.`,
       };
     }
     case 'challenge_completed': {

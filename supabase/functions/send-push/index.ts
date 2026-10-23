@@ -35,6 +35,7 @@ const PAGE_BY_TYPE: Record<string, string> = {
   partner_nudge: '/partner',
   partner_pledge_done: '/partner',
   partner_missed_habit: '/partner',
+  challenge_created: '/partner',
   challenge_completed: '/partner',
   challenge_deleted: '/partner',
   missed_habit: '/habits',
