@@ -344,8 +344,6 @@ async function writeProfileFromState(userId: string, st: AppState): Promise<null
     avatar: st.currentUser.avatar || '🧑',
     season_id: st.seasonId || 1,
     stats: userStats,
-    // Habit names are not published: other members no longer see which habits someone keeps.
-    active_habits: [],
     // The device's timezone. The server derives profiles.timezone (the user's "today") from it,
     // never letting the local date go backwards (supabase/migrations/20261016120000).
     device_timezone: deviceTimeZone(),
@@ -608,7 +606,6 @@ export async function fetchMyPrivateProfile(): Promise<Record<string, unknown> |
 const PRIVATE_PROFILE_COLUMNS = [
   'email',
   'stats',
-  'active_habits',
   'last_username_change_at',
   'device_timezone',
 ];
