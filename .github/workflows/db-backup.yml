@@ -162,7 +162,7 @@ jobs:
             | tar -x -C dump
           ls -l dump
 
-      - name: Restore (roles and stubs, auth tables, auth data, public)
+      - name: Restore (roles and stubs, auth tables + data, public, auth keys + triggers)
         run: |
           set -euo pipefail
           BIN=/usr/lib/postgresql/17/bin
@@ -184,10 +184,16 @@ jobs:
           DROP SCHEMA public;
           SQL
 
-          # 2. auth tables, 3. auth rows (public tables reference auth.users), 4. public.
-          "$BIN/pg_restore" --exit-on-error --no-owner --no-privileges -d "$PGDATABASE" dump/auth-schema.dump
-          "$BIN/pg_restore" --exit-on-error -d "$PGDATABASE" dump/auth.dump
-          "$BIN/pg_restore" --exit-on-error --no-owner -d "$PGDATABASE" dump/public.dump
+          # 2. auth tables and rows first (public rows reference auth.users). 3. public functions
+          #    and tables. 4. auth keys, indexes and triggers: public foreign keys need the
+          #    auth.users key, and the auth.users triggers call public functions. 5. public rows,
+          #    keys, indexes, policies, triggers.
+          RESTORE=("$BIN/pg_restore" --exit-on-error --no-owner -d "$PGDATABASE")
+          "${RESTORE[@]}" --no-privileges --section=pre-data dump/auth-schema.dump
+          "${RESTORE[@]}" dump/auth.dump
+          "${RESTORE[@]}" --section=pre-data dump/public.dump
+          "${RESTORE[@]}" --no-privileges --section=post-data dump/auth-schema.dump
+          "${RESTORE[@]}" --section=data --section=post-data dump/public.dump
 
       - name: Compare with the manifest
         run: |

@@ -37,6 +37,8 @@ SELECT section, key, value FROM (
   UNION ALL SELECT 'objects', 'functions', count(*)::text FROM funcs
   UNION ALL SELECT 'objects', 'triggers', count(*)::text
             FROM pg_trigger tg JOIN tables t ON t.oid = tg.tgrelid WHERE NOT tg.tgisinternal
+  UNION ALL SELECT 'objects', 'auth.users/identities triggers', count(*)::text
+            FROM pg_trigger WHERE tgrelid IN ('auth.users'::regclass, 'auth.identities'::regclass) AND NOT tgisinternal
   UNION ALL SELECT 'objects', 'policies', count(*)::text FROM pg_policy po JOIN tables t ON t.oid = po.polrelid
   UNION ALL SELECT 'objects', 'indexes', count(*)::text FROM pg_index i JOIN tables t ON t.oid = i.indrelid
   UNION ALL SELECT 'objects', 'views', count(*)::text
