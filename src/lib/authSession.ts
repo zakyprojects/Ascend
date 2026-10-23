@@ -24,6 +24,7 @@ import {
 } from './supabase';
 import { trustedNow } from './clock';
 import { usernameFrom } from './usernameRules';
+import { recordGoogleTermsConsent } from './auth';
 import { deviceTimeZone, markDeviceTimezoneSent } from './deviceTimezone';
 
 export type SignUpDefaults = {
@@ -246,7 +247,10 @@ export async function hydrateUserSession(
   let user = buildUserProfile(userId, email, profileData, authUser, signupDefaults);
 
   // If DB profile row does not exist yet, insert it ONCE with permanent uid
-  if (!profileData && !profileRes.error) {
+  const newProfile = !profileData && !profileRes.error;
+  // Before the insert: the database copies terms_version from the auth user only then.
+  await recordGoogleTermsConsent(authUser, newProfile);
+  if (newProfile) {
     user = await insertInitialProfile(userId, user);
   } else if (profileData && !profileData.uid) {
     // DB profile exists but lacks uid (created prior to migration) — backfill it once

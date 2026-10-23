@@ -11,6 +11,7 @@ import {
   clearUserDataWatermark,
   fetchMyPrivateProfile,
   verifyAccountPassword,
+  authRedirectError,
 } from './supabase';
 import { trustedNow, trustedNowMs } from './clock';
 import { ilikeExact, isUsernameTakenError, looksLikeUsername, sameUsername, USERNAME_TAKEN, usernameFormatProblem } from './usernameRules';
@@ -292,6 +293,70 @@ export async function signInAsGuest(captchaToken?: string): Promise<void> {
     // AuthError keeps status/code so the caller can tell a rate limit apart.
     throw error;
   }
+}
+
+/**
+ * Set when "Continue with Google" is pressed, next to its line agreeing to the Terms; it holds the
+ * Terms version agreed to. sessionStorage survives the trip to Google and back in this tab.
+ */
+const GOOGLE_TERMS_KEY = 'ascend_google_terms';
+
+/**
+ * "Continue with Google": leaves for Google's sign-in and comes back to the sign-in page the user
+ * was on (`returnPath` keeps its `?next=`). The session in the returned address fires SIGNED_IN, and
+ * onAuthStateChange in store.ts loads the account as for any sign-in. A Google email that already
+ * has an Ascend account signs in to that account (Supabase links them by email).
+ */
+export async function signInWithGoogle(returnPath: string): Promise<void> {
+  try {
+    sessionStorage.setItem(GOOGLE_TERMS_KEY, TERMS_VERSION);
+  } catch {
+    // sessionStorage unavailable: the sign-in still works; the profile's terms_version stays empty.
+  }
+  const { error } = await supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: { redirectTo: `${window.location.origin}${returnPath}` },
+  });
+  if (error) {
+    sessionStorage.removeItem(GOOGLE_TERMS_KEY);
+    console.error('Google sign-in failed to start:', error);
+    throw new Error('Couldn’t open Google sign-in. Try again.');
+  }
+}
+
+/**
+ * The page came back from Google with an error (the person cancelled, or Google refused): the
+ * message to show on the sign-in page, once. Null for any other visit.
+ */
+export function takeGoogleSignInError(): string | null {
+  let pending: string | null = null;
+  try {
+    pending = sessionStorage.getItem(GOOGLE_TERMS_KEY);
+  } catch {
+    return null;
+  }
+  if (!pending || !authRedirectError()) return null;
+  sessionStorage.removeItem(GOOGLE_TERMS_KEY);
+  return 'Google sign-in didn’t finish. Try again, or sign in with your email.';
+}
+
+/**
+ * A new account made with "Continue with Google" carries no terms_version in its metadata (Google
+ * fills it). Before its profile row is created, writes the version agreed next to the button, so
+ * the database stamps it like an email sign-up (profiles_terms_from_auth). Clears the mark for
+ * every account; a failure only leaves terms_version empty and never stops the sign-in.
+ */
+export async function recordGoogleTermsConsent(authUser: { user_metadata?: Record<string, unknown> } | null | undefined, newProfile: boolean): Promise<void> {
+  let version: string | null = null;
+  try {
+    version = sessionStorage.getItem(GOOGLE_TERMS_KEY);
+    sessionStorage.removeItem(GOOGLE_TERMS_KEY);
+  } catch {
+    return;
+  }
+  if (!version || !newProfile || authUser?.user_metadata?.terms_version) return;
+  const { error } = await supabase.auth.updateUser({ data: { terms_version: version } });
+  if (error) console.warn('Could not record the Terms version for a Google sign-up:', error.message);
 }
 
 /**

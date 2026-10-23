@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Mail, User, Check, LogIn, UserPlus, ArrowLeft, ArrowRight } from 'lucide-react';
-import { isUsernameAvailable, signUpUser, loginUser, signInAsGuest, upgradeAnonymousUser, requestPasswordReset } from '@/lib/auth';
+import { isUsernameAvailable, signUpUser, loginUser, signInAsGuest, upgradeAnonymousUser, requestPasswordReset, signInWithGoogle, takeGoogleSignInError } from '@/lib/auth';
 import { AppState, EMOJI_AVATARS } from '@/types';
 import { AscendLoadingIndicator } from './AscendLoadingIndicator';
 import { PasswordInput } from './PasswordInput';
@@ -107,6 +107,18 @@ function GuestIcon({ size = 24 }: { size?: number }) {
       <circle cx="12" cy="12" r="10" pathLength={60} strokeDasharray="3 2" />
       <circle cx="12" cy="10" r="4" />
       <path d="M18 20a6 6 0 0 0-12 0" />
+    </svg>
+  );
+}
+
+/** Google's "G" mark in its own colours, as its sign-in branding asks. */
+function GoogleIcon({ size = 18 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 48 48" aria-hidden="true">
+      <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z" />
+      <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z" />
+      <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z" />
+      <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z" />
     </svg>
   );
 }
@@ -271,6 +283,9 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
   // `checkedFor` is the trimmed username the result belongs to, so a result for an older value never counts as valid.
   const [usernameStatus, setUsernameStatus] = useState<{ available: boolean; reason?: string; checkedFor?: string } | null>(null);
   const [errorMsg, setErrorMsg] = useState('');
+  // "Continue with Google": its own error (also when Google sent the page back with one) and busy state.
+  const [googleError, setGoogleError] = useState(() => takeGoogleSignInError() ?? '');
+  const [googleLoading, setGoogleLoading] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
   const [loading, setLoading] = useState(false);
   // True once the current request has run for SLOW_HINT_MS; reset when it ends.
@@ -509,6 +524,41 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
     await new Promise((resolve) => setTimeout(resolve, AUTH_SUCCESS_MS));
     next();
   };
+
+  // Leaves for Google; on success the page navigates away, so the busy state stays until then.
+  const handleGoogleSignIn = async () => {
+    setGoogleError('');
+    setGoogleLoading(true);
+    try {
+      await signInWithGoogle(window.location.pathname + window.location.search);
+    } catch (err: unknown) {
+      setGoogleError(toUserMessage(err, 'Couldn’t open Google sign-in. Try again.'));
+      setGoogleLoading(false);
+    }
+  };
+
+  const googleButton = (
+    <>
+      <button
+        type="button"
+        onClick={handleGoogleSignIn}
+        disabled={loading || googleLoading}
+        className="w-full h-11 bg-bg-700 hover:bg-bg-600 border border-overlay-default text-content-primary font-medium text-sm rounded-xl transition-colors duration-base flex items-center justify-center gap-2.5 disabled:opacity-50 disabled:cursor-default"
+      >
+        {googleLoading ? (
+          <>
+            <AscendLoadingIndicator size="sm" />
+            <span className="sr-only">Opening Google…</span>
+          </>
+        ) : (
+          <>
+            <GoogleIcon /> Continue with Google
+          </>
+        )}
+      </button>
+      {googleError && <FieldErrorBubble message={googleError} attached={false} />}
+    </>
+  );
 
   const handleGuestSignIn = async () => {
     setErrorMsg('');
@@ -874,6 +924,7 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
                   </span>
                   <ArrowRight size={18} className="shrink-0 transition-transform duration-base group-hover:translate-x-0.5" />
                 </button>
+                {googleButton}
                 <button
                   type="button"
                   onClick={handleGuestSignIn}
@@ -1152,6 +1203,20 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
                 {statusLine}
               </p>
             </Form>
+
+            {mode === 'login' && (
+              <div className="space-y-3 pt-1">
+                <div className="flex items-center gap-3 text-micro text-content-muted" aria-hidden="true">
+                  <span className="h-px flex-1 bg-overlay-subtle" />
+                  or
+                  <span className="h-px flex-1 bg-overlay-subtle" />
+                </div>
+                {googleButton}
+                <p className="text-xs text-content-muted text-center">
+                  New to Ascend? Continuing with Google confirms you’re {MIN_AGE} or older and agree to <LegalLinks />.
+                </p>
+              </div>
+            )}
 
             {mode === 'login' && (
               <p className="text-xs text-content-muted text-center pt-1">

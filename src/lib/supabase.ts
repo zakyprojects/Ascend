@@ -119,6 +119,11 @@ export function passwordRecoveryLinkError(): string | null {
   return recoveryRedirect.error;
 }
 
+/** The error any auth redirect came back with (a reset link, a cancelled Google sign-in), or null. */
+export function authRedirectError(): string | null {
+  return recoveryRedirect.error;
+}
+
 /**
  * Checks a password for the signed-in email without touching the app's own sign-in (D-S3): a
  * separate client that keeps nothing, then a sign-out of just that check's session. The app's
