@@ -86,6 +86,8 @@ export function ReadingHub({ store }: { store: AppStore }) {
     setBookForm((f) => ({ open: true, bookId: null, status, key: f.key + 1 }));
   const openEdit = (book: UserBook) => setBookForm((f) => ({ open: true, bookId: book.id, status: book.status, key: f.key + 1 }));
   const openStart = (book: UserBook) => setStartBookId((s) => ({ id: book.id, key: s.key + 1 }));
+  // A Discover book is added to the library only when its Start dialog is submitted.
+  const [startCurated, setStartCurated] = useState<{ book: CuratedBook | null; key: number }>({ book: null, key: 0 });
   const openFinish = (book: UserBook) => setFinishBookId((s) => ({ id: book.id, key: s.key + 1 }));
 
   const changeTab = (tab: ReadingHubTab) => {
@@ -653,10 +655,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
                               </button>
                               <button
                                 type="button"
-                                onClick={() => {
-                                  store.addCuratedBookToLibrary(curated, 'reading');
-                                  showSuccessToast('Started reading', curated.title, `book_add_${curated.id}`);
-                                }}
+                                onClick={() => setStartCurated((s) => ({ book: curated, key: s.key + 1 }))}
                                 className="btn-primary text-xs py-1.5 px-3"
                               >
                                 <PlayCircle size={14} />
@@ -691,6 +690,16 @@ export function ReadingHub({ store }: { store: AppStore }) {
         book={startBook}
         open={Boolean(startBook)}
         onClose={() => setStartBookId((s) => ({ ...s, id: null }))}
+      />
+
+      <StartReadingDialog
+        key={`start-curated-${startCurated.key}`}
+        store={store}
+        book={null}
+        curated={startCurated.book}
+        open={Boolean(startCurated.book)}
+        onClose={() => setStartCurated((s) => ({ ...s, book: null }))}
+        onStarted={(title) => showSuccessToast('Started reading', title, `book_add_${startCurated.book?.id ?? ''}`)}
       />
 
       <FinishBookDialog

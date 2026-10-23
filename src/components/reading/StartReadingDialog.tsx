@@ -2,38 +2,58 @@ import { useState } from 'react';
 import { PlayCircle } from 'lucide-react';
 import { Dialog, FieldRow, Form, Input, NumberField, Select } from '@/components/ui/primitives';
 import type { AppStore } from '@/lib/store';
-import type { UserBook } from '@/types';
+import type { CuratedBook, UserBook } from '@/types';
 import { earliestTargetDate, isNewPastDate } from '@/lib/dates';
 import { useUnsavedChanges } from '@/lib/unsavedChanges';
 import { isBookUnitLocked } from '@/lib/readingAwards';
-import { UNIT_LOCKED_HINT, bookProgress, bookUnit, type BookUnit } from './bookMeta';
+import { UNIT_LOCKED_HINT, bookProgress, bookUnit, lengthsByUnit, type BookUnit } from './bookMeta';
 
-/** Moves a library book to Reading after confirming its length and an optional target date. */
+/**
+ * Moves a library book to Reading, or adds a Discover book straight to Reading, after
+ * confirming its length and an optional target date.
+ */
 export function StartReadingDialog({
   store,
   book,
+  curated = null,
   open,
   onClose,
+  onStarted,
 }: {
   store: AppStore;
   book: UserBook | null;
+  /** A Discover book not in the library yet; it is added only when the dialog is submitted. */
+  curated?: CuratedBook | null;
   open: boolean;
   onClose: () => void;
+  onStarted?: (title: string) => void;
 }) {
-  const [total, setTotal] = useState(() => (book ? bookProgress(book).total : 250));
   const [unit, setUnit] = useState<BookUnit>(() => (book ? bookUnit(book) : 'pages'));
+  // One length per unit, so switching to chapters and back keeps the book's page count.
+  const [lengths, setLengths] = useState(() =>
+    lengthsByUnit(unit, book ? bookProgress(book).total : curated?.totalPages || curated?.totalAmount || 250)
+  );
+  const total = lengths[unit];
+  const setTotal = (n: number) => setLengths((l) => ({ ...l, [unit]: n }));
   const [targetDate, setTargetDate] = useState(() => book?.targetFinishDate || '');
-  const guard = useUnsavedChanges(open ? book?.id ?? null : null, [total, unit, targetDate]);
+  const guard = useUnsavedChanges(open ? book?.id ?? curated?.id ?? null : null, [total, unit, targetDate]);
+  const title = book?.title ?? curated?.title;
   const minLength = book ? Math.max(1, bookProgress(book).current) : 1;
   const unitLocked = Boolean(book && isBookUnitLocked(book, store.state.readingLogs || []));
 
   const submit = () => {
-    if (!book) return;
-    store.updateUserBookStatus(book.id, 'reading', {
-      totalAmount: total,
-      unit,
-      targetFinishDate: targetDate.trim() || undefined,
-    });
+    if (book) {
+      store.updateUserBookStatus(book.id, 'reading', {
+        totalAmount: total,
+        unit,
+        targetFinishDate: targetDate.trim() || undefined,
+      });
+    } else if (curated) {
+      store.addCuratedBookToLibrary(curated, 'reading', total, unit, targetDate);
+    } else {
+      return;
+    }
+    if (title) onStarted?.(title);
     onClose();
   };
 
@@ -42,7 +62,7 @@ export function StartReadingDialog({
       open={open}
       onClose={onClose}
       dirty={guard.dirty}
-      title={book ? `Start reading: ${book.title}` : 'Start reading'}
+      title={title ? `Start reading: ${title}` : 'Start reading'}
       description="Check the length and, if you like, set a target finish date."
       footer={
         <>

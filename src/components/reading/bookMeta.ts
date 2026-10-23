@@ -13,6 +13,18 @@ export const sameBook = (a: Pick<UserBook, 'title' | 'author'>, b: Pick<UserBook
 export const DEFAULT_BOOK_LENGTH = 250;
 
 /** The book's unit as the forms use it (older rows may carry other spellings); the same rule points use. */
+/** The length a form shows when its unit is switched to chapters and none was typed for chapters yet. */
+export const DEFAULT_CHAPTER_COUNT = 10;
+
+/**
+ * The starting length for each unit in a book form: the saved length for the saved unit, the
+ * defaults (or the book's known page count) for the other. Switching units shows that unit's entry
+ * and typing updates it, so switching back restores what the unit had.
+ */
+export function lengthsByUnit(unit: BookUnit, total: number, pages: number = DEFAULT_BOOK_LENGTH): Record<BookUnit, number> {
+  return unit === 'chapters' ? { pages, chapters: total } : { pages: total, chapters: DEFAULT_CHAPTER_COUNT };
+}
+
 export const bookUnit = (book: Pick<UserBook, 'unit'>): BookUnit => (isChapterBook(book) ? 'chapters' : 'pages');
 
 /** Under the disabled "Count in" select of a book that has logs (isBookUnitLocked). */

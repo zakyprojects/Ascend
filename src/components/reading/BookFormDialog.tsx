@@ -7,7 +7,7 @@ import type { BookCategory, UserBook, UserBookStatus } from '@/types';
 import { earliestTargetDate, isNewPastDate } from '@/lib/dates';
 import { useUnsavedChanges } from '@/lib/unsavedChanges';
 import { isBookUnitLocked } from '@/lib/readingAwards';
-import { DEFAULT_BOOK_LENGTH, UNIT_LOCKED_HINT, bookProgress, bookUnit, formatAmount, sameBook, type BookUnit } from './bookMeta';
+import { DEFAULT_BOOK_LENGTH, UNIT_LOCKED_HINT, bookProgress, bookUnit, formatAmount, lengthsByUnit, sameBook, type BookUnit } from './bookMeta';
 
 interface BookFormValues {
   title: string;
@@ -81,6 +81,12 @@ export function BookFormDialog({
   const unitLocked = Boolean(book && isBookUnitLocked(book, store.state.readingLogs || []));
   const unit = book && unitLocked ? bookUnit(book) : values.unit;
   const unitWord = unit === 'chapters' ? 'Chapters' : 'Pages';
+  // One length per unit, so switching to chapters and back restores the page count.
+  const [lengths, setLengths] = useState(() => lengthsByUnit(values.unit, values.totalAmount));
+  const changeUnit = (next: BookUnit) => {
+    setLengths((l) => ({ ...l, [values.unit]: values.totalAmount }));
+    update({ unit: next, totalAmount: next === values.unit ? values.totalAmount : lengths[next] });
+  };
 
   // Two books may share a title, so a book is the same book when title and author both match. A book
   // keeping its own title and author is fine (old duplicates can still be edited).
@@ -215,7 +221,7 @@ export function BookFormDialog({
             id="rh-book-unit"
             label="Count in"
             value={unit}
-            onChange={(e) => update({ unit: e.target.value as BookUnit })}
+            onChange={(e) => changeUnit(e.target.value as BookUnit)}
             disabled={unitLocked}
             hint={unitLocked ? UNIT_LOCKED_HINT : undefined}
           >
