@@ -1107,8 +1107,9 @@ export async function fetchPublicPlansFromSupabase(options?: FetchPublicPlansPar
   }
 }
 
-export async function sendPartnerInviteSupabase(invite: PartnerInvite) {
-  if (!isSupabaseConfigured) return;
+/** Resolves with the id of the invite the server holds (an invite that already waited keeps its id). */
+export async function sendPartnerInviteSupabase(invite: PartnerInvite): Promise<string | undefined> {
+  if (!isSupabaseConfigured) return undefined;
 
   const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   const inviteId = uuidPattern.test(invite.id) ? invite.id : crypto.randomUUID();
@@ -1136,7 +1137,7 @@ export async function sendPartnerInviteSupabase(invite: PartnerInvite) {
     if (rpcData.success === false) {
       throw new Error(rpcData.error || "Couldn't send the invite. Try again.");
     }
-    return;
+    return typeof rpcData.invite_id === 'string' ? rpcData.invite_id : undefined;
   }
 
   // No direct table insert fallback: the server only accepts invites through the RPC,

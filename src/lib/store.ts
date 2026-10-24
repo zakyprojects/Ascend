@@ -77,6 +77,7 @@ import { findCuratedBook } from './books';
 import { uid, generateUUID, generateNumericUID, periodKey, todayKey, isPlanJourneyDoneThisPeriod, calculateActivePlanStreak, getWeekDates, parseDate, getNow, getNextDateKey, weekKey, addDays, formatWeekdayDate } from './dates';
 import { computeLinkedGoalProgress, linkedEntryPresent, linkedGoalCrossing, linkedItemExists, linkedGoalUnit } from './linkedGoalMetrics';
 import { autoStatusChanges } from './projectProgress';
+import { adoptServerInviteId } from './partnerInvites';
 import { reconcileSharedChallengeLifecycle, applyPledgeToggle, mergeSharedChallenge, linkedHabitFor, habitDoneOn, planLinkedPactRepairs, pactTickRefused, tickLinkedPacts, type LinkedPactTick } from './pactLifecycle';
 import { isPartnershipUser1 } from './partnershipSide';
 import { PresetHabit } from './presets';
@@ -7599,7 +7600,17 @@ export function useAppState() {
         throw new Error(`An invite between you and '${targetUsername}' is already pending.`);
       }
 
-      const existingDbInvites = (await fetchPartnerInvitesSupabase(state.currentUser?.id || '', state.username)) ?? [];
+      // The sender is the signed-in session's user; the server requires exactly that id.
+      const fromUserId = isSupabaseConfigured ? (await supabase.auth.getSession()).data.session?.user?.id : undefined;
+      if (!fromUserId) {
+        throw new Error("Couldn't send the invite. Sign in again and try again.");
+      }
+
+      // A failed read is not "none waiting".
+      const existingDbInvites = await fetchPartnerInvitesSupabase(fromUserId, state.username);
+      if (!existingDbInvites) {
+        throw new Error("Couldn't check your invites. Check your connection and try again.");
+      }
       const alreadyPendingDb = existingDbInvites.some((i) => {
         if (i.status !== 'pending') return false;
         return (
@@ -7613,19 +7624,6 @@ export function useAppState() {
         throw new Error(`An invite between you and '${targetUsername}' is already pending.`);
       }
 
-      // Resolve canonical sender UUID
-      let fromUserId = state.currentUser?.id;
-      const isSenderUuid = fromUserId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(fromUserId);
-      if (!isSenderUuid && isSupabaseConfigured) {
-        const { data: selfProf } = await supabase.from('profiles').select('id').ilike('username', ilikeExact(state.username)).maybeSingle();
-        if (selfProf?.id) {
-          fromUserId = selfProf.id;
-        }
-      }
-      if (!fromUserId) {
-        fromUserId = crypto.randomUUID();
-      }
-
       const invite: PartnerInvite = {
         id: crypto.randomUUID(),
         fromUserId,
@@ -7637,8 +7635,6 @@ export function useAppState() {
         createdAt: trustedNow().toISOString(),
       };
 
-      syncBroadcaster.broadcast('PARTNER_INVITE_SENT', { invite });
-
       setState(
         (prev) => ({
           ...prev,
@@ -7648,8 +7644,17 @@ export function useAppState() {
       );
 
       try {
-        await sendPartnerInviteSupabase(invite);
-        return invite;
+        const serverId = await sendPartnerInviteSupabase(invite);
+        const sent = serverId && serverId !== invite.id ? { ...invite, id: serverId } : invite;
+        if (sent !== invite) {
+          setState(
+            (prev) => ({ ...prev, partnerInvites: adoptServerInviteId(prev.partnerInvites, invite.id, serverId) }),
+            { immediate: true }
+          );
+        }
+        // Other tabs hear about the invite only once the server holds it.
+        syncBroadcaster.broadcast('PARTNER_INVITE_SENT', { invite: sent });
+        return sent;
       } catch (err: any) {
         console.error('Failed to send partner invite to Supabase:', err);
         setState((prev) => ({
