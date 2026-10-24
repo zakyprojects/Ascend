@@ -71,7 +71,8 @@ function corsHeaders(req: Request): Record<string, string> {
   const allowed = allowedOrigins.includes(origin) || (!configuredOrigins.length && LOCAL_ORIGIN.test(origin));
   return {
     ...(allowed ? { 'Access-Control-Allow-Origin': origin } : {}),
-    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    // x-region: supabase-js sends it when the app pins the function's region.
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-region',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
     // Browsers reuse the preflight for this long (Chrome caps it at 2 hours).
     'Access-Control-Max-Age': '7200',
