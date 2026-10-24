@@ -78,11 +78,11 @@ export const leagues: FeatureContent = {
             },
             {
               title: 'Check your place',
-              text: 'The top of each tab shows your place, how many members are in the table, your points for that week, month or season, and the time left.',
+              text: 'The top of each tab shows your place, how many members have points in that table, your points for that week, month or season, and the time left.',
             },
             {
               title: 'Look at who is around you',
-              text: 'Every row shows a member’s username, avatar, season rank badge and points. Open a member to see their profile summary when they keep it public.',
+              text: 'Every row shows a member’s username, avatar, season rank badge and points. Open a member to see their profile summary when you both keep your profiles public, or when they are your partner.',
             },
             {
               title: 'Look back',
@@ -136,7 +136,8 @@ export const leagues: FeatureContent = {
           <>
             <p>
               The moment a week, month or season ends, its table starts again from zero for everyone. The finished table
-              is saved with every member’s place and points and shows up under Past weeks, Past months or Past seasons.
+              is saved with the place and points of every member who scored and shows up under Past weeks, Past months or
+              Past seasons.
             </p>
             <p>
               A saved table can still change for up to two days after the period ends, while late logs from the last
@@ -218,7 +219,7 @@ export const leagues: FeatureContent = {
     },
     {
       q: 'What do other members see about me?',
-      a: 'Your username, avatar, rank badge and points. With a public profile they can also open a summary of your stats; your journal and recovery tracker stay private.',
+      a: 'Your username, avatar, rank badge and points. If you both keep your profiles public they can also open a summary of your stats, and your partners always can; your journal and recovery tracker stay private.',
     },
   ],
   related: ['ranks', 'accountability-partners', 'habits', 'weekly-goals'],
