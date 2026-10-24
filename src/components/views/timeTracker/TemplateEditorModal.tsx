@@ -52,7 +52,15 @@ export function TemplateEditorModal({
   const [blocks, setBlocks] = useState<TimeTrackerBlock[]>([]);
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const formIssues = useFormController();
-  const form = useUnsavedChanges(open && (editingTemplate?.id ?? 'new'), [title, activeDays, blocks]);
+  // The draft is per template (`:<id>` or `:new` comes from the open value).
+  const form = useUnsavedChanges(open && (editingTemplate?.id ?? 'new'), [title, activeDays, blocks] as const, {
+    key: 'tt-template',
+    restore: ([t, days, b]) => {
+      setTitle(t);
+      setActiveDays([...days]);
+      setBlocks([...b]);
+    },
+  });
 
   // Block Modal State (for both Add and Edit)
   const [targetBlockForModal, setTargetBlockForModal] = useState<TimeTrackerBlock | null>(null);
