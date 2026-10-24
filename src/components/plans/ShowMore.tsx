@@ -17,7 +17,7 @@ export function ShowMoreToggle({
       type="button"
       onClick={onToggle}
       aria-expanded={expanded}
-      className="mt-1 text-xs font-medium text-content-tertiary hover:text-content-primary"
+      className="mt-1 text-xs font-medium text-brand-text hover:underline underline-offset-2"
     >
       {expanded ? lessLabel : moreLabel}
     </button>
