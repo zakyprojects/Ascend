@@ -7178,21 +7178,19 @@ export function useAppState() {
   }, []);
 
   const updatePlanCopyCount = useCallback((planId: string, newCount: number) => {
-    setState((prev) => {
-      let planFound = false;
-      const updatedPlans = prev.improvementPlans.map((p) => {
-        if (p.id === planId) {
-          planFound = true;
-          return { ...p, copyCount: newCount };
-        }
-        return p;
-      });
-
-      syncBroadcaster.broadcast('PLAN_UPDATED', { id: planId, copyCount: newCount });
-
-      if (!planFound) return prev;
-      return { ...prev, improvementPlans: updatedPlans };
-    });
+    const differs = (plans: ImprovementPlan[]) => plans.some((p) => p.id === planId && p.copyCount !== newCount);
+    // Other tabs of this account hold the same plans, so a plan this tab doesn't have (or already
+    // shows with this count) is nothing to tell them. Decided outside setState: updaters stay pure.
+    const shouldBroadcast = differs(stateRef.current?.improvementPlans ?? []);
+    setState((prev) =>
+      differs(prev.improvementPlans)
+        ? {
+            ...prev,
+            improvementPlans: prev.improvementPlans.map((p) => (p.id === planId ? { ...p, copyCount: newCount } : p)),
+          }
+        : prev
+    );
+    if (shouldBroadcast) syncBroadcaster.broadcast('PLAN_UPDATED', { id: planId, copyCount: newCount });
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
