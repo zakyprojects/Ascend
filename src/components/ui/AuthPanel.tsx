@@ -43,6 +43,8 @@ const STATUS_LINES: Record<'login' | 'signup-form' | 'upgrade', Record<'empty' |
 
 /** After this long a request still running shows the slow-connection line instead of its usual one. */
 const SLOW_HINT_MS = 6000;
+/** Username sign-in normally takes longer (see USERNAME_SIGN_IN_TIMEOUT_MS), so its line waits longer. */
+const USERNAME_SLOW_HINT_MS = 8000;
 const SLOW_STATUS_LINE = 'Slow connection, still trying…';
 
 /**
@@ -311,15 +313,6 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
   const [errorInputs, setErrorInputs] = useState<string | null>(null);
   const inputsKey = [email, password, confirmPassword, username, avatar, termsAccepted].join('\u0000');
 
-  useEffect(() => {
-    if (!loading) {
-      setSlow(false);
-      return;
-    }
-    const timer = window.setTimeout(() => setSlow(true), SLOW_HINT_MS);
-    return () => window.clearTimeout(timer);
-  }, [loading]);
-
   // Sign-in, sign-up, guest and reset pass the bot check (saving a guest's progress does not).
   useEffect(() => {
     if (mode !== 'upgrade') preloadCaptcha();
@@ -354,6 +347,17 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
     setTermsAccepted(false);
   }
   const forgot = mode === 'login' && loginStep === 'forgot';
+
+  useEffect(() => {
+    if (!loading) {
+      setSlow(false);
+      return;
+    }
+    const usernameSignIn = mode === 'login' && !forgot && looksLikeUsername(email);
+    const timer = window.setTimeout(() => setSlow(true), usernameSignIn ? USERNAME_SLOW_HINT_MS : SLOW_HINT_MS);
+    return () => window.clearTimeout(timer);
+  }, [loading, mode, forgot, email]);
+
   const screen: AuthScreen = mode === 'signup' ? `signup-${signupStep}` : mode;
   const [shownScreen, setShownScreen] = useState(screen);
   if (screen !== shownScreen) {
