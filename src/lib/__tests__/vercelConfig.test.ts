@@ -32,12 +32,13 @@ assert(
   (config.headers ?? []).some((h) => h.source === viewSource && h.headers.some((x) => x.key === 'X-Robots-Tag' && x.value === 'noindex')),
   'app pages carry X-Robots-Tag noindex (same source as the rewrite)'
 );
-// D9: the old address sends every path (query kept by Vercel) to the domain, permanently.
+// D9: the old address sends every path, the root included, to the domain permanently (query kept by Vercel).
+// '/:path*' left '/' unredirected live (10-24), so the source is '/(.*)'.
 const oldHost = (config.redirects ?? []).filter((r) => r.has?.some((h) => h.type === 'host'));
 assert(
   oldHost.length === 1 &&
-    oldHost[0].source === '/:path*' &&
-    oldHost[0].destination === 'https://ascendday.com/:path*' &&
+    oldHost[0].source === '/(.*)' &&
+    oldHost[0].destination === 'https://ascendday.com/$1' &&
     oldHost[0].permanent === true &&
     oldHost[0].has?.length === 1 &&
     oldHost[0].has[0].value === 'ascend-neon.vercel.app',

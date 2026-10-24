@@ -4,9 +4,9 @@
   "trailingSlash": false,
   "redirects": [
     {
-      "source": "/:path*",
+      "source": "/(.*)",
       "has": [{ "type": "host", "value": "ascend-neon.vercel.app" }],
-      "destination": "https://ascendday.com/:path*",
+      "destination": "https://ascendday.com/$1",
       "permanent": true
     },
     { "source": "/books", "destination": "/reading", "permanent": true },
