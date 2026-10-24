@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Mail, User, Check, LogIn, UserPlus, ArrowLeft, ArrowRight } from 'lucide-react';
-import { isUsernameAvailable, signUpUser, loginUser, signInAsGuest, upgradeAnonymousUser, requestPasswordReset, signInWithGoogle, takeGoogleSignInError } from '@/lib/auth';
+import { isUsernameAvailable, signUpUser, loginUser, signInAsGuest, upgradeAnonymousUser, requestPasswordReset, signInWithGoogle, takeGoogleSignInError, resendConfirmationEmail, EmailNotConfirmedError } from '@/lib/auth';
 import { AppState, EMOJI_AVATARS } from '@/types';
 import { AscendLoadingIndicator } from './AscendLoadingIndicator';
 import { PasswordInput } from './PasswordInput';
@@ -332,6 +332,19 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
     const timer = window.setTimeout(() => setResendIn((s) => s - 1), 1000);
     return () => window.clearTimeout(timer);
   }, [resetSentTo, resendIn]);
+  // An email waiting for its confirmation link (new account, or a guest who added an email), so its
+  // "Resend" button knows where to send; `confirmResendIn` = seconds before it can be resent.
+  const [confirmPending, setConfirmPending] = useState<{ email: string; kind: 'signup' | 'email_change' } | null>(null);
+  const [confirmResendIn, setConfirmResendIn] = useState(0);
+  useEffect(() => {
+    if (confirmResendIn <= 0) return;
+    const timer = window.setTimeout(() => setConfirmResendIn((s) => s - 1), 1000);
+    return () => window.clearTimeout(timer);
+  }, [confirmResendIn]);
+  // Sign in: typing another email drops the resend button for the old one.
+  useEffect(() => {
+    if (mode === 'login' && confirmPending && email.trim().toLowerCase() !== confirmPending.email) setConfirmPending(null);
+  }, [mode, email, confirmPending]);
   const [shownMode, setShownMode] = useState(mode);
   if (mode !== shownMode) {
     // Arriving at /signup always starts on the choice; /login on the sign-in form.
@@ -377,6 +390,7 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
   useEffect(() => {
     setErrorMsg('');
     setSuccessMsg('');
+    setConfirmPending(null);
     setLoading(false);
     setSubmitDone(false);
     // The password fields remount per mode (their key), so they start hidden again.
@@ -606,10 +620,35 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
     return null;
   };
 
+  const resendConfirmation = async () => {
+    if (!confirmPending) return;
+    setErrorMsg('');
+    setLoading(true);
+    try {
+      await withCaptcha('sign_up', (captchaToken) =>
+        withTimeout(resendConfirmationEmail(confirmPending.email, confirmPending.kind, captchaToken))
+      );
+      setSuccessMsg(`Sent again. Check ${confirmPending.email} (and spam) for the link.`);
+      setConfirmResendIn(RESET_RESEND_SECONDS);
+    } catch (err: unknown) {
+      console.error('Confirmation email resend failed:', err);
+      const authErr = err as { code?: string; status?: number; message?: string };
+      setErrorMsg(
+        authErr.code === 'over_email_send_rate_limit' || authErr.status === 429 || authErr.message?.includes('rate limit')
+          ? 'Too many emails right now. Try again in about an hour.'
+          : toUserMessage(err, 'Couldn’t send the email. Try again.')
+      );
+      noteError();
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
     setSuccessMsg('');
+    setConfirmPending(null);
 
     setLoading(true);
 
@@ -623,7 +662,15 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
           }
         }
 
-        await withTimeout(upgradeAnonymousUser(email, password, username, avatar));
+        const upgraded = await withTimeout(upgradeAnonymousUser(email, password, username, avatar));
+        if (upgraded === 'pending') {
+          // Still a guest until the link is opened; the email then belongs to this same account.
+          const to = email.trim().toLowerCase();
+          setSuccessMsg(`Almost done. Open the link we sent to ${to} to save your progress to this account.`);
+          setConfirmPending({ email: to, kind: 'email_change' });
+          setConfirmResendIn(RESET_RESEND_SECONDS);
+          return;
+        }
         // USER_UPDATED re-loads the same account (store), so no page reload is needed.
         await finishWithSuccess('Progress saved!', onDone);
       } else if (mode === 'signup') {
@@ -646,9 +693,13 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
         );
 
         if (result.type === 'email_confirmation') {
+          // Supabase answers the same for an email that already has an account (no email then), so
+          // the text covers both and says nothing about which.
           setSuccessMsg(
-            `Account created. Check ${result.email} for a confirmation link, then sign in.`
+            `Check ${result.email} for a confirmation link to finish. Already have an account? Sign in instead.`
           );
+          setConfirmPending({ email: result.email, kind: 'signup' });
+          setConfirmResendIn(RESET_RESEND_SECONDS);
           return;
         }
 
@@ -660,7 +711,11 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
       }
     } catch (err: unknown) {
       const authErr = err as { code?: string; status?: number; message?: string };
-      if (
+      if (err instanceof EmailNotConfirmedError) {
+        showError(err.message);
+        // With an email the link can be sent again; a username never reveals its email.
+        if (email.includes('@')) setConfirmPending({ email: email.trim().toLowerCase(), kind: 'signup' });
+      } else if (
         authErr.code === 'over_email_send_rate_limit' ||
         authErr.status === 429 ||
         authErr.message?.includes('email rate limit')
@@ -780,6 +835,16 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
             <Check size={16} className="shrink-0" />
             <span>{successMsg}</span>
           </div>
+        )}
+        {confirmPending && !successTitle && (
+          <button
+            type="button"
+            onClick={resendConfirmation}
+            disabled={loading || confirmResendIn > 0}
+            className="btn-ghost w-full min-h-11 text-xs disabled:opacity-60 disabled:cursor-default"
+          >
+            {loading ? 'Sending…' : confirmResendIn > 0 ? `Resend email in ${confirmResendIn}s` : 'Resend confirmation email'}
+          </button>
         )}
 
         {/* Success screen after sign-in / sign-up / upgrade, shown until the modal closes */}

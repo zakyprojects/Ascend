@@ -123,6 +123,40 @@ function signUpErrorMessage(message?: string): string {
   return message;
 }
 
+/** Where an email-confirmation link lands: the app, which signs the person in from the link. */
+function confirmRedirectUrl(): string {
+  return `${window.location.origin}/dashboard`;
+}
+
+/** Sign-in refused because the account's email is not confirmed yet. */
+export const EMAIL_NOT_CONFIRMED_MESSAGE = 'Confirm your email first: open the link we sent you, then sign in.';
+export class EmailNotConfirmedError extends Error {
+  constructor() {
+    super(EMAIL_NOT_CONFIRMED_MESSAGE);
+    this.name = 'EmailNotConfirmedError';
+  }
+}
+
+/**
+ * Sends the confirmation email again: 'signup' for a new account, 'email_change' for a guest who
+ * added an email. Supabase answers the same whether or not the email has an account.
+ */
+export async function resendConfirmationEmail(
+  email: string,
+  kind: 'signup' | 'email_change',
+  captchaToken?: string
+): Promise<void> {
+  const { error } = await supabase.auth.resend({
+    type: kind,
+    email: email.trim().toLowerCase(),
+    options: { emailRedirectTo: confirmRedirectUrl(), captchaToken },
+  });
+  if (error) {
+    if (isCaptchaRejection(error)) throw new CaptchaRejectedError();
+    throw error;
+  }
+}
+
 export type SignUpResult =
   | { type: 'session' }
   | { type: 'email_confirmation'; email: string };
@@ -179,6 +213,7 @@ export async function signUpUser(
         terms_version: TERMS_VERSION,
       },
       captchaToken,
+      emailRedirectTo: confirmRedirectUrl(),
     },
   });
 
@@ -235,6 +270,7 @@ export async function loginUser(identifier: string, password: string, captchaTok
     if (authError.code === 'invalid_credentials' || msg.toLowerCase().includes('invalid login credentials')) {
       throw new Error(WRONG_EMAIL_LOGIN);
     }
+    if (authError.code === 'email_not_confirmed') throw new EmailNotConfirmedError();
     throw authError;
   }
   // Success: onAuthStateChange fires SIGNED_IN, hydrates profile+state in store.ts
@@ -265,7 +301,7 @@ async function loginWithUsername(username: string, password: string, captchaToke
       const body = (await response?.json().catch(() => null)) as { error?: string } | null;
       if (body?.error === 'captcha_failed') throw new CaptchaRejectedError();
     }
-    if (status === 403) throw new Error('Confirm your email first: open the link we sent you, then sign in.');
+    if (status === 403) throw new EmailNotConfirmedError();
     if (status === 429) throw new Error('Too many sign-in attempts. Wait a few minutes, or sign in with your email.');
     if (typeof navigator !== 'undefined' && navigator.onLine === false) throw new Error(NETWORK_MESSAGE);
     console.error('Username sign-in failed:', error);
@@ -367,13 +403,16 @@ export async function recordGoogleTermsConsent(authUser: { user_metadata?: Recor
  * Upgrade an anonymous guest user account to a permanent email/password account.
  *
  * Uses supabase.auth.updateUser({ email, password }) to preserve the user's UUID and data.
+ * With email confirmation on, Supabase keeps the email pending and the account a guest until the
+ * link in the email is opened; only then is the email this account's. Returns 'pending' then.
+ * An email that already has an account is refused, so a guest can never take over another account.
  */
 export async function upgradeAnonymousUser(
   email: string,
   password: string,
   newUsername?: string,
   newAvatar?: string
-): Promise<void> {
+): Promise<'saved' | 'pending'> {
   const trimmedEmail = email.trim().toLowerCase();
   const trimmedUsername = newUsername?.trim();
 
@@ -422,15 +461,16 @@ export async function upgradeAnonymousUser(
   if (trimmedUsername) userMetadata.username = trimmedUsername;
   if (newAvatar) userMetadata.avatar = newAvatar;
 
-  const { error } = await supabase.auth.updateUser({
-    email: trimmedEmail,
-    password,
-    data: userMetadata,
-  });
+  const { data, error } = await supabase.auth.updateUser(
+    { email: trimmedEmail, password, data: userMetadata },
+    { emailRedirectTo: confirmRedirectUrl() }
+  );
 
   if (error) {
     throw new Error(signUpErrorMessage(error.message));
   }
+  // new_email = the email waits for its link; without confirmation Supabase sets it at once.
+  return data.user?.new_email ? 'pending' : 'saved';
 }
 
 // Set when the user signs out on purpose (logout, account deletion), so the sign-in gate can tell
