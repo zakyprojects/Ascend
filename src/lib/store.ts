@@ -78,6 +78,7 @@ import { uid, generateUUID, generateNumericUID, periodKey, todayKey, isPlanJourn
 import { computeLinkedGoalProgress, linkedEntryPresent, linkedGoalCrossing, linkedItemExists, linkedGoalUnit } from './linkedGoalMetrics';
 import { autoStatusChanges } from './projectProgress';
 import { adoptServerInviteId } from './partnerInvites';
+import { singleFlight } from './singleFlight';
 import { reconcileSharedChallengeLifecycle, applyPledgeToggle, mergeSharedChallenge, linkedHabitFor, habitDoneOn, planLinkedPactRepairs, pactTickRefused, tickLinkedPacts, type LinkedPactTick } from './pactLifecycle';
 import { isPartnershipUser1 } from './partnershipSide';
 import { PresetHabit } from './presets';
@@ -3096,7 +3097,10 @@ export function useAppState() {
     };
     notificationsRefreshRef.current = syncNotificationsLive;
 
-    const syncPartnerDataLive = async () => {
+    // The stale-invite cleanup below runs once per partnership in this session, not on every refetch.
+    const cleanedInvitePartnershipIds = new Set<string>();
+
+    const fetchPartnerDataLive = async () => {
       if (typeof navigator !== 'undefined' && !navigator.onLine) {
         setNotificationsStatus((s) => (s === 'ready' ? s : 'failed'));
         setPartnersStatus('failed');
@@ -3127,10 +3131,11 @@ export function useAppState() {
           const tombstoneSet = new Set(state.deletedEntityIds || []);
           const seen = new Set<string>();
           for (const p of activePartnerships) {
-            if (!p || tombstoneSet.has(p.id)) continue;
+            if (!p || tombstoneSet.has(p.id) || cleanedInvitePartnershipIds.has(p.id)) continue;
             const key = [(p.user1Username || '').toLowerCase(), (p.user2Username || '').toLowerCase()].sort().join(':::');
             if (seen.has(key)) continue;
             seen.add(key);
+            cleanedInvitePartnershipIds.add(p.id);
             cleanupPendingInvitesBetweenUsersSupabase(p.user1Id, p.user1Username, p.user2Id, p.user2Username).catch(() => {});
           }
         }
@@ -3234,6 +3239,9 @@ export function useAppState() {
         setPartnersStatus('failed');
       }
     };
+    // Overlapping triggers (realtime bursts, poll, Retry) never run the reads in parallel: one run at
+    // a time plus at most one more after it.
+    const syncPartnerDataLive = singleFlight(fetchPartnerDataLive);
     partnersRefreshRef.current = syncPartnerDataLive;
 
     let pollInterval: any = null;
@@ -3296,8 +3304,18 @@ export function useAppState() {
           syncPartnerDataLive();
         })
         .on('postgres_changes', { event: '*', schema: 'public', table: 'shared_challenges' }, (payload) => {
+          // The event carries the row, so a pact of a partnership this tab already shows is applied
+          // from it alone. Only a pact of a partnership not known here yet needs the full refetch.
+          // Missed events are caught up by the refetch on (re)subscribe, online, tab return and poll.
+          const knownPartnership = (partnershipId: string | undefined) =>
+            !!partnershipId && (stateRef.current?.partnerships || []).some((p) => p.id === partnershipId);
+          let needsRefetch = true;
           if (payload.eventType === 'DELETE') {
             const deletedId = (payload.old as any)?.id;
+            // A DELETE carries only the id: the pact on screen says which partnership it was in.
+            needsRefetch = !knownPartnership(
+              (stateRef.current?.sharedChallenges || []).find((c) => c.id === deletedId)?.partnershipId
+            );
             if (deletedId) {
               setState((prev) => ({
                 ...prev,
@@ -3307,6 +3325,7 @@ export function useAppState() {
             }
           } else if (payload.eventType === 'UPDATE' || payload.eventType === 'INSERT') {
             const row = payload.new as any;
+            needsRefetch = !knownPartnership(row?.partnership_id);
             if (row && row.id) {
               const u1DoneDates = Array.isArray(row.user1_done_dates) && row.user1_done_dates.length
                 ? row.user1_done_dates
@@ -3360,7 +3379,7 @@ export function useAppState() {
               });
             }
           }
-          syncPartnerDataLive();
+          if (needsRefetch) syncPartnerDataLive();
         })
         // Only this account's notices; they need only the inbox refetch, not the partner queries.
         .on(
