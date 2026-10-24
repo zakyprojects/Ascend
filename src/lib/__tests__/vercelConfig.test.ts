@@ -44,6 +44,10 @@ assert(
     oldHost[0].has[0].value === 'ascend-neon.vercel.app',
   'one permanent host redirect ascend-neon.vercel.app -> https://ascendday.com, same path'
 );
+// The CSP is enforced (report-only ended 2026-10-24); violations still report to Sentry.
+const headerKeys = (config.headers ?? []).flatMap((rule) => rule.headers.map((h) => h.key.toLowerCase()));
+assert(headerKeys.includes('content-security-policy'), 'vercel.json sends an enforced Content-Security-Policy');
+assert(!headerKeys.includes('content-security-policy-report-only'), 'no report-only CSP left beside the enforced one');
 assert(!(config.rewrites ?? []).some((r) => /\(\.\*\)|\[\^\.\]\*/.test(r.source) && r.destination.endsWith('.html')), 'no catch-all HTML rewrite (it would hide real 404s)');
 
 const manifest = {

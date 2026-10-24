@@ -38,7 +38,7 @@ export async function checkSite(files: Map<string, string>, config: VercelConfig
   const errors: string[] = [];
   const exists = (file: string) => files.has(file);
 
-  // Every inline script on every page is allowed by the CSP (report-only today, enforced later).
+  // Every inline script on every page is allowed by the CSP (enforced since 2026-10-24).
   const hashes = cspScriptHashes(config);
   for (const [file, text] of files) {
     if (!file.endsWith('.html')) continue;
@@ -120,7 +120,7 @@ export async function checkSite(files: Map<string, string>, config: VercelConfig
   // Every response carries the security headers.
   for (const path of ['/', '/dashboard', '/features/journal', '/no-such-page']) {
     const headers = headersFor(config, path);
-    if (headers['x-content-type-options'] !== 'nosniff' || !headers['content-security-policy-report-only']) {
+    if (headers['x-content-type-options'] !== 'nosniff' || !headers['content-security-policy']) {
       errors.push(`${path}: security headers missing`);
     }
   }
