@@ -2649,16 +2649,26 @@ export function useAppState() {
           return;
         }
 
+        // A guest whose email link was opened elsewhere: the refreshed token says it is now a real
+        // account, so it loads again as one (the same id, so nothing is merged or replaced).
+        const guestBecameMember =
+          event === 'TOKEN_REFRESHED' &&
+          !!session?.user &&
+          session.user.is_anonymous === false &&
+          currentUserRef.current?.id === session.user.id &&
+          currentUserRef.current?.isAnonymous === true;
+
         if (
           (event === 'INITIAL_SESSION' ||
             event === 'SIGNED_IN' ||
             event === 'USER_UPDATED' ||
+            guestBecameMember ||
             // A saved sign-in coming back by a token refresh (the auto-refresh tick) after the wait.
             (event === 'TOKEN_REFRESHED' && storedSessionWaitRef.current)) &&
           session?.user
         ) {
           endStoredSessionWait();
-          if (event !== 'USER_UPDATED' && isHydrated.current && currentUserRef.current?.id === session.user.id) {
+          if (event !== 'USER_UPDATED' && !guestBecameMember && isHydrated.current && currentUserRef.current?.id === session.user.id) {
             setIsAuthChecking(false);
             return;
           }
@@ -2839,10 +2849,32 @@ export function useAppState() {
       }, 0);
     });
 
+    // A guest waiting for its email link keeps a guest token until it refreshes (up to an hour).
+    // When the app opens or comes back into view, ask for a fresh token so a link opened on another
+    // device shows here at once. Only guests with a pending email; at most once a minute.
+    let lastPendingCheckMs = 0;
+    const checkPendingEmail = async () => {
+      if (document.visibilityState !== 'visible' || !currentUserRef.current?.isAnonymous) return;
+      const now = trustedNowMs();
+      if (now - lastPendingCheckMs < 60_000) return;
+      const { data } = await supabase.auth.getSession();
+      if (!data.session?.user?.is_anonymous || !data.session.user.new_email) return;
+      lastPendingCheckMs = now;
+      const { error } = await supabase.auth.refreshSession();
+      if (error) console.warn('Pending-email token refresh failed:', error.message);
+    };
+    const onPendingCheck = () => void checkPendingEmail();
+    const pendingCheckTimer = setTimeout(onPendingCheck, 3000);
+    window.addEventListener('focus', onPendingCheck);
+    document.addEventListener('visibilitychange', onPendingCheck);
+
     return () => {
       mounted = false;
       applySignedOutRef.current = null;
       if (storedSessionTimerRef.current) clearTimeout(storedSessionTimerRef.current);
+      clearTimeout(pendingCheckTimer);
+      window.removeEventListener('focus', onPendingCheck);
+      document.removeEventListener('visibilitychange', onPendingCheck);
       authListener.subscription.unsubscribe();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
