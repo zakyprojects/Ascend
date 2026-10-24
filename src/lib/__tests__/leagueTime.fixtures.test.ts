@@ -19,7 +19,6 @@ import {
   getArchivePeriodStart,
   getLeaguePeriodEnd,
   getLeaguePeriodLabel,
-  getLeaguePointsPeriods,
   getTimeUntilReset,
 } from '../leagues';
 import type { LeagueArchive, LeagueType } from '@/types';
@@ -225,16 +224,6 @@ function runFixtures() {
     const got = getLeaguePeriodLabel(type, at);
     assert(got === want, `getLeaguePeriodLabel(${type}, ${at.toISOString()}) expected "${want}", got "${got}"`);
   }
-
-  // The points windows the server accepts keep true week/month ends.
-  const pointsBefore = getLeaguePointsPeriods(utc(2026, 10, 28));
-  assert(pointsBefore[0].id === 'W:2026-W44' && pointsBefore[0].start.getTime() === utc(2026, 10, 26).getTime()
-    && pointsBefore[0].end.getTime() === utc(2026, 11, 2).getTime(), 'Points window for W:2026-W44 on Oct 28 must stay [Oct 26, Nov 2)');
-  assert(pointsBefore[13].id === 'M:2026-10' && pointsBefore[13].start.getTime() === utc(2026, 10, 1).getTime()
-    && pointsBefore[13].end.getTime() === utc(2026, 11, 1).getTime(), 'Points window for M:2026-10 on Oct 28 must stay [Oct 1, Nov 1)');
-  const pointsAfter = getLeaguePointsPeriods(utc(2026, 10, 31));
-  assert(pointsAfter[0].start.getTime() === utc(2026, 10, 30).getTime() && pointsAfter[0].end.getTime() === utc(2026, 11, 2).getTime(),
-    'Points window for W:2026-W44 on Oct 31 must be [Oct 30, Nov 2)');
 
   // Test 11: archive ids, including '<id>@S<n>' parts (the part before season n + 1 began).
   const archive = (id: string, type: LeagueType): LeagueArchive =>

@@ -113,8 +113,6 @@ import {
 } from './readingAwards';
 import {
   getLeaguePeriodStart,
-  getLeaguePointsPeriods,
-  getLiveLeaguePointsPeriods,
   calculatePeriodPoints,
   calculateSeasonalTotal,
   getEffectiveSeasonPoints,
@@ -193,8 +191,7 @@ import {
   resetUserDataWatermark,
   lowerUserDataWatermark,
   saveUserDataToSupabase,
-  fetchAllProfilesFromSupabase,
-  fetchLeaguePointsFromSupabase,
+  fetchLeagueBoardsFromSupabase,
   fetchProfileByUsernameFromSupabase,
   fetchPartnerInvitesSupabase,
   fetchPartnershipsSupabase,
@@ -1961,9 +1958,7 @@ export function useAppState() {
     createLeagueStandingsRefresher({
       sessionUserId: async () =>
         isSupabaseConfigured ? (await supabase.auth.getSession()).data?.session?.user?.id ?? null : null,
-      fetchProfiles: fetchAllProfilesFromSupabase,
-      fetchPoints: (now, scope) =>
-        fetchLeaguePointsFromSupabase(scope === 'live' ? getLiveLeaguePointsPeriods(now) : getLeaguePointsPeriods(now)),
+      fetchBoards: fetchLeagueBoardsFromSupabase,
       now: leagueNow,
       isOnline: () => typeof navigator === 'undefined' || navigator.onLine !== false,
       apply: ({ profiles, points }) => {

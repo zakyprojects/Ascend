@@ -17,13 +17,9 @@ function setup() {
   let livePoints: Record<string, Record<string, number>> = { W: { me: 5, a: 3 }, M: { me: 9 } };
   const refresher = createLeagueStandingsRefresher({
     sessionUserId: async () => 'me',
-    fetchProfiles: async () => {
-      calls.push('profiles');
-      return members;
-    },
-    fetchPoints: async (_now, scope) => {
-      calls.push(`points:${scope}`);
-      return scope === 'live' ? { ...livePoints } : { ...livePoints, OLD: { a: 40 } };
+    fetchBoards: async (slim) => {
+      calls.push(slim ? 'slim' : 'full');
+      return slim ? { profiles: null, points: { ...livePoints } } : { profiles: members, points: { ...livePoints } };
     },
     now: () => new Date(nowMs),
     isOnline: () => true,
@@ -42,19 +38,18 @@ function setup() {
 const last = <T,>(xs: T[]) => xs[xs.length - 1];
 
 (async () => {
-  // First refresh is the full set; a poll a minute later asks only for live points and keeps OLD.
+  // First refresh is the full set (one call); a poll a minute later is one slim call.
   {
     const t = setup();
     await t.refresher.refresh();
-    assert(t.calls.join() === 'profiles,points:all', 'first refresh fetches profiles and all periods');
+    assert(t.calls.join() === 'full', 'first refresh is one full call');
     t.advance(MIN);
     t.setLive({ W: { me: 6, a: 3 }, M: { me: 10 } });
     await t.refresher.refresh();
-    assert(t.calls.slice(2).join() === 'points:live', 'poll fetches live points only');
+    assert(t.calls.slice(1).join() === 'slim', 'poll is one slim call');
     const r = last(t.applied);
     assert(r.profiles === null, 'poll keeps the cached member list');
     assert(r.points?.W.me === 6 && r.points?.M.me === 10, 'live periods are updated');
-    assert(r.points?.OLD.a === 40, 'earlier periods are kept');
     assert(t.refresher.fetchedUserId() === 'me' && !t.refresher.lastAttemptFailed(), 'poll counts as success');
   }
 
@@ -64,10 +59,10 @@ const last = <T,>(xs: T[]) => xs[xs.length - 1];
     await t.refresher.refresh();
     t.advance(MIN);
     await t.refresher.refresh({ full: true });
-    assert(t.calls.slice(2).join() === 'profiles,points:all', 'full refresh fetches everything');
+    assert(t.calls.slice(1).join() === 'full', 'full refresh is one full call');
     t.advance(10 * MIN);
     await t.refresher.refresh();
-    assert(t.calls.slice(4).join() === 'profiles,points:all', 'stale full set is fetched again');
+    assert(t.calls.slice(2).join() === 'full', 'stale full set is fetched again');
   }
 
   // A member missing from the list scores: that poll takes the full set so their profile arrives.
@@ -78,7 +73,7 @@ const last = <T,>(xs: T[]) => xs[xs.length - 1];
     t.setLive({ W: { me: 5, a: 3, newbie: 2 }, M: { me: 9 } });
     t.setMembers([{ id: 'me' }, { id: 'a' }, { id: 'newbie' }]);
     await t.refresher.refresh();
-    assert(t.calls.slice(2).join() === 'points:live,profiles,points:all', 'unknown member triggers the full set');
+    assert(t.calls.slice(1).join() === 'slim,full', 'unknown member triggers the full set');
     assert(last(t.applied).profiles?.length === 3, 'new member list applied');
   }
 
@@ -89,7 +84,30 @@ const last = <T,>(xs: T[]) => xs[xs.length - 1];
     t.refresher.reset();
     t.advance(MIN);
     await t.refresher.refresh();
-    assert(t.calls.slice(2).join() === 'profiles,points:all', 'after reset the full set is fetched');
+    assert(t.calls.slice(1).join() === 'full', 'after reset the full set is fetched');
+  }
+
+  // A failed call (null) applies nothing and reports the failure; the caches keep what they had.
+  {
+    let fail = false;
+    const applied: LeagueStandingsResult[] = [];
+    let nowMs = Date.UTC(2026, 9, 21, 9, 0, 0);
+    const refresher = createLeagueStandingsRefresher({
+      sessionUserId: async () => 'me',
+      fetchBoards: async (slim) =>
+        fail ? null : { profiles: slim ? null : [{ id: 'me' }], points: { W: { me: 1 }, M: {} } },
+      now: () => new Date(nowMs),
+      isOnline: () => true,
+      apply: (r) => applied.push(r),
+    });
+    await refresher.refresh();
+    fail = true;
+    nowMs += MIN;
+    await refresher.refresh();
+    assert(applied.length === 1 && refresher.lastAttemptFailed(), 'failed slim poll applies nothing');
+    await refresher.refresh({ full: true });
+    assert(applied.length === 1 && refresher.lastAttemptFailed(), 'failed full refresh applies nothing');
+    assert(refresher.fetchedUserId() === 'me', 'the earlier full set still counts for this member');
   }
 
   console.log('leagueStandingsRefresh: all assertions passed');

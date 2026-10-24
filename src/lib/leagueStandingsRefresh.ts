@@ -5,7 +5,7 @@ const MIN_GAP_MS = 15_000;
 
 /**
  * A poll between full fetches asks only for this week's and month's points (the ones that move);
- * the member list and the 24 earlier periods are fetched again when they are this old.
+ * the member list and season points are fetched again when they are this old.
  */
 const FULL_SET_MAX_AGE_MS = 10 * 60_000;
 
@@ -15,18 +15,55 @@ export function leaguePeriodKey(now: Date): string {
 }
 
 export interface LeagueStandingsResult {
-  /** null when that fetch failed: the cache keeps what it had. */
+  /** Every member, season_points filled in; null for a slim (live points only) result. */
   profiles: any[] | null;
+  /** Weekly/monthly points: period id -> member id -> points (members with 0 are absent). */
   points: Record<string, Record<string, number>> | null;
+}
+
+const BOARD_POINT_TYPES = ['weekly', 'monthly'] as const;
+
+/** [member id, points] pairs of one board, as ascend_league_boards sends them; null if malformed. */
+function pointsById(rows: unknown): Record<string, number> | null {
+  if (!Array.isArray(rows)) return null;
+  const byId: Record<string, number> = {};
+  for (const row of rows) {
+    if (!Array.isArray(row) || typeof row[0] !== 'string' || typeof row[1] !== 'number') return null;
+    byId[row[0]] = row[1];
+  }
+  return byId;
+}
+
+/**
+ * The ascend_league_boards answer as the league caches hold it: weekly/monthly points per period id,
+ * and (full) the member list with each member's season points (0 when the season board omits them).
+ * Null when anything the request asked for is missing, so the caches keep what they had.
+ */
+export function parseLeagueBoards(data: unknown, slim: boolean): LeagueStandingsResult | null {
+  if (!data || typeof data !== 'object') return null;
+  const boards = data as Record<string, any>;
+  const points: Record<string, Record<string, number>> = {};
+  for (const type of BOARD_POINT_TYPES) {
+    const periodId = boards[type]?.period_id;
+    const byId = pointsById(boards[type]?.points);
+    if (typeof periodId !== 'string' || !byId) return null;
+    points[periodId] = byId;
+  }
+  if (slim) return { profiles: null, points };
+
+  const seasonPoints = pointsById(boards.ninetyDay?.points);
+  const members = boards.members;
+  // A real member list always holds at least the signed-in member.
+  if (!seasonPoints || !Array.isArray(members) || members.length === 0) return null;
+  const profiles = members.map((m: any) => ({ ...m, season_points: seasonPoints[String(m?.id)] ?? 0 }));
+  return { profiles, points };
 }
 
 export interface LeagueStandingsDeps {
   /** The signed-in member (guest included), or null with no session. */
   sessionUserId: () => Promise<string | null>;
-  /** Returns [] on failure. */
-  fetchProfiles: () => Promise<any[]>;
-  /** 'all' = every period a league view or archive scores; 'live' = this week and month. Null on failure. */
-  fetchPoints: (now: Date, scope: 'all' | 'live') => Promise<Record<string, Record<string, number>> | null>;
+  /** Full: members + this week's, month's and season's points; slim: this week's and month's points. Null on failure. */
+  fetchBoards: (slim: boolean) => Promise<LeagueStandingsResult | null>;
   now: () => Date;
   isOnline: () => boolean;
   apply: (result: LeagueStandingsResult) => void;
@@ -46,7 +83,7 @@ export function createLeagueStandingsRefresher(deps: LeagueStandingsDeps) {
   let fetchedUserId: string | null = null;
   /** The last attempt ended without a full result (no session, a fetch failed, or it threw). */
   let lastAttemptFailed = false;
-  /** When profiles + all periods last came back together, and what they held (live polls merge into it). */
+  /** When the last full set came back, and the points it held (live polls merge into it). */
   let fullSetMs = -Infinity;
   let knownPoints: Record<string, Record<string, number>> | null = null;
   let knownMemberIds = new Set<string>();
@@ -77,12 +114,12 @@ export function createLeagueStandingsRefresher(deps: LeagueStandingsDeps) {
         now.getTime() - fullSetMs >= FULL_SET_MAX_AGE_MS;
 
       if (!needFullSet) {
-        const live = await deps.fetchPoints(now, 'live');
+        const live = await deps.fetchBoards(true);
         if (myEpoch !== epoch || (await deps.sessionUserId()) !== userId) return;
-        if (!live) return;
-        const merged = { ...knownPoints, ...live };
+        if (!live?.points) return;
+        const merged = { ...knownPoints, ...live.points };
         // Someone new scored: the member list must include them, so take the full set this time.
-        const hasNewMember = Object.values(live).some((byUser) =>
+        const hasNewMember = Object.values(live.points).some((byUser) =>
           Object.keys(byUser).some((id) => !knownMemberIds.has(id))
         );
         if (!hasNewMember) {
@@ -94,22 +131,17 @@ export function createLeagueStandingsRefresher(deps: LeagueStandingsDeps) {
         }
       }
 
-      const [profiles, points] = await Promise.all([deps.fetchProfiles(), deps.fetchPoints(now, 'all')]);
+      const result = await deps.fetchBoards(false);
       if (myEpoch !== epoch || (await deps.sessionUserId()) !== userId) return;
-
-      // A real member list always holds at least the signed-in member, so [] means it failed.
-      const okProfiles = profiles.length > 0 ? profiles : null;
-      if (!okProfiles && !points) return;
-      deps.apply({ profiles: okProfiles, points });
-      if (points) fetchedPeriodKey = leaguePeriodKey(now);
-      if (okProfiles && points) {
-        fullSetMs = now.getTime();
-        knownPoints = points;
-        knownMemberIds = new Set(okProfiles.map((p: any) => String(p?.id)));
-        lastSuccessMs = now.getTime();
-        fetchedUserId = userId;
-        succeeded = true;
-      }
+      if (!result?.profiles || !result.points) return;
+      deps.apply(result);
+      fetchedPeriodKey = leaguePeriodKey(now);
+      fullSetMs = now.getTime();
+      knownPoints = result.points;
+      knownMemberIds = new Set(result.profiles.map((p: any) => String(p?.id)));
+      lastSuccessMs = now.getTime();
+      fetchedUserId = userId;
+      succeeded = true;
     })()
       .catch((e) => console.error('Error refreshing league standings:', e))
       .finally(() => {

@@ -1,11 +1,12 @@
 import { LeagueCompetitor } from '@/types';
 import { TierBadge } from './TierBadge';
-import { Dialog } from '@/components/ui/primitives';
-import { Flame, CheckSquare, BookOpen, Activity, Book, Target, Lock, EyeOff, type LucideIcon } from 'lucide-react';
+import { Dialog, Skeleton } from '@/components/ui/primitives';
+import { Flame, CheckSquare, BookOpen, Activity, Book, Target, Lock, EyeOff, WifiOff, type LucideIcon } from 'lucide-react';
 import { getProfileStreakStats } from '@/lib/streakLogic';
 import { getCurrentTier } from '@/lib/tiers';
 import { formatDateShort } from '@/lib/dates';
 import { ptsText } from '@/lib/leagues';
+import type { MemberDetails } from '@/lib/useMemberDetails';
 
 interface CompetitorProfileModalProps {
   competitor: LeagueCompetitor | null;
@@ -16,6 +17,8 @@ interface CompetitorProfileModalProps {
   viewerIsPublic?: boolean;
   /** Partners always see each other's stats (the server sends them whatever the privacy setting). */
   isPartner?: boolean;
+  /** Another member's stats and past seasons, fetched on open; null for the viewer's own row (local). */
+  details: MemberDetails | null;
   open: boolean;
   onClose: () => void;
 }
@@ -26,6 +29,7 @@ export function CompetitorProfileModal({
   periodLabel,
   viewerIsPublic = true,
   isPartner = false,
+  details,
   open,
   onClose,
 }: CompetitorProfileModalProps) {
@@ -35,8 +39,9 @@ export function CompetitorProfileModal({
   const targetIsPublic = competitor.isProfilePublic ?? true;
   const canViewDetailed = isSelf || isPartner || (viewerIsPublic && targetIsPublic);
 
-  const stats = competitor.stats;
-  const seasonHistory = competitor.season_history;
+  const ready = details?.status === 'ready' ? details : null;
+  const stats = isSelf ? competitor.stats : ready?.stats;
+  const seasonHistory = isSelf ? competitor.season_history : ready?.seasonHistory;
 
   return (
     <Dialog
@@ -121,7 +126,19 @@ export function CompetitorProfileModal({
           </div>
         ) : (
           <>
-            {stats ? (
+            {!isSelf && details?.status === 'loading' ? (
+              <ActivityStatsSkeleton />
+            ) : !isSelf && details?.status === 'failed' ? (
+              <div className="rounded-xl border border-overlay-subtle p-6 text-center space-y-1.5">
+                <div className="flex items-center justify-center text-content-muted">
+                  <WifiOff size={18} aria-hidden="true" />
+                </div>
+                <h4 className="text-base font-semibold leading-tight text-content-secondary">Stats didn't load</h4>
+                <p className="text-xs text-content-muted max-w-sm mx-auto leading-relaxed">
+                  Check your connection and open the profile again. Their username, rank, and league points are still visible.
+                </p>
+              </div>
+            ) : stats ? (
               <ActivityStats stats={stats} />
             ) : isSelf ? null : (
               // Allowed by this device's view, but the server sent no stats (a partnership or privacy
@@ -174,6 +191,24 @@ export function CompetitorProfileModal({
         )}
       </div>
     </Dialog>
+  );
+}
+
+/** Placeholder for ActivityStats while another member's stats load. */
+function ActivityStatsSkeleton() {
+  return (
+    <section aria-busy="true">
+      <h4 className="stat-label mb-2.5">Activity</h4>
+      <span className="sr-only">Loading stats…</span>
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-px overflow-hidden rounded-xl border border-overlay-subtle bg-overlay-subtle">
+        {Array.from({ length: 6 }, (_, i) => (
+          <div key={i} className="bg-bg-800 p-3 space-y-2">
+            <Skeleton className="h-3 w-20" />
+            <Skeleton className="h-5 w-12" />
+          </div>
+        ))}
+      </div>
+    </section>
   );
 }
 

@@ -8,11 +8,8 @@ import {
   getSeasonStart,
   getSeasonEnd,
   getSeasonNumber,
-  getWeekPeriodId,
-  getMonthPeriodId,
   getSeasonStartByNumber,
 } from './leagueTime';
-import type { LeaguePointsPeriod } from './supabase';
 
 /** Returns formatted Season label (e.g. "Season 1") */
 export function getSeasonLabel(now: Date): string {
@@ -36,36 +33,9 @@ export function getLeaguePeriodStart(type: LeagueType, now: Date): Date {
   }
 }
 
-/** Periods a league view or archive can score: this week and month plus the 12 before each. */
-const LEAGUE_POINTS_LOOKBACK = 12;
-
-export function getLeaguePointsPeriods(now: Date): LeaguePointsPeriod[] {
-  const periods: LeaguePointsPeriod[] = [];
-  const kinds = [
-    { start: getWeekStart, end: getWeekEnd, id: getWeekPeriodId },
-    { start: getMonthStart, end: getMonthEnd, id: getMonthPeriodId },
-  ];
-  for (const kind of kinds) {
-    let ref = now;
-    for (let step = 0; step <= LEAGUE_POINTS_LOOKBACK; step++) {
-      const start = kind.start(ref);
-      periods.push({ id: kind.id(ref), start: clampToSeasonStart(start, ref), end: kind.end(ref) });
-      ref = new Date(start.getTime() - 1);
-    }
-  }
-  return periods;
-}
-
-/** Only this week and this month: the periods whose points still move. */
-export function getLiveLeaguePointsPeriods(now: Date): LeaguePointsPeriod[] {
-  const periods = getLeaguePointsPeriods(now);
-  return [periods[0], periods[LEAGUE_POINTS_LOOKBACK + 1]];
-}
-
 /**
  * When the running period resets: a week or month that a season start cuts short ends at that
- * start, because the new season restarts every league. Not for getLeaguePointsPeriods: the
- * server only accepts true week/month ends there.
+ * start, because the new season restarts every league.
  */
 export function getLeaguePeriodEnd(type: LeagueType, now: Date): Date {
   switch (type) {

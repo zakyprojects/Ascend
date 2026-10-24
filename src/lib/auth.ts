@@ -24,7 +24,7 @@ export function setCachedProfiles(profiles: any[]) {
   cachedProfiles = profiles;
 }
 
-/** Weekly/monthly league points per period id, then per member id (from ascend_league_points). */
+/** Weekly/monthly league points per period id, then per member id (from ascend_league_boards). */
 let cachedLeaguePoints: Record<string, Record<string, number>> = {};
 
 /** null = none yet (signed out): standings read as 0. */
@@ -720,6 +720,30 @@ export async function updateProfileNotificationPreferences(
 }
 
 /**
+ * A member's published stats as the profile dialog shows them (from ascend_member_profiles(p_username)).
+ * The server sends stats = null when this viewer may not see them: then undefined, never zeros that
+ * would read as real numbers (C4). Streak fields missing from older stats fall back to what an empty
+ * history gives (0 days, no category, active).
+ */
+export function toCompetitorStats(raw: any): LeagueCompetitor['stats'] {
+  if (!raw) return undefined;
+  const currentDays = raw.currentStreakDays ?? 0;
+  const currentCategory = raw.currentStreakCategory ?? '';
+  return {
+    streakDays: currentDays,
+    streakSource: currentDays > 0 ? currentCategory : undefined,
+    currentStreakDays: currentDays,
+    currentStreakCategory: currentCategory,
+    currentStreakIsActive: raw.currentStreakIsActive !== undefined ? raw.currentStreakIsActive : true,
+    habitsCompletedCount: raw.habitsCompletedCount || 0,
+    journalEntriesCount: raw.journalEntriesCount || 0,
+    exerciseMinutes: raw.exerciseMinutes || 0,
+    booksRead: raw.booksRead || 0,
+    skillsPracticedCount: raw.skillsPracticedCount || 0,
+  };
+}
+
+/**
  * Get all registered real users as LeagueCompetitors for a specific league period.
  */
 export function getRegisteredCompetitors(
@@ -736,28 +760,6 @@ export function getRegisteredCompetitors(
 
     const periodPoints = computeCompetitorLeaguePoints(p, type, now);
 
-    // Streak fields missing from older stats fall back to what an empty history gives (0 days, no
-    // category, active): the member list carries no habits or points history to compute one from.
-    const prefCurrentDays = p.stats?.currentStreakDays ?? 0;
-    const prefCurrentCat = p.stats?.currentStreakCategory ?? '';
-    const prefCurrentActive = p.stats?.currentStreakIsActive !== undefined
-      ? p.stats.currentStreakIsActive
-      : true;
-    // The server sends stats = null when this viewer may not see them: keep them undefined, never
-    // zeros that would read as real numbers in the profile dialog (C4).
-    const stats = p.stats ? {
-      streakDays: prefCurrentDays,
-      streakSource: prefCurrentDays > 0 ? prefCurrentCat : undefined,
-      currentStreakDays: prefCurrentDays,
-      currentStreakCategory: prefCurrentCat,
-      currentStreakIsActive: prefCurrentActive,
-      habitsCompletedCount: p.stats?.habitsCompletedCount || 0,
-      journalEntriesCount: p.stats?.journalEntriesCount || 0,
-      exerciseMinutes: p.stats?.exerciseMinutes || 0,
-      booksRead: p.stats?.booksRead || 0,
-      skillsPracticedCount: p.stats?.skillsPracticedCount || 0,
-    } : undefined;
-
     competitors.push({
       id: p.id,
       uid: p.uid,
@@ -767,8 +769,7 @@ export function getRegisteredCompetitors(
       totalPoints: p.total_points || 0,
       isRealUser: true,
       isProfilePublic: p.is_profile_public ?? true,
-      stats,
-      season_history: p.season_history || [],
+      // The member list carries no stats or past seasons: the profile dialog fetches them on tap.
     });
   }
 

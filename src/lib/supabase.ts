@@ -20,6 +20,7 @@ import { CaptchaRejectedError, isCaptchaRejection, withCaptcha } from './captcha
 import { SentSnapshots, snapshotOf } from './sentSnapshots';
 import { canonical } from './stateEquality';
 import { ilikeExactOrValue } from './usernameRules';
+import { parseLeagueBoards, type LeagueStandingsResult } from './leagueStandingsRefresh';
 
 function getValidSupabaseUrl(url: unknown): string | null {
   if (typeof url !== 'string') return null;
@@ -583,19 +584,6 @@ export async function saveUserDataToSupabase(
   }
 }
 
-export async function fetchAllProfilesFromSupabase() {
-  if (!isSupabaseConfigured) return [];
-  try {
-    // Stats and past seasons come back only for members this viewer may see in detail.
-    const { data, error } = await supabase.rpc('ascend_member_profiles');
-    if (error || !data) return [];
-    return data;
-  } catch (e) {
-    console.error('Error fetching profiles from Supabase:', e);
-    return [];
-  }
-}
-
 /**
  * The signed-in member's own private profile columns (email, notification settings, timezones,
  * last username change). Members cannot SELECT these columns on profiles; null on failure.
@@ -686,36 +674,19 @@ export async function sendDeviceTimezone(userId: string): Promise<boolean> {
   return true;
 }
 
-/** A league period whose points the server sums: [start, end), start already clamped to the season. */
-export interface LeaguePointsPeriod {
-  id: string;
-  start: Date;
-  end: Date;
-}
-
 /**
- * Every member's net points in each period, from the server ledger (ascend_league_points).
- * Returns periodId -> userId -> points (members with 0 points are absent), or null on failure.
+ * Other members' league standings from one ascend_league_boards call. Full: every member (no stats
+ * or past seasons; the profile dialog fetches those on tap) with season points, plus this week's and
+ * month's points. Slim (the live poll): this week's and month's points only. Null on failure.
  */
-export async function fetchLeaguePointsFromSupabase(
-  periods: LeaguePointsPeriod[]
-): Promise<Record<string, Record<string, number>> | null> {
-  if (!isSupabaseConfigured || periods.length === 0) return null;
+export async function fetchLeagueBoardsFromSupabase(slim: boolean): Promise<LeagueStandingsResult | null> {
+  if (!isSupabaseConfigured) return null;
   try {
-    const { data, error } = await supabase.rpc('ascend_league_points', {
-      p_starts: periods.map((p) => p.start.toISOString()),
-      p_ends: periods.map((p) => p.end.toISOString()),
-    });
-    if (error || !Array.isArray(data)) return null;
-    const result: Record<string, Record<string, number>> = {};
-    for (const p of periods) result[p.id] = {};
-    for (const row of data as { period: number; user_id: string; points: number }[]) {
-      const period = periods[row.period - 1];
-      if (period) result[period.id][row.user_id] = row.points;
-    }
-    return result;
+    const { data, error } = await supabase.rpc('ascend_league_boards', { p_slim: slim });
+    if (error) return null;
+    return parseLeagueBoards(data, slim);
   } catch (e) {
-    console.error('Error fetching league points from Supabase:', e);
+    console.error('Error fetching league boards from Supabase:', e);
     return null;
   }
 }

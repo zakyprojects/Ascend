@@ -23,6 +23,7 @@ import { GuestSaveBanner } from '@/components/ui/GuestSaveBanner';
 import { PageHero } from '@/components/ui/PageHero';
 import { useLeaguePeriodRollover } from '@/lib/useLeaguePeriodRollover';
 import { useLeagueStandingsRefresh } from '@/lib/useLeagueStandingsRefresh';
+import { useMemberDetails } from '@/lib/useMemberDetails';
 import { CountUp, Reveal } from '@/components/ui/Motion';
 import { isPartnershipUser1 } from '@/lib/partnershipSide';
 
@@ -102,6 +103,8 @@ export function Leagues({ store, onOpenAuth }: LeaguesProps) {
   const changeLeague = (id: string) => setActiveLeague(id as LeagueType);
   const [openArchiveId, setOpenArchiveId] = useState<string | null>(null);
   const [selectedCompetitor, setSelectedCompetitor] = useState<LeagueCompetitor | null>(null);
+  // Stats and past seasons are not in the league list: fetched when a member's profile opens.
+  const selectedDetails = useMemberDetails(selectedCompetitor);
   const [retrying, setRetrying] = useState(false);
   // Period labels re-render on rollover; the per-second countdown ticks inside LeagueCountdown.
   useLeaguePeriodRollover();
@@ -423,6 +426,7 @@ export function Leagues({ store, onOpenAuth }: LeaguesProps) {
         periodLabel={activeLeague === 'ninetyDay' ? 'This season' : activeLeague === 'monthly' ? 'This month' : 'This week'}
         viewerIsPublic={currentUser ? (currentUser.isProfilePublic ?? true) : true}
         isPartner={selectedCompetitor && !selectedCompetitor.isUser ? partnerIds.has(selectedCompetitor.id ?? '') || (!selectedCompetitor.id && partnerNames.has(selectedCompetitor.name.toLowerCase())) : false}
+        details={selectedDetails}
         open={!!selectedCompetitor}
         onClose={() => setSelectedCompetitor(null)}
       />
