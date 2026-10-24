@@ -14,7 +14,8 @@ export interface VercelHeaderRule {
 export interface VercelConfig {
   cleanUrls?: boolean;
   trailingSlash?: boolean;
-  redirects?: { source: string; destination: string; permanent?: boolean }[];
+  /** `has` (e.g. a host match) limits a redirect to other domains; the local checks model ascendday.com only. */
+  redirects?: { source: string; destination: string; permanent?: boolean; has?: { type: string; value: string }[] }[];
   rewrites?: { source: string; destination: string }[];
   headers?: VercelHeaderRule[];
 }
@@ -48,6 +49,7 @@ export function resolveRoute(config: VercelConfig, path: string, exists: (file: 
     if (exists(path.slice(1))) return { type: 'redirect', status: 308, location: clean };
   }
   for (const redirect of config.redirects ?? []) {
+    if (redirect.has?.length) continue;
     if (sourceMatches(redirect.source, path)) {
       return { type: 'redirect', status: redirect.permanent === false ? 307 : 308, location: redirect.destination };
     }

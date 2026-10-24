@@ -32,6 +32,17 @@ assert(
   (config.headers ?? []).some((h) => h.source === viewSource && h.headers.some((x) => x.key === 'X-Robots-Tag' && x.value === 'noindex')),
   'app pages carry X-Robots-Tag noindex (same source as the rewrite)'
 );
+// D9: the old address sends every path (query kept by Vercel) to the domain, permanently.
+const oldHost = (config.redirects ?? []).filter((r) => r.has?.some((h) => h.type === 'host'));
+assert(
+  oldHost.length === 1 &&
+    oldHost[0].source === '/:path*' &&
+    oldHost[0].destination === 'https://ascendday.com/:path*' &&
+    oldHost[0].permanent === true &&
+    oldHost[0].has?.length === 1 &&
+    oldHost[0].has[0].value === 'ascend-neon.vercel.app',
+  'one permanent host redirect ascend-neon.vercel.app -> https://ascendday.com, same path'
+);
 assert(!(config.rewrites ?? []).some((r) => /\(\.\*\)|\[\^\.\]\*/.test(r.source) && r.destination.endsWith('.html')), 'no catch-all HTML rewrite (it would hide real 404s)');
 
 const manifest = {

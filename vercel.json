@@ -3,6 +3,12 @@
   "cleanUrls": true,
   "trailingSlash": false,
   "redirects": [
+    {
+      "source": "/:path*",
+      "has": [{ "type": "host", "value": "ascend-neon.vercel.app" }],
+      "destination": "https://ascendday.com/:path*",
+      "permanent": true
+    },
     { "source": "/books", "destination": "/reading", "permanent": true },
     { "source": "/prefrontal", "destination": "/prefrontal-cortex", "permanent": true }
   ],
