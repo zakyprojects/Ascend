@@ -6,6 +6,7 @@ import { LeagueArchive, LeagueCompetitor, LeagueType } from '@/types';
 import {
   LEAGUE_CONFIG,
   ARCHIVES_SHOWN_PER_TYPE,
+  boardMemberCount,
   compareArchivesNewestFirst,
   getArchivePeriodLabel,
   getLeaguePeriodLabel,
@@ -133,6 +134,7 @@ export function Leagues({ store, onOpenAuth }: LeaguesProps) {
   const loaded = status === 'ready';
   const failed = status === 'failed' && !retrying;
   const hasPlace = loaded && board.userPoints > 0;
+  const memberCount = boardMemberCount(board.competitors);
   const config = LEAGUE_CONFIG[activeLeague];
   const LeagueIcon = LEAGUE_ICONS[config.icon] ?? Calendar;
 
@@ -213,7 +215,7 @@ export function Leagues({ store, onOpenAuth }: LeaguesProps) {
                   ? 'Table not loaded'
                   : 'Loading the table…'
                 : hasPlace
-                  ? `of ${board.competitors.length} ${board.competitors.length === 1 ? 'member' : 'members'}`
+                  ? `of ${memberCount} ${memberCount === 1 ? 'member' : 'members'}`
                   : 'No points yet',
             }}
             stats={[

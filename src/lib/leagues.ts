@@ -358,6 +358,14 @@ export function generateCompetitors(
   return allCompetitors;
 }
 
+/**
+ * Members on a board for its period: those with points in it, the same set its archive keeps
+ * (ascend_league_archive_rows: rounded points > 0). Members with 0 are listed but not counted.
+ */
+export function boardMemberCount(competitors: LeagueCompetitor[]): number {
+  return competitors.filter((c) => Math.round(c.points) > 0).length;
+}
+
 export function getUserRank(competitors: LeagueCompetitor[]): number {
   const index = competitors.findIndex((c) => c.isUser);
   return index >= 0 ? index + 1 : competitors.length;
