@@ -79,6 +79,7 @@ import { computeLinkedGoalProgress, linkedEntryPresent, linkedGoalCrossing, link
 import { autoStatusChanges } from './projectProgress';
 import { adoptServerInviteId } from './partnerInvites';
 import { singleFlight } from './singleFlight';
+import { timezoneWaitHoldsPreview } from './useTimezoneWait';
 import { reconcileSharedChallengeLifecycle, applyPledgeToggle, mergeSharedChallenge, linkedHabitFor, habitDoneOn, planLinkedPactRepairs, pactTickRefused, tickLinkedPacts, type LinkedPactTick } from './pactLifecycle';
 import { isPartnershipUser1 } from './partnershipSide';
 import { PresetHabit } from './presets';
@@ -1090,16 +1091,26 @@ function withHydratedPoints(merged: AppState, hydrated: AppState): AppState {
   return { ...merged, pointsHistory, seasonPoints, totalPoints: seasonPoints };
 }
 
+/** The state's points as they are: what a preview returns while a timezone wait holds the day. */
+function unchangedPoints(
+  state: AppState
+): Pick<AppState, 'seasonPoints' | 'totalPoints' | 'seasonId' | 'pointsHistory' | 'leagueArchives'> {
+  const { seasonPoints, totalPoints, seasonId, pointsHistory, leagueArchives } = state;
+  return { seasonPoints, totalPoints, seasonId, pointsHistory, leagueArchives };
+}
+
 /**
  * Replaces one local day's habit award entries with the ones the server computes for these
  * habits (computeHabitAwards), and stamps each checked preset's pointsAwarded. The entries
  * are shown at once and never uploaded; the server's own rows replace them on the next pull.
+ * While a timezone wait holds the day (the server awards nothing for it), nothing changes.
  */
 function applyHabitAwardsInternal(
   state: AppState,
   habits: Habit[],
   day: string
 ): { points: Pick<AppState, 'seasonPoints' | 'totalPoints' | 'seasonId' | 'pointsHistory' | 'leagueArchives'>; habits: Habit[] } {
+  if (timezoneWaitHoldsPreview(day)) return { points: unchangedPoints(state), habits };
   const { allocation, entries } = computeHabitAwards(
     habits,
     day,
@@ -1242,12 +1253,14 @@ function applySkillAwardsInternal(
  * Replaces one local day's focus award entry with the one the server computes for these
  * sessions (computeFocusAwards), and stamps each session of the day with its points. The entry
  * is shown at once and never uploaded; the server's own row replaces it on the next pull.
+ * While a timezone wait holds the day, nothing changes.
  */
 function applyFocusAwardsInternal(
   state: AppState,
   focusLogs: FocusSessionLog[],
   day: string
 ): { points: Pick<AppState, 'seasonPoints' | 'totalPoints' | 'seasonId' | 'pointsHistory' | 'leagueArchives'>; focusLogs: FocusSessionLog[] } {
+  if (timezoneWaitHoldsPreview(day)) return { points: unchangedPoints(state), focusLogs };
   const { entry, sessionPoints } = computeFocusAwards(
     focusLogs,
     day,
@@ -1310,6 +1323,7 @@ function applyJournalAwardInternal(
  * Replaces one local day's reading page award entry with the one the server computes for these
  * logs and books (computeReadingDayAward), and stamps each counted log with its points. The entry
  * is shown at once and never uploaded; the server's own row replaces it on the next pull.
+ * While a timezone wait holds the day, nothing changes.
  */
 function applyReadingAwardsInternal(
   state: AppState,
@@ -1317,6 +1331,7 @@ function applyReadingAwardsInternal(
   books: UserBook[],
   day: string
 ): { points: Pick<AppState, 'seasonPoints' | 'totalPoints' | 'seasonId' | 'pointsHistory' | 'leagueArchives'>; readingLogs: ReadingLog[] } {
+  if (timezoneWaitHoldsPreview(day)) return { points: unchangedPoints(state), readingLogs };
   const { entry, logPoints } = computeReadingDayAward(
     readingLogs,
     books,

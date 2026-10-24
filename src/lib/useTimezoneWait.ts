@@ -3,7 +3,7 @@ import { elapsedMark, isMarkOlderThan, trustedNow, trustedNowMs } from './clock'
 import { todayKey } from './dates';
 import { DEVICE_TIMEZONE_SENT_EVENT } from './deviceTimezone';
 import { supabase } from './supabase';
-import { readTimezoneWait, type TimezoneWait } from './timezoneStatus';
+import { readTimezoneWait, waitHoldsDayPreview, type TimezoneWait } from './timezoneStatus';
 import { isDeviceOffline } from './deviceOffline';
 
 const REFRESH_MS = 10 * 60 * 1000;
@@ -98,6 +98,11 @@ const getSnapshot = () => current;
 /** The server-side timezone wait, if any: while it is set, today's ticks earn no points. */
 export function useTimezoneWait(): TimezoneWait | null {
   return useSyncExternalStore(subscribe, getSnapshot);
+}
+
+/** Whether a local points preview for this day waits (waitHoldsDayPreview), from the shared read. */
+export function timezoneWaitHoldsPreview(day: string): boolean {
+  return waitHoldsDayPreview(current, day, todayKey(), trustedNowMs());
 }
 
 /** When points resume, on the device clock: "14:00", or "Tue 00:00" when it is not today. */

@@ -13,6 +13,14 @@ export interface TimezoneWait {
   resumesAt: Date;
 }
 
+/**
+ * While the wait is active the device's today is behind the server's, so nothing done on it earns
+ * points: no local points preview is made for that day (no fake points or rank until it ends).
+ */
+export function waitHoldsDayPreview(wait: TimezoneWait | null, day: string, deviceToday: string, nowMs: number): boolean {
+  return wait !== null && wait.resumesAt.getTime() > nowMs && day === deviceToday;
+}
+
 const WAIT_CAP_MS = 48 * 60 * 60 * 1000;
 const HOUR_MS = 60 * 60 * 1000;
 
