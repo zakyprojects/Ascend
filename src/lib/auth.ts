@@ -1,9 +1,6 @@
-import { AppState, LeagueCompetitor, LeagueType, SeasonHistoryEntry, NotificationPreferenceKey } from '@/types';
+import { LeagueCompetitor, LeagueType, SeasonHistoryEntry, NotificationPreferenceKey } from '@/types';
 import { newPasswordProblem } from './passwordRules';
-import { sanitizePointsHistory } from './leagues';
 import { leagueNow, getSeasonNumber, getWeekPeriodId, getMonthPeriodId } from './leagueTime';
-import { todayKey, parseDate } from './dates';
-import { getHighestUserStreak } from './habitPenalties';
 import { clearSyncStorage } from './sync/outbox';
 import {
   supabase,
@@ -722,104 +719,6 @@ export async function updateProfileNotificationPreferences(
   if (error) throw error;
 }
 
-export function reconstructStateFromProfile(p: any): AppState {
-  const pointsHistory = p.points_history || [];
-  const activeHabits = p.active_habits || [];
-
-  const habitCompletionsMap: Record<string, string[]> = {};
-  pointsHistory.forEach((e: any) => {
-    if (!e || e.amount <= 0 || !e.timestamp) return;
-    const parsedDate = parseDate(e.timestamp);
-    if (!parsedDate) return;
-    const dateStr = todayKey(parsedDate);
-    if (e.source === 'habit_completed' || (e.reason && e.reason.startsWith('Habit completed:'))) {
-      const habitName = e.reason ? e.reason.replace('Habit completed: ', '').trim() : 'Habit';
-      if (!habitCompletionsMap[habitName]) habitCompletionsMap[habitName] = [];
-      if (!habitCompletionsMap[habitName].includes(dateStr)) {
-        habitCompletionsMap[habitName].push(dateStr);
-      }
-    }
-  });
-
-  const nowIso = trustedNow().toISOString();
-  const habits = activeHabits.map((h: any, i: number) => {
-    const dates: string[] = habitCompletionsMap[h.name] || [];
-    const completionsMap: Record<string, { done: boolean; updatedAt: string }> = {};
-    dates.forEach((d) => {
-      completionsMap[d] = { done: true, updatedAt: nowIso };
-    });
-    return {
-      id: `h-${i}`,
-      name: h.name,
-      category: h.category,
-      frequency: h.frequency || 'daily',
-      completions: completionsMap,
-      createdAtPeriod: todayKey(),
-    };
-  });
-
-  const workoutDates: string[] = [];
-  pointsHistory.forEach((e: any) => {
-    if (!e || e.amount <= 0 || !e.timestamp) return;
-    const parsedDate = parseDate(e.timestamp);
-    if (!parsedDate) return;
-    const dateStr = todayKey(parsedDate);
-    if (e.source === 'workout_logged' || (e.reason && e.reason.toLowerCase().includes('workout'))) {
-      if (!workoutDates.includes(dateStr)) workoutDates.push(dateStr);
-    }
-  });
-
-  const workouts = workoutDates.map((d, i) => ({
-    id: `w-${i}`,
-    type: 'workout' as const,
-    activityType: 'Workout',
-    durationMinutes: 30,
-    date: d,
-    createdAt: d,
-    pointsAwarded: 10,
-  }));
-
-  const readingDates: string[] = [];
-  pointsHistory.forEach((e: any) => {
-    if (!e || e.amount <= 0 || !e.timestamp) return;
-    const parsedDate = parseDate(e.timestamp);
-    if (!parsedDate) return;
-    const dateStr = todayKey(parsedDate);
-    if (e.source === 'book_read' || (e.reason && e.reason.toLowerCase().includes('book'))) {
-      if (!readingDates.includes(dateStr)) readingDates.push(dateStr);
-    }
-  });
-
-  const readingLogs = readingDates.map((d, i) => ({
-    id: `r-${i}`,
-    bookId: `b-${i}`,
-    pagesRead: 10,
-    date: d,
-    createdAt: d,
-    pointsAwarded: 10,
-  }));
-
-  return {
-    currentUser: null,
-    habits,
-    journalEntries: [],
-    totalPoints: p.total_points || 0,
-    pointsHistory: sanitizePointsHistory(p.points_history || []),
-    leagueArchives: [],
-    readLessonIds: [],
-    workouts,
-    readingLogs,
-    badHabits: [],
-    badHabitLogs: [],
-    skillLogs: [],
-    books: [],
-    skills: [],
-    improvementPlans: [],
-    followedPlans: [],
-    focusLogs: [],
-  } as unknown as AppState;
-}
-
 /**
  * Get all registered real users as LeagueCompetitors for a specific league period.
  */
@@ -837,14 +736,13 @@ export function getRegisteredCompetitors(
 
     const periodPoints = computeCompetitorLeaguePoints(p, type, now);
 
-    const reconstructedState = reconstructStateFromProfile(p);
-    const highestInfo = getHighestUserStreak(reconstructedState, now);
-
-    const prefCurrentDays = p.stats?.currentStreakDays ?? highestInfo.currentStreak.days;
-    const prefCurrentCat = p.stats?.currentStreakCategory ?? highestInfo.currentStreak.category;
+    // Streak fields missing from older stats fall back to what an empty history gives (0 days, no
+    // category, active): the member list carries no habits or points history to compute one from.
+    const prefCurrentDays = p.stats?.currentStreakDays ?? 0;
+    const prefCurrentCat = p.stats?.currentStreakCategory ?? '';
     const prefCurrentActive = p.stats?.currentStreakIsActive !== undefined
       ? p.stats.currentStreakIsActive
-      : highestInfo.currentStreak.isActive;
+      : true;
     // The server sends stats = null when this viewer may not see them: keep them undefined, never
     // zeros that would read as real numbers in the profile dialog (C4).
     const stats = p.stats ? {
@@ -870,7 +768,6 @@ export function getRegisteredCompetitors(
       isRealUser: true,
       isProfilePublic: p.is_profile_public ?? true,
       stats,
-      activeHabits: p.active_habits || [],
       season_history: p.season_history || [],
     });
   }

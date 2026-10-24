@@ -271,37 +271,6 @@ export function calculatePeriodPoints(
 }
 
 /**
- * Sanitizes a pointsHistory array chronologically so that running totals never drop below 0.
- * Replaces any historical over-deductions (phantom negatives) with the actual amount deducted from total points.
- */
-export function sanitizePointsHistory(pointsHistory: PointsEntry[]): PointsEntry[] {
-  if (!pointsHistory || pointsHistory.length === 0) return [];
-
-  // Sort ascending by timestamp to trace running total chronologically
-  const sorted = [...pointsHistory].sort(
-    (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
-  );
-
-  let runningTotal = 0;
-  const sanitizedAsc: PointsEntry[] = [];
-
-  for (const entry of sorted) {
-    const rawAmount = entry.amount || 0;
-    const newTotal = Math.max(0, runningTotal + rawAmount);
-    const actualAmount = newTotal - runningTotal;
-    runningTotal = newTotal;
-
-    sanitizedAsc.push({
-      ...entry,
-      amount: actualAmount,
-    });
-  }
-
-  // Preserve reverse chronological order (newest first)
-  return sanitizedAsc.reverse();
-}
-
-/**
  * Generate full leaderboard competitors: the current user and every other registered user.
  */
 export function generateCompetitors(

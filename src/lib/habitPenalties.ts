@@ -1,7 +1,6 @@
 import { AppState, BadHabitLog, Habit } from '@/types';
 import { todayKey, periodKey, previousPeriodKey, addDays, addWeeks, getNow } from './dates';
 import { getEffectiveSeasonPoints } from './leagues';
-import { trustedNow } from './clock';
 
 /**
  * Penalties are issued only by the server (ascend_process_penalties, hourly cron). This file keeps the
@@ -13,25 +12,6 @@ export const MAX_RETROACTIVE_PENALTY_DAYS = 90;
 
 export function getAppStateSeasonPoints(state: AppState, now: Date): number {
   return getEffectiveSeasonPoints(state, now);
-}
-
-export interface StreakInfo {
-  days: number;
-  category: string;
-}
-
-export interface CurrentStreakInfo extends StreakInfo {
-  isActive: boolean;
-  label: string;
-}
-
-export interface BestStreakInfo extends StreakInfo {
-  label: string;
-}
-
-export interface StreakInfoPair {
-  currentStreak: CurrentStreakInfo;
-  bestStreak: BestStreakInfo;
 }
 
 export interface StreakSourceInfo {
@@ -143,24 +123,4 @@ export function getBadHabitBadDaysBefore(
     cursor = addDays(cursor, -1);
   }
   return count;
-}
-
-import { calculateUnifiedStreak } from './streakLogic';
-
-export function getHighestUserStreak(state: AppState, now: Date = trustedNow()): StreakInfoPair {
-  const unified = calculateUnifiedStreak(state, todayKey(now));
-
-  return {
-    currentStreak: {
-      days: unified.currentStreakDays,
-      category: unified.currentStreakCategory,
-      isActive: unified.currentStreakIsActive,
-      label: 'Current Streak',
-    },
-    bestStreak: {
-      days: unified.currentStreakDays,
-      category: unified.currentStreakCategory,
-      label: 'Current Streak',
-    },
-  };
 }
