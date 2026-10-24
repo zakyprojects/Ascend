@@ -1,6 +1,7 @@
 import { Habit, SharedChallenge } from '@/types';
 import { todayKey, previousPeriodKey, calculateElapsedDays, getNow } from './dates';
 import { sameName } from './uniqueNames';
+import { PRESET_CATEGORIES, type PresetHabit } from './presets';
 
 const safeNum = (val: any): number => {
   const n = Number(val);
@@ -282,6 +283,41 @@ export function linkedHabitFor(
   const category = (isUser1 ? challenge.user1Category : challenge.user2Category) || 'habit';
   if (category !== 'habit') return null;
   return habitForPactGoal(pactSideGoal(challenge, isUser1), habits);
+}
+
+// Name of the Reading habit (turned on from the Reading page, store.toggleReadingHabit).
+const READING_HABIT_NAME = 'Reading (Books)';
+
+/** How "Add as a daily habit" adds the habit a pact side's goal names, through the normal add paths. */
+export type PactHabitToAdd =
+  | { kind: 'custom'; name: string }
+  | { kind: 'preset'; preset: PresetHabit }
+  | { kind: 'reading' };
+
+/**
+ * What adding the viewer's goal as a daily habit would add, so the side links by name (the minute
+ * repair pass then keeps today in step). Null when nothing is offered: the pact is finished, the
+ * side is not a habit goal or is already linked, or a habit (any frequency) already has that name.
+ * Also null while the side is ticked today: the new habit starts not done, and the repair pass
+ * would take today's tick back (the offer returns tomorrow). A Library name is added as that
+ * preset (as the Add habit dialog requires), only if it is daily.
+ */
+export function pactHabitToAdd(
+  challenge: SharedChallenge,
+  isUser1: boolean,
+  habits: readonly Habit[],
+  today: string
+): PactHabitToAdd | null {
+  if (challenge.status !== 'active' || pactSideDoneOn(challenge, isUser1, today)) return null;
+  if (((isUser1 ? challenge.user1Category : challenge.user2Category) || 'habit') !== 'habit') return null;
+  const goal = pactSideGoal(challenge, isUser1).trim().replace(/\s+/g, ' ');
+  if (!goal || habits.some((h) => sameName(h.name, goal))) return null;
+  if (sameName(goal, READING_HABIT_NAME)) {
+    return habits.some((h) => h.linkedModule === 'reading') ? null : { kind: 'reading' };
+  }
+  const preset = PRESET_CATEGORIES.flatMap((c) => c.habits).find((h) => sameName(h.name, goal));
+  if (preset) return preset.frequency === 'daily' ? { kind: 'preset', preset } : null;
+  return { kind: 'custom', name: goal };
 }
 
 /** A linked pact ticked or unticked here, to be saved: the pact as it now is and the viewer's side. */

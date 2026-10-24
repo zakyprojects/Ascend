@@ -10,7 +10,7 @@ import { Button, Dialog, Disclosure, EmptyState, Form, Input, Select, Skeleton, 
 import { useUnsavedChanges } from '@/lib/unsavedChanges';
 import { CountUp, Reveal } from '@/components/ui/Motion';
 import { PageHero } from '@/components/ui/PageHero';
-import { TAP_TARGET, cx } from '@/components/ui/primitives/shared';
+import { FOCUS_RING, TAP_TARGET, TAP_TARGET_Y, cx } from '@/components/ui/primitives/shared';
 import { leagueNow } from '@/lib/leagueTime';
 import { getProfileSeasonPointsByUsername } from '@/lib/auth';
 import { isPartnershipUser1 } from '@/lib/partnershipSide';
@@ -23,7 +23,7 @@ import { createNotificationSupabase } from '@/lib/supabase';
 import { calculateUnifiedStreak } from '@/lib/streakLogic';
 import { toUserMessage } from '@/lib/userMessage';
 import { sameName } from '@/lib/uniqueNames';
-import { habitForPactGoal, isPactLinkableHabit, linkedHabitFor } from '@/lib/pactLifecycle';
+import { habitForPactGoal, isPactLinkableHabit, linkedHabitFor, pactHabitToAdd, pactSideGoal } from '@/lib/pactLifecycle';
 import { Partnership, SharedChallenge, PartnerInvite } from '@/types';
 import type { View } from '@/components/AppShell';
 import { actionFeedback } from '@/lib/actionFeedback';
@@ -352,6 +352,23 @@ export function AccountabilityPartner({ store, onNavigate }: { store: AppStore; 
     });
   };
 
+  // Adds my goal as a daily habit through the normal add paths, so this side links to it by name.
+  // Adding a habit earns nothing by itself; the habit earns as usual from its own ticks.
+  const handleAddPactHabit = (challenge: SharedChallenge) => {
+    const goal = pactSideGoal(challenge, amUser1).trim();
+    const current = store.state.habits || [];
+    if (current.some((h) => sameName(h.name, goal))) {
+      showInfoToast('Already a habit', 'This challenge follows that habit within a couple of minutes.');
+      return;
+    }
+    const toAdd = pactHabitToAdd(challenge, amUser1, current, today);
+    if (!toAdd) return;
+    if (toAdd.kind === 'reading') store.toggleReadingHabit();
+    else if (toAdd.kind === 'preset') store.addPresetHabit(toAdd.preset);
+    else store.addCustomHabit(toAdd.name, 'daily');
+    showSuccessToast('Habit added', `${goal} is a daily habit now. This challenge ticks with it.`);
+  };
+
   const nudgeKey = activePartnership ? activePartnership.id : '';
   const nudgedToday = Boolean(nudgeKey) && nudgedOn[nudgeKey] === today;
 
@@ -397,6 +414,7 @@ export function AccountabilityPartner({ store, onNavigate }: { store: AppStore; 
     const linkedHabit = linkedHabitFor(c, amUser1, habits || []);
     const linked = Boolean(linkedHabit);
     const readingLinked = linkedHabit?.linkedModule === 'reading';
+    const canAddHabit = !linked && pactHabitToAdd(c, amUser1, habits || [], today) !== null;
 
     return (
       <div key={c.id} className="card enter-item p-4 card-hover">
@@ -449,6 +467,15 @@ export function AccountabilityPartner({ store, onNavigate }: { store: AppStore; 
                 <span className="text-content-muted">
                   {readingLinked ? 'Log pages in Reading to tick this' : 'Linked to your habit'}
                 </span>
+              )}
+              {canAddHabit && (
+                <button
+                  type="button"
+                  onClick={() => handleAddPactHabit(c)}
+                  className={cx('font-medium text-brand-text hover:underline underline-offset-2 rounded', TAP_TARGET_Y, FOCUS_RING)}
+                >
+                  Add as a daily habit
+                </button>
               )}
               {(c.jointStreak || 0) > 0 && (
                 <span className="flex items-center gap-1 text-brand-text">
