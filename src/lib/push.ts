@@ -21,8 +21,8 @@ const PUSH_OWNER_KEY = 'ascend_push_owner';
 const PUSH_CACHE_NAME = 'ascend-push-v1';
 const OLD_ENDPOINT_KEY = '/__ascend/push-old-endpoint';
 // Set once the "Turn on notifications" card (PushPromptCard) is answered on this device: closed,
-// the browser's question answered, or push turned off in Settings. Cleared when push is turned
-// off for the user (logout), so the next sign-in here is offered it again.
+// the browser's question answered, or push turned off in Settings. Cleared on every logout
+// (disablePush), push on or not, so the next account signed in here is offered it again.
 const PUSH_PROMPT_DONE_KEY = 'ascend_push_prompt_done';
 // A service worker that never becomes ready (failed install, blocked storage) must not hang the
 // Settings switch.
@@ -115,6 +115,15 @@ export async function getPushStatus(userId?: string): Promise<PushStatus> {
   return (await currentSubscription()) ? 'on' : 'off';
 }
 
+/** The card was answered on this device (storage blocked counts as answered: a closed card could not stay closed). */
+function pushPromptAnswered(): boolean {
+  try {
+    return Boolean(localStorage.getItem(PUSH_PROMPT_DONE_KEY));
+  } catch {
+    return true;
+  }
+}
+
 /**
  * Whether to offer the "Turn on notifications" card: push works in this browser and is not
  * blocked, nobody turned it on here (no owner, no subscription: an owner's lost subscription is
@@ -122,12 +131,22 @@ export async function getPushStatus(userId?: string): Promise<PushStatus> {
  */
 export async function shouldOfferPush(): Promise<boolean> {
   if (!isPushSupported() || Notification.permission === 'denied' || readOwner()) return false;
-  try {
-    if (localStorage.getItem(PUSH_PROMPT_DONE_KEY)) return false;
-  } catch {
-    return false; // storage blocked: a closed card could not stay closed
-  }
+  if (pushPromptAnswered()) return false;
   return !(await currentSubscription());
+}
+
+/**
+ * iPhone and iPad browsers offer Web Push only to a site added to the Home Screen (iOS 16.4+), so
+ * outside it there is no push to turn on. True there (not yet answered on this device): the card
+ * shows how to add Ascend instead of a Turn on button. iPadOS reports itself as a Mac with touch.
+ */
+export function shouldOfferHomeScreenHint(): boolean {
+  if (typeof window === 'undefined' || isPushSupported()) return false;
+  const ua = navigator.userAgent;
+  const appleMobile = /iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
+  const standalone =
+    window.matchMedia?.('(display-mode: standalone)').matches || (navigator as { standalone?: boolean }).standalone === true;
+  return appleMobile && !standalone && !pushPromptAnswered();
 }
 
 /** The card is answered on this device and not offered again. */
@@ -198,19 +217,20 @@ export async function enablePush(userId?: string): Promise<PushStatus> {
 }
 
 /**
- * Removes this browser from the account and unsubscribes it. Safe to call when off. Push that was
- * on makes the card eligible again (logout); Settings marks it answered right after.
+ * Removes this browser from the account and unsubscribes it. Safe to call when off. Always makes
+ * the card eligible again, push on or not (logout: the next account here gets the offer);
+ * Settings marks it answered right after.
  */
 export async function disablePush(): Promise<void> {
-  if (!isPushSupported()) return;
-  writeOwner(null);
-  const subscription = await currentSubscription();
-  if (!subscription) return;
   try {
     localStorage.removeItem(PUSH_PROMPT_DONE_KEY);
   } catch {
     /* storage blocked: the card is not offered anyway */
   }
+  if (!isPushSupported()) return;
+  writeOwner(null);
+  const subscription = await currentSubscription();
+  if (!subscription) return;
   const { error } = await supabase.rpc('remove_push_subscription', { p_endpoint: subscription.endpoint });
   await subscription.unsubscribe().catch(() => undefined);
   if (error) throw error;
