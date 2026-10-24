@@ -17,7 +17,7 @@ import { trustedNow, trustedNowMs } from './clock';
 import { ilikeExact, isUsernameTakenError, looksLikeUsername, sameUsername, USERNAME_TAKEN, usernameFormatProblem } from './usernameRules';
 import { NETWORK_MESSAGE } from './userMessage';
 import { clearDrafts } from './unsavedChanges';
-import { FunctionsHttpError } from '@supabase/supabase-js';
+import { FunctionRegion, FunctionsHttpError } from '@supabase/supabase-js';
 import { CaptchaRejectedError, isCaptchaRejection } from './captcha';
 import { TERMS_VERSION } from './legal';
 
@@ -243,14 +243,18 @@ export async function loginUser(identifier: string, password: string, captchaTok
 /**
  * Username sign-in: the sign-in-username Edge Function finds the account's email on the server
  * (it is never sent to the app), signs in, and returns the session, which setSession stores. That
- * fires SIGNED_IN like an email sign-in does.
+ * fires SIGNED_IN like an email sign-in does. It runs in the database's region (Sydney): the function
+ * reaches the database and Auth several times, so running next to them saves seconds.
  */
 async function loginWithUsername(username: string, password: string, captchaToken?: string): Promise<void> {
   if (!looksLikeUsername(username)) throw new Error(WRONG_USERNAME_LOGIN);
 
   const { data, error } = await supabase.functions.invoke<{ access_token?: string; refresh_token?: string }>(
     'sign-in-username',
-    { body: captchaToken ? { username, password, captchaToken } : { username, password } }
+    {
+      body: captchaToken ? { username, password, captchaToken } : { username, password },
+      region: FunctionRegion.ApSoutheast2,
+    }
   );
 
   if (error) {

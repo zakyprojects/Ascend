@@ -45,6 +45,12 @@ const STATUS_LINES: Record<'login' | 'signup-form' | 'upgrade', Record<'empty' |
 const SLOW_HINT_MS = 6000;
 const SLOW_STATUS_LINE = 'Slow connection, still trying…';
 
+/**
+ * Username sign-in goes through an Edge Function (a cold start plus a preflight) before Auth, so it
+ * gets longer than the 8-second default before it gives up.
+ */
+const USERNAME_SIGN_IN_TIMEOUT_MS = 20000;
+
 /** Wraps a promise with an 8-second hard timeout. */
 function withTimeout<T>(promise: Promise<T>, ms = 8000): Promise<T> {
   return Promise.race([
@@ -644,7 +650,8 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
 
         await finishWithSuccess('Welcome to Ascend!', onDone);
       } else {
-        await withCaptcha('sign_in', (captchaToken) => withTimeout(loginUser(email, password, captchaToken)));
+        const timeoutMs = looksLikeUsername(email.trim()) ? USERNAME_SIGN_IN_TIMEOUT_MS : undefined;
+        await withCaptcha('sign_in', (captchaToken) => withTimeout(loginUser(email, password, captchaToken), timeoutMs));
         await finishWithSuccess('Welcome back!', onDone);
       }
     } catch (err: unknown) {
