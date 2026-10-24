@@ -8,7 +8,9 @@
  *
  * - A wrong password and an unknown username get the same 401 { error: 'invalid_credentials' }.
  * - Failed attempts are counted per username and per caller IP (public.ascend_sign_in_blocked /
- *   ascend_sign_in_result, migration 20261019230100); over the limit the answer is 429
+ *   ascend_sign_in_result, migration 20261019230100). One rpc, ascend_sign_in_lookup (migration
+ *   20261024130000), answers the brake and the account's email together, so the database is reached
+ *   once before Auth; the result is recorded after the reply is sent. Over the limit the answer is 429
  *   { error: 'rate_limited' } before Auth is called. Supabase Auth's own per-IP limit sees the
  *   caller's address when SIGN_IN_SECRET_KEY is set (the sign-in then runs with that secret key
  *   and an Sb-Forwarded-For header, with IP Address Forwarding on under Auth > Rate Limits);
@@ -71,6 +73,8 @@ function corsHeaders(req: Request): Record<string, string> {
     ...(allowed ? { 'Access-Control-Allow-Origin': origin } : {}),
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    // Browsers reuse the preflight for this long (Chrome caps it at 2 hours).
+    'Access-Control-Max-Age': '7200',
     Vary: 'Origin',
   };
 }
@@ -78,16 +82,6 @@ function corsHeaders(req: Request): Record<string, string> {
 /** The caller's address (first x-forwarded-for hop), or '' when unknown. */
 function clientIp(req: Request): string {
   return (req.headers.get('x-forwarded-for') ?? '').split(',')[0].trim().slice(0, 64);
-}
-
-/** Too many recent failures for this username or IP. A missing/failed gate never blocks. */
-async function blocked(username: string, ip: string): Promise<boolean> {
-  try {
-    const { data, error } = await admin.rpc('ascend_sign_in_blocked', { p_username: username, p_ip: ip });
-    return !error && data === true;
-  } catch {
-    return false;
-  }
 }
 
 /** Best effort: a failed write never changes the answer. */
@@ -99,22 +93,23 @@ async function recordResult(username: string, ip: string, failed: boolean): Prom
   }
 }
 
-/** The account's email for a username, or null (no such user, a guest, or no email). */
-async function emailForUsername(username: string): Promise<string | null> {
-  // ilike without wildcards = case-insensitive equality; "_" is a wildcard in LIKE, so escape it.
-  const { data: rows, error } = await admin
-    .from('profiles')
-    .select('id, username')
-    .ilike('username', username.replace(/_/g, '\\_'))
-    .limit(2);
+/**
+ * The brake and the account's email in one call. `email` is null for no such user, a guest, or no
+ * email. A failed lookup throws (answered 500); a braked caller gets no email.
+ */
+async function lookup(username: string, ip: string): Promise<{ blocked: boolean; email: string | null }> {
+  const { data, error } = await admin.rpc('ascend_sign_in_lookup', { p_username: username, p_ip: ip });
   if (error) throw new Error('lookup');
-  const lower = username.toLowerCase();
-  const row = (rows ?? []).find((r) => typeof r.username === 'string' && r.username.toLowerCase() === lower);
-  if (!row) return null;
-  const { data, error: userError } = await admin.auth.admin.getUserById(row.id);
-  if (userError || !data?.user) return null;
-  if (data.user.is_anonymous || !data.user.email) return null;
-  return data.user.email;
+  const row = (Array.isArray(data) ? data[0] : data) as { blocked?: boolean; email?: string | null } | undefined;
+  return { blocked: row?.blocked === true, email: row?.email ?? null };
+}
+
+/** Records the outcome after the reply is sent, so the caller does not wait for it. */
+function recordLater(username: string, ip: string, failed: boolean): void {
+  const pending = recordResult(username, ip, failed);
+  // deno-lint-ignore no-explicit-any
+  const runtime = (globalThis as any).EdgeRuntime;
+  if (runtime?.waitUntil) runtime.waitUntil(pending);
 }
 
 Deno.serve(async (req) => {
@@ -146,12 +141,12 @@ Deno.serve(async (req) => {
 
   const ip = clientIp(req);
   try {
-    if (await blocked(name, ip)) return reply(429, { error: 'rate_limited' });
+    const { blocked, email } = await lookup(name, ip);
+    if (blocked) return reply(429, { error: 'rate_limited' });
 
     // An unknown username counts as a failure too, so its answer matches a wrong password.
-    const email = await emailForUsername(name);
     if (!email) {
-      await recordResult(name, ip, true);
+      recordLater(name, ip, true);
       return invalid();
     }
 
@@ -165,11 +160,11 @@ Deno.serve(async (req) => {
       if (error.code === 'captcha_failed') return reply(400, { error: 'captcha_failed' });
       // Auth checks the password before confirmation, so this tells only someone who has it.
       if (error.code === 'email_not_confirmed') return reply(403, { error: 'email_not_confirmed' });
-      await recordResult(name, ip, true);
+      recordLater(name, ip, true);
       return invalid();
     }
     if (!data.session) return invalid();
-    await recordResult(name, ip, false);
+    recordLater(name, ip, false);
     return reply(200, {
       access_token: data.session.access_token,
       refresh_token: data.session.refresh_token,
