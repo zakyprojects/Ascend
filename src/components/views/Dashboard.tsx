@@ -33,7 +33,6 @@ import { AutoNum, CountUp, Reveal } from '@/components/ui/Motion';
 import { LeagueCountdown } from '@/components/ui/LeagueCountdown';
 import { GuestSaveBanner } from '@/components/ui/GuestSaveBanner';
 import { PushPromptCard } from '@/components/ui/PushPromptCard';
-import { LegalNoticeCard } from '@/components/ui/LegalNoticeCard';
 import { isSupabaseConfigured } from '@/lib/supabase';
 import { useLeaguePeriodRollover } from '@/lib/useLeaguePeriodRollover';
 import { useLeagueStandingsRefresh } from '@/lib/useLeagueStandingsRefresh';
@@ -260,15 +259,6 @@ export function Dashboard({ store, onViewChange, onOpenAuth }: DashboardProps) {
           save-progress banner above instead). */}
       {isSupabaseConfigured && store.state.currentUser && !store.state.currentUser.isAnonymous && (
         <PushPromptCard userId={store.state.currentUser.id} />
-      )}
-
-      {/* Accounts from before the Terms and Privacy Policy: told once that they exist. */}
-      {isSupabaseConfigured && store.state.currentUser && !store.state.currentUser.isAnonymous && (
-        <LegalNoticeCard
-          key={store.state.currentUser.id}
-          userId={store.state.currentUser.id}
-          createdAt={store.state.currentUser.createdAt}
-        />
       )}
 
       {/* Hero: today, the season, and where you stand on the climb */}
