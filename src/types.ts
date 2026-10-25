@@ -912,7 +912,7 @@ export const DEFAULT_TIME_TRACKER_ACTIVITIES: TimeTrackerActivity[] = [
  * it from Templates). Sleep 23:00-07:00 is stored as its two halves so each day starts and ends
  * with it: 00:00-07:00 in the morning and 23:00-24:00 at night. Gaps are free time on purpose.
  */
-export const ASCEND_RECOMMENDED_DAY_TITLE = 'Ascend recommended day';
+export const ASCEND_RECOMMENDED_DAY_TITLE = 'AscendDay recommended day';
 export const ASCEND_RECOMMENDED_DAY_BLOCKS: TimeTrackerBlock[] = [
   { id: 'tpl-rec-sleep-morning', startTime: '00:00', endTime: '07:00', activityId: 'act-sleep', customTitle: 'Sleep' },
   { id: 'tpl-rec-morning-prayer', startTime: '07:00', endTime: '07:30', activityId: 'act-praying', customTitle: 'Morning prayer and routine' },

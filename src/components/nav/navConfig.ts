@@ -119,7 +119,7 @@ const NAV_LABELS = new Map<View, string>(
 
 /** The page's name as the navigation shows it (used for the document title). */
 export function getViewLabel(view: View): string {
-  return NAV_LABELS.get(view) ?? 'Ascend';
+  return NAV_LABELS.get(view) ?? 'AscendDay';
 }
 
 export function getGroupForView(view: View): NavGroup['id'] | null {

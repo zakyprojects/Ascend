@@ -103,7 +103,7 @@ export function UpdateBanner() {
     >
       <div className="flex items-center gap-2 min-w-0">
         <RefreshCw size={14} aria-hidden="true" className="shrink-0" />
-        <span className="font-medium">A new version of Ascend is ready.</span>
+        <span className="font-medium">A new version of AscendDay is ready.</span>
       </div>
       <button
         type="button"

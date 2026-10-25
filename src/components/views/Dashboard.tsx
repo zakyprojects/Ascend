@@ -250,7 +250,7 @@ export function Dashboard({ store, onViewChange, onOpenAuth }: DashboardProps) {
 
       {store.state.currentUser?.isAnonymous && onOpenAuth && (
         <GuestSaveBanner
-          title={`You're using Ascend as a guest (${store.state.currentUser.username})`}
+          title={`You're using AscendDay as a guest (${store.state.currentUser.username})`}
           description="Create an account to keep your habits, points, and league rank."
           onCreateAccount={onOpenAuth}
         />

@@ -35,7 +35,7 @@ export function HowItWorksDialog({ open, onClose }: { open: boolean; onClose: ()
       open={open}
       onClose={onClose}
       title="How goals, projects and tasks work"
-      description="A dream becomes real when it has a goal, a plan and a next step. Ascend links all three, so what you do today moves your biggest goals."
+      description="A dream becomes real when it has a goal, a plan and a next step. AscendDay links all three, so what you do today moves your biggest goals."
       footer={
         <button type="button" onClick={onClose} className="btn-primary">
           Got it

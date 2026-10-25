@@ -174,7 +174,7 @@ function NotificationPreview() {
             className="h-3.5 w-3.5 bg-[#10b981]"
             style={{ maskImage: `url(${NOTIFICATION_BADGE})`, WebkitMaskImage: `url(${NOTIFICATION_BADGE})`, maskSize: 'contain', WebkitMaskSize: 'contain' }}
           />
-          <span>Ascend</span>
+          <span>AscendDay</span>
           <span aria-hidden="true">·</span>
           <span>now</span>
         </div>
@@ -279,7 +279,7 @@ function BrandDemo() {
           <BrandItem label="browser tab">
             <span className="flex items-center gap-2 rounded-t-lg border border-b-0 border-overlay-default bg-bg-700 px-3 py-1.5 text-xs text-content-secondary">
               <img src="/favicon-32x32.png" alt="" width={16} height={16} />
-              Today · Ascend
+              Today · AscendDay
             </span>
           </BrandItem>
         </div>
@@ -380,7 +380,7 @@ function OverlayDemoBox() {
         ) : (
           <AscendLoadingOverlay
             key={run}
-            message={offline ? "Can't reach Ascend" : 'Starting up…'}
+            message={offline ? "Can't reach AscendDay" : 'Starting up…'}
             submessage={offline ? "Check your connection. You're still signed in." : 'Checking your account'}
             exiting={phase === 'exiting'}
             actions={
@@ -1659,7 +1659,7 @@ function GalleryContent() {
       <div className="mx-auto max-w-5xl space-y-10">
         {/* Top bar */}
         <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-overlay-subtle">
-          <h1 className="text-xl font-semibold text-content-primary">Ascend UI gallery (dev only)</h1>
+          <h1 className="text-xl font-semibold text-content-primary">AscendDay UI gallery (dev only)</h1>
           <div className="flex items-center gap-3">
             <ThemeToggle isDark={theme === 'dark'} onToggle={toggleTheme} />
             <span className="text-xs text-content-muted font-mono">body overflow: {bodyOverflow}</span>

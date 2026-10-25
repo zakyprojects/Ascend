@@ -282,7 +282,7 @@ export function Neuroplasticity({ store, onViewChange }: { store: AppStore; onVi
             </Reveal>
 
             <Reveal index={3}>
-              <h2 className="section-title mb-3">Put it to work in Ascend</h2>
+              <h2 className="section-title mb-3">Put it to work in AscendDay</h2>
               <div className="card divide-y divide-overlay-subtle">
                 {ASCEND_LINKS.map((a) => {
                   const content = (

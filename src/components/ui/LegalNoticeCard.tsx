@@ -25,7 +25,7 @@ export function LegalNoticeCard({ userId, createdAt }: { userId: string; created
         <FileText size={18} aria-hidden="true" />
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-xs font-medium text-content-secondary">Ascend now has Terms and a Privacy Policy</p>
+        <p className="text-xs font-medium text-content-secondary">AscendDay now has Terms and a Privacy Policy</p>
         <p className="text-xs text-content-muted">
           They explain the rules and what happens with your data. Read the{' '}
           <a href={pathForLegalRoute('terms')} target="_blank" rel="noopener noreferrer" onClick={done} className={LINK_CLASS}>

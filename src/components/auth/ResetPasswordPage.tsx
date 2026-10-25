@@ -38,7 +38,7 @@ export function ResetPasswordPage({ signedIn, onNavigate }: ResetPasswordPagePro
 
   useEffect(() => {
     const previous = document.title;
-    document.title = 'Set a new password · Ascend';
+    document.title = 'Set a new password · AscendDay';
     return () => {
       document.title = previous;
     };
@@ -104,7 +104,7 @@ export function ResetPasswordPage({ signedIn, onNavigate }: ResetPasswordPagePro
               <Check size={26} aria-hidden="true" className="text-success-text" />
             </div>
             <h1 className="mt-4 font-serif text-2xl leading-tight text-content-primary">Password changed</h1>
-            <p className="mt-1 text-sm text-content-muted">You’re signed in. Opening Ascend…</p>
+            <p className="mt-1 text-sm text-content-muted">You’re signed in. Opening AscendDay…</p>
           </div>
         ) : canSetPassword ? (
           <>
@@ -167,7 +167,7 @@ export function ResetPasswordPage({ signedIn, onNavigate }: ResetPasswordPagePro
                     Open Settings
                   </button>
                   <button type="button" onClick={() => onNavigate(DASHBOARD_PATH)} className="btn-ghost w-full min-h-11 text-xs">
-                    Back to Ascend
+                    Back to AscendDay
                   </button>
                 </>
               ) : (

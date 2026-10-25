@@ -199,7 +199,7 @@ export function AppShell({ currentView, navigationKind, pendingView = null, onVi
   );
 
   useEffect(() => {
-    document.title = currentView === 'dashboard' ? 'Today · Ascend' : `${getViewLabel(currentView)} · Ascend`;
+    document.title = currentView === 'dashboard' ? 'Today · AscendDay' : `${getViewLabel(currentView)} · AscendDay`;
   }, [currentView]);
 
   const isDarkTheme = store.state.themePreference !== 'light';
@@ -304,7 +304,9 @@ export function AppShell({ currentView, navigationKind, pendingView = null, onVi
           {/* Logo + name go to the Dashboard (or back to its top), like the desktop sidebar's. */}
           <a {...pageLinkProps(NAV_DASHBOARD.id, goTo)} className={cx('flex items-center gap-1.5 sm:gap-2 rounded-lg', FOCUS_RING)}>
             <AppLogo variant="small" className="w-8 h-8 shrink-0" />
-            <span className="font-display font-bold text-content-primary">Ascend</span>
+            <span className="font-display font-bold text-content-primary">
+              Ascend<span className="text-brand-mark">Day</span>
+            </span>
             <span className="whitespace-nowrap shrink-0 px-1.5 py-0.5 rounded-lg badge-beta text-3xs font-semibold">
               Beta
             </span>

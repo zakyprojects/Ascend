@@ -7484,7 +7484,7 @@ export function useAppState() {
     syncBroadcaster.broadcast('FOLLOW_DELETED', { followId: followedPlanId });
     const ok = await deleteFollowedPlanFromSupabase(followedPlanId);
     if (!ok) {
-      dispatchToastError("Couldn't remove copy everywhere", "It's removed here and will finish the next time Ascend loads.");
+      dispatchToastError("Couldn't remove copy everywhere", "It's removed here and will finish the next time AscendDay loads.");
     }
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
     // eslint-disable-next-line react-hooks/exhaustive-deps

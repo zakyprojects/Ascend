@@ -46,7 +46,7 @@ const COPY = {
   },
   idea: {
     title: 'Suggest an idea',
-    subtitle: 'What would make Ascend better for you?',
+    subtitle: 'What would make AscendDay better for you?',
     other: { view: 'report-bug' as View, label: 'Found a bug instead?' },
     titlePlaceholder: 'e.g. Weekly summary email',
     send: 'Send idea',
@@ -331,7 +331,7 @@ export function FeedbackView({ kind, store, fromView, onNavigate }: FeedbackView
                   label="Your idea"
                   value={idea}
                   onChange={(e) => setIdea(e.target.value)}
-                  placeholder="What should Ascend do?"
+                  placeholder="What should AscendDay do?"
                   rows={4}
                   maxLength={4000}
                   required

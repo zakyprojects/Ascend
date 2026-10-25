@@ -703,7 +703,7 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
           return;
         }
 
-        await finishWithSuccess('Welcome to Ascend!', onDone);
+        await finishWithSuccess('Welcome to AscendDay!', onDone);
       } else {
         const timeoutMs = looksLikeUsername(email.trim()) ? USERNAME_SIGN_IN_TIMEOUT_MS : undefined;
         await withCaptcha('sign_in', (captchaToken) => withTimeout(loginUser(email, password, captchaToken), timeoutMs));
@@ -854,7 +854,7 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
               <Check size={30} className="text-success-text" />
             </div>
             <p className="mt-4 font-serif text-2xl leading-tight text-content-primary animate-enter-up">{successTitle}</p>
-            <p className="mt-1 text-xs text-content-muted animate-enter-up">Opening Ascend…</p>
+            <p className="mt-1 text-xs text-content-muted animate-enter-up">Opening AscendDay…</p>
           </div>
         )}
 
@@ -878,7 +878,7 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
                   <div role="status" className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl flex items-start gap-2 text-xs text-content-primary">
                     <Mail size={16} aria-hidden="true" className="shrink-0 mt-0.5 text-success-text" />
                     <span>
-                      If <span className="font-medium break-all">{resetSentTo}</span> has an Ascend account, we’ve sent it a link
+                      If <span className="font-medium break-all">{resetSentTo}</span> has an AscendDay account, we’ve sent it a link
                       to set a new password. It can take a minute.
                     </span>
                   </div>
@@ -1314,7 +1314,7 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
                 </div>
                 {googleButton}
                 <p className="text-xs text-content-muted text-center">
-                  New to Ascend? Continuing with Google confirms you’re {MIN_AGE} or older and agree to <LegalLinks />.
+                  New to AscendDay? Continuing with Google confirms you’re {MIN_AGE} or older and agree to <LegalLinks />.
                 </p>
               </div>
             )}

@@ -187,7 +187,7 @@ function App() {
   const loaderOverlay = (showLoader || loaderExiting) && (
     <AscendLoadingOverlay
       message={
-        bootOffline || authPageOffline ? "Can't reach Ascend" : loaderKind === 'boot' ? 'Starting up…' : 'Loading your workspace…'
+        bootOffline || authPageOffline ? "Can't reach AscendDay" : loaderKind === 'boot' ? 'Starting up…' : 'Loading your workspace…'
       }
       submessage={
         bootOffline

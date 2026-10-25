@@ -181,7 +181,9 @@ export function Sidebar({
             className={cx('flex min-w-0 flex-1 items-center gap-2 rounded-lg pl-0.5', FOCUS_RING)}
           >
             <AppLogo variant="small" className="h-7 w-7 shrink-0" />
-            <span className="truncate text-sm font-semibold text-content-primary">Ascend</span>
+            <span className="truncate text-sm font-semibold text-content-primary">
+              Ascend<span className="text-brand-mark">Day</span>
+            </span>
           </a>
           <button
             type="button"

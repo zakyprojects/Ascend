@@ -119,8 +119,8 @@ export function NotificationsSection({ store }: { store: AppStore }) {
           title="Push notifications on this device"
           description={
             pushStatus === 'unsupported'
-              ? "This browser can't get push notifications. On iPhone, add Ascend to your Home Screen first."
-              : 'Get your notifications even when Ascend is closed.'
+              ? "This browser can't get push notifications. On iPhone, add AscendDay to your Home Screen first."
+              : 'Get your notifications even when AscendDay is closed.'
           }
           control={
             <Switch

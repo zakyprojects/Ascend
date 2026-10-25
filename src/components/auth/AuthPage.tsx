@@ -10,9 +10,9 @@ import { CLIMB_PANEL_BG, ClimbPanel, ClimbPanelMode, ClimbPanelSide } from './Cl
 export type AuthScreen = AuthPanelMode;
 
 const DOCUMENT_TITLES: Record<AuthScreen, string> = {
-  login: 'Sign in · Ascend',
-  signup: 'Create account · Ascend',
-  upgrade: 'Save your progress · Ascend',
+  login: 'Sign in · AscendDay',
+  signup: 'Create account · AscendDay',
+  upgrade: 'Save your progress · AscendDay',
 };
 
 export interface AuthPageProps {

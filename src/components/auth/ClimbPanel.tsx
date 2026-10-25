@@ -108,7 +108,7 @@ export function ClimbPanel({
       {/* The landing page is static HTML outside the app, so this is a full page load. */}
       <a
         href="/"
-        aria-label="Ascend home"
+        aria-label="AscendDay home"
         className="flex self-start shrink-0 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-50"
       >
         <AppLockup className="h-5 lg:h-6 w-auto text-primary-50" markClassName="text-primary-500" />

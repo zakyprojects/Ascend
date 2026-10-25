@@ -38,7 +38,7 @@ const SEVERITY_LABELS: Record<string, string> = {
 const IMPACT_LABELS: Record<string, string> = {
   nice: 'Nice to have',
   weekly: "I'd use it weekly",
-  big: 'Changes how I use Ascend',
+  big: 'Changes how I use AscendDay',
 };
 
 const recentBySender = new Map<string, number[]>();

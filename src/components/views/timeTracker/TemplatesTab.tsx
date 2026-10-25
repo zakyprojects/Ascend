@@ -74,7 +74,7 @@ export function TemplatesTab({ store, templates, activities, onCreateTemplate, o
         <div className="flex flex-wrap gap-2">
           {!hasRecommended && (
             <button type="button" onClick={addRecommended} className="btn-secondary text-xs">
-              <Sparkles size={14} /> Add Ascend recommended day
+              <Sparkles size={14} /> Add AscendDay recommended day
             </button>
           )}
           <button type="button" onClick={onCreateTemplate} className="btn-primary text-xs">
@@ -118,7 +118,7 @@ export function TemplatesTab({ store, templates, activities, onCreateTemplate, o
                 <Plus size={14} /> Create template
               </button>
               <button type="button" onClick={addRecommended} className="btn-secondary text-xs">
-                <Sparkles size={14} /> Add Ascend recommended day
+                <Sparkles size={14} /> Add AscendDay recommended day
               </button>
             </div>
           }

@@ -53,7 +53,7 @@ export function AboutUsSection({ onNavigate }: { onNavigate: (view: View) => voi
 
         <Part title="Help shape it">
           <p>
-            Ascend grows from what the people using it tell me. If something breaks, use{' '}
+            AscendDay grows from what the people using it tell me. If something breaks, use{' '}
             <PageLink view="report-bug" label="Report a bug" onNavigate={onNavigate} />. If you wish it did something,
             use <PageLink view="suggest-idea" label="Suggest an idea" onNavigate={onNavigate} />. For anything else,
             email me at <Email />.
@@ -96,7 +96,7 @@ export function SupportSection({ onNavigate }: { onNavigate: (view: View) => voi
 
         <Part title="Free ways to help">
           <ul className="list-disc space-y-1.5 pl-5 marker:text-content-muted">
-            <li>Tell a friend about Ascend. More people in a league makes it better for everyone.</li>
+            <li>Tell a friend about AscendDay. More people in a league makes it better for everyone.</li>
             <li>
               Found something broken? <PageLink view="report-bug" label="Report a bug" onNavigate={onNavigate} />.
             </li>

@@ -233,7 +233,7 @@ Think of it like walking a path through a field. One trip doesn't make a trail. 
 - Missing one day barely matters; a run of missed days is what lets the pathway weaken
 - The goal isn't perfection — it's frequency
 
-This is why Ascend rewards showing up every day: a habit scores each day you complete it, however long it took. Your brain doesn't care how hard you worked once. It cares that the circuit fired again today.`,
+This is why AscendDay rewards showing up every day: a habit scores each day you complete it, however long it took. Your brain doesn't care how hard you worked once. It cares that the circuit fired again today.`,
   },
   {
     id: 'neuro-3',

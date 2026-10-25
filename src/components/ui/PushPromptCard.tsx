@@ -45,7 +45,7 @@ export function PushPromptCard({ userId }: { userId: string }) {
       try {
         const status = await enablePush(userId);
         dismiss();
-        if (status === 'on') showSuccessToast('Notifications are on', "You'll get them on this device even when Ascend is closed.");
+        if (status === 'on') showSuccessToast('Notifications are on', "You'll get them on this device even when AscendDay is closed.");
       } catch (err) {
         console.error('[push] turn on from the card failed:', err);
         showErrorToast("Couldn't turn on notifications", toUserMessage(err, 'Please try again.'));
@@ -62,8 +62,8 @@ export function PushPromptCard({ userId }: { userId: string }) {
           <p className="text-xs font-medium text-content-secondary">Turn on notifications on this device</p>
           <p className="text-xs text-content-muted">
             {offer === 'home-screen'
-              ? 'To get notifications on iPhone, add Ascend to your Home Screen (Share → Add to Home Screen).'
-              : 'Get partner nudges and your evening reminder even when Ascend is closed.'}
+              ? 'To get notifications on iPhone, add AscendDay to your Home Screen (Share → Add to Home Screen).'
+              : 'Get partner nudges and your evening reminder even when AscendDay is closed.'}
           </p>
         </div>
         <Button variant="ghost" size="icon" onClick={dismiss} aria-label="Dismiss" title="Not now" className="-mr-2 -mt-2 sm:hidden">

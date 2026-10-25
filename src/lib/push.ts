@@ -69,7 +69,7 @@ async function readyRegistration(): Promise<ServiceWorkerRegistration> {
   let timer: ReturnType<typeof setTimeout> | undefined;
   const timeout = new Promise<never>((_, reject) => {
     timer = setTimeout(
-      () => reject(new Error("Push isn't ready on this device yet. Reload Ascend and try again.")),
+      () => reject(new Error("Push isn't ready on this device yet. Reload AscendDay and try again.")),
       SW_READY_TIMEOUT_MS
     );
   });

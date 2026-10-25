@@ -58,7 +58,7 @@ export class ErrorBoundary extends Component<Props, State> {
           <div role="alert" className="card p-6 border border-rose-500/30 max-w-md w-full space-y-4">
             <div className="flex items-center gap-3">
               <AlertTriangle size={22} aria-hidden="true" className="shrink-0 text-error-text" />
-              <h1 className="section-title">{this.props.fallbackTitle || 'Ascend couldn’t load'}</h1>
+              <h1 className="section-title">{this.props.fallbackTitle || 'AscendDay couldn’t load'}</h1>
             </div>
             <p className="text-sm text-content-secondary">
               Something went wrong while showing the app. Your data is safe. Repair app reloads it with fresh app

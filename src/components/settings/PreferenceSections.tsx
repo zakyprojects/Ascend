@@ -112,12 +112,12 @@ export function AppInfoSection({ onNavigate }: { onNavigate: (view: View) => voi
   return (
     <SettingsCard title="App info">
       <div>
-        <p className="text-sm font-medium text-content-primary">Ascend</p>
+        <p className="text-sm font-medium text-content-primary">AscendDay</p>
         <p className="mt-0.5 text-xs text-content-muted tabular-nums">
           Version {__APP_VERSION__} · Build {__APP_BUILD__}
         </p>
         <p className="mt-3 text-sm leading-relaxed text-content-secondary">
-          Ascend turns self-improvement into a season you can win. What you do each day earns points, points move you
+          AscendDay turns self-improvement into a season you can win. What you do each day earns points, points move you
           up the ranks and your league, and a partner can keep you on track. Points start again every season, so someone
           who joins late still has a real chance. Signed in, your data syncs across your devices.
         </p>

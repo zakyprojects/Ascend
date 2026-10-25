@@ -16,7 +16,7 @@ export const SEVERITY_OPTIONS = [
 export const IMPACT_OPTIONS = [
   { value: 'nice', label: 'Nice to have', hint: 'Small improvement' },
   { value: 'weekly', label: "I'd use it weekly", hint: 'Part of my routine' },
-  { value: 'big', label: 'Changes how I use Ascend', hint: 'A real difference' },
+  { value: 'big', label: 'Changes how I use AscendDay', hint: 'A real difference' },
 ] as const;
 
 export const MAX_SCREENSHOTS = 3;
@@ -140,7 +140,7 @@ export async function submitFeedback(submission: FeedbackSubmission): Promise<st
       body: JSON.stringify({ ...rest, images: screenshots.map(({ name, data }) => ({ name, data })) }),
     });
   } catch {
-    throw new Error("Couldn't reach Ascend. Check your connection and try again.");
+    throw new Error("Couldn't reach AscendDay. Check your connection and try again.");
   }
   const body = (await res.json().catch(() => null)) as { ok?: boolean; ref?: string; error?: string } | null;
   if (res.ok && body?.ok) return body.ref || submission.ref;
