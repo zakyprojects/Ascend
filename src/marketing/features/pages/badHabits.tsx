@@ -24,12 +24,12 @@ export const badHabits: FeatureContent = {
   intro: (
     <>
       <p>
-        Ascend’s bad habit tracker is a free daily check-in for the things you are trying to stop, like doomscrolling or
+        AscendDay’s bad habit tracker is a free daily check-in for the things you are trying to stop, like doomscrolling or
         junk food. Each day you log one word per habit, Resisted or Slipped. Resisting earns points and builds a clean
         streak; slipping, or not logging at all, costs points.
       </p>
       <p>
-        It works on trust: Ascend can’t see what you did, only what you log. The points help you break bad habits by
+        It works on trust: AscendDay can’t see what you did, only what you log. The points help you break bad habits by
         making an honest answer every evening feel like it matters.
       </p>
     </>
@@ -156,7 +156,7 @@ export const badHabits: FeatureContent = {
         lead={
           <>
             <p>
-              Most trackers only count the good days, so a slip just disappears. In Ascend a slip has a small, known cost,
+              Most trackers only count the good days, so a slip just disappears. In AscendDay a slip has a small, known cost,
               and that cost goes into the same season points as everything else you do. Your habits, workouts and reading
               can make up for a bad day, but they can’t hide it.
             </p>
@@ -166,7 +166,7 @@ export const badHabits: FeatureContent = {
               <a href={featurePath('recovery')} className={LINK_CLASS}>
                 Recovery tracker
               </a>{' '}
-              and reach out to a professional or a helpline; Ascend is not treatment.
+              and reach out to a professional or a helpline; AscendDay is not treatment.
             </p>
           </>
         }
@@ -197,7 +197,7 @@ export const badHabits: FeatureContent = {
   ],
   notFor: [
     'You don’t want a penalty for slipping or for forgetting to log.',
-    'You are dealing with an addiction that needs real support. Ascend can sit alongside that help, not replace it.',
+    'You are dealing with an addiction that needs real support. AscendDay can sit alongside that help, not replace it.',
   ],
   faq: [
     {

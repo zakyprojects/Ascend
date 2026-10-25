@@ -25,14 +25,14 @@ export function About() {
         <Breadcrumb items={[{ name: 'Home', href: '/' }, { name: 'About' }]} />
         <div className="mt-8 max-w-3xl lg:mt-12">
           <p className="m-enter text-sm font-medium text-brand-text" style={enter(0)}>
-            About Ascend
+            About AscendDay
           </p>
           <h1 id="about-title" className="m-enter mt-3 font-serif text-4xl leading-[1.08] tracking-tight text-content-primary sm:text-6xl" style={enter(1)}>
             {MAKER_LEAD}
           </h1>
           <div className="m-enter mt-6 space-y-4 text-base leading-relaxed text-content-tertiary sm:text-lg" style={enter(2)}>
             <p>
-              Ascend, also known as AscendDay, is a free gamified self-improvement app made in Pakistan. Habits, workouts, reading, journaling, goals and more
+              AscendDay, first called just Ascend, is a free gamified self-improvement app made in Pakistan. Habits, workouts, reading, journaling, goals and more
               live in one place, everything you log earns points, and the points put you in leagues against other
               people who are climbing too.
             </p>
@@ -43,7 +43,7 @@ export function About() {
 
       <Section labelledBy="story-title">
         <h2 id="story-title" className="sr-only">
-          The story behind Ascend
+          The story behind AscendDay
         </h2>
         <div className="grid gap-6 lg:grid-cols-2">
           {MAKER_STORY.map((part) => (
@@ -63,14 +63,14 @@ export function About() {
         <SectionHeading id="shape-title" kicker="Help shape it" title="Tell me what to fix or build next" />
         <div className="card scroll-rise mt-8 max-w-3xl p-6 sm:p-8 text-base leading-relaxed text-content-secondary">
           <p>
-            Ascend grows from what the people using it tell me. Inside the app, Settings has Report a bug and Suggest an
+            AscendDay grows from what the people using it tell me. Inside the app, Settings has Report a bug and Suggest an
             idea. For anything else, email me at <Email />.
           </p>
         </div>
       </Section>
 
       <Section labelledBy="support-title">
-        <SectionHeading id="support-title" kicker="Support Ascend" title="Buy us a coffee">
+        <SectionHeading id="support-title" kicker="Support AscendDay" title="Buy us a coffee">
           {SUPPORT_INTRO}
         </SectionHeading>
         <ul className="mt-8 grid gap-4 sm:grid-cols-3">
@@ -98,7 +98,7 @@ export function About() {
         <div className="card scroll-rise mt-6 p-6 sm:p-8 text-base leading-relaxed text-content-secondary">
           <h3 className="text-lg font-semibold text-content-primary">Free ways to help</h3>
           <ul className="mt-3 list-disc space-y-1.5 pl-5 marker:text-content-muted">
-            <li>Tell a friend about Ascend. More people in a league makes it better for everyone.</li>
+            <li>Tell a friend about AscendDay. More people in a league makes it better for everyone.</li>
             <li>Found something broken, or have an idea? Use Report a bug or Suggest an idea in the app’s Settings.</li>
           </ul>
           <p className="mt-4 text-sm text-content-muted">

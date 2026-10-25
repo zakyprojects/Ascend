@@ -29,7 +29,7 @@ export const skills: FeatureContent = {
   intro: (
     <>
       <p>
-        Skills in Ascend is a free skill practice tracker: add what you are learning, log your practice minutes, and watch each
+        Skills in AscendDay is a free skill practice tracker: add what you are learning, log your practice minutes, and watch each
         skill climb from {levels[0].name} to {top.name} as the hours add up. Every {S.minutesPerPoint} minutes of practice
         also earn a point, so an hour of guitar or coding counts toward your rank like a workout does.
       </p>
@@ -138,7 +138,7 @@ export const skills: FeatureContent = {
       <Block
         id="connect-title"
         title="Skills and the rest of your week"
-        lead={<p>Practice you log also feeds three other parts of Ascend:</p>}
+        lead={<p>Practice you log also feeds three other parts of AscendDay:</p>}
       >
         <Cards
           items={[
@@ -210,13 +210,13 @@ export const skills: FeatureContent = {
     'You like an XP-style level for real-life skills.',
   ],
   notFor: [
-    'You need lessons or exercises; Ascend tracks your practice, it doesn’t teach the skill.',
+    'You need lessons or exercises; AscendDay tracks your practice, it doesn’t teach the skill.',
     'You want to log practice for days you missed; only today can be logged.',
   ],
   faq: [
     {
       q: 'Is the skill tracker free?',
-      a: 'Yes. Ascend is free while in beta, with no limit on how many skills you track. Each one works as its own skill level tracker.',
+      a: 'Yes. AscendDay is free while in beta, with no limit on how many skills you track. Each one works as its own skill level tracker.',
     },
     {
       q: 'How are skill levels worked out?',
@@ -228,11 +228,11 @@ export const skills: FeatureContent = {
     },
     {
       q: 'Can I set my own level for a skill I already know well?',
-      a: 'Levels come from the hours logged in Ascend. A skill you bring in starts at Beginner and climbs as you log practice.',
+      a: 'Levels come from the hours logged in AscendDay. A skill you bring in starts at Beginner and climbs as you log practice.',
     },
     {
       q: 'Can I use it like an XP tracker for real life?',
-      a: `That is the idea: minutes are your XP, levels are your progress per skill, and the points join the rest of Ascend’s ranks and leagues.`,
+      a: `That is the idea: minutes are your XP, levels are your progress per skill, and the points join the rest of AscendDay’s ranks and leagues.`,
     },
   ],
   related: ['time-blocking', 'weekly-goals', 'reading', 'ranks'],

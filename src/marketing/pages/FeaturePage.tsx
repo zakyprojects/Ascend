@@ -29,7 +29,7 @@ export function FeaturePage({ slug }: { slug: FeatureSlug }) {
         <div className="mt-8 grid items-center gap-10 grid-cols-1 lg:mt-12 lg:grid-cols-12">
           <div className="lg:col-span-7">
             <p className="m-enter text-sm font-medium text-brand-text" style={enter(0)}>
-              {feature.name} · Ascend
+              {feature.name} · AscendDay
             </p>
             <h1
               id="feature-title"

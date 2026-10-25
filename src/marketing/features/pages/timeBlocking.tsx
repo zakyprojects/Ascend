@@ -25,7 +25,7 @@ export const timeBlocking: FeatureContent = {
   intro: (
     <>
       <p>
-        Ascend’s Time Tracker is a free time blocking app for the web: split your day into blocks, tick each one off as
+        AscendDay’s Time Tracker is a free time blocking app for the web: split your day into blocks, tick each one off as
         you finish it, and earn up to {pts(T.dailyCap)} a day for following your own plan. Build a day once as a template
         and it fills your weekdays on its own.
       </p>
@@ -102,13 +102,13 @@ export const timeBlocking: FeatureContent = {
         title="Categories that open the right page"
         lead={
           <p>
-            Every block has a category with its own colour and icon. Ascend starts you with {builtIn.length}:{' '}
+            Every block has a category with its own colour and icon. AscendDay starts you with {builtIn.length}:{' '}
             {list(builtIn)}. Add your own, like Classes or Family, and give a block a second category when it is two
             things at once.
           </p>
         }
       >
-        <Note title="Linked to the rest of Ascend.">
+        <Note title="Linked to the rest of AscendDay.">
           {list(linked)} come linked to their pages: their blocks get a button that opens the{' '}
           <a href={featurePath('brain-lessons')} className={LINK_CLASS}>
             focus timer
@@ -179,7 +179,7 @@ export const timeBlocking: FeatureContent = {
         title="Where the points go"
         lead={
           <p>
-            Time Tracker points count toward your season like every other part of Ascend, so they move your{' '}
+            Time Tracker points count toward your season like every other part of AscendDay, so they move your{' '}
             <a href={featurePath('ranks')} className={LINK_CLASS}>
               rank
             </a>{' '}
@@ -217,17 +217,17 @@ export const timeBlocking: FeatureContent = {
     'You like time blocking with rewards: a small daily score helps you take the plan seriously.',
   ],
   notFor: [
-    'You need a calendar for meetings with other people; Ascend doesn’t sync with Google or Outlook calendars.',
+    'You need a calendar for meetings with other people; AscendDay doesn’t sync with Google or Outlook calendars.',
     'You want to log hours for clients or invoices; this tracks your own plan, not billable time.',
   ],
   faq: [
     {
       q: 'What is time blocking?',
-      a: 'Giving every part of the day a job ahead of time: 9 to 11 deep work, 11 to 11:15 a break, and so on. Ascend adds the other half: ticking each block off, so you see what really happened.',
+      a: 'Giving every part of the day a job ahead of time: 9 to 11 deep work, 11 to 11:15 a break, and so on. AscendDay adds the other half: ticking each block off, so you see what really happened.',
     },
     {
       q: 'Is the Time Tracker free?',
-      a: 'Yes. Ascend is free while in beta, and templates, categories and points are all included.',
+      a: 'Yes. AscendDay is free while in beta, and templates, categories and points are all included.',
     },
     {
       q: 'Do I have to plan every day by hand?',

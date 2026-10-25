@@ -42,7 +42,7 @@ export const ranks: FeatureContent = {
   intro: (
     <>
       <p>
-        Ranks in Ascend are how you level up your real life: {TIERS.length} ranks from {first.name} to {top.name}, climbed
+        Ranks in AscendDay are how you level up your real life: {TIERS.length} ranks from {first.name} to {top.name}, climbed
         with the points you earn from habits, workouts, reading and the rest. It is free, and the ladder starts again
         every {seasonDays}-day season, so a newcomer and a long-time member race from the same line.
       </p>
@@ -140,7 +140,7 @@ export const ranks: FeatureContent = {
               finished season is kept: its score shows in Past seasons on the Leagues page and on your profile.
             </p>
             <p>
-              Each time you reach a new rank Ascend shows a short rank-up moment, once per rank per season. Dropping
+              Each time you reach a new rank AscendDay shows a short rank-up moment, once per rank per season. Dropping
               below a rank and climbing back does not show it again.
             </p>
           </>

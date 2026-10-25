@@ -18,12 +18,12 @@ export const weeklyGoals: FeatureContent = {
   intro: (
     <>
       <p>
-        Weekly Goals in Ascend is a free weekly goals app: set a few goals each Monday, link them to your habits,
+        Weekly Goals in AscendDay is a free weekly goals app: set a few goals each Monday, link them to your habits,
         workouts, reading or skills so their progress fills in on its own, and look back at the weekend. Reached goals
         earn {pts(G.pointsPerGoal)} each and an honest reflection earns {reflection} more.
       </p>
       <p>
-        A week is long enough to get something real done and short enough to stay in view. That is why Ascend asks for
+        A week is long enough to get something real done and short enough to stay in view. That is why AscendDay asks for
         a few goals per week, not a yearly list.
       </p>
     </>
@@ -36,7 +36,7 @@ export const weeklyGoals: FeatureContent = {
   },
   body: (
     <>
-      <Block id="how-title" title="Planning a week in Ascend">
+      <Block id="how-title" title="Planning a week in AscendDay">
         <Steps
           items={[
             {
@@ -62,7 +62,7 @@ export const weeklyGoals: FeatureContent = {
       <Block
         id="link-title"
         title="Linked weekly goals that track themselves"
-        lead={<p>A linked goal counts what you already log in another part of Ascend, from Monday to Sunday:</p>}
+        lead={<p>A linked goal counts what you already log in another part of AscendDay, from Monday to Sunday:</p>}
       >
         <Cards
           cols={2}
@@ -214,7 +214,7 @@ export const weeklyGoals: FeatureContent = {
     },
     {
       q: 'What happens to goals I didn’t finish?',
-      a: 'On the current week, Ascend lists unfinished goals from recent weeks. Carry each one into this week or let it go.',
+      a: 'On the current week, AscendDay lists unfinished goals from recent weeks. Carry each one into this week or let it go.',
     },
     {
       q: 'Does a week start on Monday?',

@@ -24,7 +24,7 @@ export const journal: FeatureContent = {
   intro: (
     <>
       <p>
-        Ascend’s journal is a free gamified journal app: one short entry a day, the mood you felt, and {pts(award)} for
+        AscendDay’s journal is a free gamified journal app: one short entry a day, the mood you felt, and {pts(award)} for
         showing up. Write freely or answer a guided prompt, and over the weeks you get a streak and a mood chart that show
         how your days really went.
       </p>
@@ -51,7 +51,7 @@ export const journal: FeatureContent = {
             },
             {
               title: 'Choose how to write',
-              text: `Guided prompt gives you one question for the day, with Shuffle for another. Free write gives you a blank page. Ascend remembers which you like.`,
+              text: `Guided prompt gives you one question for the day, with Shuffle for another. Free write gives you a blank page. AscendDay remembers which you like.`,
             },
             {
               title: 'Write at least one sentence',
@@ -138,7 +138,7 @@ export const journal: FeatureContent = {
         lead={
           <p>
             What you write and the moods you pick are visible only to you. They never appear in leagues or to partners,
-            and Ascend never shares or sells them; a public profile shows only how many entries you have. The{' '}
+            and AscendDay never shares or sells them; a public profile shows only how many entries you have. The{' '}
             <a href="/privacy" className={LINK_CLASS}>
               Privacy Policy
             </a>{' '}
@@ -198,7 +198,7 @@ export const journal: FeatureContent = {
     },
     {
       q: 'Is it free, and does it work on Windows or Mac?',
-      a: 'Yes to both. Ascend is free while in beta and runs in any modern browser, so it works on Windows, Mac, Linux, Android and iPhone.',
+      a: 'Yes to both. AscendDay is free while in beta and runs in any modern browser, so it works on Windows, Mac, Linux, Android and iPhone.',
     },
   ],
   related: ['weekly-goals', 'habits', 'brain-lessons', 'recovery'],

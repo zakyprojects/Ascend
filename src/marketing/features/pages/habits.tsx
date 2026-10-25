@@ -33,7 +33,7 @@ export const habits: FeatureContent = {
   intro: (
     <>
       <p>
-        Ascend’s gamified habit tracker is a free daily and weekly habit list where every tick earns points. Pick habits from a
+        AscendDay’s gamified habit tracker is a free daily and weekly habit list where every tick earns points. Pick habits from a
         library of {library.length} or write your own, tick them off each day, watch the streak grow, and see those points
         move your rank and your place in the leagues.
       </p>
@@ -56,7 +56,7 @@ export const habits: FeatureContent = {
         title="Two kinds of habits"
         lead={
           <p>
-            Every habit in Ascend is either a library habit or a custom one. The difference matters, because it decides
+            Every habit in AscendDay is either a library habit or a custom one. The difference matters, because it decides
             what a tick earns and what a miss costs.
           </p>
         }
@@ -228,7 +228,7 @@ export const habits: FeatureContent = {
   faq: [
     {
       q: 'Is the habit tracker free?',
-      a: 'Yes. Ascend is a free habit tracker web app while in beta, with no payments in the app. Every habit feature, library and custom, is included.',
+      a: 'Yes. AscendDay is a free habit tracker web app while in beta, with no payments in the app. Every habit feature, library and custom, is included.',
     },
     {
       q: 'What happens if I miss a habit?',
@@ -244,7 +244,7 @@ export const habits: FeatureContent = {
     },
     {
       q: 'Does it work on my PC and phone?',
-      a: 'Yes. Ascend runs in any modern browser and can be installed from it. Sign in on another device and your habits and streaks are there.',
+      a: 'Yes. AscendDay runs in any modern browser and can be installed from it. Sign in on another device and your habits and streaks are there.',
     },
   ],
   related: ['bad-habits', 'weekly-goals', 'ranks', 'accountability-partners'],

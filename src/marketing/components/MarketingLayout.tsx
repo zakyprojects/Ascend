@@ -1,9 +1,9 @@
 import type { ReactNode } from 'react';
-import { ChevronDown, Moon, Sun } from 'lucide-react';
+import { ChevronDown, Menu, Moon, Sun } from 'lucide-react';
 import { AppLockup, AppLogo } from '@/components/ui/AppLogo';
 import { cx, FOCUS_RING } from '@/components/ui/primitives/shared';
 import { FEATURE_GROUPS, featurePath, featuresInGroup } from '../features/catalog';
-import { SITE_ALIAS, SITE_DESCRIPTOR, SITE_MAKER } from '../site';
+import { SITE_DESCRIPTOR, SITE_MAKER, SITE_NAME, SITE_TAGLINE } from '../site';
 
 export const LINK_CLASS = cx('font-medium text-brand-text hover:underline underline-offset-2 rounded', FOCUS_RING);
 const NAV_LINK = cx(
@@ -33,8 +33,11 @@ function ThemeToggle() {
 function FeaturesMenu() {
   return (
     <details className="m-menu relative" data-menu="">
-      <summary className={cx(NAV_LINK, 'cursor-pointer list-none gap-1 [&::-webkit-details-marker]:hidden')}>
-        Features <ChevronDown size={16} className="m-menu-chevron transition-transform duration-base" aria-hidden="true" />
+      {/* Below 420px the label becomes a menu icon (still named Features), so the lockup fits. */}
+      <summary className={cx(NAV_LINK, 'cursor-pointer list-none gap-1 max-[419px]:w-11 max-[419px]:justify-center max-[419px]:px-0 [&::-webkit-details-marker]:hidden')}>
+        <Menu size={20} className="hidden max-[419px]:block" aria-hidden="true" />
+        <span className="max-[419px]:sr-only">Features</span>
+        <ChevronDown size={16} className="m-menu-chevron transition-transform duration-base max-[419px]:hidden" aria-hidden="true" />
       </summary>
       <div className="m-menu-panel card absolute right-0 top-full mt-2 w-[min(92vw,44rem)] p-4 sm:p-5 z-popover max-sm:fixed max-sm:inset-x-3 max-sm:top-16 max-sm:w-auto max-sm:max-h-[75vh] max-sm:overflow-y-auto">
         <div className="grid gap-4 sm:grid-cols-2">
@@ -69,7 +72,7 @@ function FeaturesMenu() {
           </a>
           {/* Phones hide the header's About link, so the menu carries it. */}
           <a href="/about" className={cx(LINK_CLASS, 'inline-flex min-h-11 items-center px-2 text-sm sm:hidden')}>
-            About Ascend
+            About {SITE_NAME}
           </a>
         </div>
       </div>
@@ -81,9 +84,9 @@ function Header() {
   return (
     <header className="sticky top-0 z-sticky border-b border-overlay-subtle bg-bg-900/80 backdrop-blur-xl pt-[env(safe-area-inset-top)]">
       <div className="mx-auto flex h-16 max-w-6xl items-center gap-1 sm:gap-2 pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] sm:px-6">
-        {/* Narrow phones: smaller lockup below 400px, the mark alone below 360px, so the header never overflows. */}
-        <a href="/" aria-label="Ascend home" className={cx('mr-auto inline-flex min-h-11 items-center rounded-lg', FOCUS_RING)}>
-          <AppLockup className="h-5 w-auto text-content-primary max-[399px]:h-4 max-[359px]:hidden" />
+        {/* The lockup is 20px high, 16px below 640px, 15px below 365px and the mark alone below 360px, so the header never overflows. */}
+        <a href="/" aria-label={`${SITE_NAME} home`} className={cx('mr-auto inline-flex min-h-11 items-center rounded-lg', FOCUS_RING)}>
+          <AppLockup className="h-5 w-auto text-content-primary max-sm:h-4 max-[364px]:h-[15px] max-[359px]:hidden" />
           <AppLogo variant="small" className="hidden h-7 w-auto max-[359px]:block" />
         </a>
         <nav aria-label="Main" className="flex items-center gap-1">
@@ -96,7 +99,7 @@ function Header() {
           </a>
         </nav>
         <ThemeToggle />
-        <a href="/signup" data-cta="" className="btn-primary min-h-11 shrink-0 max-sm:px-3">
+        <a href="/signup" data-cta="" data-cta-app-label="Open app" className="btn-primary min-h-11 shrink-0 max-sm:px-3">
           Get started
         </a>
       </div>
@@ -110,10 +113,10 @@ function Footer() {
       <div className="mx-auto max-w-6xl px-4 sm:px-6 py-12">
         <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-5">
           <div className="lg:col-span-1">
-            <a href="/" aria-label="Ascend home" className={cx('inline-flex rounded-lg', FOCUS_RING)}>
+            <a href="/" aria-label={`${SITE_NAME} home`} className={cx('inline-flex rounded-lg', FOCUS_RING)}>
               <AppLockup className="h-5 w-auto text-content-primary" />
             </a>
-            <p className="mt-3 text-sm text-content-muted">{SITE_DESCRIPTOR}. Train the mind. Rise.</p>
+            <p className="mt-3 text-sm text-content-muted">{SITE_DESCRIPTOR}. {SITE_TAGLINE}</p>
           </div>
           {FEATURE_GROUPS.map((group) => (
             <div key={group.id}>
@@ -135,7 +138,7 @@ function Footer() {
         </div>
         <div className="mt-10 flex flex-col gap-4 border-t border-overlay-subtle pt-6 text-sm text-content-muted sm:flex-row sm:items-center sm:justify-between">
           <p>
-            Ascend ({SITE_ALIAS}) is free and in beta, made by {SITE_MAKER} in Pakistan. It is not affiliated with other apps named
+            {SITE_NAME} is free and in beta, made by {SITE_MAKER} in Pakistan. It is not affiliated with other apps named
             Ascend.
           </p>
           <nav aria-label="Site" className="flex flex-wrap gap-x-5 gap-y-1">

@@ -24,7 +24,7 @@ export const exercise: FeatureContent = {
   intro: (
     <>
       <p>
-        Exercise in Ascend is a free workout tracker that earns points, right in your browser: log a run, a gym session, push-ups or a bike ride in a
+        Exercise in AscendDay is a free workout tracker that earns points, right in your browser: log a run, a gym session, push-ups or a bike ride in a
         few taps, and every workout moves your rank. Count it in minutes, reps, sets or kilometres, whatever fits what
         you did.
       </p>
@@ -128,7 +128,7 @@ export const exercise: FeatureContent = {
 
       <Block
         id="connect-title"
-        title="Exercise in the rest of Ascend"
+        title="Exercise in the rest of AscendDay"
         lead={<p>A logged workout reaches further than this page:</p>}
       >
         <Cards
@@ -202,12 +202,12 @@ export const exercise: FeatureContent = {
   ],
   notFor: [
     'You follow a strength programme and need weights, sets and reps per exercise; a dedicated lifting app does that better.',
-    'You want GPS routes, heart rate or watch sync; Ascend doesn’t connect to wearables.',
+    'You want GPS routes, heart rate or watch sync; AscendDay doesn’t connect to wearables.',
   ],
   faq: [
     {
       q: 'Is the workout tracker free?',
-      a: 'Yes. Ascend is free while in beta, with no subscription and no paid tier.',
+      a: 'Yes. AscendDay is free while in beta, with no subscription and no paid tier.',
     },
     {
       q: 'Which workouts can I log?',

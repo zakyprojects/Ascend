@@ -23,7 +23,7 @@ import { Screenshot } from '../components/Screenshot';
 import { CtaBand, FaqList, Section, SectionHeading, type FaqItem } from '../components/Sections';
 import { fmt, pts, range } from '../features/format';
 import { FEATURE_GROUPS, FEATURE_SLUGS, featurePath, featuresInGroup } from '../features/catalog';
-import { SITE_ALIAS, SITE_HOST, SITE_MAKER, SITE_TAGLINE } from '../site';
+import { SITE_DESCRIPTOR, SITE_FORMER_NAME, SITE_HOST, SITE_MAKER, SITE_NAME, SITE_TAGLINE } from '../site';
 
 /*
  * `/`: the public landing page. Every number on it is read from the app's own reward code
@@ -102,19 +102,19 @@ const EARNS: { what: string; rule: string; href: string }[] = [
 
 const FAQ: FaqItem[] = [
   {
-    q: 'Is Ascend free?',
-    a: 'Yes. Ascend is a free self-improvement web app: every feature is free while it is in beta, and there are no payments anywhere in the app.',
+    q: 'Is AscendDay free?',
+    a: 'Yes. AscendDay is a free self-improvement web app: every feature is free while it is in beta, and there are no payments anywhere in the app.',
   },
   {
-    q: 'Is there an Ascend app for Android, iPhone or PC?',
-    a: 'Ascend is a web app, so it runs in the browser on any phone, tablet or computer. You can add it to your home screen or install it from the browser, and it then opens like any other app. It isn’t in the app stores yet.',
+    q: 'Is there an AscendDay app for Android, iPhone or PC?',
+    a: 'AscendDay is a web app, so it runs in the browser on any phone, tablet or computer. You can add it to your home screen or install it from the browser, and it then opens like any other app. It isn’t in the app stores yet.',
   },
   {
     q: 'Do I need an account?',
     a: (
       <>
         No. You can start as a guest and try everything, then save your progress to a free account with a username and
-        email whenever you like. You need to be at least {MIN_AGE} to use Ascend.
+        email whenever you like. You need to be at least {MIN_AGE} to use {SITE_NAME}.
       </>
     ),
   },
@@ -149,12 +149,12 @@ const FAQ: FaqItem[] = [
     ),
   },
   {
-    q: 'Is Ascend a medical or therapy app?',
+    q: 'Is AscendDay a medical or therapy app?',
     a: 'No. The recovery tracker, the focus tools and the brain lessons are for tracking and motivation, not medical treatment or therapy. If you are struggling, please contact a licensed professional or a helpline in your country.',
   },
   {
     q: 'Is this the same as other apps called Ascend?',
-    a: `No. Several unrelated apps share the name. This Ascend, also called ${SITE_ALIAS} or Ascend Day, is the gamified self-improvement web app made by ${SITE_MAKER} at ${SITE_HOST}, and it is not connected to any of them.`,
+    a: `No. Several unrelated apps share the name. ${SITE_NAME} (also written Ascend Day) is the gamified self-improvement web app made by ${SITE_MAKER} at ${SITE_HOST}, and it is not connected to any of them.`,
   },
 ];
 
@@ -180,7 +180,7 @@ function Hero() {
       <div className="mx-auto max-w-6xl px-4 sm:px-6 pt-14 sm:pt-20 text-center">
         <h1 id="hero-title">
           <span className="m-enter block text-sm font-medium text-brand-text" style={enter(0)}>
-            Ascend ({SITE_ALIAS}) – Gamified Self-Improvement
+            {SITE_DESCRIPTOR}
           </span>
           <span
             className="m-enter mt-3 block font-serif text-5xl leading-[1.05] tracking-tight text-content-primary sm:text-7xl"
@@ -193,7 +193,7 @@ function Hero() {
           className="m-enter mx-auto mt-6 max-w-2xl text-base leading-relaxed text-content-tertiary sm:text-lg"
           style={enter(2)}
         >
-          Ascend, also known as {SITE_ALIAS}, is a free self-improvement app that plays like a game. Instead of one app for habits, another for your
+          {SITE_NAME} (formerly just {SITE_FORMER_NAME}) is a free self-improvement app that plays like a game. Instead of one app for habits, another for your
           journal and another for goals, you log your habits, workouts, reading, skills and journal in one place, earn
           points for each one, rise through {TIERS.length} ranks and climb weekly, monthly and 90-day leagues against
           real people.
@@ -224,7 +224,7 @@ function Hero() {
           eager
           width={540}
           height={886}
-          alt="The Ascend dashboard on a phone: 3 of 6 habits done today, 331 season points and the Starter rank"
+          alt="The AscendDay dashboard on a phone: 3 of 6 habits done today, 331 season points and the Starter rank"
           className="mx-auto w-full max-w-[280px] rounded-[1.75rem] border-4 border-bg-700 sm:hidden"
         />
         <Screenshot
@@ -233,14 +233,14 @@ function Hero() {
           width={1600}
           height={589}
           className="hidden sm:block"
-          alt="The Ascend dashboard on a computer: 3 of 6 habits done today, 331 season points, the Starter rank and the climb from Beginner to Master"
+          alt="The AscendDay dashboard on a computer: 3 of 6 habits done today, 331 season points, the Starter rank and the climb from Beginner to Master"
         />
         <Screenshot
           name="dashboard-phone"
           eager
           width={540}
           height={886}
-          alt="The Ascend dashboard on a phone: today’s habits with the points each one earns"
+          alt="The AscendDay dashboard on a phone: today’s habits with the points each one earns"
           className="absolute -bottom-10 right-8 hidden w-[190px] rounded-[1.75rem] border-4 border-bg-900 shadow-md lg:block xl:right-10 xl:w-[210px]"
         />
       </div>
@@ -257,9 +257,9 @@ const LOOP = [
 function WhatItIs() {
   return (
     <Section labelledBy="what-title">
-      <SectionHeading id="what-title" kicker="What Ascend is" title="Self-improvement with a scoreboard">
+      <SectionHeading id="what-title" kicker="What AscendDay is" title="Self-improvement with a scoreboard">
         Most self-improvement apps do one thing: one tracks habits, another holds your journal, another tracks your
-        time, another your goals. Ascend puts all of it in one app and turns your whole day into a season: the work
+        time, another your goals. AscendDay puts all of it in one app and turns your whole day into a season: the work
         you put in becomes points, the points become a rank, and the leagues show how your week compares with
         everyone else’s.
       </SectionHeading>
@@ -307,7 +307,7 @@ const REASONS = [
 function WhyAscend() {
   return (
     <Section labelledBy="why-title">
-      <SectionHeading id="why-title" kicker="One app, and a reason to keep going" title="Why Ascend" />
+      <SectionHeading id="why-title" kicker="One app, and a reason to keep going" title="Why AscendDay" />
       <ul className="mt-10 grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
         {REASONS.map(({ icon: Icon, title, text }) => (
           <li key={title} className="card card-hover p-6">
@@ -473,7 +473,7 @@ function PointsRanksLeagues() {
           name="ranks-desktop"
           width={1400}
           height={885}
-          alt="The Ranks page in Ascend: Starter rank at 43% of the way to Learner, the season countdown, all nine ranks with the points they need, and recent points"
+          alt="The Ranks page in AscendDay: Starter rank at 43% of the way to Learner, the season countdown, all nine ranks with the points they need, and recent points"
         />
       </div>
     </Section>
@@ -486,7 +486,7 @@ function Platforms() {
       <div className="grid items-center gap-10 grid-cols-1 lg:grid-cols-2">
         <div>
           <SectionHeading id="where-title" kicker="Free, in beta" title="On your phone and your PC">
-            Ascend runs in the browser, so there is nothing to download and it works on Android, iPhone, Windows, Mac and
+            AscendDay runs in the browser, so there is nothing to download and it works on Android, iPhone, Windows, Mac and
             Linux. Add it to your home screen or install it from the browser and it opens like an app. Sign in on another
             device and your progress is there.
           </SectionHeading>
@@ -509,7 +509,7 @@ function Platforms() {
             name="dashboard-phone"
             width={540}
             height={886}
-            alt="Ascend on a phone: the dashboard with today’s habits, season points and rank"
+            alt="AscendDay on a phone: the dashboard with today’s habits, season points and rank"
             className="rounded-[2rem] border-4 border-bg-700"
           />
         </div>
@@ -527,15 +527,15 @@ function WhoFor() {
   ];
   const notList = [
     'You want a plain to-do list with no points or competition.',
-    'You need medical, mental health or addiction treatment. Ascend can sit alongside real help, never replace it.',
-    'You need an app store app. Ascend is a web app you install from the browser.',
+    'You need medical, mental health or addiction treatment. AscendDay can sit alongside real help, never replace it.',
+    'You need an app store app. AscendDay is a web app you install from the browser.',
   ];
   return (
     <Section labelledBy="who-title">
       <SectionHeading id="who-title" kicker="Who it is for" title="Made for people who like to compete" />
       <div className="mt-10 grid gap-6 grid-cols-1 md:grid-cols-2">
         <div className="card p-6 sm:p-8">
-          <h3 className="text-lg font-semibold text-content-primary">Ascend fits if</h3>
+          <h3 className="text-lg font-semibold text-content-primary">AscendDay fits if</h3>
           <ul className="mt-4 space-y-3 text-sm leading-relaxed text-content-tertiary">
             {forList.map((line) => (
               <li key={line} className="flex gap-3">
@@ -564,7 +564,7 @@ function WhoFor() {
 function About() {
   const facts: [string, ReactNode][] = [
     ['What it is', 'A free gamified self-improvement web app'],
-    ['Also known as', `${SITE_ALIAS} (${SITE_HOST})`],
+    ['Also known as', `${SITE_FORMER_NAME}, Ascend Day (${SITE_HOST})`],
     ['Made by', `${SITE_MAKER}, a computer science student in Peshawar, Pakistan`],
     ['Website', SITE_HOST],
     ['Price', 'Free (beta)'],
@@ -582,7 +582,7 @@ function About() {
       <div className="grid gap-6 grid-cols-1 lg:grid-cols-5">
         <div className="card p-6 sm:p-8 lg:col-span-2">
           <h2 id="about-title" className="text-2xl font-semibold tracking-tight text-content-primary">
-            Ascend at a glance
+            AscendDay at a glance
           </h2>
           <dl className="mt-5 space-y-4">
             {facts.map(([term, value]) => (
@@ -593,12 +593,12 @@ function About() {
             ))}
           </dl>
           <p className="mt-6 border-t border-overlay-subtle pt-4 text-sm leading-relaxed text-content-muted">
-            Other apps also use the name Ascend. This Ascend is not affiliated with any of them.
+            Other apps also use the name Ascend. {SITE_NAME} is not affiliated with any of them.
           </p>
         </div>
 
         <figure className="card p-6 sm:p-8 lg:col-span-3">
-          <h3 className="text-lg font-semibold text-content-primary">Why I built Ascend</h3>
+          <h3 className="text-lg font-semibold text-content-primary">Why I built AscendDay</h3>
           <blockquote className="mt-4 space-y-4 text-base leading-relaxed text-content-secondary">
             <p>
               People love to compete: in grades, jobs and sport. When real life doesn’t give that drive a good place to
@@ -618,10 +618,10 @@ function About() {
           </blockquote>
           <figcaption className="mt-6 text-sm">
             <span className="font-semibold text-content-primary">{SITE_MAKER}</span>
-            <span className="text-content-muted"> · Maker of Ascend, computer science student in Peshawar</span>
+            <span className="text-content-muted"> · Maker of AscendDay, computer science student in Peshawar</span>
           </figcaption>
           <a href="/about" className={cx(LINK_CLASS, 'mt-4 inline-flex min-h-11 items-center text-sm')}>
-            More about Ascend and its maker
+            More about AscendDay and its maker
           </a>
         </figure>
       </div>

@@ -115,7 +115,7 @@ function swapCallsToAction() {
   document.querySelectorAll<HTMLAnchorElement>('a[data-cta]').forEach((link) => {
     link.href = link.dataset.ctaApp || '/dashboard';
     const label = link.querySelector<HTMLElement>('[data-cta-label]') ?? link;
-    label.textContent = link.dataset.ctaAppLabel || 'Open Ascend';
+    label.textContent = link.dataset.ctaAppLabel || 'Open AscendDay';
   });
 }
 

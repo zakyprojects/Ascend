@@ -34,7 +34,7 @@ export const brainLessons: FeatureContent = {
   intro: (
     <>
       <p>
-        Ascend’s brain pages are three free tools in one corner of the app: a deep-focus timer that earns points, with a
+        AscendDay’s brain pages are three free tools in one corner of the app: a deep-focus timer that earns points, with a
         decision journal and emotion labeling next to it; a plain-language guide to neuroplasticity; and{' '}
         {LESSONS.length} short lessons on discipline, habits, goals, mindset and the brain.
       </p>
@@ -66,9 +66,9 @@ export const brainLessons: FeatureContent = {
               it helps with.
             </p>
             <p>
-              Ascend’s Prefrontal Cortex page is built around three of those everyday skills: a timer for staying on one
+              AscendDay’s Prefrontal Cortex page is built around three of those everyday skills: a timer for staying on one
               task, a journal for thinking choices through, and a quick way to name what you feel. They are practice
-              tools for daily life. They do not measure your brain, and nothing in Ascend promises a change inside it.
+              tools for daily life. They do not measure your brain, and nothing in AscendDay promises a change inside it.
             </p>
           </>
         }
@@ -87,7 +87,7 @@ export const brainLessons: FeatureContent = {
             },
             {
               title: 'Work until the timer ends',
-              text: 'A session counts when its time runs out. Discarding it saves nothing. Allow notifications and Ascend tells you when the session and the break are over.',
+              text: 'A session counts when its time runs out. Discarding it saves nothing. Allow notifications and AscendDay tells you when the session and the break are over.',
             },
             {
               title: 'Note how it went',
@@ -118,7 +118,7 @@ export const brainLessons: FeatureContent = {
             },
             {
               title: 'Work the block you are in',
-              text: 'A large countdown shows the time left in the current block, with a bar for how far through it you are. When the block’s category is linked to an Ascend page, such as Reading or Exercise, one tap opens that page.',
+              text: 'A large countdown shows the time left in the current block, with a bar for how far through it you are. When the block’s category is linked to an AscendDay page, such as Reading or Exercise, one tap opens that page.',
             },
             {
               title: 'Take a short break',
@@ -215,12 +215,12 @@ export const brainLessons: FeatureContent = {
             <p>
               Neuroplasticity is the brain’s ability to change. Cleveland Clinic describes it as the brain building new
               pathways and strengthening old ones when you learn, practise or repeat activities. Habit tracking leans on the
-              same idea, and Ascend’s Neuro page explains it in everyday words.
+              same idea, and AscendDay’s Neuro page explains it in everyday words.
             </p>
             <p>
               The guide covers how repeated actions get easier and unused ones fade, what the idea can and cannot help
               with, practical steps such as starting small and repeating daily, what the first weeks of a new habit tend
-              to feel like, and a few common myths. It closes with links to the parts of Ascend that put it to work and
+              to feel like, and a few common myths. It closes with links to the parts of AscendDay that put it to work and
               to the related lessons.
             </p>
           </>
@@ -294,7 +294,7 @@ export const brainLessons: FeatureContent = {
     },
     {
       q: 'Will this rewire my brain?',
-      a: 'Ascend makes no such promise. The pages explain general ideas and give you tools to practise focus and reflection; they are not brain training with a measured result and not medical advice.',
+      a: 'AscendDay makes no such promise. The pages explain general ideas and give you tools to practise focus and reflection; they are not brain training with a measured result and not medical advice.',
     },
     {
       q: 'Who can see my decisions and emotions?',

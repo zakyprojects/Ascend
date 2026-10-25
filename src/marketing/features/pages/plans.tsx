@@ -17,7 +17,7 @@ export const plans: FeatureContent = {
   intro: (
     <>
       <p>
-        Plans in Ascend is a free self-improvement plan builder: write down where you want to get to, choose how you will
+        Plans in AscendDay is a free self-improvement plan builder: write down where you want to get to, choose how you will
         track it, and tick it forward. A plan can be a list of milestones, one number to reach, a daily or weekly habit
         journey, or a long-term vision you check in on.
       </p>
@@ -134,7 +134,7 @@ export const plans: FeatureContent = {
           ]}
         />
         <Note title="Where the points are.">
-          Turn the plan into things Ascend scores: a daily{' '}
+          Turn the plan into things AscendDay scores: a daily{' '}
           <a href={featurePath('habits')} className={LINK_CLASS}>
             habit
           </a>{' '}
@@ -212,7 +212,7 @@ export const plans: FeatureContent = {
     },
     {
       q: 'Is it free?',
-      a: 'Yes. Ascend is free while in beta, including making, sharing and copying plans.',
+      a: 'Yes. AscendDay is free while in beta, including making, sharing and copying plans.',
     },
   ],
   related: ['projects-goals', 'weekly-goals', 'habits', 'journal'],

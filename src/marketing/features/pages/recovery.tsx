@@ -24,7 +24,7 @@ export const recovery: FeatureContent = {
   intro: (
     <>
       <p>
-        Ascend’s recovery tracker is a free sobriety tracker on the web. Name the one thing you are stepping away from,
+        AscendDay’s recovery tracker is a free sobriety tracker on the web. Name the one thing you are stepping away from,
         like smoking, alcohol, sugar or social media, and a clean streak counter starts counting your days, hours and
         minutes. Log a craving when it hits, open emergency support for a breathing exercise, and earn points at{' '}
         {days(week.hours)}, {days(month.hours)} and {days(ninety.hours)} days clean.
@@ -65,7 +65,7 @@ export const recovery: FeatureContent = {
           ]}
         />
         <Note title="One tracker, one focus.">
-          Ascend keeps one recovery tracker at a time. For a habit you only want to cut down on, such as late-night
+          AscendDay keeps one recovery tracker at a time. For a habit you only want to cut down on, such as late-night
           scrolling, the{' '}
           <a href={featurePath('bad-habits')} className={LINK_CLASS}>
             bad habit tracker
@@ -80,7 +80,7 @@ export const recovery: FeatureContent = {
         lead={
           <>
             <p>
-              Points come from milestones only. They are written by Ascend’s server from your streak’s start time, so
+              Points come from milestones only. They are written by AscendDay’s server from your streak’s start time, so
               they arrive within the hour of reaching a milestone even if the app is closed.
             </p>
             <p>
@@ -108,7 +108,7 @@ export const recovery: FeatureContent = {
           ]}
         />
         <Note title="A reset is not the end.">
-          If you slip, Reset streak starts the clock again from now. Before it does, Ascend tells you exactly how many of
+          If you slip, Reset streak starts the clock again from now. Before it does, AscendDay tells you exactly how many of
           this season’s milestone points will come off, so nothing happens by surprise. As the reset screen puts it, a
           slip is a setback, not the end.
         </Note>
@@ -174,7 +174,7 @@ export const recovery: FeatureContent = {
           </p>
         }
       >
-        <Note title="Ascend is not treatment, therapy or medical advice.">
+        <Note title="AscendDay is not treatment, therapy or medical advice.">
           If you are in crisis, have severe withdrawal or a serious addiction, contact a doctor, a licensed professional or
           a helpline. In the United States, the{' '}
           <a href={SAMHSA_URL} className={LINK_CLASS}>
@@ -209,7 +209,7 @@ export const recovery: FeatureContent = {
     'Points and milestones help you keep going on the hard days.',
   ],
   notFor: [
-    'You need treatment, detox or medical supervision; Ascend can sit next to that care, never replace it.',
+    'You need treatment, detox or medical supervision; AscendDay can sit next to that care, never replace it.',
     'You want to enter a past quit date or track several things at once.',
   ],
   faq: [
@@ -219,7 +219,7 @@ export const recovery: FeatureContent = {
     },
     {
       q: 'Can I start from an earlier quit date?',
-      a: 'No. The clock starts when you create the tracker, so every day it shows is one Ascend has counted with you.',
+      a: 'No. The clock starts when you create the tracker, so every day it shows is one AscendDay has counted with you.',
     },
     {
       q: 'What happens to my points if I relapse?',
@@ -230,7 +230,7 @@ export const recovery: FeatureContent = {
       a: 'No. Logging, deleting or clearing cravings never changes your points or your streak.',
     },
     {
-      q: 'Is Ascend an addiction treatment?',
+      q: 'Is AscendDay an addiction treatment?',
       a: `No. It is a self-help tool, not treatment, therapy or medical advice. In the United States the SAMHSA National Helpline (${SAMHSA_PHONE}) is free and open 24/7; anywhere else, contact a qualified professional or your local emergency services.`,
     },
   ],

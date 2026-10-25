@@ -8,7 +8,7 @@ export function NotFound() {
         <p className="stat-label">Error 404</p>
         <h1 className="page-title mt-2">This page doesn’t exist</h1>
         <p className="mt-4 text-content-muted">
-          The address may have a typo, or the page moved. Everything Ascend does is one click away.
+          The address may have a typo, or the page moved. Everything AscendDay does is one click away.
         </p>
         <div className="mt-8 flex flex-wrap justify-center gap-3">
           <a href="/" className="btn-primary min-h-11">
@@ -18,7 +18,7 @@ export function NotFound() {
             See all features
           </a>
           <a href="/dashboard" className="btn-ghost min-h-11">
-            Open Ascend
+            Open AscendDay
           </a>
         </div>
       </section>

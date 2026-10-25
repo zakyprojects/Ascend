@@ -1,4 +1,5 @@
 import { FEATURE_SLUGS, FEATURES, featurePath, type FeatureSlug } from './features/catalog';
+import { SITE_NAME } from './site';
 
 /**
  * Every public page the build writes (src/marketing/prerender.ts → scripts/prerender.ts), one
@@ -36,7 +37,7 @@ export interface MarketingRoute {
 }
 
 /** The brand at the end of a title, removed for og:title. */
-const BRAND_SUFFIX = ' – Ascend';
+const BRAND_SUFFIX = ` – ${SITE_NAME}`;
 const ogTitleOf = (title: string) => (title.endsWith(BRAND_SUFFIX) ? title.slice(0, -BRAND_SUFFIX.length) : title);
 
 /**
@@ -67,12 +68,12 @@ export const MARKETING_ROUTES: MarketingRoute[] = [
     path: '/',
     file: 'index.html',
     kind: 'landing',
-    title: 'Ascend (AscendDay) – Gamified Self-Improvement App',
-    ogTitle: 'Ascend (AscendDay) – Gamified Self-Improvement App',
+    title: 'AscendDay – Gamified Self-Improvement App',
+    ogTitle: 'AscendDay – Gamified Self-Improvement App',
     description:
-      'Ascend (AscendDay) is a free gamified self-improvement app: track habits, journal, read and train, earn points and climb weekly, monthly and 90-day leagues.',
+      'AscendDay (formerly Ascend): a free gamified self-improvement app. Track habits, journal, read and train, earn points, climb weekly, monthly and 90-day leagues.',
     ogImage: 'home',
-    ogAlt: 'Ascend – Gamified Self-Improvement. Train the mind. Rise.',
+    ogAlt: 'AscendDay – Gamified Self-Improvement. Rise a little every day.',
     index: true,
     updated: SITE_COPY_UPDATED,
   },
@@ -80,12 +81,12 @@ export const MARKETING_ROUTES: MarketingRoute[] = [
     path: '/features',
     file: 'features.html',
     kind: 'hub',
-    title: 'Ascend Features – All-in-One Gamified Self-Improvement',
-    ogTitle: 'Ascend Features – All-in-One Gamified Self-Improvement',
+    title: 'AscendDay Features – All-in-One Gamified Self-Improvement',
+    ogTitle: 'AscendDay Features – All-in-One Gamified Self-Improvement',
     description:
-      'Every gamified self-improvement feature in Ascend, an all-in-one app: habits, workouts, reading, skills, time blocking, journal, goals, plans and leagues.',
+      'Every gamified self-improvement feature in AscendDay, an all-in-one app: habits, workouts, reading, skills, time blocking, journal, goals, plans and leagues.',
     ogImage: 'features',
-    ogAlt: 'All Ascend features: track, mind, plan and play',
+    ogAlt: 'All AscendDay features: track, mind, plan and play',
     index: true,
     updated: SITE_COPY_UPDATED,
   },
@@ -94,12 +95,12 @@ export const MARKETING_ROUTES: MarketingRoute[] = [
     path: '/about',
     file: 'about.html',
     kind: 'about',
-    title: 'About Ascend (AscendDay) – Who Makes It and Why',
-    ogTitle: 'About Ascend (AscendDay) – Who Makes It and Why',
+    title: 'About AscendDay – Who Makes It and Why',
+    ogTitle: 'About AscendDay – Who Makes It and Why',
     description:
-      'Ascend (AscendDay) is made by Zakria Khan, a computer science student in Peshawar, to turn the drive to compete into real habits. The story and how to help.',
+      'AscendDay is made by Zakria Khan, a computer science student in Peshawar, to turn the drive to compete into real habits. The story and how to help.',
     ogImage: 'about',
-    ogAlt: 'About Ascend: who makes it, and why',
+    ogAlt: 'About AscendDay: who makes it, and why',
     index: true,
     updated: SITE_COPY_UPDATED,
   },
@@ -107,12 +108,12 @@ export const MARKETING_ROUTES: MarketingRoute[] = [
     path: '/login',
     file: 'login.html',
     kind: 'auth',
-    title: 'Sign in – Ascend',
-    ogTitle: 'Sign in to Ascend',
+    title: 'Sign in – AscendDay',
+    ogTitle: 'Sign in to AscendDay',
     description:
-      'Sign in to Ascend (AscendDay) with your username, email or Google account to open your habits, journal, goals, leagues and rank.',
+      'Sign in to AscendDay with your username, email or Google account to open your habits, journal, goals, leagues and season rank.',
     ogImage: 'login',
-    ogAlt: 'Sign in to Ascend: welcome back, your climb is waiting',
+    ogAlt: 'Sign in to AscendDay: welcome back, your climb is waiting',
     index: true,
     updated: SITE_COPY_UPDATED,
   },
@@ -120,12 +121,12 @@ export const MARKETING_ROUTES: MarketingRoute[] = [
     path: '/signup',
     file: 'signup.html',
     kind: 'auth',
-    title: 'Create your free account – Ascend',
-    ogTitle: 'Create your free Ascend account',
+    title: 'Create your free account – AscendDay',
+    ogTitle: 'Create your free AscendDay account',
     description:
-      'Create a free Ascend account to track habits, journal, read and train, earn points and climb the leagues. Or start as a guest and save your progress later.',
+      'Create a free AscendDay account to track habits, journal, read and train, earn points and climb the leagues. Or start as a guest and save your progress later.',
     ogImage: 'signup',
-    ogAlt: 'Create your free Ascend account, or start as a guest',
+    ogAlt: 'Create your free AscendDay account, or start as a guest',
     index: true,
     updated: '2026-10-23', // app shell: no footer; its head changed with the domain move
   },
@@ -134,38 +135,38 @@ export const MARKETING_ROUTES: MarketingRoute[] = [
     file: 'privacy.html',
     kind: 'legal',
     legal: 'privacy',
-    title: 'Privacy Policy – Ascend',
-    ogTitle: 'Ascend Privacy Policy',
+    title: 'Privacy Policy – AscendDay',
+    ogTitle: 'AscendDay Privacy Policy',
     description:
-      'What Ascend collects and why, who can see it, which services process it, how long it is kept and how to delete your account. In plain language.',
+      'What AscendDay collects and why, who can see it, which services process it, how long it is kept and how to delete your account. In plain language.',
     ogImage: 'privacy',
-    ogAlt: 'Ascend Privacy Policy: what Ascend collects and who can see it',
+    ogAlt: 'AscendDay Privacy Policy: what AscendDay collects and who can see it',
     index: true,
-    updated: '2026-10-23', // legal text (LegalPage, no marketing footer): contact email 934f992
+    updated: '2026-10-25', // legal text (LegalPage, no marketing footer): AscendDay name, Last updated 25 October 2026 (5021878)
   },
   {
     path: '/terms',
     file: 'terms.html',
     kind: 'legal',
     legal: 'terms',
-    title: 'Terms – Ascend',
-    ogTitle: 'Ascend Terms',
+    title: 'Terms – AscendDay',
+    ogTitle: 'AscendDay Terms',
     description:
-      'The rules for using Ascend: who can use it, your account, fair play in leagues, your content, why points have no money value, and why it is not medical advice.',
+      'The rules for using AscendDay: who can use it, accounts, fair play in leagues, your content, why points have no money value and why it is not medical advice.',
     ogImage: 'terms',
-    ogAlt: 'Ascend Terms: the rules for using Ascend',
+    ogAlt: 'AscendDay Terms: the rules for using AscendDay',
     index: true,
-    updated: '2026-10-23', // legal text (LegalPage, no marketing footer): contact email 934f992
+    updated: '2026-10-25', // legal text (LegalPage, no marketing footer): AscendDay name, Last updated 25 October 2026 (5021878)
   },
   {
     path: '/404',
     file: '404.html',
     kind: 'notFound',
-    title: 'Page not found – Ascend',
+    title: 'Page not found – AscendDay',
     ogTitle: 'Page not found',
-    description: 'This page doesn’t exist on Ascend. Go to the home page or see every feature.',
+    description: 'This page doesn’t exist on AscendDay. Go to the home page or see every feature.',
     ogImage: 'home',
-    ogAlt: 'Ascend – Gamified Self-Improvement. Train the mind. Rise.',
+    ogAlt: 'AscendDay – Gamified Self-Improvement. Rise a little every day.',
     index: false,
     updated: SITE_COPY_UPDATED,
   },

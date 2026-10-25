@@ -37,19 +37,19 @@ export function FeaturesHub() {
         <Breadcrumb items={[{ name: 'Home', href: '/' }, { name: 'Features' }]} />
         <div className="mt-8 max-w-3xl lg:mt-12">
           <p className="m-enter text-sm font-medium text-brand-text" style={enter(0)}>
-            Ascend features
+            AscendDay features
           </p>
           <h1 id="hub-title" className="m-enter mt-3 font-serif text-4xl leading-[1.08] tracking-tight text-content-primary sm:text-6xl" style={enter(1)}>
-            Everything Ascend does
+            Everything AscendDay does
           </h1>
           <div className="m-enter mt-6 space-y-4 text-base leading-relaxed text-content-tertiary sm:text-lg" style={enter(2)}>
             <p>
-              Ascend is a free, all-in-one gamified self-improvement app with {FEATURE_SLUGS.length} parts, grouped the way the app
+              AscendDay is a free, all-in-one gamified self-improvement app with {FEATURE_SLUGS.length} parts, grouped the way the app
               groups them: Track, Mind, Plan and Play. What you log in one part earns points, the points build your rank
               across {TIERS.length} ranks, and the leagues show how your week compares with everyone else’s.
             </p>
             <p>
-              Most apps cover one of these. Ascend is a habit, journal and goals app in one, so everything you do counts
+              Most apps cover one of these. AscendDay is a habit, journal and goals app in one, so everything you do counts
               toward the same score.
             </p>
             <p>Each of these gamified self-improvement features has its own page with how it works, the exact points rules, and who it suits.</p>
@@ -134,7 +134,7 @@ export function FeaturesHub() {
               name="dashboard-desktop"
               width={1600}
               height={589}
-              alt="The Ascend dashboard: today’s habits, season points and the rank climb from Beginner to Master"
+              alt="The AscendDay dashboard: today’s habits, season points and the rank climb from Beginner to Master"
             />
           </div>
         </div>

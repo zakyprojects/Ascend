@@ -1,7 +1,7 @@
 import { FEATURES } from './features/catalog';
 import type { MarketingRoute } from './routes';
 import { LEGAL_CONTACT_EMAIL } from '@/lib/legal';
-import { absoluteUrl, SITE_ALIAS, SITE_DESCRIPTOR, SITE_HOST, SITE_MAKER, SITE_NAME, SITE_URL } from './site';
+import { absoluteUrl, SITE_ALTERNATE_NAMES, SITE_DESCRIPTOR, SITE_HOST, SITE_MAKER, SITE_NAME, SITE_URL } from './site';
 
 /** The built CSS/JS a page loads (from dist/.vite/manifest.json; the dev server passes its own). */
 export interface PageAssets {
@@ -15,7 +15,7 @@ export interface PageAssets {
 }
 
 /** Bump with the files in public/og so link previews fetch the new image. */
-export const OG_IMAGE_VERSION = 2;
+export const OG_IMAGE_VERSION = 3;
 
 export const escapeHtml = (value: string): string =>
   value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -95,7 +95,7 @@ export function structuredData(route: MarketingRoute): object | null {
           '@type': 'WebSite',
           '@id': `${SITE_URL}/#website`,
           name: SITE_NAME,
-          alternateName: [SITE_ALIAS, 'Ascend Day', SITE_HOST, SITE_DESCRIPTOR, 'Ascend App'],
+          alternateName: [...SITE_ALTERNATE_NAMES, SITE_HOST],
           url: `${SITE_URL}/`,
           inLanguage: 'en',
           publisher: { '@id': `${SITE_URL}/#org` },
@@ -104,7 +104,7 @@ export function structuredData(route: MarketingRoute): object | null {
           '@type': 'Organization',
           '@id': `${SITE_URL}/#org`,
           name: SITE_NAME,
-          alternateName: SITE_ALIAS,
+          alternateName: SITE_ALTERNATE_NAMES,
           url: `${SITE_URL}/`,
           logo: `${SITE_URL}/android-chrome-512x512.png`,
           email: LEGAL_CONTACT_EMAIL,
@@ -115,7 +115,7 @@ export function structuredData(route: MarketingRoute): object | null {
           '@type': 'WebApplication',
           '@id': `${SITE_URL}/#app`,
           name: SITE_NAME,
-          alternateName: [SITE_ALIAS, SITE_DESCRIPTOR],
+          alternateName: [...SITE_ALTERNATE_NAMES, SITE_DESCRIPTOR],
           description:
             'A free gamified self-improvement web app: habits, journal, reading, workouts, skills and weekly goals earn points that count toward ranks and leagues.',
           url: `${SITE_URL}/`,

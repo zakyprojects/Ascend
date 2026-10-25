@@ -23,7 +23,7 @@ export const accountabilityPartners: FeatureContent = {
   intro: (
     <>
       <p>
-        Partners in Ascend is a free accountability partner app inside your self-improvement tracker. Add a friend, pick
+        Partners in AscendDay is a free accountability partner app inside your self-improvement tracker. Add a friend, pick
         one thing you will each do every day, and tick it off side by side. You both see who has done today’s part, and
         a gentle nudge is one tap away.
       </p>
@@ -121,7 +121,7 @@ export const accountabilityPartners: FeatureContent = {
           ]}
         />
         <Note title="Competing with a partner.">
-          The partner card compares your season points, which come from everything else you do in Ascend. To race each
+          The partner card compares your season points, which come from everything else you do in AscendDay. To race each
           other over a week or a month, look at the{' '}
           <a href={featurePath('leagues')} className={LINK_CLASS}>
             leagues
@@ -152,7 +152,7 @@ export const accountabilityPartners: FeatureContent = {
         }
       >
         <Note title="Notices between partners.">
-          Ascend tells your partners when you start a challenge with them, when you finish today’s part of it, when you finish it together,
+          AscendDay tells your partners when you start a challenge with them, when you finish today’s part of it, when you finish it together,
           and when you miss a habit that costs you points, with the habit’s name so they can check in. You can turn
           these off under Partner activity in Settings, and switch off Partner invites to stop new requests.
         </Note>

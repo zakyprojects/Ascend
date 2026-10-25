@@ -2,7 +2,7 @@ import { FEATURES, FEATURE_SLUGS, featurePath } from '../features/catalog';
 import { FEATURE_CONTENT } from '../features/content';
 import { MARKETING_ROUTES } from '../routes';
 import { isRenderedRoute, renderMarketingPage } from '../render';
-import { absoluteUrl, SITE_ALIAS } from '../site';
+import { absoluteUrl, SITE_FORMER_NAME, SITE_NAME, SITE_TAGLINE } from '../site';
 import { TIERS } from '@/lib/tiers';
 import { LESSONS } from '@/lib/lessons';
 import { SOBRIETY_MILESTONE_POINTS } from '@/lib/pointsConfig';
@@ -58,9 +58,21 @@ for (const route of MARKETING_ROUTES) {
   assert(/<meta property="og:image" content="https:\/\/[^"]+\.png\?v=\d+"/.test(html), `${route.path}: absolute og:image`);
   for (const m of html.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)) JSON.parse(m[1]);
   assert(!/href="#"|href=""/.test(html), `${route.path}: no empty links`);
-  // The one-word name is in the footer of every page drawn with the marketing layout (legal pages
-  // are the app's LegalPage and have no marketing footer).
-  if (route.kind !== 'legal') assert(textOf(html).includes(`Ascend (${SITE_ALIAS})`), `${route.path}: footer names ${SITE_ALIAS}`);
+  assert(route.title.includes(SITE_NAME), `${route.path}: title carries ${SITE_NAME}`);
+  assert(html.includes(`<meta property="og:site_name" content="${SITE_NAME}" />`), `${route.path}: og:site_name is ${SITE_NAME}`);
+  // The name is in the footer of every page drawn with the marketing layout (legal pages are the
+  // app's LegalPage and have no marketing footer).
+  if (route.kind !== 'legal') assert(textOf(html).includes(`${SITE_NAME} is free and in beta`), `${route.path}: footer names ${SITE_NAME}`);
+  // "Ascend" alone is a keyword, not the shown name: outside the few disambiguation lines, the
+  // page text always says AscendDay. (The /about maker story is app text, checked separately.)
+  if (route.kind !== 'legal') {
+    let text = textOf(html).replace(/&#x27;|&#39;/g, "'");
+    if (route.kind === 'about') for (const part of MAKER_STORY) for (const t of part.paragraphs) text = text.split(t).join(' ');
+    for (const allowed of ['other apps named Ascend', 'other apps called Ascend', 'use the name Ascend', `formerly ${SITE_FORMER_NAME}`, `formerly just ${SITE_FORMER_NAME}`, `first called just ${SITE_FORMER_NAME}`, `${SITE_FORMER_NAME}, Ascend Day`])
+      text = text.split(allowed).join(' ');
+    const stray = text.match(/.{0,40}\bAscend\b(?! ?Day).{0,40}/);
+    assert(!stray, `${route.path}: shows the name AscendDay, not "Ascend" (${stray?.[0]})`);
+  }
 }
 
 // Legal pages carry the whole text, not an app shell (bots without JavaScript read it).
@@ -78,11 +90,13 @@ assert(!/aggregateRating|review/i.test(JSON.stringify(ld)), 'no ratings or revie
 // "AscendDay" as a name: home title, h1, description and every node of the graph.
 const nodeOf = (type: string) => (ld['@graph'] as Record<string, unknown>[]).find((node) => node['@type'] === type)!;
 const names = (value: unknown) => (Array.isArray(value) ? value : [value]);
-assert(attr(landing, /<title>([^<]+)<\/title>/)!.includes(SITE_ALIAS), 'landing title names AscendDay');
-assert(textOf(landing.match(/<h1[\s\S]*?<\/h1>/)![0]).includes(SITE_ALIAS), 'landing h1 names AscendDay');
-assert(MARKETING_ROUTES[0].description.startsWith(`Ascend (${SITE_ALIAS})`), 'landing description starts with the name');
+assert(attr(landing, /<title>([^<]+)<\/title>/)!.startsWith(SITE_NAME), 'landing title starts with AscendDay');
+const landingH1 = textOf(landing.match(/<h1[\s\S]*?<\/h1>/)![0]);
+assert(landingH1.includes(SITE_NAME) && landingH1.includes(SITE_TAGLINE), 'landing h1 names AscendDay and the slogan');
+assert(MARKETING_ROUTES[0].description.startsWith(SITE_NAME) && MARKETING_ROUTES[0].description.includes(`formerly ${SITE_FORMER_NAME}`), 'landing description starts with the name and keeps the old one');
 for (const type of ['WebSite', 'Organization', 'WebApplication']) {
-  assert(names(nodeOf(type).alternateName).includes(SITE_ALIAS), `${type}.alternateName includes ${SITE_ALIAS}`);
+  assert(nodeOf(type).name === SITE_NAME, `${type}.name is ${SITE_NAME}`);
+  assert(names(nodeOf(type).alternateName).includes(SITE_FORMER_NAME), `${type}.alternateName includes ${SITE_FORMER_NAME}`);
 }
 assert(names(nodeOf('WebSite').alternateName).includes('Ascend Day'), 'WebSite.alternateName includes Ascend Day');
 assert(typeof (nodeOf('Organization').founder as { name?: string })?.name === 'string', 'Organization has a nested founder');
@@ -129,7 +143,7 @@ TIERS.forEach((tier, i) => assert(ranksPage.includes(`${i + 1}. ${tier.name}`) &
 // Health-adjacent pages carry their not-medical-advice note; recovery also its milestones and a helpline.
 const pageOf = (slug: string) => renderMarketingPage(MARKETING_ROUTES.find((r) => r.slug === slug)!, assets);
 const recoveryPage = pageOf('recovery');
-assert(recoveryPage.includes('Ascend is not treatment, therapy or medical advice.') && recoveryPage.includes('1-800-662-4357'), 'recovery page: not-treatment note and helpline');
+assert(recoveryPage.includes('AscendDay is not treatment, therapy or medical advice.') && recoveryPage.includes('1-800-662-4357'), 'recovery page: not-treatment note and helpline');
 for (const m of RECOVERY_MILESTONES) assert(recoveryPage.includes(`${m.hours / 24} days clean (${m.label})`) && recoveryPage.includes(`+${pts(SOBRIETY_MILESTONE_POINTS[m.key])}`), `recovery page lists ${m.label}`);
 const brainPage = pageOf('brain-lessons');
 assert(brainPage.includes('General education, not medical advice.') && brainPage.includes(`${LESSONS.length} short lessons`), 'brain-lessons page: note and lesson count');

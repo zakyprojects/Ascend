@@ -15,12 +15,12 @@ export const projectsGoals: FeatureContent = {
   intro: (
     <>
       <p>
-        Projects &amp; Goals is Ascend’s free goal planner. You write down a big goal, break it into projects with a clear
+        Projects &amp; Goals is AscendDay’s free goal planner. You write down a big goal, break it into projects with a clear
         finish line, and break those into tasks small enough to do today. When you finish tasks, their project fills up,
         and when you finish projects, their goal fills up.
       </p>
       <p>
-        It is the one part of Ascend that earns no points. It is for planning, and the work you plan here earns its
+        It is the one part of AscendDay that earns no points. It is for planning, and the work you plan here earns its
         points where you do it: in your workouts, reading, focus sessions and weekly goals.
       </p>
     </>
@@ -78,7 +78,7 @@ export const projectsGoals: FeatureContent = {
         title="Progress that adds up on its own"
         lead={
           <p>
-            You never type a percentage for something that has parts. Ascend works it out from the bottom up and changes
+            You never type a percentage for something that has parts. AscendDay works it out from the bottom up and changes
             the status for you.
           </p>
         }
@@ -120,7 +120,7 @@ export const projectsGoals: FeatureContent = {
               paid per tick would reward splitting work into tiny pieces, which is the opposite of planning.
             </p>
             <p>
-              Points come from doing the work where Ascend can measure it. The timer button on a task’s row opens the{' '}
+              Points come from doing the work where AscendDay can measure it. The timer button on a task’s row opens the{' '}
               <a href={featurePath('brain-lessons')} className={LINK_CLASS}>
                 focus timer
               </a>{' '}

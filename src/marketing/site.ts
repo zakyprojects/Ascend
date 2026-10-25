@@ -9,16 +9,23 @@ export const SITE_URL = 'https://ascendday.com';
 /** The address as people type it (no scheme), for page copy. */
 export const SITE_HOST = new URL(SITE_URL).host;
 
-export const SITE_NAME = 'Ascend';
+/** The visible name on every public page: one word, the same as the domain (WebSite/Organization name, og:site_name, titles). */
+export const SITE_NAME = 'AscendDay';
 
-/** The one-word name, the same as the domain (WebSite/Organization alternateName, home title, footer). */
-export const SITE_ALIAS = 'AscendDay';
+/**
+ * The app's first name. Kept as a search keyword (structured data alternateName, one natural
+ * mention on home and /about), never as the displayed name: "Ascend" alone is shared by many apps.
+ */
+export const SITE_FORMER_NAME = 'Ascend';
 
-/** The brand descriptor (WebSite.alternateName, landing title): always written this way. */
-export const SITE_DESCRIPTOR = 'Ascend – Gamified Self-Improvement';
+/** The brand descriptor (landing eyebrow, footer): always written this way. */
+export const SITE_DESCRIPTOR = `${SITE_NAME} – Gamified Self-Improvement`;
 
-/** Ascend's line since the first release (index.html meta description). */
-export const SITE_TAGLINE = 'Train the mind. Rise.';
+/** Other names people search for (WebSite/Organization/WebApplication alternateName). */
+export const SITE_ALTERNATE_NAMES = [SITE_FORMER_NAME, 'Ascend Day', 'Ascend App', 'Ascend – Gamified Self-Improvement'];
+
+/** The slogan since the AscendDay name (2026-10-25): ascend = rise, day = daily. Hero, footer, og images. */
+export const SITE_TAGLINE = 'Rise a little every day.';
 
 /** The maker, as the Terms name him (lib/legal.ts LEGAL_OPERATOR). */
 export const SITE_MAKER = 'Zakria Khan';

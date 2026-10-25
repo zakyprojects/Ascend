@@ -23,7 +23,7 @@ export const leagues: FeatureContent = {
   intro: (
     <>
       <p>
-        Leagues in Ascend are free self-improvement leagues: leaderboards where you compete on habits with real people. Every point you earn from habits,
+        Leagues in AscendDay are free self-improvement leagues: leaderboards where you compete on habits with real people. Every point you earn from habits,
         workouts, reading, skills, focus sessions, the journal and the rest counts in three tables at once: this week,
         this month and the {seasonDays}-day season.
       </p>
@@ -153,8 +153,8 @@ export const leagues: FeatureContent = {
         lead={
           <>
             <p>
-              Everyone with an Ascend account is in the same tables. There are no bots and no invented rivals: every row
-              is a person using the app. If you try Ascend as a guest you are in the tables too, under a guest name, and
+              Everyone with an AscendDay account is in the same tables. There are no bots and no invented rivals: every row
+              is a person using the app. If you try AscendDay as a guest you are in the tables too, under a guest name, and
               creating an account keeps your place and lets you choose your own username.
             </p>
             <p>
@@ -211,7 +211,7 @@ export const leagues: FeatureContent = {
     },
     {
       q: 'Are the other people in the table real?',
-      a: 'Yes. Every row is someone with an Ascend account or a guest using the app. There are no bots.',
+      a: 'Yes. Every row is someone with an AscendDay account or a guest using the app. There are no bots.',
     },
     {
       q: 'Can I lose places by missing habits?',

@@ -21,7 +21,7 @@ export const reading: FeatureContent = {
   intro: (
     <>
       <p>
-        The Reading Hub is Ascend’s free gamified reading tracker: keep a library of books, log the pages or chapters you read
+        The Reading Hub is AscendDay’s free gamified reading tracker: keep a library of books, log the pages or chapters you read
         each day, and earn points for the reading itself, not only for the last page. Every {R.pagesPerPoint} pages earn a
         point, and a finished book adds a {R.completionBonus}-point bonus.
       </p>
@@ -48,7 +48,7 @@ export const reading: FeatureContent = {
             },
             {
               title: 'Log your progress',
-              text: 'Enter the page or chapter you are on, and Ascend works out how much you read today. The card shows the percentage done and what is left.',
+              text: 'Enter the page or chapter you are on, and AscendDay works out how much you read today. The card shows the percentage done and what is left.',
             },
             {
               title: 'Finish it',
@@ -129,7 +129,7 @@ export const reading: FeatureContent = {
 
       <Block
         id="connect-title"
-        title="Reading inside the rest of Ascend"
+        title="Reading inside the rest of AscendDay"
         lead={
           <p>
             Pages you log don’t stay in one place. They count toward your season, your rank and the leagues, and they can
@@ -204,13 +204,13 @@ export const reading: FeatureContent = {
     'Points and a streak help you pick up a book instead of your phone.',
   ],
   notFor: [
-    'You want book reviews, ratings and a social feed; Ascend tracks your reading, it isn’t a book community.',
+    'You want book reviews, ratings and a social feed; AscendDay tracks your reading, it isn’t a book community.',
     'You want an e-reader; you read the book wherever you have it and log the pages here.',
   ],
   faq: [
     {
       q: 'Is the reading tracker free?',
-      a: 'Yes. Ascend is free while in beta. The library, Discover, the reading streak tracker, the pages read log and the points are all included.',
+      a: 'Yes. AscendDay is free while in beta. The library, Discover, the reading streak tracker, the pages read log and the points are all included.',
     },
     {
       q: 'Can I track a book by chapters instead of pages?',
