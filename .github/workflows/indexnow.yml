@@ -1,0 +1,59 @@
+name: IndexNow
+
+# After every successful Vercel PRODUCTION deploy, tell IndexNow (Bing, Yandex, Seznam, Naver;
+# Google ignores it) about every URL in the live sitemap. Vercel posts a GitHub deployment_status
+# for each deploy; preview deploys, failures and the studio repo are skipped.
+# The key is public by design: it lives in src/marketing/site.ts (INDEXNOW_KEY) and is served
+# as https://ascendday.com/<key>.txt. This workflow reads it from site.ts, so it has one home.
+# A non-2xx answer from IndexNow fails the run; nothing else depends on this workflow.
+on:
+  deployment_status:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: indexnow
+  cancel-in-progress: true
+
+jobs:
+  ping:
+    name: Ping IndexNow
+    if: >-
+      github.repository == 'zakyprojects/Ascend' &&
+      github.event.deployment_status.state == 'success' &&
+      github.event.deployment.environment == 'Production'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.deployment.sha }}
+          sparse-checkout: src/marketing/site.ts
+          sparse-checkout-cone-mode: false
+
+      - name: Submit sitemap URLs
+        env:
+          SITE: https://ascendday.com
+        run: |
+          set -euo pipefail
+          key=$(sed -nE "s/^export const INDEXNOW_KEY = '([0-9a-f]{8,128})';$/\1/p" src/marketing/site.ts)
+          [ -n "$key" ] || { echo "::error::INDEXNOW_KEY not found in src/marketing/site.ts"; exit 1; }
+
+          # The live key file must hold the same key, or IndexNow rejects the ping (403).
+          served=$(curl -fsS --retry 3 --retry-all-errors "$SITE/$key.txt" | tr -d '[:space:]')
+          [ "$served" = "$key" ] || { echo "::error::$SITE/$key.txt does not hold the key"; exit 1; }
+
+          urls=$(curl -fsS --retry 3 --retry-all-errors "$SITE/sitemap.xml" | grep -oE '<loc>[^<]+</loc>' | sed -E 's#</?loc>##g')
+          [ -n "$urls" ] || { echo "::error::No <loc> URLs in $SITE/sitemap.xml"; exit 1; }
+          echo "Submitting $(echo "$urls" | wc -l) URLs:"
+          echo "$urls"
+
+          payload=$(jq -n --arg host "${SITE#https://}" --arg key "$key" --arg loc "$SITE/$key.txt" \
+            --arg urls "$urls" '{host: $host, key: $key, keyLocation: $loc, urlList: ($urls | split("\n"))}')
+
+          status=$(curl -sS -o response.txt -w '%{http_code}' -X POST https://api.indexnow.org/indexnow \
+            -H 'Content-Type: application/json; charset=utf-8' --data "$payload")
+          echo "IndexNow HTTP $status"
+          cat response.txt; echo
+          case "$status" in 2??) ;; *) echo "::error::IndexNow answered HTTP $status"; exit 1 ;; esac
