@@ -29,7 +29,7 @@ export const skills: FeatureContent = {
   intro: (
     <>
       <p>
-        Skills in Ascend is a free skill tracker: add what you are learning, log your practice minutes, and watch each
+        Skills in Ascend is a free skill practice tracker: add what you are learning, log your practice minutes, and watch each
         skill climb from {levels[0].name} to {top.name} as the hours add up. Every {S.minutesPerPoint} minutes of practice
         also earn a point, so an hour of guitar or coding counts toward your rank like a workout does.
       </p>
@@ -47,7 +47,7 @@ export const skills: FeatureContent = {
   },
   body: (
     <>
-      <Block id="how-title" title="Logging practice">
+      <Block id="how-title" title="Your practice hours log">
         <Steps
           items={[
             {
@@ -206,7 +206,7 @@ export const skills: FeatureContent = {
   ],
   fitsIf: [
     'You are learning something over months: a language, an instrument, coding, drawing.',
-    'Seeing hours add up keeps you practising on the days it feels slow.',
+    'You want to track practice time and see the hours add up on the days it feels slow.',
     'You like an XP-style level for real-life skills.',
   ],
   notFor: [
@@ -216,7 +216,7 @@ export const skills: FeatureContent = {
   faq: [
     {
       q: 'Is the skill tracker free?',
-      a: 'Yes. Ascend is free while in beta, with no limit on how many skills you track.',
+      a: 'Yes. Ascend is free while in beta, with no limit on how many skills you track. Each one works as its own skill level tracker.',
     },
     {
       q: 'How are skill levels worked out?',

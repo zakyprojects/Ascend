@@ -43,7 +43,7 @@ export const timeBlocking: FeatureContent = {
   },
   body: (
     <>
-      <Block id="how-title" title="Planning a day in blocks">
+      <Block id="how-title" title="A daily time block planner">
         <Steps
           items={[
             {
@@ -72,7 +72,7 @@ export const timeBlocking: FeatureContent = {
 
       <Block
         id="templates-title"
-        title="Templates: build a day once"
+        title="Day templates: build a day once"
         lead={
           <>
             <p>
@@ -214,7 +214,7 @@ export const timeBlocking: FeatureContent = {
   fitsIf: [
     'You already plan your day and want to see how often you stick to it.',
     'Your weekdays look alike, so a template saves you planning every morning.',
-    'A small daily score helps you take the plan seriously.',
+    'You like time blocking with rewards: a small daily score helps you take the plan seriously.',
   ],
   notFor: [
     'You need a calendar for meetings with other people; Ascend doesn’t sync with Google or Outlook calendars.',

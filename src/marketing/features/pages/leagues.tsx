@@ -23,7 +23,7 @@ export const leagues: FeatureContent = {
   intro: (
     <>
       <p>
-        Leagues in Ascend are free self-improvement leaderboards with real people. Every point you earn from habits,
+        Leagues in Ascend are free self-improvement leagues: leaderboards where you compete on habits with real people. Every point you earn from habits,
         workouts, reading, skills, focus sessions, the journal and the rest counts in three tables at once: this week,
         this month and the {seasonDays}-day season.
       </p>
@@ -43,7 +43,7 @@ export const leagues: FeatureContent = {
     <>
       <Block
         id="three-title"
-        title="Three leagues, three time frames"
+        title="Three leagues: a weekly leaderboard, a monthly one and the season"
         lead={<p>Each tab of the Leagues page ranks the same members over a different stretch of time.</p>}
       >
         <Cards
@@ -194,7 +194,7 @@ export const leagues: FeatureContent = {
   fitsIf: [
     'A bit of competition gets you moving more than a checklist does.',
     'You want a fresh start every Monday without losing the long-term picture.',
-    'You like seeing how your effort compares with other real people.',
+    'You like a habit leaderboard that shows how your effort compares with other real people.',
   ],
   notFor: [
     'You don’t want your username and points shown to other members.',

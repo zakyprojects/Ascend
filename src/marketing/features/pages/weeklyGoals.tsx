@@ -18,7 +18,7 @@ export const weeklyGoals: FeatureContent = {
   intro: (
     <>
       <p>
-        Weekly Goals in Ascend is a free weekly goals planner: set a few goals each Monday, link them to your habits,
+        Weekly Goals in Ascend is a free weekly goals app: set a few goals each Monday, link them to your habits,
         workouts, reading or skills so their progress fills in on its own, and look back at the weekend. Reached goals
         earn {pts(G.pointsPerGoal)} each and an honest reflection earns {reflection} more.
       </p>
@@ -61,7 +61,7 @@ export const weeklyGoals: FeatureContent = {
 
       <Block
         id="link-title"
-        title="Goals that track themselves"
+        title="Linked weekly goals that track themselves"
         lead={<p>A linked goal counts what you already log in another part of Ascend, from Monday to Sunday:</p>}
       >
         <Cards
@@ -148,7 +148,7 @@ export const weeklyGoals: FeatureContent = {
 
       <Block
         id="review-title"
-        title="Looking back each week"
+        title="Looking back: the weekly reflection"
         lead={
           <>
             <p>
@@ -192,7 +192,7 @@ export const weeklyGoals: FeatureContent = {
   ],
   fitsIf: [
     'You plan in weeks and want a short, focused list.',
-    'You want goals that update themselves from what you log.',
+    'You want a weekly goal tracker that updates itself from what you log.',
     'A weekend reflection is a habit you want to build.',
   ],
   notFor: [

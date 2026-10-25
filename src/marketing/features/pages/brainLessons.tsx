@@ -232,7 +232,7 @@ export const brainLessons: FeatureContent = {
         title={`${LESSONS.length} short lessons`}
         lead={
           <p>
-            Each lesson is a {readTimes}-minute read in plain language, in {LESSON_CATEGORIES.length} groups. Search them,
+            Each lesson is a {readTimes}-minute read in plain language, in {LESSON_CATEGORIES.length} groups, neuroplasticity lessons included. Search them,
             filter by group or show only the ones you have not read. Press Mark as read at the end to earn its points;
             every lesson pays again in the next season.
           </p>
@@ -271,7 +271,7 @@ export const brainLessons: FeatureContent = {
     ['Works on', 'Any browser, phone or computer'],
   ],
   fitsIf: [
-    'You study or work in long blocks and want a timer that rewards finishing them.',
+    'You study or work in long blocks and want a focus timer that earns points for finishing them.',
     'You like knowing why a habit works before you commit to it.',
     'You want short reads you can finish between classes.',
   ],

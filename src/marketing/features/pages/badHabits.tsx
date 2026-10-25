@@ -29,8 +29,8 @@ export const badHabits: FeatureContent = {
         streak; slipping, or not logging at all, costs points.
       </p>
       <p>
-        It works on trust: Ascend can’t see what you did, only what you log. The points are there to make an honest
-        answer every evening feel like it matters.
+        It works on trust: Ascend can’t see what you did, only what you log. The points help you break bad habits by
+        making an honest answer every evening feel like it matters.
       </p>
     </>
   ),
@@ -152,7 +152,7 @@ export const badHabits: FeatureContent = {
 
       <Block
         id="why-title"
-        title="Why a penalty helps"
+        title="Why a penalty helps you quit bad habits"
         lead={
           <>
             <p>
@@ -192,7 +192,7 @@ export const badHabits: FeatureContent = {
   ],
   fitsIf: [
     'You want a daily, honest check-in for a habit you are cutting down.',
-    'A clean streak and a small cost for slipping keep you going.',
+    'A clean streak and a small penalty for slipping keep you going.',
     'You also track good habits and want both in one score.',
   ],
   notFor: [

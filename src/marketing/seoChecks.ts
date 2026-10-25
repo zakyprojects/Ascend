@@ -1,7 +1,7 @@
 import { pathForAuthRoute, pathForView } from '@/lib/routes';
 import { VIEWS } from '@/lib/views';
 import { MARKETING_ROUTES } from './routes';
-import { absoluteUrl } from './site';
+import { absoluteUrl, INDEXNOW_KEY } from './site';
 import { headersFor, resolveRoute, type VercelConfig } from './vercelRules';
 
 /**
@@ -100,6 +100,7 @@ export async function checkSite(files: Map<string, string>, config: VercelConfig
     ['/robots.txt', /max-age=3600/],
     ['/sitemap.xml', /max-age=3600/],
     ['/favicon.svg', /^$/],
+    [`/${INDEXNOW_KEY}.txt`, /^$/],
   ];
   const asset = [...files.keys()].find((file) => /^assets\/.+\.js$/.test(file));
   if (asset) statics.push([`/${asset}`, /immutable/]);
@@ -154,6 +155,7 @@ export async function checkSite(files: Map<string, string>, config: VercelConfig
     const route = MARKETING_ROUTES.find((r) => absoluteUrl(r.path) === loc);
     if (!route || !route.index) errors.push(`sitemap: ${loc} is not a public page`);
   }
+  if ((files.get(`${INDEXNOW_KEY}.txt`) ?? '').trim() !== INDEXNOW_KEY) errors.push(`${INDEXNOW_KEY}.txt: does not hold the IndexNow key`);
   if (!/^Sitemap: https:\/\/\S+\/sitemap\.xml$/m.test(files.get('robots.txt') ?? '')) errors.push('robots.txt: no Sitemap line');
 
   return errors;

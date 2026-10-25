@@ -41,7 +41,7 @@ export const accountabilityPartners: FeatureContent = {
   },
   body: (
     <>
-      <Block id="how-title" title="How partners work">
+      <Block id="how-title" title="How a habit challenge with a friend works">
         <Steps
           items={[
             {
@@ -57,7 +57,7 @@ export const accountabilityPartners: FeatureContent = {
               text: 'Each of you ticks the challenge when you have done it. A day counts once you have both ticked it, and the bar fills with the days you did together.',
             },
             {
-              title: 'Nudge, or get nudged',
+              title: 'Nudge a friend, or get nudged',
               text: 'If your partner has not done today’s part yet, send a nudge: a short notice that you are waiting for them. One nudge per partner per day.',
             },
           ]}

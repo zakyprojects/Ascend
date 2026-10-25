@@ -21,7 +21,7 @@ export const reading: FeatureContent = {
   intro: (
     <>
       <p>
-        The Reading Hub is Ascend’s free reading tracker: keep a library of books, log the pages or chapters you read
+        The Reading Hub is Ascend’s free gamified reading tracker: keep a library of books, log the pages or chapters you read
         each day, and earn points for the reading itself, not only for the last page. Every {R.pagesPerPoint} pages earn a
         point, and a finished book adds a {R.completionBonus}-point bonus.
       </p>
@@ -200,7 +200,7 @@ export const reading: FeatureContent = {
   ],
   fitsIf: [
     'You want to read a little every day, not just count finished books.',
-    'You read on paper or on another app and want one place to log progress.',
+    'You read on paper or on another app and want one book tracker with points for your progress.',
     'Points and a streak help you pick up a book instead of your phone.',
   ],
   notFor: [
@@ -210,7 +210,7 @@ export const reading: FeatureContent = {
   faq: [
     {
       q: 'Is the reading tracker free?',
-      a: 'Yes. Ascend is free while in beta. The library, Discover, the streak and the points are all included.',
+      a: 'Yes. Ascend is free while in beta. The library, Discover, the reading streak tracker, the pages read log and the points are all included.',
     },
     {
       q: 'Can I track a book by chapters instead of pages?',

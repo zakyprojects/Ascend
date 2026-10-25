@@ -25,7 +25,7 @@ export const recovery: FeatureContent = {
     <>
       <p>
         Ascend’s recovery tracker is a free sobriety tracker on the web. Name the one thing you are stepping away from,
-        like smoking, alcohol, sugar or social media, and a clean-streak clock starts counting your days, hours and
+        like smoking, alcohol, sugar or social media, and a clean streak counter starts counting your days, hours and
         minutes. Log a craving when it hits, open emergency support for a breathing exercise, and earn points at{' '}
         {days(week.hours)}, {days(month.hours)} and {days(ninety.hours)} days clean.
       </p>
@@ -116,7 +116,7 @@ export const recovery: FeatureContent = {
 
       <Block
         id="cravings-title"
-        title="Cravings: see what sets them off"
+        title="A craving log: see what sets them off"
         lead={
           <p>
             Every craving you log keeps three things: how strong it was, what triggered it and what helped. After a few
@@ -204,7 +204,7 @@ export const recovery: FeatureContent = {
     ['Works on', 'Any browser, phone or computer'],
   ],
   fitsIf: [
-    'You are quitting one thing and want to see every clean day add up.',
+    'You are quitting one thing and want a days clean counter that shows every clean day add up.',
     'You want a private place to note cravings, their triggers and what helped.',
     'Points and milestones help you keep going on the hard days.',
   ],

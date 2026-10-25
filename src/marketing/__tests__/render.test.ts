@@ -2,7 +2,7 @@ import { FEATURES, FEATURE_SLUGS, featurePath } from '../features/catalog';
 import { FEATURE_CONTENT } from '../features/content';
 import { MARKETING_ROUTES } from '../routes';
 import { isRenderedRoute, renderMarketingPage } from '../render';
-import { absoluteUrl } from '../site';
+import { absoluteUrl, SITE_ALIAS } from '../site';
 import { TIERS } from '@/lib/tiers';
 import { LESSONS } from '@/lib/lessons';
 import { SOBRIETY_MILESTONE_POINTS } from '@/lib/pointsConfig';
@@ -24,12 +24,17 @@ const attr = (html: string, pattern: RegExp) => html.match(pattern)?.[1] ?? null
 assert(typeof window === 'undefined' && typeof document === 'undefined', 'runs without a DOM');
 
 const assets = { css: ['/assets/marketing.css'], js: '/assets/marketing.js', modules: [], fonts: [] };
+const textOf = (html: string) => html.replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>/g, ' ').replace(/<[^>]+>/g, ' ');
 const titles = new Set<string>();
 const descriptions = new Set<string>();
 
 for (const route of MARKETING_ROUTES) {
-  assert(route.title.length <= 62, `${route.path}: title ≤ 62 chars (${route.title.length})`);
-  assert(route.description.length >= 70 && route.description.length <= 160, `${route.path}: description 70–160 chars (${route.description.length})`);
+  assert(route.title.length <= 60, `${route.path}: title ≤ 60 chars (${route.title.length})`);
+  const minDescription = route.index ? 120 : 70;
+  assert(
+    route.description.length >= minDescription && route.description.length <= 160,
+    `${route.path}: description ${minDescription}–160 chars (${route.description.length})`
+  );
   assert(!titles.has(route.title), `${route.path}: unique title`);
   assert(!descriptions.has(route.description), `${route.path}: unique description`);
   titles.add(route.title);
@@ -53,6 +58,9 @@ for (const route of MARKETING_ROUTES) {
   assert(/<meta property="og:image" content="https:\/\/[^"]+\.png\?v=\d+"/.test(html), `${route.path}: absolute og:image`);
   for (const m of html.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)) JSON.parse(m[1]);
   assert(!/href="#"|href=""/.test(html), `${route.path}: no empty links`);
+  // The one-word name is in the footer of every page drawn with the marketing layout (legal pages
+  // are the app's LegalPage and have no marketing footer).
+  if (route.kind !== 'legal') assert(textOf(html).includes(`Ascend (${SITE_ALIAS})`), `${route.path}: footer names ${SITE_ALIAS}`);
 }
 
 // Legal pages carry the whole text, not an app shell (bots without JavaScript read it).
@@ -67,6 +75,17 @@ const ld = JSON.parse(landing.match(/<script type="application\/ld\+json">([\s\S
 const types = (ld['@graph'] as { '@type': string }[]).map((node) => node['@type']).sort();
 assert(types.join() === 'Organization,WebApplication,WebSite', 'landing graph: WebSite + Organization + WebApplication');
 assert(!/aggregateRating|review/i.test(JSON.stringify(ld)), 'no ratings or reviews in structured data');
+// "AscendDay" as a name: home title, h1, description and every node of the graph.
+const nodeOf = (type: string) => (ld['@graph'] as Record<string, unknown>[]).find((node) => node['@type'] === type)!;
+const names = (value: unknown) => (Array.isArray(value) ? value : [value]);
+assert(attr(landing, /<title>([^<]+)<\/title>/)!.includes(SITE_ALIAS), 'landing title names AscendDay');
+assert(textOf(landing.match(/<h1[\s\S]*?<\/h1>/)![0]).includes(SITE_ALIAS), 'landing h1 names AscendDay');
+assert(MARKETING_ROUTES[0].description.startsWith(`Ascend (${SITE_ALIAS})`), 'landing description starts with the name');
+for (const type of ['WebSite', 'Organization', 'WebApplication']) {
+  assert(names(nodeOf(type).alternateName).includes(SITE_ALIAS), `${type}.alternateName includes ${SITE_ALIAS}`);
+}
+assert(names(nodeOf('WebSite').alternateName).includes('Ascend Day'), 'WebSite.alternateName includes Ascend Day');
+assert(typeof (nodeOf('Organization').founder as { name?: string })?.name === 'string', 'Organization has a nested founder');
 assert(landing.indexOf('<script>') < landing.indexOf('<meta name="viewport"'), 'landing redirect runs first');
 // The landing page is a real page: its text in the HTML, and plain links to every feature, sign-up and sign-in.
 const landingText = landing.replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>/g, ' ').replace(/<[^>]+>/g, ' ');
@@ -74,7 +93,6 @@ assert(landingText.split(/\s+/).filter(Boolean).length >= 400, 'landing has at l
 for (const slug of FEATURE_SLUGS) assert(landing.includes(`href="${featurePath(slug)}"`), `landing links ${featurePath(slug)}`);
 for (const href of ['/signup', '/login', '/features', '/privacy', '/about']) assert(landing.includes(`href="${href}"`), `landing links ${href}`);
 
-const textOf = (html: string) => html.replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>/g, ' ').replace(/<[^>]+>/g, ' ');
 const wordsOf = (html: string) => textOf(html).split(/\s+/).filter(Boolean).length;
 
 // /about is a real page with the maker's story (the same text as Settings > About us) and the support menu.

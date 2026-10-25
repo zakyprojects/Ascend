@@ -23,7 +23,7 @@ import { Screenshot } from '../components/Screenshot';
 import { CtaBand, FaqList, Section, SectionHeading, type FaqItem } from '../components/Sections';
 import { fmt, pts, range } from '../features/format';
 import { FEATURE_GROUPS, FEATURE_SLUGS, featurePath, featuresInGroup } from '../features/catalog';
-import { SITE_HOST, SITE_MAKER, SITE_TAGLINE } from '../site';
+import { SITE_ALIAS, SITE_HOST, SITE_MAKER, SITE_TAGLINE } from '../site';
 
 /*
  * `/`: the public landing page. Every number on it is read from the app's own reward code
@@ -103,7 +103,7 @@ const EARNS: { what: string; rule: string; href: string }[] = [
 const FAQ: FaqItem[] = [
   {
     q: 'Is Ascend free?',
-    a: 'Yes. Every feature is free while Ascend is in beta, and there are no payments anywhere in the app.',
+    a: 'Yes. Ascend is a free self-improvement web app: every feature is free while it is in beta, and there are no payments anywhere in the app.',
   },
   {
     q: 'Is there an Ascend app for Android, iPhone or PC?',
@@ -154,7 +154,7 @@ const FAQ: FaqItem[] = [
   },
   {
     q: 'Is this the same as other apps called Ascend?',
-    a: `No. Several unrelated apps share the name. This Ascend is the gamified self-improvement web app made by ${SITE_MAKER} at ${SITE_HOST}, and it is not connected to any of them.`,
+    a: `No. Several unrelated apps share the name. This Ascend, also called ${SITE_ALIAS} or Ascend Day, is the gamified self-improvement web app made by ${SITE_MAKER} at ${SITE_HOST}, and it is not connected to any of them.`,
   },
 ];
 
@@ -180,7 +180,7 @@ function Hero() {
       <div className="mx-auto max-w-6xl px-4 sm:px-6 pt-14 sm:pt-20 text-center">
         <h1 id="hero-title">
           <span className="m-enter block text-sm font-medium text-brand-text" style={enter(0)}>
-            Ascend – Gamified Self-Improvement
+            Ascend ({SITE_ALIAS}) – Gamified Self-Improvement
           </span>
           <span
             className="m-enter mt-3 block font-serif text-5xl leading-[1.05] tracking-tight text-content-primary sm:text-7xl"
@@ -193,7 +193,7 @@ function Hero() {
           className="m-enter mx-auto mt-6 max-w-2xl text-base leading-relaxed text-content-tertiary sm:text-lg"
           style={enter(2)}
         >
-          Ascend is a free self-improvement app that plays like a game. Instead of one app for habits, another for your
+          Ascend, also known as {SITE_ALIAS}, is a free self-improvement app that plays like a game. Instead of one app for habits, another for your
           journal and another for goals, you log your habits, workouts, reading, skills and journal in one place, earn
           points for each one, rise through {TIERS.length} ranks and climb weekly, monthly and 90-day leagues against
           real people.
@@ -563,7 +563,8 @@ function WhoFor() {
 
 function About() {
   const facts: [string, ReactNode][] = [
-    ['What it is', 'A gamified self-improvement web app'],
+    ['What it is', 'A free gamified self-improvement web app'],
+    ['Also known as', `${SITE_ALIAS} (${SITE_HOST})`],
     ['Made by', `${SITE_MAKER}, a computer science student in Peshawar, Pakistan`],
     ['Website', SITE_HOST],
     ['Price', 'Free (beta)'],

@@ -61,6 +61,9 @@ const files = new Map<string, string>(Object.entries(written));
 // public/ is copied into the build as is (the pictures the pages show and the link previews included).
 const publicFiles = Object.keys(import.meta.glob(['../../../public/screens/*', '../../../public/og/*'])).map((path) => path.replace('../../../public/', ''));
 for (const file of [...assetFiles, ...publicFiles, 'sw.js', 'manifest.json', 'version.json', 'favicon.svg']) files.set(file, '');
+// Text files in public/ (the IndexNow key file) with their real content.
+const publicText = import.meta.glob<string>('../../../public/*.txt', { query: '?raw', import: 'default', eager: true });
+for (const [path, text] of Object.entries(publicText)) files.set(path.replace('../../../public/', ''), text);
 
 assert(written['app-shell.html'] === appShell, 'the app shell is written unchanged');
 assert(written['login.html'].includes('<title>Sign in – Ascend</title>') && written['login.html'].includes('id="root"'), 'login = app shell with its own title');

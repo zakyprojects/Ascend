@@ -32,7 +32,7 @@ export function About() {
           </h1>
           <div className="m-enter mt-6 space-y-4 text-base leading-relaxed text-content-tertiary sm:text-lg" style={enter(2)}>
             <p>
-              Ascend is a free gamified self-improvement app. Habits, workouts, reading, journaling, goals and more
+              Ascend, also known as AscendDay, is a free gamified self-improvement app made in Pakistan. Habits, workouts, reading, journaling, goals and more
               live in one place, everything you log earns points, and the points put you in leagues against other
               people who are climbing too.
             </p>

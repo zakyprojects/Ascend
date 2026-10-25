@@ -3,7 +3,7 @@ import { ChevronDown, Moon, Sun } from 'lucide-react';
 import { AppLockup, AppLogo } from '@/components/ui/AppLogo';
 import { cx, FOCUS_RING } from '@/components/ui/primitives/shared';
 import { FEATURE_GROUPS, featurePath, featuresInGroup } from '../features/catalog';
-import { SITE_DESCRIPTOR, SITE_MAKER } from '../site';
+import { SITE_ALIAS, SITE_DESCRIPTOR, SITE_MAKER } from '../site';
 
 export const LINK_CLASS = cx('font-medium text-brand-text hover:underline underline-offset-2 rounded', FOCUS_RING);
 const NAV_LINK = cx(
@@ -135,7 +135,7 @@ function Footer() {
         </div>
         <div className="mt-10 flex flex-col gap-4 border-t border-overlay-subtle pt-6 text-sm text-content-muted sm:flex-row sm:items-center sm:justify-between">
           <p>
-            Ascend is free and in beta, made by {SITE_MAKER} in Pakistan. It is not affiliated with other apps named
+            Ascend ({SITE_ALIAS}) is free and in beta, made by {SITE_MAKER} in Pakistan. It is not affiliated with other apps named
             Ascend.
           </p>
           <nav aria-label="Site" className="flex flex-wrap gap-x-5 gap-y-1">

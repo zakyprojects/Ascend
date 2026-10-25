@@ -33,7 +33,7 @@ export const habits: FeatureContent = {
   intro: (
     <>
       <p>
-        Ascend’s habit tracker is a free daily and weekly habit list where every tick earns points. Pick habits from a
+        Ascend’s gamified habit tracker is a free daily and weekly habit list where every tick earns points. Pick habits from a
         library of {library.length} or write your own, tick them off each day, watch the streak grow, and see those points
         move your rank and your place in the leagues.
       </p>
@@ -118,7 +118,7 @@ export const habits: FeatureContent = {
 
       <Block
         id="how-points-work"
-        title="How habits earn and lose points"
+        title="A habit tracker with points: how habits earn and lose them"
         lead={
           <p>
             These are the same rules the app shows under “How points work” on the Habits page. With an account, points are
@@ -217,7 +217,7 @@ export const habits: FeatureContent = {
     ['Account', 'Start as a guest, save to a free account later'],
   ],
   fitsIf: [
-    'You want streaks and a score, not just a checklist.',
+    'You want a habit streak tracker with a score, not just a checklist.',
     'You keep habits better when skipping one has a small cost.',
     'You want your habits next to your workouts, reading and journal in one app.',
   ],
@@ -228,7 +228,7 @@ export const habits: FeatureContent = {
   faq: [
     {
       q: 'Is the habit tracker free?',
-      a: 'Yes. Ascend is free while in beta, with no payments in the app. Every habit feature, library and custom, is included.',
+      a: 'Yes. Ascend is a free habit tracker web app while in beta, with no payments in the app. Every habit feature, library and custom, is included.',
     },
     {
       q: 'What happens if I miss a habit?',

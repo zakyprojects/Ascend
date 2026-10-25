@@ -56,7 +56,7 @@ export const projectsGoals: FeatureContent = {
         />
       </Block>
 
-      <Block id="how-title" title="Turning a goal into today’s tasks">
+      <Block id="how-title" title="Break a goal into tasks you can do today">
         <Steps
           items={[
             { title: 'Write the goal', text: 'On the Goals tab, add what you are aiming for and, if you like, a target date and category.' },
@@ -168,7 +168,7 @@ export const projectsGoals: FeatureContent = {
   fitsIf: [
     'You have a big goal and keep losing the thread between it and today.',
     'You want progress worked out for you, not typed in.',
-    'You already use Ascend and want your plans next to your habits.',
+    'You want one goals, projects and tasks app, right next to your habits.',
   ],
   notFor: [
     'You want points for every finished task.',

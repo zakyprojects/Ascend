@@ -24,9 +24,9 @@ export const exercise: FeatureContent = {
   intro: (
     <>
       <p>
-        Exercise in Ascend is a free workout tracker for the web: log a run, a gym session, push-ups or a bike ride in a
-        few taps, and every workout earns points toward your rank. Count it in minutes, reps, sets or kilometres, whatever
-        fits what you did.
+        Exercise in Ascend is a free workout tracker that earns points, right in your browser: log a run, a gym session, push-ups or a bike ride in a
+        few taps, and every workout moves your rank. Count it in minutes, reps, sets or kilometres, whatever fits what
+        you did.
       </p>
       <p>
         It is made for people who move for their health, not for a coach. No training plans, no set-by-set spreadsheet:
@@ -42,7 +42,7 @@ export const exercise: FeatureContent = {
   },
   body: (
     <>
-      <Block id="how-title" title="Logging a workout">
+      <Block id="how-title" title="Your gamified workout log">
         <Steps
           items={[
             {
@@ -197,7 +197,7 @@ export const exercise: FeatureContent = {
   ],
   fitsIf: [
     'You want to move most days and like a score for it.',
-    'You mix running, home workouts and the gym and want one simple log.',
+    'You mix running, home workouts and the gym and want one simple exercise tracker with points.',
     'You want a workout tracker with friends, without a subscription.',
   ],
   notFor: [

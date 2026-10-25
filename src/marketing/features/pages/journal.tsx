@@ -67,7 +67,7 @@ export const journal: FeatureContent = {
 
       <Block
         id="prompts-title"
-        title="Guided prompts when you don’t know what to write"
+        title="A daily journal with prompts for when you don’t know what to write"
         lead={
           <p>
             There are {JOURNAL_PROMPTS.length} prompts in {categories.length} groups: {list(categories)}. A different one
@@ -87,7 +87,7 @@ export const journal: FeatureContent = {
 
       <Block
         id="mood-title"
-        title="Your streak and your mood, at a glance"
+        title="Your journaling streak and mood, at a glance"
         lead={
           <p>
             The top of the Journal page shows your journal streak, how many of the last 7 days you wrote, your total
@@ -172,7 +172,7 @@ export const journal: FeatureContent = {
   fitsIf: [
     'You want a journaling habit that sticks, with a streak to protect.',
     'You like a prompt when your mind goes blank.',
-    'You want to see your mood over weeks, not just remember it.',
+    'You want a mood journal that shows your mood over weeks, not just a memory of it.',
   ],
   notFor: [
     'You want long, formatted entries with photos and tags.',

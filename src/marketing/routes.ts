@@ -39,7 +39,11 @@ export interface MarketingRoute {
 const BRAND_SUFFIX = ' – Ascend';
 const ogTitleOf = (title: string) => (title.endsWith(BRAND_SUFFIX) ? title.slice(0, -BRAND_SUFFIX.length) : title);
 
-const LAUNCH = '2026-10-21';
+/**
+ * The marketing footer (every page drawn with MarketingLayout) and the home, about, sign-in and
+ * feature copy changed on this date: the AscendDay name and the keyword copy. Bump a route's own date when only its text changes.
+ */
+const SITE_COPY_UPDATED = '2026-10-25';
 
 const featureRoutes: MarketingRoute[] = FEATURE_SLUGS.map((slug) => {
   const f = FEATURES[slug];
@@ -54,7 +58,7 @@ const featureRoutes: MarketingRoute[] = FEATURE_SLUGS.map((slug) => {
     ogImage: slug,
     ogAlt: f.ogAlt,
     index: true,
-    updated: LAUNCH,
+    updated: SITE_COPY_UPDATED,
   };
 });
 
@@ -63,41 +67,41 @@ export const MARKETING_ROUTES: MarketingRoute[] = [
     path: '/',
     file: 'index.html',
     kind: 'landing',
-    title: 'Ascend – Gamified Self-Improvement App',
-    ogTitle: 'Ascend – Gamified Self-Improvement App',
+    title: 'Ascend (AscendDay) – Gamified Self-Improvement App',
+    ogTitle: 'Ascend (AscendDay) – Gamified Self-Improvement App',
     description:
-      'Ascend is a free gamified self-improvement web app: track habits, journal, read and train, earn points, and climb weekly, monthly and 90-day leagues.',
+      'Ascend (AscendDay) is a free gamified self-improvement app: track habits, journal, read and train, earn points and climb weekly, monthly and 90-day leagues.',
     ogImage: 'home',
     ogAlt: 'Ascend – Gamified Self-Improvement. Train the mind. Rise.',
     index: true,
-    updated: LAUNCH,
+    updated: SITE_COPY_UPDATED,
   },
   {
     path: '/features',
     file: 'features.html',
     kind: 'hub',
-    title: 'Ascend Features – Habits, Journal, Leagues & More',
-    ogTitle: 'Ascend Features – Habits, Journal, Leagues & More',
+    title: 'Ascend Features – All-in-One Gamified Self-Improvement',
+    ogTitle: 'Ascend Features – All-in-One Gamified Self-Improvement',
     description:
-      'Every part of Ascend in one place: habits, bad habits, workouts, reading, skills, time blocking, recovery, focus, journal, goals, plans, leagues and ranks.',
+      'Every gamified self-improvement feature in Ascend, an all-in-one app: habits, workouts, reading, skills, time blocking, journal, goals, plans and leagues.',
     ogImage: 'features',
     ogAlt: 'All Ascend features: track, mind, plan and play',
     index: true,
-    updated: LAUNCH,
+    updated: SITE_COPY_UPDATED,
   },
   ...featureRoutes,
   {
     path: '/about',
     file: 'about.html',
     kind: 'about',
-    title: 'About Ascend – Who Makes It and Why',
-    ogTitle: 'About Ascend – Who Makes It and Why',
+    title: 'About Ascend (AscendDay) – Who Makes It and Why',
+    ogTitle: 'About Ascend (AscendDay) – Who Makes It and Why',
     description:
-      'Ascend is made by Zakria Khan, a computer science student in Peshawar, to turn the drive to compete into real habits. The story, the idea and how to support it.',
+      'Ascend (AscendDay) is made by Zakria Khan, a computer science student in Peshawar, to turn the drive to compete into real habits. The story and how to help.',
     ogImage: 'about',
     ogAlt: 'About Ascend: who makes it, and why',
     index: true,
-    updated: '2026-10-21',
+    updated: SITE_COPY_UPDATED,
   },
   {
     path: '/login',
@@ -105,11 +109,12 @@ export const MARKETING_ROUTES: MarketingRoute[] = [
     kind: 'auth',
     title: 'Sign in – Ascend',
     ogTitle: 'Sign in to Ascend',
-    description: 'Sign in to Ascend with your username or email to open your habits, journal, goals, leagues and rank.',
+    description:
+      'Sign in to Ascend (AscendDay) with your username, email or Google account to open your habits, journal, goals, leagues and rank.',
     ogImage: 'login',
     ogAlt: 'Sign in to Ascend: welcome back, your climb is waiting',
     index: true,
-    updated: LAUNCH,
+    updated: SITE_COPY_UPDATED,
   },
   {
     path: '/signup',
@@ -122,7 +127,7 @@ export const MARKETING_ROUTES: MarketingRoute[] = [
     ogImage: 'signup',
     ogAlt: 'Create your free Ascend account, or start as a guest',
     index: true,
-    updated: LAUNCH,
+    updated: '2026-10-23', // app shell: no footer; its head changed with the domain move
   },
   {
     path: '/privacy',
@@ -136,7 +141,7 @@ export const MARKETING_ROUTES: MarketingRoute[] = [
     ogImage: 'privacy',
     ogAlt: 'Ascend Privacy Policy: what Ascend collects and who can see it',
     index: true,
-    updated: LAUNCH,
+    updated: '2026-10-23', // legal text (LegalPage, no marketing footer): contact email 934f992
   },
   {
     path: '/terms',
@@ -150,7 +155,7 @@ export const MARKETING_ROUTES: MarketingRoute[] = [
     ogImage: 'terms',
     ogAlt: 'Ascend Terms: the rules for using Ascend',
     index: true,
-    updated: LAUNCH,
+    updated: '2026-10-23', // legal text (LegalPage, no marketing footer): contact email 934f992
   },
   {
     path: '/404',
@@ -162,7 +167,7 @@ export const MARKETING_ROUTES: MarketingRoute[] = [
     ogImage: 'home',
     ogAlt: 'Ascend – Gamified Self-Improvement. Train the mind. Rise.',
     index: false,
-    updated: LAUNCH,
+    updated: SITE_COPY_UPDATED,
   },
 ];
 

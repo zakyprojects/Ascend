@@ -11,6 +11,9 @@ export const SITE_HOST = new URL(SITE_URL).host;
 
 export const SITE_NAME = 'Ascend';
 
+/** The one-word name, the same as the domain (WebSite/Organization alternateName, home title, footer). */
+export const SITE_ALIAS = 'AscendDay';
+
 /** The brand descriptor (WebSite.alternateName, landing title): always written this way. */
 export const SITE_DESCRIPTOR = 'Ascend – Gamified Self-Improvement';
 
@@ -19,6 +22,12 @@ export const SITE_TAGLINE = 'Train the mind. Rise.';
 
 /** The maker, as the Terms name him (lib/legal.ts LEGAL_OPERATOR). */
 export const SITE_MAKER = 'Zakria Khan';
+
+/**
+ * IndexNow key (Bing, Yandex; Google ignores it). Public by design: public/<key>.txt holds the same
+ * string. After a deploy with changed pages, ping api.indexnow.org with keyLocation = that file.
+ */
+export const INDEXNOW_KEY = '55f3fa6edac40bdd7ec7319a638ae4c8';
 
 /** An absolute URL on this site for a path that starts with `/`. */
 export function absoluteUrl(path: string): string {

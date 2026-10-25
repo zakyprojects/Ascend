@@ -1,6 +1,7 @@
 import { FEATURES } from './features/catalog';
 import type { MarketingRoute } from './routes';
-import { absoluteUrl, SITE_DESCRIPTOR, SITE_NAME, SITE_URL } from './site';
+import { LEGAL_CONTACT_EMAIL } from '@/lib/legal';
+import { absoluteUrl, SITE_ALIAS, SITE_DESCRIPTOR, SITE_HOST, SITE_MAKER, SITE_NAME, SITE_URL } from './site';
 
 /** The built CSS/JS a page loads (from dist/.vite/manifest.json; the dev server passes its own). */
 export interface PageAssets {
@@ -94,7 +95,7 @@ export function structuredData(route: MarketingRoute): object | null {
           '@type': 'WebSite',
           '@id': `${SITE_URL}/#website`,
           name: SITE_NAME,
-          alternateName: [SITE_DESCRIPTOR, 'Ascend App'],
+          alternateName: [SITE_ALIAS, 'Ascend Day', SITE_HOST, SITE_DESCRIPTOR, 'Ascend App'],
           url: `${SITE_URL}/`,
           inLanguage: 'en',
           publisher: { '@id': `${SITE_URL}/#org` },
@@ -103,15 +104,22 @@ export function structuredData(route: MarketingRoute): object | null {
           '@type': 'Organization',
           '@id': `${SITE_URL}/#org`,
           name: SITE_NAME,
+          alternateName: SITE_ALIAS,
           url: `${SITE_URL}/`,
           logo: `${SITE_URL}/android-chrome-512x512.png`,
+          email: LEGAL_CONTACT_EMAIL,
+          // Nested, not a graph node. sameAs only once real profile URLs exist.
+          founder: { '@type': 'Person', name: SITE_MAKER },
         },
         {
           '@type': 'WebApplication',
           '@id': `${SITE_URL}/#app`,
           name: SITE_NAME,
-          alternateName: SITE_DESCRIPTOR,
+          alternateName: [SITE_ALIAS, SITE_DESCRIPTOR],
+          description:
+            'A free gamified self-improvement web app: habits, journal, reading, workouts, skills and weekly goals earn points that count toward ranks and leagues.',
           url: `${SITE_URL}/`,
+          isAccessibleForFree: true,
           applicationCategory: 'LifestyleApplication',
           operatingSystem: 'Web, Android, iOS (PWA)',
           offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },

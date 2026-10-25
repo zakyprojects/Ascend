@@ -186,7 +186,7 @@ export const plans: FeatureContent = {
   ],
   fitsIf: [
     'You want a clear plan for a goal without a project-management tool.',
-    'You like starting from a plan someone else already tested.',
+    'You like starting from a habit plan template someone else already tested.',
     'You want a vision you revisit every week or month.',
   ],
   notFor: [
@@ -203,7 +203,7 @@ export const plans: FeatureContent = {
       a: 'Only if you share them in Discover. A shared plan shows your username and avatar. You can make it private again whenever you want.',
     },
     {
-      q: 'What happens when I copy someone’s plan?',
+      q: 'What happens when I copy a self-improvement plan from someone else?',
       a: 'You get your own copy to edit and track. The original and other people’s copies don’t change, and your progress stays yours.',
     },
     {

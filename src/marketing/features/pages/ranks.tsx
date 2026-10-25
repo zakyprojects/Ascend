@@ -42,7 +42,7 @@ export const ranks: FeatureContent = {
   intro: (
     <>
       <p>
-        Ranks in Ascend are a real-life levelling system: {TIERS.length} ranks from {first.name} to {top.name}, climbed
+        Ranks in Ascend are how you level up your real life: {TIERS.length} ranks from {first.name} to {top.name}, climbed
         with the points you earn from habits, workouts, reading and the rest. It is free, and the ladder starts again
         every {seasonDays}-day season, so a newcomer and a long-time member race from the same line.
       </p>
@@ -132,7 +132,7 @@ export const ranks: FeatureContent = {
 
       <Block
         id="season-title"
-        title="A new climb every season"
+        title={`Self-improvement ranks: a new climb every ${seasonDays}-day season`}
         lead={
           <>
             <p>

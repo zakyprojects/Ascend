@@ -44,15 +44,15 @@ export function FeaturesHub() {
           </h1>
           <div className="m-enter mt-6 space-y-4 text-base leading-relaxed text-content-tertiary sm:text-lg" style={enter(2)}>
             <p>
-              Ascend is a free gamified self-improvement app with {FEATURE_SLUGS.length} parts, grouped the way the app
+              Ascend is a free, all-in-one gamified self-improvement app with {FEATURE_SLUGS.length} parts, grouped the way the app
               groups them: Track, Mind, Plan and Play. What you log in one part earns points, the points build your rank
               across {TIERS.length} ranks, and the leagues show how your week compares with everyone else’s.
             </p>
             <p>
-              Most apps cover one of these. Ascend puts all {FEATURE_SLUGS.length} in one app, so everything you do counts
+              Most apps cover one of these. Ascend is a habit, journal and goals app in one, so everything you do counts
               toward the same score.
             </p>
-            <p>Each part below has its own page with how it works, the exact points rules, and who it suits.</p>
+            <p>Each of these gamified self-improvement features has its own page with how it works, the exact points rules, and who it suits.</p>
           </div>
         </div>
       </section>
