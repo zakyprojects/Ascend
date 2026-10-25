@@ -32,19 +32,22 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content" />
     <link rel="manifest" href="/manifest.json?v=5" />
     <meta name="theme-color" content="#0a0b0f" />
-    <title>Ascend - Self-Improvement</title>
+    <!-- Home-screen name: iOS uses this instead of the page title; manifest short_name covers Android. -->
+    <meta name="apple-mobile-web-app-title" content="AscendDay" />
+    <meta name="application-name" content="AscendDay" />
+    <title>AscendDay – Self-Improvement</title>
 
     <!-- Link previews (Open Graph / Twitter). og:image must be an absolute URL. -->
-    <meta name="description" content="Self Improvement Gamified App. Train The Mind. Rise." />
+    <meta name="description" content="AscendDay is a gamified self-improvement app. Rise a little every day." />
     <meta property="og:type" content="website" />
-    <meta property="og:title" content="Ascend" />
-    <meta property="og:description" content="Self Improvement Gamified App. Train The Mind. Rise." />
+    <meta property="og:title" content="AscendDay" />
+    <meta property="og:description" content="AscendDay is a gamified self-improvement app. Rise a little every day." />
     <meta property="og:image" content="https://ascendday.com/og-image.png?v=5" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="Ascend" />
-    <meta name="twitter:description" content="Self Improvement Gamified App. Train The Mind. Rise." />
+    <meta name="twitter:title" content="AscendDay" />
+    <meta name="twitter:description" content="AscendDay is a gamified self-improvement app. Rise a little every day." />
     <meta name="twitter:image" content="https://ascendday.com/og-image.png?v=5" />
     <script>
       (function() {
@@ -67,6 +70,7 @@
         --splash-badge-bg: rgba(16, 185, 129, 0.2);
         --splash-badge-text: #6ee7b7;
         --splash-badge-border: rgba(16, 185, 129, 0.3);
+        --splash-brand: #10b981;
       }
       [data-theme="light"] {
         --splash-bg: #f6f8f7;
@@ -76,6 +80,7 @@
         --splash-badge-bg: #d1fae5;
         --splash-badge-text: #047857;
         --splash-badge-border: #a7f3d0;
+        --splash-brand: #059669;
       }
       html, body {
         background-color: var(--splash-bg, #0a0b0f);
@@ -185,13 +190,13 @@
 
           <!-- Brand Title -->
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
-            <span style="font-size:20px;font-weight:700;color:var(--splash-title,#f8fafc);letter-spacing:0.025em;">Ascend</span>
+            <span style="font-size:20px;font-weight:700;color:var(--splash-title,#f8fafc);letter-spacing:0.025em;">Ascend<span style="color:var(--splash-brand,#10b981);">Day</span></span>
             <span style="font-size:10px;background:var(--splash-badge-bg,rgba(16,185,129,0.2));color:var(--splash-badge-text,#6ee7b7);border:1px solid var(--splash-badge-border,rgba(16,185,129,0.3));padding:2px 8px;border-radius:9999px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;">Self Growth</span>
           </div>
 
           <!-- Loading Label -->
           <p style="font-size:14px;font-weight:600;color:var(--splash-text,#e2e8f0);margin:4px 0 0 0;">
-            Opening Ascend...
+            Opening AscendDay...
           </p>
           <p style="font-size:12px;color:var(--splash-subtext,#94a3b8);margin:4px 0 0 0;">
             Getting the app ready

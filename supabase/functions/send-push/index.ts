@@ -143,7 +143,7 @@ Deno.serve(async (req) => {
 
   const payload = JSON.stringify({
     id: notice.id,
-    title: notice.title || 'Ascend',
+    title: notice.title || 'AscendDay',
     body: notice.message || '',
     url: PAGE_BY_TYPE[notice.type] ?? '/dashboard',
   });

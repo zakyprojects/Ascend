@@ -160,7 +160,7 @@ self.addEventListener('push', (event) => {
     data = { body: event.data ? event.data.text() : '' };
   }
   event.waitUntil(
-    self.registration.showNotification(data.title || 'Ascend', {
+    self.registration.showNotification(data.title || 'AscendDay', {
       body: data.body || '',
       tag: data.id || undefined,
       icon: '/android-chrome-192x192.png',

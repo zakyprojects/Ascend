@@ -66,9 +66,10 @@ const publicText = import.meta.glob<string>('../../../public/*.txt', { query: '?
 for (const [path, text] of Object.entries(publicText)) files.set(path.replace('../../../public/', ''), text);
 
 assert(written['app-shell.html'] === appShell, 'the app shell is written unchanged');
-assert(written['login.html'].includes('<title>Sign in – Ascend</title>') && written['login.html'].includes('id="root"'), 'login = app shell with its own title');
+const loginTitle = MARKETING_ROUTES.find((route) => route.path === '/login')?.title ?? '';
+assert(Boolean(loginTitle) && written['login.html'].includes(`<title>${loginTitle}</title>`) && written['login.html'].includes('id="root"'), 'login = app shell with its own title');
 assert((written['login.html'].match(/<title>/g) || []).length === 1, 'login has one <title>');
-assert(!/Ascend - Self-Improvement/.test(written['signup.html']), 'signup lost the generic title');
+assert(!/AscendDay – Self-Improvement/.test(written['signup.html']), 'signup lost the generic title');
 
 const errors = await checkSite(files, config);
 assert(errors.length === 0, `site checks:\n  ${errors.join('\n  ')}`);
