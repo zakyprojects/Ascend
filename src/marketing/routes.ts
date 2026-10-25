@@ -73,7 +73,7 @@ export const MARKETING_ROUTES: MarketingRoute[] = [
     description:
       'AscendDay (formerly Ascend): a free gamified self-improvement app. Track habits, journal, read and train, earn points, climb weekly, monthly and 90-day leagues.',
     ogImage: 'home',
-    ogAlt: 'AscendDay – Gamified Self-Improvement. Rise a little every day.',
+    ogAlt: 'AscendDay – Gamified Self-Improvement. Step up every day.',
     index: true,
     updated: SITE_COPY_UPDATED,
   },
@@ -166,7 +166,7 @@ export const MARKETING_ROUTES: MarketingRoute[] = [
     ogTitle: 'Page not found',
     description: 'This page doesn’t exist on AscendDay. Go to the home page or see every feature.',
     ogImage: 'home',
-    ogAlt: 'AscendDay – Gamified Self-Improvement. Rise a little every day.',
+    ogAlt: 'AscendDay – Gamified Self-Improvement. Step up every day.',
     index: false,
     updated: SITE_COPY_UPDATED,
   },

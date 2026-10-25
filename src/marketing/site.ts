@@ -25,7 +25,7 @@ export const SITE_DESCRIPTOR = `${SITE_NAME} – Gamified Self-Improvement`;
 export const SITE_ALTERNATE_NAMES = [SITE_FORMER_NAME, 'Ascend Day', 'Ascend App', 'Ascend – Gamified Self-Improvement'];
 
 /** The slogan since the AscendDay name (2026-10-25): ascend = rise, day = daily. Hero, footer, og images. */
-export const SITE_TAGLINE = 'Rise a little every day.';
+export const SITE_TAGLINE = 'Step up every day.';
 
 /** The maker, as the Terms name him (lib/legal.ts LEGAL_OPERATOR). */
 export const SITE_MAKER = 'Zakria Khan';
