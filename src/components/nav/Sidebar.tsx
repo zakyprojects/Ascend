@@ -175,7 +175,7 @@ export function Sidebar({
           collapsed ? 'invisible opacity-0' : 'visible opacity-100'
         )}
       >
-        <div className="flex items-center gap-0.5 pb-3 pl-3 pr-5 pt-4">
+        <div className="flex items-center gap-0.5 pl-3 pr-5 pt-4">
           <a
             {...pageLinkProps(NAV_DASHBOARD.id, onNavigate)}
             className={cx('flex min-w-0 flex-1 items-center gap-2 rounded-lg pl-0.5', FOCUS_RING)}
@@ -185,6 +185,28 @@ export function Sidebar({
               Ascend<span className="text-brand-mark">Day</span>
             </span>
           </a>
+          {bell}
+          {renderAccount('below')}
+        </div>
+
+        {/* Actions get their own row so the brand name never truncates. */}
+        <div className="flex items-center gap-1 pb-3 pl-3 pr-5 pt-3">
+          <button
+            type="button"
+            onClick={onSearch}
+            aria-label="Go to"
+            aria-keyshortcuts={IS_APPLE_PLATFORM ? 'Meta+K' : 'Control+K'}
+            title={`Go to (${shortcut})`}
+            className={cx(
+              'flex min-w-0 flex-1 items-center gap-2 rounded-lg border border-overlay-subtle px-2.5 py-1.5 text-sm text-content-muted hover:bg-overlay-subtle hover:text-content-secondary',
+              FOCUS_RING,
+              TRANSITION
+            )}
+          >
+            <Search size={16} aria-hidden="true" className="shrink-0" />
+            <span className="flex-1 truncate text-left">Go to…</span>
+            <kbd className="kbd" aria-hidden="true">{shortcut}</kbd>
+          </button>
           <button
             type="button"
             onClick={onQuickLog}
@@ -194,18 +216,6 @@ export function Sidebar({
           >
             <Plus size={16} aria-hidden="true" />
           </button>
-          <button
-            type="button"
-            onClick={onSearch}
-            aria-label="Go to"
-            aria-keyshortcuts={IS_APPLE_PLATFORM ? 'Meta+K' : 'Control+K'}
-            title={`Go to (${shortcut})`}
-            className={cx('rounded-lg p-2 text-content-muted hover:bg-overlay-subtle hover:text-content-secondary', FOCUS_RING, TRANSITION)}
-          >
-            <Search size={16} aria-hidden="true" />
-          </button>
-          {bell}
-          {renderAccount('below')}
         </div>
 
         <nav ref={navRef} aria-label="Pages" className="relative isolate flex-1 overflow-y-auto px-3 pb-3">
