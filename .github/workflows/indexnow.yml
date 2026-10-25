@@ -2,7 +2,8 @@ name: IndexNow
 
 # After every successful Vercel PRODUCTION deploy, tell IndexNow (Bing, Yandex, Seznam, Naver;
 # Google ignores it) about every URL in the live sitemap. Vercel posts a GitHub deployment_status
-# for each deploy; preview deploys, failures and the studio repo are skipped.
+# for each deploy; preview deploys, failures and the studio repo are skipped. The environment is
+# matched by prefix because Vercel may name it "Production" or "Production – <project>".
 # The key is public by design: it lives in src/marketing/site.ts (INDEXNOW_KEY) and is served
 # as https://ascendday.com/<key>.txt. This workflow reads it from site.ts, so it has one home.
 # A non-2xx answer from IndexNow fails the run; nothing else depends on this workflow.
@@ -22,7 +23,7 @@ jobs:
     if: >-
       github.repository == 'zakyprojects/Ascend' &&
       github.event.deployment_status.state == 'success' &&
-      github.event.deployment.environment == 'Production'
+      startsWith(github.event.deployment.environment, 'Production')
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
