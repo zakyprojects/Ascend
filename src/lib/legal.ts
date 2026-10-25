@@ -6,14 +6,14 @@
 /** Where people write about their data, the Terms, or anything else. */
 export const LEGAL_CONTACT_EMAIL = 'hello@ascendday.com';
 
-/** Who runs Ascend. */
-export const LEGAL_OPERATOR = 'Ascend, run by Zakria Khan, Pakistan';
+/** Who runs AscendDay. The old name stays in brackets so the Terms people agreed to as "Ascend" clearly carry on. */
+export const LEGAL_OPERATOR = 'AscendDay (formerly Ascend), run by Zakria Khan, Pakistan';
 
 /** The youngest age allowed to use Ascend. */
 export const MIN_AGE = 13;
 
 /** Shown on both pages as "Last updated". Change it with every edit to either page. */
-export const LEGAL_UPDATED = '22 October 2026';
+export const LEGAL_UPDATED = '25 October 2026';
 
 /**
  * The version a new account agrees to: sent in the sign-up and guest-start metadata, where the

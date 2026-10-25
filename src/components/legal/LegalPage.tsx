@@ -56,7 +56,7 @@ function PrivacyPolicy({ onNavigate }: { onNavigate: (path: string) => void }) {
   return (
     <>
       <p>
-        This policy explains what Ascend collects, why, who can see it, and how to delete it. We don’t sell your data, track
+        This policy explains what AscendDay collects, why, who can see it, and how to delete it. We don’t sell your data, track
         you across other sites, or record your screen. It goes with our{' '}
         <a href={termsPath} onClick={inAppClick(termsPath, onNavigate)} className={LINK_CLASS}>
           Terms
@@ -119,7 +119,7 @@ function PrivacyPolicy({ onNavigate }: { onNavigate: (path: string) => void }) {
           </li>
           <li>
             <Term>On your device.</Term> The app keeps your sign-in, a copy of your data for offline use, drafts and
-            settings in your browser’s storage. Ascend sets no cookies of its own; Cloudflare’s bot check may use its
+            settings in your browser’s storage. AscendDay sets no cookies of its own; Cloudflare’s bot check may use its
             own.
           </li>
         </List>
@@ -128,7 +128,7 @@ function PrivacyPolicy({ onNavigate }: { onNavigate: (path: string) => void }) {
       <Section title="Why we use it">
         <p>
           To run your account, save and sync your data across devices, award points, run leagues and partner
-          features, send the reminders you turned on, keep Ascend safe from abuse, and fix bugs. Nothing else.
+          features, send the reminders you turned on, keep AscendDay safe from abuse, and fix bugs. Nothing else.
         </p>
       </Section>
 
@@ -156,7 +156,7 @@ function PrivacyPolicy({ onNavigate }: { onNavigate: (path: string) => void }) {
       </Section>
 
       <Section title="Services we use">
-        <p>These companies handle data for us, only to run Ascend. They may process it outside your country.</p>
+        <p>These companies handle data for us, only to run AscendDay. They may process it outside your country.</p>
         <List>
           <li>
             <Term>Supabase:</Term> database, sign-in and server functions. Your data is stored in Sydney, Australia.
@@ -228,14 +228,14 @@ function PrivacyPolicy({ onNavigate }: { onNavigate: (path: string) => void }) {
 
       <Section title="Children">
         <p>
-          Ascend is not for children under {MIN_AGE}. If you are under {MIN_AGE}, please don’t use it. If we learn that
+          AscendDay is not for children under {MIN_AGE}. If you are under {MIN_AGE}, please don’t use it. If we learn that
           an account belongs to a child under {MIN_AGE}, we will delete it. Parents can contact us at <ContactEmail />.
         </p>
       </Section>
 
       <Section title="Security">
         <p>
-          Connections to Ascend are encrypted, passwords are stored hashed, and database rules let each account read
+          Connections to AscendDay are encrypted, passwords are stored hashed, and database rules let each account read
           only its own private data. No system is perfect. If a data breach affects you, we will tell you as soon as we
           can.
         </p>
@@ -262,7 +262,7 @@ function Terms({ onNavigate }: { onNavigate: (path: string) => void }) {
   return (
     <>
       <p>
-        These Terms are the rules for using Ascend. By creating an account or continuing as a guest, you agree to them
+        These Terms are the rules for using AscendDay. By creating an account or continuing as a guest, you agree to them
         and to our{' '}
         <a href={privacyPath} onClick={inAppClick(privacyPath, onNavigate)} className={LINK_CLASS}>
           Privacy Policy
@@ -271,11 +271,11 @@ function Terms({ onNavigate }: { onNavigate: (path: string) => void }) {
       </p>
 
       <Section title="Who we are">
-        <p>{LEGAL_OPERATOR}. Ascend is free and still in beta.</p>
+        <p>{LEGAL_OPERATOR}. AscendDay is free and still in beta.</p>
       </Section>
 
-      <Section title="Who can use Ascend">
-        <p>You must be {MIN_AGE} or older to use Ascend.</p>
+      <Section title="Who can use AscendDay">
+        <p>You must be {MIN_AGE} or older to use AscendDay.</p>
       </Section>
 
       <Section title="Your account">
@@ -298,20 +298,20 @@ function Terms({ onNavigate }: { onNavigate: (path: string) => void }) {
           <li>use bots, scripts or bugs to change points or rankings,</li>
           <li>harass, threaten or spam others, through usernames, plans, partner invites or nudges,</li>
           <li>put illegal, hateful or sexual content in usernames or public plans,</li>
-          <li>try to break, overload or get around Ascend’s security, or reach other people’s data.</li>
+          <li>try to break, overload or get around AscendDay’s security, or reach other people’s data.</li>
         </List>
       </Section>
 
       <Section title="Suspension">
         <p>
-          We may remove points, reset rankings, or suspend or delete accounts that cheat in leagues or abuse Ascend or
+          We may remove points, reset rankings, or suspend or delete accounts that cheat in leagues or abuse AscendDay or
           other people. Where we can, we’ll tell you why. If you think we got it wrong, email <ContactEmail />.
         </p>
       </Section>
 
       <Section title="Your content">
         <p>
-          What you add stays yours. You let us store it, sync it, and show it where Ascend is built to show it: your
+          What you add stays yours. You let us store it, sync it, and show it where AscendDay is built to show it: your
           public profile, league tables, public plans, and what you share with partners. When you make a plan public,
           other members can follow it and keep their own copy.
         </p>
@@ -335,8 +335,8 @@ function Terms({ onNavigate }: { onNavigate: (path: string) => void }) {
 
       <Section title="The service">
         <p>
-          Ascend is provided “as is”. It may have bugs, change, or be unavailable at times, and features may be added
-          or removed. We work to keep your data safe, but we can’t promise that Ascend will always work or that data
+          AscendDay is provided “as is”. It may have bugs, change, or be unavailable at times, and features may be added
+          or removed. We work to keep your data safe, but we can’t promise that AscendDay will always work or that data
           can never be lost.
         </p>
       </Section>
@@ -350,7 +350,7 @@ function Terms({ onNavigate }: { onNavigate: (path: string) => void }) {
 
       <Section title="Ending">
         <p>
-          You can stop using Ascend and delete your account at any time in Settings. If we ever shut Ascend down, we’ll
+          You can stop using AscendDay and delete your account at any time in Settings. If we ever shut AscendDay down, we’ll
           try to tell you in advance.
         </p>
       </Section>
@@ -358,7 +358,7 @@ function Terms({ onNavigate }: { onNavigate: (path: string) => void }) {
       <Section title="Changes">
         <p>
           When these Terms change, we update this page and the date at the top. If a change is important, we’ll also
-          tell you in the app. Using Ascend after a change means you accept the new Terms.
+          tell you in the app. Using AscendDay after a change means you accept the new Terms.
         </p>
       </Section>
 
@@ -372,7 +372,7 @@ function Terms({ onNavigate }: { onNavigate: (path: string) => void }) {
         <h2 className="text-xs font-medium text-content-secondary">Open-source credits</h2>
         <p>
           The Geist, Geist Mono and Instrument Serif fonts are used under the SIL Open Font License 1.1. Icons are from
-          Lucide (ISC License). Ascend is built with open-source libraries, including React, Supabase and Sentry (MIT
+          Lucide (ISC License). AscendDay is built with open-source libraries, including React, Supabase and Sentry (MIT
           License).
         </p>
       </section>
@@ -391,7 +391,7 @@ export function LegalPage({ page, onNavigate, homeHref = DASHBOARD_PATH }: Legal
 
   useEffect(() => {
     const previous = document.title;
-    document.title = `${TITLES[page]} · Ascend`;
+    document.title = `${TITLES[page]} · AscendDay`;
     // Switching between the two pages starts the new one at the top (phones scroll the window,
     // desktop scrolls this page).
     window.scrollTo(0, 0);
@@ -408,7 +408,7 @@ export function LegalPage({ page, onNavigate, homeHref = DASHBOARD_PATH }: Legal
     >
       <div aria-hidden="true" className="app-atmosphere" />
       <div className="mx-auto w-full max-w-2xl">
-        <a href={homeHref} onClick={inAppClick(homeHref, onNavigate)} aria-label="Ascend" className={cx('inline-flex rounded-lg', FOCUS_RING)}>
+        <a href={homeHref} onClick={inAppClick(homeHref, onNavigate)} aria-label="AscendDay" className={cx('inline-flex rounded-lg', FOCUS_RING)}>
           <AppLockup className="h-6 w-auto shrink-0 text-content-primary" />
         </a>
 
@@ -426,7 +426,7 @@ export function LegalPage({ page, onNavigate, homeHref = DASHBOARD_PATH }: Legal
             {TITLES[otherPage]}
           </a>
           <a href={homeHref} onClick={inAppClick(homeHref, onNavigate)} className={cx(LINK_CLASS, 'inline-flex min-h-11 items-center')}>
-            Back to Ascend
+            Back to AscendDay
           </a>
         </nav>
       </div>
