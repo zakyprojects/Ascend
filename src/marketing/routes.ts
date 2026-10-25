@@ -128,7 +128,7 @@ export const MARKETING_ROUTES: MarketingRoute[] = [
     ogImage: 'signup',
     ogAlt: 'Create your free AscendDay account, or start as a guest',
     index: true,
-    updated: '2026-10-23', // app shell: no footer; its head changed with the domain move
+    updated: '2026-10-25', // app shell: no footer; its splash label became the page's <h1>
   },
   {
     path: '/privacy',

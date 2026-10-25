@@ -1,4 +1,4 @@
-import { seoTags, type PageAssets } from './head';
+import { escapeHtml, seoTags, type PageAssets } from './head';
 import { isRenderedRoute, renderMarketingPage } from './render';
 import { MARKETING_ROUTES, type MarketingRoute } from './routes';
 import { absoluteUrl, SITE_URL } from './site';
@@ -45,7 +45,12 @@ export function shellWithHead(shellHtml: string, route: MarketingRoute): string 
   const kept = lines.filter((line, i) => i === first || !generic.test(line));
   const at = kept.findIndex((line) => /<title>/.test(line));
   kept.splice(at, 1, ...seoTags(route).map((tag) => indent + tag));
-  return kept.join('\n');
+  // The raw HTML of a sign-in page has no heading until React loads, so the splash's loading label
+  // becomes the page's <h1> (the same words as its og:title). React replaces it with the form's own <h1>.
+  const label = /<p id="splash-label"([^>]*)>[^<]*<\/p>/;
+  const html = kept.join('\n');
+  if (!label.test(html)) throw new Error('App shell has no splash label');
+  return html.replace(label, (_, attrs: string) => `<h1 id="splash-label"${attrs}>${escapeHtml(route.ogTitle)}</h1>`);
 }
 
 export function sitemapXml(routes: MarketingRoute[] = MARKETING_ROUTES): string {

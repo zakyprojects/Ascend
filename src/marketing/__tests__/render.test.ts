@@ -2,6 +2,8 @@ import { FEATURES, FEATURE_SLUGS, featurePath } from '../features/catalog';
 import { FEATURE_CONTENT } from '../features/content';
 import { MARKETING_ROUTES } from '../routes';
 import { isRenderedRoute, renderMarketingPage } from '../render';
+import { shellWithHead } from '../prerender';
+import appShell from '../../../index.html?raw';
 import { absoluteUrl, SITE_FORMER_NAME, SITE_NAME, SITE_TAGLINE } from '../site';
 import { TIERS } from '@/lib/tiers';
 import { LESSONS } from '@/lib/lessons';
@@ -171,5 +173,11 @@ for (const name of new Set(MARKETING_ROUTES.map((r) => r.ogImage))) {
   const png = atob(dataUrl.slice(dataUrl.indexOf(',') + 1));
   assert(png.slice(1, 4) === 'PNG' && u32(png, 16) === 1200 && u32(png, 20) === 630, `og/${name}.png is a 1200×630 PNG`);
   assert(png.length < 300 * 1024, `og/${name}.png is under 300 KB (${Math.round(png.length / 1024)} KB)`);
+}
+// Sign-in pages: the app shell gets one <h1> (the og:title) in place of the splash's loading label.
+for (const route of MARKETING_ROUTES.filter((r) => r.kind === 'auth')) {
+  const html = shellWithHead(appShell, route);
+  const h1s = html.match(/<h1[\s>][^]*?<\/h1>/g) ?? [];
+  assert(h1s.length === 1 && h1s[0].includes(`>${route.ogTitle}</h1>`), `${route.path}: one <h1> reading "${route.ogTitle}"`);
 }
 console.log(`\nMarketing render: ${MARKETING_ROUTES.length} routes checked.`);
