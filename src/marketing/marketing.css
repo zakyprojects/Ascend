@@ -40,6 +40,18 @@
 [data-theme='light'] .m-shot-light { display: block; }
 [data-theme='light'] .m-shot-dark { display: none; }
 
+/* Hero picture (Screenshot.tsx HeroShot): the device-matched one, unless a saved theme differs. */
+.m-hero-auto { display: block; }
+.m-hero-dark, .m-hero-light { display: none; }
+@media (prefers-color-scheme: light) {
+  [data-theme='dark'] .m-hero-auto { display: none; }
+  [data-theme='dark'] .m-hero-dark { display: block; }
+}
+@media not all and (prefers-color-scheme: light) {
+  [data-theme='light'] .m-hero-auto { display: none; }
+  [data-theme='light'] .m-hero-light { display: block; }
+}
+
 /* FAQ (<details>): the plus turns into a cross. */
 .m-faq[open] .m-faq-icon { transform: rotate(45deg); }
 

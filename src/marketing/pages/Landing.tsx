@@ -19,7 +19,7 @@ import {
 import { PRESET_BAD_HABITS, PRESET_CATEGORIES } from '@/lib/presets';
 import { TIERS } from '@/lib/tiers';
 import { LINK_CLASS, MarketingLayout } from '../components/MarketingLayout';
-import { Screenshot } from '../components/Screenshot';
+import { HeroShot, Screenshot } from '../components/Screenshot';
 import { CtaBand, FaqList, Section, SectionHeading, type FaqItem } from '../components/Sections';
 import { fmt, pts, range } from '../features/format';
 import { FEATURE_GROUPS, FEATURE_SLUGS, featurePath, featuresInGroup } from '../features/catalog';
@@ -219,25 +219,14 @@ function Hero() {
       </div>
 
       <div className="m-enter relative mx-auto mt-12 max-w-6xl px-4 sm:mt-16 sm:px-6" style={enter(5)}>
-        <Screenshot
-          name="dashboard-phone"
-          eager
-          width={540}
-          height={886}
-          alt="The AscendDay dashboard on a phone: 3 of 6 habits done today, 331 season points and the Starter rank"
-          className="mx-auto w-full max-w-[280px] rounded-[1.75rem] border-4 border-bg-700 sm:hidden"
-        />
-        <Screenshot
-          name="dashboard-desktop"
-          eager
-          width={1600}
-          height={589}
-          className="hidden sm:block"
-          alt="The AscendDay dashboard on a computer: 3 of 6 habits done today, 331 season points, the Starter rank and the climb from Beginner to Master"
+        <HeroShot
+          phone={{ name: 'dashboard-phone', width: 540, height: 886 }}
+          desktop={{ name: 'dashboard-desktop', width: 1600, height: 589 }}
+          alt="The AscendDay dashboard: 3 of 6 habits done today, 331 season points, the Starter rank and the climb from Beginner to Master"
+          className="mx-auto w-full max-w-[280px] rounded-[1.75rem] border-4 border-overlay-default sm:max-w-none sm:rounded-2xl sm:border"
         />
         <Screenshot
           name="dashboard-phone"
-          eager
           width={540}
           height={886}
           alt="The AscendDay dashboard on a phone: today’s habits with the points each one earns"
