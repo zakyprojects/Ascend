@@ -51,8 +51,18 @@ export function FaqList({ items }: { items: FaqItem[] }) {
   );
 }
 
-/** The closing sign-up band. */
-export function CtaBand({ id, title, children }: { id: string; title: string; children: ReactNode }) {
+/** The closing sign-up band. `featuresLink={false}` drops "See every feature" on /features itself. */
+export function CtaBand({
+  id,
+  title,
+  featuresLink = true,
+  children,
+}: {
+  id: string;
+  title: string;
+  featuresLink?: boolean;
+  children: ReactNode;
+}) {
   return (
     <Section labelledBy={id}>
       <div className="card scroll-rise overflow-hidden px-6 py-12 text-center sm:px-12 sm:py-16">
@@ -65,9 +75,11 @@ export function CtaBand({ id, title, children }: { id: string; title: string; ch
             <span data-cta-label="">Start free</span>
             <ArrowRight size={18} aria-hidden="true" />
           </a>
-          <a href="/features" className="btn-secondary min-h-12 px-6 text-base">
-            See every feature
-          </a>
+          {featuresLink && (
+            <a href="/features" className="btn-secondary min-h-12 px-6 text-base">
+              See every feature
+            </a>
+          )}
         </div>
       </div>
     </Section>

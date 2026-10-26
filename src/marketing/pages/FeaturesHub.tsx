@@ -140,7 +140,7 @@ export function FeaturesHub() {
         </div>
       </Section>
 
-      <CtaBand id="cta-title" title="Try every part, free">
+      <CtaBand id="cta-title" title="Try every part, free" featuresLink={false}>
         Start as a guest, log one thing today, and save your progress to a free account when you’re ready.
       </CtaBand>
     </MarketingLayout>
