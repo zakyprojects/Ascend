@@ -3,7 +3,7 @@
  *
  * Called only by the notifications_send_push trigger (supabase/migrations/20261017080000_web_push.sql)
  * with { notification_id } and the shared x-ascend-push-secret header. The body is never trusted
- * beyond the id: the notification and the devices are read here with the service role. Each
+ * beyond the id: the notification and the devices are read here with the secret key. Each
  * device's row is stamped with its latest attempt (last_ok_at / last_error_at / last_status).
  *
  * Deploy with "Verify JWT" OFF (the secret header is the check; pg_net sends no Authorization header):
@@ -12,7 +12,7 @@
  * - PUSH_WEBHOOK_SECRET: same value as the Vault secret ascend_push_secret
  * - VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY: the key pair; the public key also lives in src/lib/push.ts
  * - VAPID_SUBJECT: mailto: contact, e.g. mailto:mzakriakhan55@gmail.com
- * SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are provided by Supabase.
+ * SUPABASE_URL and SUPABASE_SECRET_KEYS (its `default` secret key) are provided by Supabase.
  */
 import webpush from 'npm:web-push@3.6.7';
 import { createClient } from 'npm:@supabase/supabase-js@2';
@@ -53,8 +53,15 @@ const env = (name: string): string => {
   return value;
 };
 
+/** The project's `default` key of one kind; Supabase provides SUPABASE_SECRET_KEYS / SUPABASE_PUBLISHABLE_KEYS as JSON by name. */
+const projectKey = (name: 'SUPABASE_SECRET_KEYS' | 'SUPABASE_PUBLISHABLE_KEYS'): string => {
+  const key = (JSON.parse(env(name)) as Record<string, string | undefined>).default;
+  if (!key) throw new Error(`Missing default key in ${name}`);
+  return key;
+};
+
 webpush.setVapidDetails(env('VAPID_SUBJECT'), env('VAPID_PUBLIC_KEY'), env('VAPID_PRIVATE_KEY'));
-const db = createClient(env('SUPABASE_URL'), env('SUPABASE_SERVICE_ROLE_KEY'), {
+const db = createClient(env('SUPABASE_URL'), projectKey('SUPABASE_SECRET_KEYS'), {
   auth: { persistSession: false },
 });
 

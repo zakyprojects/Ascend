@@ -3,8 +3,8 @@
  *
  * The app's sign-in field takes an email or a username. An email signs in straight with Supabase
  * Auth; a username comes here. The account is found by username (case-insensitive) with the
- * service role, its email is read on the server, and the normal Supabase password sign-in runs with
- * the anon key. Only the session tokens go back; the app hands them to `supabase.auth.setSession`.
+ * secret key, its email is read on the server, and the normal Supabase password sign-in runs with
+ * the publishable key. Only the session tokens go back; the app hands them to `supabase.auth.setSession`.
  *
  * - A wrong password and an unknown username get the same 401 { error: 'invalid_credentials' }.
  * - Failed attempts are counted per username and per caller IP (public.ascend_sign_in_blocked /
@@ -22,7 +22,7 @@
  * - The email is never returned, logged or put in an error.
  *
  * Deploy with "Verify JWT" OFF (a sign-in endpoint: callers have no user token).
- * SUPABASE_URL, SUPABASE_ANON_KEY and SUPABASE_SERVICE_ROLE_KEY are provided. Optional
+ * SUPABASE_URL, SUPABASE_PUBLISHABLE_KEYS and SUPABASE_SECRET_KEYS (their `default` keys) are provided. Optional
  * SIGN_IN_SECRET_KEY: an sb_secret_ key, for the IP forwarding above.
  * Optional ALLOWED_ORIGINS: comma-separated browser origins allowed by CORS (default: both production addresses
  * plus http://localhost / 127.0.0.1 on any port).
@@ -42,8 +42,15 @@ const env = (name: string): string => {
   return value;
 };
 
+/** The project's `default` key of one kind; Supabase provides SUPABASE_SECRET_KEYS / SUPABASE_PUBLISHABLE_KEYS as JSON by name. */
+const projectKey = (name: 'SUPABASE_SECRET_KEYS' | 'SUPABASE_PUBLISHABLE_KEYS'): string => {
+  const key = (JSON.parse(env(name)) as Record<string, string | undefined>).default;
+  if (!key) throw new Error(`Missing default key in ${name}`);
+  return key;
+};
+
 const noSession = { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } };
-const admin = createClient(env('SUPABASE_URL'), env('SUPABASE_SERVICE_ROLE_KEY'), noSession);
+const admin = createClient(env('SUPABASE_URL'), projectKey('SUPABASE_SECRET_KEYS'), noSession);
 
 const configuredOrigins = (Deno.env.get('ALLOWED_ORIGINS') ?? '')
   .split(',')
@@ -62,7 +69,7 @@ function signInClient(ip: string) {
       global: { headers: { 'sb-forwarded-for': ip } },
     });
   }
-  return createClient(env('SUPABASE_URL'), env('SUPABASE_ANON_KEY'), noSession);
+  return createClient(env('SUPABASE_URL'), projectKey('SUPABASE_PUBLISHABLE_KEYS'), noSession);
 }
 
 /** CORS for the app's own origins only; other sites' pages get no Allow-Origin. */
