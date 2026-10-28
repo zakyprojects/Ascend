@@ -5,7 +5,7 @@
  * GitHub token never reaches the browser. Environment:
  * - GITHUB_FEEDBACK_TOKEN: fine-grained token for that one repo, Issues + Contents read/write.
  * - GITHUB_FEEDBACK_REPO: "owner/name", defaults to zakyprojects/Ascend-Feedback.
- * - SUPABASE_URL + SUPABASE_ANON_KEY (or the app's VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY):
+ * - SUPABASE_URL + SUPABASE_PUBLISHABLE_KEY (or the app's VITE_SUPABASE_URL / VITE_SUPABASE_PUBLISHABLE_KEY):
  *   to check the sender's session.
  *
  * Only the app may send: a same-origin JSON POST carrying the sender's Supabase session (guests
@@ -84,12 +84,12 @@ function sameOrigin(request: Request): boolean {
 }
 
 /** The signed-in (or guest) user's id for the request's bearer token, or null. */
-async function sessionUserId(request: Request, supabaseUrl: string, anonKey: string): Promise<string | null> {
+async function sessionUserId(request: Request, supabaseUrl: string, publishableKey: string): Promise<string | null> {
   const match = /^Bearer\s+(\S+)$/i.exec(request.headers.get('authorization') ?? '');
   if (!match) return null;
   try {
     const res = await fetch(`${supabaseUrl.replace(/\/+$/, '')}/auth/v1/user`, {
-      headers: { apikey: anonKey, Authorization: `Bearer ${match[1]}` },
+      headers: { apikey: publishableKey, Authorization: `Bearer ${match[1]}` },
     });
     if (!res.ok) return null;
     const user = (await res.json().catch(() => null)) as { id?: unknown } | null;
@@ -191,15 +191,15 @@ export async function POST(request: Request): Promise<Response> {
   const token = process.env.GITHUB_FEEDBACK_TOKEN;
   const repo = process.env.GITHUB_FEEDBACK_REPO || DEFAULT_REPO;
   const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
-  const anonKey = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
-  if (!token || !supabaseUrl || !anonKey) return json(503, { error: 'not_configured' });
+  const publishableKey = process.env.SUPABASE_PUBLISHABLE_KEY || process.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+  if (!token || !supabaseUrl || !publishableKey) return json(503, { error: 'not_configured' });
 
   // A JSON body needs a CORS preflight, so another site's page can't post here unseen.
   if (!sameOrigin(request)) return json(403, { error: 'forbidden' });
   if (!(request.headers.get('content-type') ?? '').toLowerCase().startsWith('application/json')) {
     return json(415, { error: 'bad_request' });
   }
-  const sender = await sessionUserId(request, supabaseUrl, anonKey);
+  const sender = await sessionUserId(request, supabaseUrl, publishableKey);
   if (!sender) return json(401, { error: 'unauthorized' });
 
   const raw = await request.text();

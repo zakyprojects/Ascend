@@ -38,7 +38,7 @@ function getValidSupabaseUrl(url: unknown): string | null {
   return null;
 }
 
-function getValidAnonKey(key: unknown): string | null {
+function getValidPublishableKey(key: unknown): string | null {
   if (typeof key !== 'string') return null;
   const trimmed = key.trim();
   if (!trimmed || trimmed === 'undefined' || trimmed === 'null') return null;
@@ -46,21 +46,21 @@ function getValidAnonKey(key: unknown): string | null {
 }
 
 const rawUrl = typeof import.meta !== 'undefined' && import.meta?.env ? import.meta.env.VITE_SUPABASE_URL : undefined;
-const rawKey = typeof import.meta !== 'undefined' && import.meta?.env ? import.meta.env.VITE_SUPABASE_ANON_KEY : undefined;
+const rawKey = typeof import.meta !== 'undefined' && import.meta?.env ? import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY : undefined;
 
 const validatedUrl = getValidSupabaseUrl(rawUrl);
-const validatedAnonKey = getValidAnonKey(rawKey);
+const validatedPublishableKey = getValidPublishableKey(rawKey);
 
-export const isSupabaseConfigured = Boolean(validatedUrl && validatedAnonKey);
+export const isSupabaseConfigured = Boolean(validatedUrl && validatedPublishableKey);
 
 const DEFAULT_SUPABASE_URL = 'https://placeholder.supabase.co';
 const DEFAULT_SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBsYWNlaG9sZGVyIiwicm9sZSI6ImFub24iLCJpYXQiOjE2MDAwMDAwMDAsImV4cCI6MjAwMDAwMDAwMH0.placeholder';
 
 const supabaseUrl = validatedUrl || DEFAULT_SUPABASE_URL;
-const supabaseAnonKey = validatedAnonKey || DEFAULT_SUPABASE_KEY;
+const supabasePublishableKey = validatedPublishableKey || DEFAULT_SUPABASE_KEY;
 
 if (!isSupabaseConfigured) {
-  console.warn('Supabase URL or Anon Key is missing or invalid in environment variables. Operating in local state fallback mode.');
+  console.warn('Supabase URL or publishable key is missing or invalid in environment variables. Operating in local state fallback mode.');
 }
 
 // supabase-js's own default key, named here so the app can read it (unchanged: nobody is signed out).
@@ -86,7 +86,7 @@ const sentSnapshots = new SentSnapshots();
 
 export const supabase = createClient(
   supabaseUrl,
-  supabaseAnonKey,
+  supabasePublishableKey,
   {
     auth: {
       persistSession: true,
@@ -131,7 +131,7 @@ export function authRedirectError(): string | null {
  * session, its events and the other devices are unaffected. Passes the bot check like a sign-in.
  */
 export async function verifyAccountPassword(email: string, password: string): Promise<'ok' | 'wrong'> {
-  const checker = createClient(supabaseUrl, supabaseAnonKey, {
+  const checker = createClient(supabaseUrl, supabasePublishableKey, {
     auth: {
       persistSession: false,
       autoRefreshToken: false,

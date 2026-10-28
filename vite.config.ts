@@ -49,7 +49,7 @@ function apiFunctionsPlugin(): Plugin {
     apply: 'serve',
     configureServer(server) {
       const env = loadEnv(server.config.mode, process.cwd(), '');
-      for (const key of ['GITHUB_FEEDBACK_TOKEN', 'GITHUB_FEEDBACK_REPO', 'VITE_SUPABASE_URL', 'VITE_SUPABASE_ANON_KEY']) {
+      for (const key of ['GITHUB_FEEDBACK_TOKEN', 'GITHUB_FEEDBACK_REPO', 'VITE_SUPABASE_URL', 'VITE_SUPABASE_PUBLISHABLE_KEY']) {
         if (env[key] && !process.env[key]) process.env[key] = env[key];
       }
       server.middlewares.use('/api/feedback', async (req, res) => {
