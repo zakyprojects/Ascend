@@ -1,4 +1,5 @@
 import { escapeHtml, seoTags, type PageAssets } from './head';
+import { llmsFullTxt, llmsTxt } from './llms';
 import { isRenderedRoute, renderMarketingPage } from './render';
 import { MARKETING_ROUTES, type MarketingRoute } from './routes';
 import { absoluteUrl, SITE_URL } from './site';
@@ -9,6 +10,7 @@ import { absoluteUrl, SITE_URL } from './site';
  *   index.html, features*.html, 404.html   static marketing pages
  *   login.html, signup.html   the app shell with that page's title, description and previews
  *   sitemap.xml, robots.txt
+ *   llms.txt, llms-full.txt   the site in plain text for AI assistants (llms.ts)
  */
 
 /** The entry of dist/.vite/manifest.json that the marketing pages load. */
@@ -79,5 +81,7 @@ export function buildSite(input: {
   }
   files['sitemap.xml'] = sitemapXml();
   files['robots.txt'] = robotsTxt();
+  files['llms.txt'] = llmsTxt();
+  files['llms-full.txt'] = llmsFullTxt(files);
   return files;
 }

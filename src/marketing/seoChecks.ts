@@ -99,6 +99,8 @@ export async function checkSite(files: Map<string, string>, config: VercelConfig
     ['/version.json', /no-cache/],
     ['/robots.txt', /max-age=3600/],
     ['/sitemap.xml', /max-age=3600/],
+    ['/llms.txt', /max-age=3600/],
+    ['/llms-full.txt', /max-age=3600/],
     ['/favicon.svg', /^$/],
     [`/${INDEXNOW_KEY}.txt`, /^$/],
   ];
@@ -113,6 +115,10 @@ export async function checkSite(files: Map<string, string>, config: VercelConfig
     if (resolved.type !== 'file' || resolved.file !== path.slice(1)) errors.push(`${path}: served as ${JSON.stringify(resolved)}`);
     if (!cache.test(headersFor(config, path)['cache-control'] ?? '')) errors.push(`${path}: Cache-Control does not match ${cache}`);
   }
+  for (const path of ['/llms.txt', '/llms-full.txt']) {
+    if (!/^text\/plain; charset=utf-8$/.test(headersFor(config, path)['content-type'] ?? '')) errors.push(`${path}: not served as text/plain; charset=utf-8`);
+  }
+  if (!(files.get('llms.txt') ?? '').startsWith('# ')) errors.push('llms.txt: does not start with an H1');
   const missingAsset = resolveRoute(config, '/assets/gone-123.js', exists);
   if (missingAsset.type !== 'file' || missingAsset.file !== 'api/missing-asset') {
     errors.push(`/assets/gone-123.js: not answered by /api/missing-asset (${JSON.stringify(missingAsset)})`);

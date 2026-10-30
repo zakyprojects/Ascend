@@ -11,6 +11,11 @@ import { SOBRIETY_MILESTONE_POINTS } from '@/lib/pointsConfig';
 import { RECOVERY_MILESTONES } from '@/lib/recoveryAwards';
 import { fmt, pts } from '../features/format';
 import { FUEL_MENU, fuelMailto, MAKER_STORY } from '@/components/settings/makerContent';
+import { faqItemsFor } from '../head';
+import { LANDING_WHY } from '../landingQa';
+import { isLlmsFullRoute, llmsFullTxt, llmsTxt } from '../llms';
+import { decodeEntities } from '../plainText';
+import { SITE_DEFINITION } from '../site';
 
 /**
  * Every public page renders in plain Node (no window/document/localStorage: an app module that
@@ -181,4 +186,36 @@ for (const route of MARKETING_ROUTES.filter((r) => r.kind === 'auth')) {
   const h1s = html.match(/<h1[\s>][^]*?<\/h1>/g) ?? [];
   assert(h1s.length === 1 && h1s[0].includes(`>${route.ogTitle}</h1>`), `${route.path}: one <h1> reading "${route.ogTitle}"`);
 }
+// FAQPage structured data on home and every feature page: built from the questions the page shows,
+// one Question per visible item, answers as plain text that also reads on the page.
+const squash = (text: string) => decodeEntities(text).replace(/\s+/g, '').trim();
+for (const route of MARKETING_ROUTES.filter((r) => r.kind === 'landing' || r.kind === 'feature')) {
+  const html = renderMarketingPage(route, assets);
+  const blocks = [...html.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)].map((m) => JSON.parse(m[1]));
+  const faqLd = blocks.find((block) => block['@type'] === 'FAQPage') as { mainEntity: { name: string; acceptedAnswer: { text: string } }[] } | undefined;
+  const items = faqItemsFor(route);
+  assert(Boolean(faqLd) && faqLd!.mainEntity.length === items.length && items.length > 0, `${route.path}: FAQPage with every visible question`);
+  const visible = squash(textOf(html));
+  for (const entity of faqLd!.mainEntity) {
+    assert(visible.includes(squash(entity.name)), `${route.path}: FAQ question on the page: ${entity.name}`);
+    assert(entity.acceptedAnswer.text.length > 20 && !/[<>]/.test(entity.acceptedAnswer.text), `${route.path}: plain-text answer for ${entity.name}`);
+    assert(visible.includes(squash(entity.acceptedAnswer.text)), `${route.path}: FAQ answer reads on the page: ${entity.name}`);
+  }
+  assert(textOf(html).includes(SITE_DEFINITION), `${route.path}: carries the one-sentence definition`);
+}
+for (const { q } of LANDING_WHY) assert(textOf(landing).includes(q), `landing answers: ${q}`);
+const app = nodeOf('WebApplication') as { featureList?: string[]; screenshot?: string[]; isAccessibleForFree?: boolean };
+assert(app.isAccessibleForFree === true && app.featureList?.length === FEATURE_SLUGS.length && (app.screenshot?.length ?? 0) > 0, 'WebApplication: free, featureList per feature, screenshots');
+
+// llms.txt / llms-full.txt: an H1, the definition, every feature page, the why answers.
+const llms = llmsTxt();
+assert(llms.startsWith(`# ${SITE_NAME}\n`) && llms.includes(`> ${SITE_DEFINITION}`), 'llms.txt: H1 and definition');
+for (const slug of FEATURE_SLUGS) assert(llms.includes(`(${absoluteUrl(featurePath(slug))})`), `llms.txt links ${slug}`);
+for (const { q } of LANDING_WHY) assert(llms.includes(`### ${q}`), `llms.txt answers: ${q}`);
+assert(!/undefined|\[object Object\]|<[a-z]/.test(llms), 'llms.txt: plain text only');
+const rendered = Object.fromEntries(MARKETING_ROUTES.filter(isLlmsFullRoute).map((r) => [r.file, renderMarketingPage(r, assets)]));
+const full = llmsFullTxt(rendered);
+for (const route of MARKETING_ROUTES.filter(isLlmsFullRoute)) assert(full.includes(`URL: ${absoluteUrl(route.path)}`), `llms-full.txt has ${route.path}`);
+assert(!/undefined|\[object Object\]|<[a-z]/.test(full) && full.length > 50000, 'llms-full.txt: plain text of every page');
+
 console.log(`\nMarketing render: ${MARKETING_ROUTES.length} routes checked.`);
