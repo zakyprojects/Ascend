@@ -138,6 +138,8 @@ export function Leagues({ store, onOpenAuth }: LeaguesProps) {
   const failed = status === 'failed' && !retrying;
   const hasPlace = loaded && board.userPoints > 0;
   const memberCount = boardMemberCount(board.competitors);
+  // The table lists the members the place counts (points this period), plus you.
+  const tableRows = board.competitors.filter((c) => c.isUser || Math.round(c.points) > 0);
   const config = LEAGUE_CONFIG[activeLeague];
   const LeagueIcon = LEAGUE_ICONS[config.icon] ?? Calendar;
 
@@ -285,7 +287,7 @@ export function Leagues({ store, onOpenAuth }: LeaguesProps) {
                   </div>
                 ) : (
                   <ol className="divide-y divide-overlay-subtle">
-                    {board.competitors.map((competitor, idx) => {
+                    {tableRows.map((competitor, idx) => {
                       const rank = idx + 1;
                       const isUser = !!competitor.isUser;
                       const seasonPoints = seasonPointsOf(competitor);
