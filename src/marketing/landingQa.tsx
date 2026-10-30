@@ -56,7 +56,7 @@ export const LANDING_WHY: FaqItem[] = [
   },
   {
     q: 'Why one app instead of separate habit, journal and goal apps?',
-    a: `Because your habits, workouts, reading, journal and goals are parts of one life, and they work better when they know about each other. In ${SITE_NAME} all ${FEATURE_SLUGS.length} parts share one score, so each counts toward the same rank and leagues. A weekly goal fills in from your habits, workouts, reading or skills; logging pages ticks your Reading habit; ticking a habit ticks the challenge you share with a friend. You log things once, in one place you open every day.`,
+    a: `Because your habits, workouts, reading, journal and goals are parts of one life, and they work better when they know about each other. ${SITE_NAME} has ${FEATURE_SLUGS.length} parts in one app, and everything that earns points adds to one score, so it all counts toward the same rank and leagues. A weekly goal fills in from your habits, workouts, reading or skills; logging pages ticks your Reading habit; ticking a linked habit ticks the challenge you share with a friend. You log things once, in one place you open every day.`,
   },
   {
     q: 'Why is AscendDay free and browser-based?',
