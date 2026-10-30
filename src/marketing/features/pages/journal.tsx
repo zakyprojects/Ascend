@@ -181,6 +181,14 @@ export const journal: FeatureContent = {
   ],
   faq: [
     {
+      q: 'Why use AscendDay for journaling instead of a separate journal app?',
+      a: `Because the hard part of journaling is coming back every day, and here each day’s entry earns ${pts(award)} toward your rank and the leagues, next to your habits and workouts. What you write and your moods stay private. Your journal also sits beside your weekly goals and their weekend reflection, so looking back on a day and planning the next week happen in the same place.`,
+    },
+    {
+      q: 'Why does one sentence earn the same points as a long entry?',
+      a: `So the bar is low enough to clear on a bad day. An entry needs only ${MIN_JOURNAL_CONTENT_LENGTH} characters and earns ${pts(award)} once a day, because what helps is writing every day, not writing a lot. Points for length would reward padding, not honesty.`,
+    },
+    {
       q: 'Is the journal private?',
       a: 'Yes. What you write and your moods are visible only to you. If you make your profile public, others can see how many entries you have, never what is in them.',
     },

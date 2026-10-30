@@ -227,6 +227,14 @@ export const habits: FeatureContent = {
   ],
   faq: [
     {
+      q: 'Why use AscendDay for habits instead of a separate habit tracker app?',
+      a: 'Because here a habit doesn’t stop at a checkmark. Each tick earns points that count toward your rank and your place in the weekly, monthly and season leagues, together with your workouts, reading and journal. A habit can also fill a weekly goal on its own and tick a challenge you share with a friend, so you log it once and it counts everywhere. A separate habit app gives you a streak; AscendDay gives that streak a reason to last.',
+    },
+    {
+      q: 'Why does missing a habit cost points?',
+      a: 'Because a streak is easier to protect when breaking it costs something. Losing points you already have tends to feel stronger than missing out on new ones, so a small cost is enough to get the habit done on a tired day. Only library habits carry that cost; custom habits never do, so you decide how much is at stake.',
+    },
+    {
       q: 'Is the habit tracker free?',
       a: 'Yes. AscendDay is a free habit tracker web app while in beta, with no payments in the app. Every habit feature, library and custom, is included.',
     },

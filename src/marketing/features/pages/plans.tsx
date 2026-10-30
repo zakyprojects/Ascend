@@ -195,6 +195,10 @@ export const plans: FeatureContent = {
   ],
   faq: [
     {
+      q: 'Why use AscendDay for self-improvement plans instead of a notes app?',
+      a: 'Because a plan here can be tracked, not just written: milestones to tick, a number to reach, a habit journey with its own streak, or a vision you check in on. You can copy a plan someone shared in Discover and make it yours, and the habits, workouts and reading that carry it out earn points toward your rank and the leagues in the same app.',
+    },
+    {
       q: 'Do plans earn points?',
       a: 'No. Plans are for direction. Points come from the habits, workouts, reading, skills and goals that carry a plan out.',
     },

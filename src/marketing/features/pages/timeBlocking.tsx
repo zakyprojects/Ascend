@@ -222,6 +222,14 @@ export const timeBlocking: FeatureContent = {
   ],
   faq: [
     {
+      q: 'Why use AscendDay for time blocking instead of a separate planner app?',
+      a: `Because a plan works better when following it counts. Finishing your blocks earns up to ${pts(T.dailyCap)} a day toward the same rank and leagues as everything else, and blocks for focus, exercise, reading or skills open those pages in one tap, so you go straight from the plan to the work. A calendar shows the plan; AscendDay also shows how much of it you really did.`,
+    },
+    {
+      q: 'Why does the Time Tracker score the share of blocks finished?',
+      a: `So a packed day can’t win just by being long. Finishing ${high.minPercent}% of the day’s blocks earns ${pts(high.points)} and ${medium.minPercent}% earns ${pts(medium.points)}, so a short, honest plan you complete beats a crowded one you abandon.`,
+    },
+    {
       q: 'What is time blocking?',
       a: 'Giving every part of the day a job ahead of time: 9 to 11 deep work, 11 to 11:15 a break, and so on. AscendDay adds the other half: ticking each block off, so you see what really happened.',
     },

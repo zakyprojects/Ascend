@@ -134,7 +134,8 @@ for (const route of MARKETING_ROUTES.filter((r) => r.kind === 'feature' && r.slu
   assert(content.related.length >= 3 && content.related.length <= 4 && !content.related.includes(route.slug!), `${route.path}: 3–4 related pages`);
   for (const other of content.related) assert(html.includes(`href="${featurePath(other)}"`), `${route.path}: links ${other}`);
   assert(html.includes('href="/signup"') && html.includes('href="/features"'), `${route.path}: links sign-up and /features`);
-  assert(content.faq.length >= 4 && content.faq.length <= 6, `${route.path}: 4–6 questions`);
+  assert(content.faq.length >= 4 && content.faq.length <= 8, `${route.path}: 4–8 questions`);
+  assert(content.faq.some((item) => /^Why use AscendDay .* instead of /.test(item.q)), `${route.path}: answers why use AscendDay for it`);
   featureTexts.push(textOf(html));
 }
 assert(featureTexts.length === FEATURE_SLUGS.length, 'every feature page is checked');

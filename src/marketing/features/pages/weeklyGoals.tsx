@@ -201,6 +201,14 @@ export const weeklyGoals: FeatureContent = {
   ],
   faq: [
     {
+      q: 'Why use AscendDay for weekly goals instead of a separate goals app?',
+      a: `Because a goal linked to something you already log fills in on its own: habit days, workouts, pages or practice minutes count toward it from Monday to Sunday, with no second place to update. Reached goals earn ${pts(G.pointsPerGoal)} each and the weekend reflection ${reflection} more, all toward your rank and the leagues. A separate goals app only knows what you type into it; here a goal sees what you actually did.`,
+    },
+    {
+      q: 'Why do only the first few goals earn points?',
+      a: `So setting more goals never beats finishing the ones that matter. Points go to the first ${G.maxGoalsCounted} goals you reach and one reflection a week, so a week is worth at most ${pts(weekMax)} here, however long the list.`,
+    },
+    {
       q: 'How many weekly goals should I set?',
       a: `A few that matter. Points go to the first ${G.maxGoalsCounted} goals you reach each week, so extra goals add progress, not points.`,
     },

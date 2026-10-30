@@ -201,6 +201,14 @@ export const badHabits: FeatureContent = {
   ],
   faq: [
     {
+      q: 'Why use AscendDay for bad habits instead of a separate quit-habit app?',
+      a: 'Because resisting is easier when it counts for something you can see. Each day you log Resisted earns points toward your rank and the leagues, right next to the good habits you are building in its place, so one evening check-in covers both sides of the change. For something you are quitting completely, the private recovery tracker in the same app counts your clean days.',
+    },
+    {
+      q: 'Why do slips and unlogged days cost points?',
+      a: `Because a tracker that only rewards good days lets you hide the bad ones. A slip costs ${P.occurBase} points and a day you don’t log costs ${P.noReportBase}, more when it keeps happening, so staying silent is never free. Only your ${P.eligibleSlots} oldest bad habits carry this risk, which keeps the pressure on the ones that matter most to you.`,
+    },
+    {
       q: 'What counts as a slip?',
       a: 'You decide. Before you add a habit, settle what “slipped” means for you (for example, any scrolling after 11 pm) and log it the same way every day.',
     },

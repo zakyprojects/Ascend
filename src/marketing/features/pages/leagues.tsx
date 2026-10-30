@@ -202,6 +202,14 @@ export const leagues: FeatureContent = {
   ],
   faq: [
     {
+      q: 'Why use AscendDay for habit competitions instead of a separate challenge app?',
+      a: 'Because the leagues count everything you already do. Points from habits, workouts, reading, skills, focus sessions, the journal and the rest add up in one table, so there is nothing to sign up for and nothing to log twice. You are in all three tables automatically, against real people.',
+    },
+    {
+      q: 'Why are there three leagues that reset at different times?',
+      a: `So there is always a race you can still win. The weekly table starts again every Monday, the monthly one on the 1st, and the ${seasonDays}-day season is the long game that also sets your rank. A bad week costs you one weekly table, not the season.`,
+    },
+    {
       q: 'When do the leagues reset?',
       a: `The weekly league resets every Monday at 00:00 UTC, the monthly league on the 1st at 00:00 UTC, and the season every ${seasonDays} days. The app shows each reset in your local time.`,
     },

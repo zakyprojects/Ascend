@@ -220,6 +220,14 @@ export const ranks: FeatureContent = {
   ],
   faq: [
     {
+      q: 'Why use AscendDay for leveling up your real life instead of a separate gamified habit app?',
+      a: `Because a rank here sums up your whole season, not one list. Every point behind it comes from the rest of the app: habits, workouts, reading, skills, the journal and more, and the same points place you against real people in the leagues. A total only grows, while ${TIERS.length} ranks from ${first.name} to ${top.name} tell you where you stand and what the next step is. From ${performer.name}, rank ${performerIndex}, misses cost more, so higher ranks ask for steadier days, not just longer ones.`,
+    },
+    {
+      q: 'Why does every season start again from Beginner?',
+      a: `So no lead lasts forever and a newcomer races from the same line as a long-time member. A season lasts ${seasonDays} days; its final score is kept in your past seasons, then everyone starts again at ${first.name}. ${top.name} needs about ${perDayForTop} points a day for a whole season, which only steady days reach.`,
+    },
+    {
       q: 'How many ranks are there?',
       a: `${TIERS.length}: ${TIERS.map((t) => t.name).join(', ')}. ${top.name} starts at ${fmt(top.minPoints)} season points.`,
     },

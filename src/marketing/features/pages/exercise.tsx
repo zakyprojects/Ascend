@@ -206,6 +206,14 @@ export const exercise: FeatureContent = {
   ],
   faq: [
     {
+      q: 'Why use AscendDay for workouts instead of a separate fitness app?',
+      a: `Because most people don’t need a coach’s spreadsheet; they need a reason to move today. Any workout earns points (up to ${pts(W.dailyCap)} a day) that count toward the same rank and leagues as your habits, reading and journal. Workouts can fill a weekly goal on their own, like “Run 15 km”, and an exercise block in the Time Tracker opens the workout log in one tap. If you follow a detailed training programme, a dedicated training app will do more.`,
+    },
+    {
+      q: 'Why does every unit earn points, with a daily cap?',
+      a: `So every kind of movement counts the same way: ${U.minsPerPoint} minutes, ${U.repsPerPoint} reps, a set or a kilometre each earn a point, whatever your sport. The cap of ${pts(W.dailyCap)} a day means a two-hour session can’t buy a rank; moving most days is what climbs.`,
+    },
+    {
       q: 'Is the workout tracker free?',
       a: 'Yes. AscendDay is free while in beta, with no subscription and no paid tier.',
     },

@@ -281,6 +281,14 @@ export const brainLessons: FeatureContent = {
   ],
   faq: [
     {
+      q: 'Why use AscendDay for focus sessions instead of a separate Pomodoro app?',
+      a: `Because a finished session here earns points (up to ${pts(focusCap)} a day) toward your rank and the leagues, next to your habits, workouts and reading. You can start a session straight from a task in Projects & Goals or from a focus block in the Time Tracker, and the lessons explain why focus and new habits feel hard at first. A separate timer counts minutes; here they count toward everything else you are working on.`,
+    },
+    {
+      q: 'Why do longer focus sessions earn more?',
+      a: `Because deep work takes time to get into. ${list(tiers.map((t) => `${t.minMinutes} minutes earn ${pts(t.points)}`))}, and a session counts only when its timer runs out, so the points reward staying on one task, not starting many.`,
+    },
+    {
       q: 'Is the focus timer a Pomodoro timer?',
       a: `It can be. The ${FOCUS_PRESETS[0].focus}-minute preset with a ${FOCUS_PRESETS[0].break}-minute break works like one, and the longer presets suit deeper work. Longer sessions earn more points, up to ${pts(focusCap)} a day.`,
     },

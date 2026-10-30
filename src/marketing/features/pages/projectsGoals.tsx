@@ -176,6 +176,10 @@ export const projectsGoals: FeatureContent = {
   ],
   faq: [
     {
+      q: 'Why use AscendDay for goals and projects instead of a separate planning app?',
+      a: 'Because the plan sits right next to the work that carries it out. The timer button on a task starts a focus session that earns points, this week’s part of a project can become a weekly goal, and your big goals stay in view beside the habits and logs that move them. For team projects with shared boards, a team tool will fit better.',
+    },
+    {
       q: 'Do tasks or projects earn points?',
       a: `No. Projects & Goals is for planning and earns no points, and it can’t cost any. The work earns elsewhere, for example a focus session started from a task, or a weekly goal worth ${pts(WEEKLY_GOALS_POINTS.pointsPerGoal)}.`,
     },

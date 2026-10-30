@@ -215,6 +215,14 @@ export const skills: FeatureContent = {
   ],
   faq: [
     {
+      q: 'Why use AscendDay for skill practice instead of a separate practice app?',
+      a: 'Because practice minutes count twice here: each skill climbs its own level as the hours add up, and the minutes earn points toward your overall rank and the leagues, next to your habits, workouts and reading. A weekly goal can count practice on its own, and a skills block in the Time Tracker opens the log in one tap. Learning stops being invisible work and joins the same score as everything else.',
+    },
+    {
+      q: 'Why do minutes earn points while levels come from hours?',
+      a: `Points reward today: every ${S.minutesPerPoint} minutes earn one, up to ${pts(S.dailyCap)} a day for all skills together, so one marathon session can’t buy a rank. Levels reward the long run: they come only from total hours, so they show how far a skill has really come.`,
+    },
+    {
       q: 'Is the skill tracker free?',
       a: 'Yes. AscendDay is free while in beta, with no limit on how many skills you track. Each one works as its own skill level tracker.',
     },

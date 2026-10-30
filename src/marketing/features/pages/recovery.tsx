@@ -215,6 +215,14 @@ export const recovery: FeatureContent = {
   ],
   faq: [
     {
+      q: 'Why use AscendDay for a sobriety streak instead of a separate sobriety app?',
+      a: `Because the clean streak sits next to what you are building in its place: habits, workouts, reading and a journal, in one app. Milestones at ${days(week.hours)}, ${days(month.hours)} and ${days(ninety.hours)} days earn points toward your rank and the leagues, while the tracker and your cravings stay private and others only ever see a points total. It is a self-help tool; if you need treatment or a recovery programme, that comes first.`,
+    },
+    {
+      q: 'Why does recovery earn points only at milestones?',
+      a: `So counting clean time never feels like a grind. The milestones earn ${milestonePoints('1w')}, ${milestonePoints('1m')} and ${milestonePoints('90d')} points, at most ${pts(cap)} from recovery in a season, and a reset only takes back what the current streak earned this season. Cravings never cost anything, so logging one honestly is always safe.`,
+    },
+    {
       q: 'Is the recovery tracker private?',
       a: 'Yes. Only you can see your tracker and your cravings. Partners and other members never see them; league tables show only your total points.',
     },

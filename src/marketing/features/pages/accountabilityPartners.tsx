@@ -187,6 +187,14 @@ export const accountabilityPartners: FeatureContent = {
   ],
   faq: [
     {
+      q: 'Why use AscendDay with an accountability partner instead of a separate partner app?',
+      a: 'Because your partner sees your real progress, not only a shared checkbox: your streaks, season points and rank come from the habits, workouts and reading you already log. Link a challenge to one of your habits and ticking the habit ticks the challenge, so you log once. You also share the same leagues, while your journal and recovery tracker stay private.',
+    },
+    {
+      q: 'Why don’t partner challenges earn points of their own?',
+      a: 'Because the habit, workout or reading behind a challenge already earns its points. Paying again for the challenge would let two friends score twice for the same work, and the leagues would stop being fair to everyone else.',
+    },
+    {
       q: 'How do I add an accountability partner?',
       a: 'Ask your friend for the 6-digit ID in their Settings, enter it under Add partner, and you are partners once they accept.',
     },

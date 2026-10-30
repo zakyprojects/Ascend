@@ -8,6 +8,7 @@ import { CtaBand, FaqList } from '../components/Sections';
 import { FEATURES, featurePath, type FeatureSlug } from '../features/catalog';
 import { Block } from '../features/blocks';
 import { FEATURE_CONTENT } from '../features/content';
+import { SITE_DEFINITION } from '../site';
 
 /** Hero entrance order (marketing.css .m-enter staggers by --i). */
 const enter = (i: number) => ({ '--i': i }) as CSSProperties;
@@ -73,7 +74,7 @@ export function FeaturePage({ slug }: { slug: FeatureSlug }) {
         </figure>
       </section>
 
-      <Block id="glance-title" title={`${feature.name} at a glance`}>
+      <Block id="glance-title" title={`${feature.name} at a glance`} lead={<p>{SITE_DEFINITION}</p>}>
         <div className="mt-8 grid gap-6 grid-cols-1 lg:grid-cols-5">
           <dl className="card grid gap-4 p-6 sm:grid-cols-2 sm:p-8 lg:col-span-3">
             {content.facts.map(([term, value]) => (
