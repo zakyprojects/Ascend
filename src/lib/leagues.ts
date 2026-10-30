@@ -1,5 +1,5 @@
 import { LeagueType, LeagueCompetitor, LeagueArchive, PointsEntry, UserProfile, AppState } from '@/types';
-import { getRegisteredCompetitors } from './auth';
+import { getCachedFirstActiveAt, getRegisteredCompetitors } from './auth';
 import {
   getWeekStart,
   getWeekEnd,
@@ -271,6 +271,7 @@ export function generateCompetitors(
     stats: userStats,
     activeHabits: activeHabits,
     season_history: currentUser?.season_history || userStats?.season_history,
+    firstActiveAt: getCachedFirstActiveAt(currentUserId, type),
   };
 
   // 2. All other registered real users
@@ -283,18 +284,28 @@ export function generateCompetitors(
     ...otherRealCompetitors,
   ];
 
-  // Sort descending by period points, then lower-cased name, then id (as the server's archives)
-  allCompetitors.sort((a, b) => {
-    if (b.points !== a.points) return b.points - a.points;
-    const aName = a.name.toLowerCase();
-    const bName = b.name.toLowerCase();
-    if (aName !== bName) return aName < bName ? -1 : 1;
-    const aId = a.id ?? '';
-    const bId = b.id ?? '';
-    return aId < bId ? -1 : aId > bId ? 1 : 0;
-  });
+  allCompetitors.sort(compareCompetitors);
 
   return allCompetitors;
+}
+
+/**
+ * Board order: period points descending; members with 0 points by first activity in the period
+ * (first come first, none yet last); then lower-cased name, then id (as the server's archives).
+ */
+export function compareCompetitors(a: LeagueCompetitor, b: LeagueCompetitor): number {
+  if (b.points !== a.points) return b.points - a.points;
+  if (Math.round(a.points) <= 0 && a.firstActiveAt !== b.firstActiveAt) {
+    if (a.firstActiveAt === undefined) return 1;
+    if (b.firstActiveAt === undefined) return -1;
+    return a.firstActiveAt - b.firstActiveAt;
+  }
+  const aName = a.name.toLowerCase();
+  const bName = b.name.toLowerCase();
+  if (aName !== bName) return aName < bName ? -1 : 1;
+  const aId = a.id ?? '';
+  const bId = b.id ?? '';
+  return aId < bId ? -1 : aId > bId ? 1 : 0;
 }
 
 /**

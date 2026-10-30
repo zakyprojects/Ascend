@@ -743,6 +743,18 @@ export function toCompetitorStats(raw: any): LeagueCompetitor['stats'] {
   };
 }
 
+/** A member's first activity in the board's current period (epoch ms), as ascend_league_boards sends it. */
+function firstActiveAtOf(profile: any, type: LeagueType): number | undefined {
+  const at = profile?.first_active?.[type];
+  return typeof at === 'number' ? at : undefined;
+}
+
+/** The signed-in member's own first activity in the board's period, from the member list. */
+export function getCachedFirstActiveAt(userId: string | undefined, type: LeagueType): number | undefined {
+  if (!userId) return undefined;
+  return firstActiveAtOf(cachedProfiles.find((p) => p.id === userId), type);
+}
+
 /**
  * Get all registered real users as LeagueCompetitors for a specific league period.
  */
@@ -770,6 +782,7 @@ export function getRegisteredCompetitors(
       isRealUser: true,
       isProfilePublic: p.is_profile_public ?? true,
       isActive: p.active === true,
+      firstActiveAt: firstActiveAtOf(p, type),
       // The member list carries no stats or past seasons: the profile dialog fetches them on tap.
     });
   }

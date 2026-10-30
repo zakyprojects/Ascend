@@ -1,5 +1,5 @@
 import type { LeagueCompetitor } from '@/types';
-import { boardMemberCount } from '../leagues';
+import { boardMemberCount, compareCompetitors } from '../leagues';
 import { parseLeagueBoards } from '../leagueStandingsRefresh';
 import {
   getProfileSeasonPointsByUsername,
@@ -25,6 +25,22 @@ const member = (id: string, points: number, isUser = false): LeagueCompetitor =>
   isUser,
   isRealUser: true,
 });
+
+// Order: points first; members with 0 points by first activity in the period (none yet last), then name.
+{
+  const at = (c: LeagueCompetitor, firstActiveAt?: number): LeagueCompetitor => ({ ...c, firstActiveAt });
+  const order = [
+    at(member('zed', 0), 3000),
+    at(member('amy', 0)),
+    at(member('bob', 5), 9000),
+    at(member('cal', 0), 1000),
+    at(member('dan', 5), 1000),
+  ]
+    .sort(compareCompetitors)
+    .map((c) => c.id)
+    .join(',');
+  assert(order === 'bob,dan,cal,zed,amy', `0-point members first come first, scorers by name on ties (${order})`);
+}
 
 // "of N members" counts only members with points this period, as the period's archive does.
 assert(boardMemberCount([]) === 0, 'empty board');

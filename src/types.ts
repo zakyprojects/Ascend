@@ -105,6 +105,8 @@ export interface LeagueCompetitor {
   isProfilePublic?: boolean;
   /** Active in the last 7 days (server); a member with 0 points is listed only then. */
   isActive?: boolean;
+  /** First activity in this board's period, epoch ms (server; active members only): orders 0-point rows. */
+  firstActiveAt?: number;
   stats?: UserStats;
   activeHabits?: { name: string; category?: string; frequency: string; isPreset: boolean }[];
   season_history?: SeasonHistoryEntry[];
