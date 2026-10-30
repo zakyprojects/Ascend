@@ -20,7 +20,9 @@ import { PRESET_BAD_HABITS, PRESET_CATEGORIES } from '@/lib/presets';
 import { TIERS } from '@/lib/tiers';
 import { LINK_CLASS, MarketingLayout } from '../components/MarketingLayout';
 import { HeroShot, Screenshot } from '../components/Screenshot';
-import { CtaBand, FaqList, Section, SectionHeading, type FaqItem } from '../components/Sections';
+import { CtaBand, FaqList, Section, SectionHeading } from '../components/Sections';
+import { Cards } from '../features/blocks';
+import { LANDING_FAQ, LANDING_FITS, LANDING_NOT_FOR, LANDING_WHY } from '../landingQa';
 import { fmt, pts, range } from '../features/format';
 import { FEATURE_GROUPS, FEATURE_SLUGS, featurePath, featuresInGroup } from '../features/catalog';
 import { SITE_DESCRIPTOR, SITE_FORMER_NAME, SITE_HOST, SITE_MAKER, SITE_NAME, SITE_TAGLINE } from '../site';
@@ -97,64 +99,6 @@ const EARNS: { what: string; rule: string; href: string }[] = [
     what: 'Lessons',
     rule: `${pts(lessonPoints)} for each of the ${LESSONS.length} lessons, once a season`,
     href: featurePath('brain-lessons'),
-  },
-];
-
-const FAQ: FaqItem[] = [
-  {
-    q: 'Is AscendDay free?',
-    a: 'Yes. AscendDay is a free self-improvement web app: every feature is free while it is in beta, and there are no payments anywhere in the app.',
-  },
-  {
-    q: 'Is there an AscendDay app for Android, iPhone or PC?',
-    a: 'AscendDay is a web app, so it runs in the browser on any phone, tablet or computer. You can add it to your home screen or install it from the browser, and it then opens like any other app. It isn’t in the app stores yet.',
-  },
-  {
-    q: 'Do I need an account?',
-    a: (
-      <>
-        No. You can start as a guest and try everything, then save your progress to a free account with a username and
-        email whenever you like. You need to be at least {MIN_AGE} to use {SITE_NAME}.
-      </>
-    ),
-  },
-  {
-    q: 'How do points and ranks work?',
-    a: (
-      <>
-        What you log earns points, with a daily cap on most things so one long session can’t buy a rank. Missing a
-        library habit or slipping on a bad habit costs points. Your season points move you through {TIERS.length} ranks,
-        from {TIERS[0].name} to {topRank.name} at {fmt(topRank.minPoints)} points.{' '}
-        <a href={featurePath('ranks')} className={LINK_CLASS}>
-          More about ranks
-        </a>
-      </>
-    ),
-  },
-  {
-    q: 'What happens when a season ends?',
-    a: 'A season lasts 90 days. When it ends, the final standings are kept, and everyone’s rank and season points start again from Beginner, so a new player always has a real chance.',
-  },
-  {
-    q: 'Who can see what I log?',
-    a: (
-      <>
-        Your journal, moods, cravings and recovery tracker are visible only to you, and your data is never sold. In the
-        leagues, other people see your username, avatar and points, and more only if you make your profile public. The{' '}
-        <a href="/privacy" className={LINK_CLASS}>
-          Privacy Policy
-        </a>{' '}
-        says exactly what is stored and why.
-      </>
-    ),
-  },
-  {
-    q: 'Is AscendDay a medical or therapy app?',
-    a: 'No. The recovery tracker, the focus tools and the brain lessons are for tracking and motivation, not medical treatment or therapy. If you are struggling, please contact a licensed professional or a helpline in your country.',
-  },
-  {
-    q: 'Is this the same as other apps called Ascend?',
-    a: `No. Several unrelated apps share the name. ${SITE_NAME} (also written Ascend Day) is the gamified self-improvement web app made by ${SITE_MAKER} at ${SITE_HOST}, and it is not connected to any of them.`,
   },
 ];
 
@@ -469,6 +413,18 @@ function PointsRanksLeagues() {
   );
 }
 
+/** The reasons behind the rules, as questions an AI assistant or a visitor would ask (landingQa.tsx). */
+function WhyItWorks() {
+  return (
+    <Section labelledBy="reasons-title">
+      <SectionHeading id="reasons-title" kicker="The reasons behind the rules" title="Why AscendDay works the way it does">
+        Points, penalties, leagues and seasons each have a job. Here is what each one is for.
+      </SectionHeading>
+      <Cards cols={2} items={LANDING_WHY.map(({ q, a }) => ({ title: q, text: a }))} />
+    </Section>
+  );
+}
+
 function Platforms() {
   return (
     <Section labelledBy="where-title">
@@ -508,17 +464,6 @@ function Platforms() {
 }
 
 function WhoFor() {
-  const forList = [
-    'You stay motivated when there is a score, a rank or someone to beat.',
-    'You want habits, workouts, reading, skills and a journal in one place instead of five apps.',
-    'You are a student or anyone building a routine, and want to see it add up week by week.',
-    'You want a friend to keep you honest with a shared daily challenge.',
-  ];
-  const notList = [
-    'You want a plain to-do list with no points or competition.',
-    'You need medical, mental health or addiction treatment. AscendDay can sit alongside real help, never replace it.',
-    'You need an app store app. AscendDay is a web app you install from the browser.',
-  ];
   return (
     <Section labelledBy="who-title">
       <SectionHeading id="who-title" kicker="Who it is for" title="Made for people who like to compete" />
@@ -526,7 +471,7 @@ function WhoFor() {
         <div className="card p-6 sm:p-8">
           <h3 className="text-lg font-semibold text-content-primary">AscendDay fits if</h3>
           <ul className="mt-4 space-y-3 text-sm leading-relaxed text-content-tertiary">
-            {forList.map((line) => (
+            {LANDING_FITS.map((line) => (
               <li key={line} className="flex gap-3">
                 <span aria-hidden="true" className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-primary-500" />
                 {line}
@@ -537,7 +482,7 @@ function WhoFor() {
         <div className="card p-6 sm:p-8">
           <h3 className="text-lg font-semibold text-content-primary">It may not fit if</h3>
           <ul className="mt-4 space-y-3 text-sm leading-relaxed text-content-tertiary">
-            {notList.map((line) => (
+            {LANDING_NOT_FOR.map((line) => (
               <li key={line} className="flex gap-3">
                 <span aria-hidden="true" className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-content-muted" />
                 {line}
@@ -622,7 +567,7 @@ function Faq() {
   return (
     <Section labelledBy="faq-title">
       <SectionHeading id="faq-title" kicker="FAQ" title="Questions people ask" />
-      <FaqList items={FAQ} />
+      <FaqList items={LANDING_FAQ} />
     </Section>
   );
 }
@@ -643,6 +588,7 @@ export function Landing() {
       <WhyAscend />
       <Features />
       <PointsRanksLeagues />
+      <WhyItWorks />
       <Platforms />
       <WhoFor />
       <About />

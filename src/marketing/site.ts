@@ -1,3 +1,6 @@
+import { getSeasonStartByNumber } from '@/lib/leagueTime';
+import { TIERS } from '@/lib/tiers';
+
 /**
  * The public site's fixed facts (landing, /features, legal pages, sitemap): one place, so the name,
  * descriptor and address read the same on every page, in the structured data and in link previews.
@@ -20,6 +23,15 @@ export const SITE_FORMER_NAME = 'Ascend';
 
 /** The brand descriptor (landing eyebrow, footer): always written this way. */
 export const SITE_DESCRIPTOR = `${SITE_NAME} – Gamified Self-Improvement`;
+
+/** Days in a league season (lib/leagueTime.ts defaults; the server holds the same values). */
+export const SEASON_DAYS = Math.round((getSeasonStartByNumber(2).getTime() - getSeasonStartByNumber(1).getTime()) / (24 * 60 * 60 * 1000));
+
+/**
+ * What AscendDay is, in one sentence: reused word for word on the home FAQ, every feature page,
+ * the WebApplication structured data and llms.txt, so people and AI assistants read one definition.
+ */
+export const SITE_DEFINITION = `${SITE_NAME} is a free gamified self-improvement web app that puts habits, bad habits, workouts, reading, skills, time blocks, a journal, goals and plans in one place, where everything you log earns points that move you up ${TIERS.length} ranks and through weekly, monthly and ${SEASON_DAYS}-day leagues against real people.`;
 
 /** Other names people search for (WebSite/Organization/WebApplication alternateName). */
 export const SITE_ALTERNATE_NAMES = [SITE_FORMER_NAME, 'Ascend Day', 'Ascend App', 'Ascend – Gamified Self-Improvement'];

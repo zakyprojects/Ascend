@@ -42,9 +42,10 @@ const ogTitleOf = (title: string) => (title.endsWith(BRAND_SUFFIX) ? title.slice
 
 /**
  * The marketing footer (every page drawn with MarketingLayout) and the home, about, sign-in and
- * feature copy changed on this date: the AscendDay name and the keyword copy. Bump a route's own date when only its text changes.
+ * feature copy changed on this date (2026-10-30: the "why" answers and FAQ on home and every feature page).
+ * Bump a route's own date when only its text changes.
  */
-const SITE_COPY_UPDATED = '2026-10-25';
+const SITE_COPY_UPDATED = '2026-10-30';
 
 const featureRoutes: MarketingRoute[] = FEATURE_SLUGS.map((slug) => {
   const f = FEATURES[slug];
