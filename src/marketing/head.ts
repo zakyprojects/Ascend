@@ -1,7 +1,11 @@
-import { FEATURES } from './features/catalog';
+import { FEATURE_SLUGS, FEATURES } from './features/catalog';
+import { FEATURE_CONTENT } from './features/content';
+import type { FaqItem } from './components/Sections';
+import { LANDING_FAQ, LANDING_WHY } from './landingQa';
+import { plainText } from './plainText';
 import type { MarketingRoute } from './routes';
 import { LEGAL_CONTACT_EMAIL } from '@/lib/legal';
-import { absoluteUrl, SITE_ALTERNATE_NAMES, SITE_DESCRIPTOR, SITE_HOST, SITE_MAKER, SITE_NAME, SITE_URL } from './site';
+import { absoluteUrl, SITE_ALTERNATE_NAMES, SITE_DEFINITION, SITE_DESCRIPTOR, SITE_HOST, SITE_MAKER, SITE_NAME, SITE_URL } from './site';
 
 /** The built CSS/JS a page loads (from dist/.vite/manifest.json; the dev server passes its own). */
 export interface PageAssets {
@@ -85,6 +89,32 @@ const ICON_TAGS = [
   `<link rel="manifest" href="/manifest.json?v=5" />`,
 ];
 
+/** Captures in public/screens shown as the WebApplication's screenshots (dark theme). */
+const APP_SCREENSHOTS = ['dashboard-desktop-dark', 'habits-desktop-dark', 'leagues-desktop-dark', 'ranks-desktop-dark'];
+
+/** The questions a page shows (the same arrays it renders), for its FAQPage. */
+export function faqItemsFor(route: MarketingRoute): FaqItem[] {
+  if (route.kind === 'landing') return [...LANDING_WHY, ...LANDING_FAQ];
+  if (route.kind === 'feature' && route.slug) return FEATURE_CONTENT[route.slug].faq;
+  return [];
+}
+
+/** FAQPage JSON-LD from the visible questions and answers (answers as plain text). */
+export function faqStructuredData(route: MarketingRoute): object | null {
+  const items = faqItemsFor(route);
+  if (items.length === 0) return null;
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    '@id': `${absoluteUrl(route.path)}#faq`,
+    mainEntity: items.map(({ q, a }) => ({
+      '@type': 'Question',
+      name: q,
+      acceptedAnswer: { '@type': 'Answer', text: plainText(a) },
+    })),
+  };
+}
+
 /** JSON-LD for the page: the site's entity graph on `/`, a breadcrumb on /features pages. */
 export function structuredData(route: MarketingRoute): object | null {
   if (route.kind === 'landing') {
@@ -116,12 +146,15 @@ export function structuredData(route: MarketingRoute): object | null {
           '@id': `${SITE_URL}/#app`,
           name: SITE_NAME,
           alternateName: [...SITE_ALTERNATE_NAMES, SITE_DESCRIPTOR],
-          description:
-            'A free gamified self-improvement web app: habits, journal, reading, workouts, skills and weekly goals earn points that count toward ranks and leagues.',
+          description: SITE_DEFINITION,
           url: `${SITE_URL}/`,
           isAccessibleForFree: true,
           applicationCategory: 'LifestyleApplication',
-          operatingSystem: 'Web, Android, iOS (PWA)',
+          applicationSubCategory: 'Habit tracker',
+          operatingSystem: 'Any (web browser): Android, iOS, Windows, macOS, Linux; installable as a PWA',
+          browserRequirements: 'Requires a modern web browser with JavaScript enabled.',
+          featureList: FEATURE_SLUGS.map((slug) => `${FEATURES[slug].name}: ${FEATURES[slug].summary}`),
+          screenshot: APP_SCREENSHOTS.map((name) => `${SITE_URL}/screens/${name}.webp`),
           offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
           publisher: { '@id': `${SITE_URL}/#org` },
         },
@@ -151,6 +184,7 @@ const jsonLd = (data: object) => JSON.stringify(data).replace(/</g, '\\u003c');
 /** The whole <head> of a prerendered marketing page. */
 export function marketingHead(route: MarketingRoute, assets: PageAssets): string {
   const data = structuredData(route);
+  const faq = faqStructuredData(route);
   const parts = [
     `<meta charset="UTF-8" />`,
     ...(route.kind === 'landing' ? [`<script>${LANDING_REDIRECT_SCRIPT}</script>`] : []),
@@ -164,6 +198,7 @@ export function marketingHead(route: MarketingRoute, assets: PageAssets): string
     ...(assets.js ? [`<script type="module" crossorigin src="${assets.js}"></script>`] : []),
     ...assets.modules.map((href) => `<link rel="modulepreload" crossorigin href="${href}" />`),
     ...(data ? [`<script type="application/ld+json">${jsonLd(data)}</script>`] : []),
+    ...(faq ? [`<script type="application/ld+json">${jsonLd(faq)}</script>`] : []),
   ];
   return parts.join('\n    ');
 }
