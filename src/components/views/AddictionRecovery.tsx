@@ -221,7 +221,7 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
                   <span className="figure text-success-text">+{SOBRIETY_MILESTONE_POINTS['1m']}</span>, 90 days ={' '}
                   <span className="figure text-success-text">+{SOBRIETY_MILESTONE_POINTS['90d']}</span>.
                 </li>
-                <li>Up to {RECOVERY_POINTS.seasonCap} pts a season. Points arrive within the hour, even with the app closed.</li>
+                <li>Up to {RECOVERY_POINTS.seasonCap} pts a season. Points arrive within the hour, even with the app closed, if you opened AscendDay in the 7 days before.</li>
                 <li>Reset or delete: the streak's milestone points from this season come off. Earlier seasons keep theirs.</li>
                 <li>A new streak can earn the milestones again. Cravings never change points.</li>
               </ul>

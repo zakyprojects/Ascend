@@ -6,7 +6,7 @@ import { Block, Cards, Note, Rules, Steps, type FeatureContent } from '../blocks
 import { pts } from '../format';
 
 /* /features/recovery. Sources: lib/recoveryAwards.ts RECOVERY_MILESTONES (hours, labels, which
-   milestones re-earn each season), lib/pointsConfig.ts SOBRIETY_MILESTONE_POINTS + RECOVERY_POINTS,
+   milestone re-earns each season), lib/pointsConfig.ts SOBRIETY_MILESTONE_POINTS + RECOVERY_POINTS,
    components/views/AddictionRecovery.tsx (one tracker, clock starts when it is created, craving
    form, emergency support with box breathing and distraction ideas, reset/delete wording, the
    medical disclaimer and its SAMHSA example), the Privacy Policy ("Only you: ... cravings and
@@ -81,13 +81,14 @@ export const recovery: FeatureContent = {
           <>
             <p>
               Points come from milestones only. They are written by AscendDay’s server from your streak’s start time, so
-              they arrive within the hour of reaching a milestone even if the app is closed.
+              they arrive within the hour of reaching a milestone even if the app is closed, as long as you used AscendDay
+              at least once in the 7 days before it.
             </p>
             <p>
               One streak can hold at most {pts(cap)} in a season, which is all three milestones together. When a new
-              season starts and your streak is still going, the {week.label.replace(' Clean', '').toLowerCase()} and{' '}
-              {days(ninety.hours)}-day milestones count again for that season; the {month.label.replace(' Clean', '').toLowerCase()}{' '}
-              milestone pays once per streak.
+              season starts and your streak is still going, the {week.label.replace(' Clean', '').toLowerCase()} milestone
+              counts again after {days(week.hours)} clean days in the new season; the{' '}
+              {month.label.replace(' Clean', '').toLowerCase()} and {days(ninety.hours)}-day milestones pay once per streak.
             </p>
           </>
         }
@@ -97,7 +98,7 @@ export const recovery: FeatureContent = {
           rows={[
             { what: `${days(week.hours)} days clean (${week.label})`, amount: `+${pts(milestonePoints('1w'))}`, note: 'Once per season.' },
             { what: `${days(month.hours)} days clean (${month.label})`, amount: `+${pts(milestonePoints('1m'))}`, note: 'Once per streak.' },
-            { what: `${days(ninety.hours)} days clean (${ninety.label})`, amount: `+${pts(milestonePoints('90d'))}`, note: 'Once per season.' },
+            { what: `${days(ninety.hours)} days clean (${ninety.label})`, amount: `+${pts(milestonePoints('90d'))}`, note: 'Once per streak.' },
             { what: 'Logging or deleting a craving', amount: 'no points', tone: 'none' },
             {
               what: 'Resetting the streak or deleting the tracker',

@@ -5,10 +5,14 @@ import { getSeasonNumber, getSeasonStart } from './leagueTime';
 /**
  * Sobriety milestone points are written by the server
  * (supabase/migrations/20261015240000_server_recovery_awards.sql, take-back id match
- * 20261019120000), from the live tracker's own streak start, on every tracker write and by an
+ * 20261019120000, rules 20261030090000), from the live tracker's own streak start, on every tracker write and by an
  * hourly job:
- *   * 1 week and 90 days earn once per season, 1 month once per streak.
- *   * A milestone is dated when it was reached (a season's re-earn: the season's start).
+ *   * 1 week earns once per season, 7 days after the later of the streak start and the season
+ *     start; 1 month and 90 days earn once per streak, when reached in the running season.
+ *   * The server only awards a milestone to someone active in the 7 days before it
+ *     (20261030090000_recovery_awards_active_week.sql). The app skips that check, since it runs
+ *     for the person using it, and a full pull drops a copy the server never wrote.
+ *   * A milestone is dated when it was reached.
  *   * When the streak ends (relapse or tracker deleted), this season's awards of every other
  *     streak are taken back (recovery_revoke_<awardId>); earlier seasons stay as they are.
  *   * Milestones reached before RECOVERY_AWARDS_SERVER_SINCE are not backfilled.
@@ -30,9 +34,9 @@ export type RecoveryMilestoneKey = (typeof RECOVERY_MILESTONES)[number]['key'];
 const AWARD_ID = /^recovery_([^_]+)_(1w|1m|90d)_([0-9]+)(?:_s[0-9]+)?$/;
 const REVOKE_PREFIX = 'recovery_revoke_';
 
-/** 1 month is once per streak; 1 week and 90 days once per season (season 1 ids carry no suffix). */
+/** 1 week is once per season (season 1 ids carry no suffix); 1 month and 90 days once per streak. */
 export const recoveryAwardId = (trackerId: string, key: RecoveryMilestoneKey, startMs: number, season: number) =>
-  `recovery_${trackerId}_${key}_${startMs}${key !== '1m' && season > 1 ? `_s${season}` : ''}`;
+  `recovery_${trackerId}_${key}_${startMs}${key === '1w' && season > 1 ? `_s${season}` : ''}`;
 
 const isoOf = (ms: number) => new Date(ms).toISOString();
 
@@ -88,10 +92,10 @@ export function computeRecoveryChanges(
   const startMs = tracker?.id ? trackerStartMs(tracker) : null;
   if (tracker?.id && startMs !== null) {
     for (const m of RECOVERY_MILESTONES) {
-      const reachedMs = startMs + m.hours * 3600000;
+      const reachedMs = (m.key === '1w' ? Math.max(startMs, seasonStartMs) : startMs) + m.hours * 3600000;
+      if (m.key !== '1w' && reachedMs < seasonStartMs) continue;
       if (reachedMs > nowMs) continue;
-      if (m.key === '1m' && reachedMs < seasonStartMs) continue;
-      const atMs = m.key === '1m' ? reachedMs : Math.max(reachedMs, seasonStartMs);
+      const atMs = reachedMs;
       if (atMs < sinceMs) continue;
       const id = recoveryAwardId(tracker.id, m.key, startMs, season);
       if (ids.has(id)) continue;
