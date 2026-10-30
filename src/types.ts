@@ -103,6 +103,8 @@ export interface LeagueCompetitor {
   /** Retired seed (filler) accounts; only old saved archives still carry it, and load drops them. */
   isSeed?: boolean;
   isProfilePublic?: boolean;
+  /** Active in the last 7 days (server); a member with 0 points is listed only then. */
+  isActive?: boolean;
   stats?: UserStats;
   activeHabits?: { name: string; category?: string; frequency: string; isPreset: boolean }[];
   season_history?: SeasonHistoryEntry[];

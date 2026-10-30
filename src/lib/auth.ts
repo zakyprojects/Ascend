@@ -769,6 +769,7 @@ export function getRegisteredCompetitors(
       totalPoints: p.total_points || 0,
       isRealUser: true,
       isProfilePublic: p.is_profile_public ?? true,
+      isActive: p.active === true,
       // The member list carries no stats or past seasons: the profile dialog fetches them on tap.
     });
   }

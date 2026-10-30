@@ -75,16 +75,17 @@ function isProvisional(archive: LeagueArchive): boolean {
   return archive.source === 'server' && archive.final !== true;
 }
 
-function RankNumber({ rank }: { rank: number }) {
+/** A member with 0 points this period has no place: a dash instead of a number. */
+function RankNumber({ rank }: { rank: number | null }) {
   return (
     <span
       aria-hidden="true"
       className={cx(
         'figure w-6 shrink-0 text-center text-sm',
-        rank <= 3 ? 'font-semibold text-content-primary' : 'text-content-muted'
+        rank !== null && rank <= 3 ? 'font-semibold text-content-primary' : 'text-content-muted'
       )}
     >
-      {rank}
+      {rank ?? '–'}
     </span>
   );
 }
@@ -138,8 +139,9 @@ export function Leagues({ store, onOpenAuth }: LeaguesProps) {
   const failed = status === 'failed' && !retrying;
   const hasPlace = loaded && board.userPoints > 0;
   const memberCount = boardMemberCount(board.competitors);
-  // The table lists the members the place counts (points this period), plus you.
-  const tableRows = board.competitors.filter((c) => c.isUser || Math.round(c.points) > 0);
+  // The table lists the members the place counts (points this period), then you and members
+  // active in the last 7 days with 0 points, unranked.
+  const tableRows = board.competitors.filter((c) => c.isUser || c.isActive || Math.round(c.points) > 0);
   const config = LEAGUE_CONFIG[activeLeague];
   const LeagueIcon = LEAGUE_ICONS[config.icon] ?? Calendar;
 
@@ -288,7 +290,7 @@ export function Leagues({ store, onOpenAuth }: LeaguesProps) {
                 ) : (
                   <ol className="divide-y divide-overlay-subtle">
                     {tableRows.map((competitor, idx) => {
-                      const rank = idx + 1;
+                      const rank = Math.round(competitor.points) > 0 ? idx + 1 : null;
                       const isUser = !!competitor.isUser;
                       const seasonPoints = seasonPointsOf(competitor);
                       const tierName = getCurrentTier(seasonPoints).name;
@@ -297,7 +299,7 @@ export function Leagues({ store, onOpenAuth }: LeaguesProps) {
                           <button
                             type="button"
                             onClick={() => setSelectedCompetitor(competitor)}
-                            aria-label={`${ordinal(rank)}, ${competitor.name}${isUser ? ', you' : ''}, ${tierName}, ${pointsText(competitor.points)}`}
+                            aria-label={`${rank !== null ? ordinal(rank) : 'No place yet'}, ${competitor.name}${isUser ? ', you' : ''}, ${tierName}, ${pointsText(competitor.points)}`}
                             className={cx(
                               'group flex w-full items-center gap-2.5 px-3 py-3 text-left transition-colors sm:gap-4 sm:px-5',
                               isUser ? 'bg-overlay-subtle hover:bg-overlay-default' : 'hover:bg-overlay-subtle'
