@@ -198,7 +198,6 @@ export const leagues: FeatureContent = {
   ],
   notFor: [
     'You don’t want your username and points shown to other members.',
-    'You only want a private tracker with no comparison at all.',
   ],
   faq: [
     {

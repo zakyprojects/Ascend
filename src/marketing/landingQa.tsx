@@ -25,9 +25,9 @@ export const LANDING_FITS = [
   'You want habits, workouts, reading, skills and a journal in one place instead of five apps.',
   'You are a student or anyone building a routine, and want to see it add up week by week.',
   'You want a friend to keep you honest with a shared daily challenge.',
+  'You just want one place to track everything. Competing is optional: you can ignore points, ranks and leagues completely.',
 ];
 export const LANDING_NOT_FOR = [
-  'You want a plain to-do list with no points or competition.',
   'You need medical, mental health or addiction treatment. AscendDay can sit alongside real help, never replace it.',
   'You need an app store app. AscendDay is a web app you install from the browser.',
 ];
@@ -86,6 +86,10 @@ export const LANDING_FAQ: FaqItem[] = [
         email whenever you like. You need to be at least {MIN_AGE} to use {SITE_NAME}.
       </>
     ),
+  },
+  {
+    q: 'Do I have to compete?',
+    a: 'No. Competing is optional. You can use AscendDay only to track your habits, workouts, reading and journal in one place, and never open the leagues or think about your rank. Points still add up in the background, and like every member your username and points appear on the league tables, but nothing asks you to check them or chase anyone. Just do your work.',
   },
   {
     q: 'How do points and ranks work?',

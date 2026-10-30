@@ -216,7 +216,6 @@ export const ranks: FeatureContent = {
   ],
   notFor: [
     'You want a rank that only ever goes up; season points can fall and every season starts again.',
-    'You would rather not see numbers attached to your habits.',
   ],
   faq: [
     {
