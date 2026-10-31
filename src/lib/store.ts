@@ -218,7 +218,7 @@ import { GuardBlockedError, SessionLostError } from './errors';
 import { flushOutbox, hasPendingSyncOps, recordSyncedChanges } from './sync/outbox';
 import { applyRemoteChanges, prepareRemoteRows, pullSyncedRows, type RemoteChange } from './sync/pull';
 import { SYNCED_COLLECTIONS, itemsOf, rowIdOf, syncKeyOf } from './sync/syncedCollections';
-import { mergeAppState, deduplicatePresetHabits, mergeAppStateWithGuardResult, isLegitimateTombstoneId } from './stateMerger';
+import { mergeAppState, deduplicatePresetHabits, mergeAppStateWithGuardResult, isLegitimateTombstoneId, signInMergeBase } from './stateMerger';
 import { toUserMessage } from './userMessage';
 import { ilikeExact } from './usernameRules';
 import { disablePush } from './push';
@@ -2225,8 +2225,9 @@ export function useAppState() {
       const incomingUserId = data.userId;
       const currentUserId = currentUserRef.current?.id;
 
-      // Prevent syncing across different user accounts
-      if (incomingUserId && currentUserId && incomingUserId !== currentUserId) {
+      // Only between tabs of the same account: a signed-out tab, or one still holding another
+      // account, must not take in a state that is not its own.
+      if (!currentUserId || incomingUserId !== currentUserId) {
         return;
       }
 
@@ -2255,9 +2256,6 @@ export function useAppState() {
               pledgesInFlight.has(c.id) ? ours.get(c.id) ?? c : c
             ),
           };
-        }
-        if (current.currentUser && !targetState.currentUser) {
-          return { ...targetState, currentUser: current.currentUser };
         }
         return targetState;
       });
@@ -2735,7 +2733,7 @@ export function useAppState() {
                 }
               }
 
-              let baseCurrentState = stateRef.current;
+              let baseCurrentState = signInMergeBase(stateRef.current, sanitizedState, userId);
               if (typeof window !== 'undefined' && userId) {
                 try {
                   const isDirty = Boolean(localStorage.getItem(`ascend_dirty_${userId}`));
@@ -2822,7 +2820,10 @@ export function useAppState() {
                 const sanitizedCached = sanitizeLoadedState(cachedState, fallbackUser);
                 setState((current) =>
                   reconcileWeeklyGoalsPointsForAllWeeks(
-                    reconcileLinkedWeeklyGoals(mergeAppState(sanitizedCached, current, 'hydration'), getNow()),
+                    reconcileLinkedWeeklyGoals(
+                      mergeAppState(sanitizedCached, signInMergeBase(current, sanitizedCached, userId), 'hydration'),
+                      getNow()
+                    ),
                     getNow()
                   )
                 );
@@ -2834,8 +2835,9 @@ export function useAppState() {
                     resultingState = prev;
                     return prev;
                   }
+                  const emptyState: AppState = { ...DEFAULT_STATE, themePreference: getLocalThemePreference() || 'dark' };
                   resultingState = {
-                    ...prev,
+                    ...signInMergeBase(prev, emptyState, userId),
                     currentUser: fallbackUser,
                     username: fallbackUser.username,
                   };

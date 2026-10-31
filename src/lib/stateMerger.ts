@@ -1350,6 +1350,18 @@ export function mergeAppState(
   return mergeAppStateInternal(baseState, incomingState, mergeContext);
 }
 
+/**
+ * The state a sign-in merges `loaded` (the account `userId` as just read) with: the state on
+ * screen, unless it is another account's. A tab that still holds an earlier account (hidden while
+ * someone else signed in elsewhere) would otherwise carry that account's items into this one and
+ * save them there; then the loaded state stands alone. A guest upgrading keeps the same id, and a
+ * signed-out state belongs to no account, so both are still merged.
+ */
+export function signInMergeBase(onScreen: AppState, loaded: AppState, userId: string): AppState {
+  const heldBy = onScreen.currentUser?.id;
+  return heldBy && heldBy !== userId ? loaded : onScreen;
+}
+
 export interface MergeGuardResult {
   mergedState: AppState;
   retainedState: AppState;
