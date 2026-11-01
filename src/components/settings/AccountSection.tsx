@@ -132,6 +132,16 @@ export function AccountSection({ store, onOpenAuth }: AccountSectionProps) {
   // dialog stays open with the error; on success the session is cleared locally.
   // Back from Google's check for this account: the dialog reopens ready to delete.
   const [googleConfirmed, setGoogleConfirmed] = useState(false);
+  // Supabase starts the trip to Google with location.assign and returns at once, so the button
+  // stays busy until the page leaves; a Back from Google (page restored from cache) frees it.
+  const [openingGoogle, setOpeningGoogle] = useState(false);
+  useEffect(() => {
+    const onPageShow = (e: PageTransitionEvent) => {
+      if (e.persisted) setOpeningGoogle(false);
+    };
+    window.addEventListener('pageshow', onPageShow);
+    return () => window.removeEventListener('pageshow', onPageShow);
+  }, []);
   useEffect(() => {
     if (userId && takeGoogleDeleteReauth(userId)) {
       setGoogleConfirmed(true);
@@ -145,7 +155,13 @@ export function AccountSection({ store, onOpenAuth }: AccountSectionProps) {
         await executeDeleteAccount(async () => {
           if (!googleConfirmed) {
             if (!userId) throw new Error("Couldn't start the Google check. Try again.");
-            await startGoogleDeleteReauth(userId, settingsSectionPath('account'));
+            setOpeningGoogle(true);
+            try {
+              await startGoogleDeleteReauth(userId, settingsSectionPath('account'));
+            } catch (err) {
+              setOpeningGoogle(false);
+              throw err;
+            }
             return;
           }
           try {
@@ -318,7 +334,7 @@ export function AccountSection({ store, onOpenAuth }: AccountSectionProps) {
           open={showDeleteConfirm}
           username={currentUser?.username || ''}
           email={currentUser?.email || ''}
-          isDeleting={isDeletingAccount}
+          isDeleting={isDeletingAccount || openingGoogle}
           error={deleteAccountError ? toUserMessage(deleteAccountError, "Couldn't delete your account. Try again.") : null}
           onClose={() => setShowDeleteConfirm(false)}
           onConfirm={handleDeleteAccount}
