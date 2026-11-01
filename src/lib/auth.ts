@@ -703,6 +703,55 @@ export async function deleteOwnAccount(userId: string): Promise<void> {
   clearLocalUserData(userId);
 }
 
+/**
+ * Whether the signed-in account can sign in with a password. An account made with "Continue with
+ * Google" has none, so Change password is hidden and Delete account confirms through Google.
+ * Unknown (no session yet) counts as yes, the long-standing path.
+ */
+export async function accountHasPassword(): Promise<boolean> {
+  const { data } = await supabase.auth.getSession();
+  const providers = data.session?.user.app_metadata?.providers as string[] | undefined;
+  return !providers || providers.includes('email');
+}
+
+// delete_own_account accepts a member only within 5 minutes of a fresh sign-in; a Google sign-in
+// stamps it like a password check. The mark says this device went to Google to delete `userId`.
+const DELETE_REAUTH_KEY = 'ascend_delete_reauth';
+const DELETE_REAUTH_MS = 5 * 60 * 1000;
+
+/** Sends a Google account to Google to confirm it is them, then back to Settings → Account. */
+export async function startGoogleDeleteReauth(userId: string, returnPath: string): Promise<void> {
+  try {
+    sessionStorage.setItem(DELETE_REAUTH_KEY, JSON.stringify({ userId, at: trustedNowMs() }));
+  } catch {
+    throw new Error("Couldn't start the Google check. Try again.");
+  }
+  try {
+    await signInWithGoogle(returnPath);
+  } catch (err) {
+    sessionStorage.removeItem(DELETE_REAUTH_KEY);
+    throw err;
+  }
+}
+
+/** True once, on the return from Google, for the same account and within the server's 5 minutes. */
+export function takeGoogleDeleteReauth(userId: string): boolean {
+  let raw: string | null = null;
+  try {
+    raw = sessionStorage.getItem(DELETE_REAUTH_KEY);
+    sessionStorage.removeItem(DELETE_REAUTH_KEY);
+  } catch {
+    return false;
+  }
+  if (!raw) return false;
+  try {
+    const mark = JSON.parse(raw) as { userId?: string; at?: number };
+    return mark.userId === userId && typeof mark.at === 'number' && trustedNowMs() - mark.at < DELETE_REAUTH_MS;
+  } catch {
+    return false;
+  }
+}
+
 /** Removes everything this device keeps for one account (cache, sync queue, ids). */
 export function clearLocalUserData(userId: string): void {
   clearUserDataWatermark(userId);

@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { LogOut, Trash2 } from 'lucide-react';
 import { AppStore } from '@/lib/store';
-import { changeUserPassword, WrongCurrentPasswordError } from '@/lib/auth';
+import { accountHasPassword, changeUserPassword, startGoogleDeleteReauth, takeGoogleDeleteReauth, WrongCurrentPasswordError } from '@/lib/auth';
+import { settingsSectionPath } from '@/lib/settingsSections';
 import { verifyAccountPassword } from '@/lib/supabase';
 import { newPasswordProblem } from '@/lib/passwordRules';
 import { PasswordInput } from '@/components/ui/PasswordInput';
@@ -26,7 +27,20 @@ interface AccountSectionProps {
 export function AccountSection({ store, onOpenAuth }: AccountSectionProps) {
   const currentUser = store.state.currentUser;
   const isGuest = Boolean(currentUser?.isAnonymous);
+  const userId = currentUser?.id;
   const { showSuccessToast } = useToast();
+
+  // A Google-only account has no password: no Change password, and Delete confirms through Google.
+  const [hasPassword, setHasPassword] = useState(true);
+  useEffect(() => {
+    let cancelled = false;
+    void accountHasPassword().then((yes) => {
+      if (!cancelled) setHasPassword(yes);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [userId]);
 
   // ── Password (asks for the current one first, D-S3) ──
   const [showPasswordForm, setShowPasswordForm] = useState(false);
@@ -116,7 +130,42 @@ export function AccountSection({ store, onOpenAuth }: AccountSectionProps) {
   // The password is checked first: the server deletes only right after a password sign-in
   // (Security B1). On failure the account still exists, so the user stays signed in and the
   // dialog stays open with the error; on success the session is cleared locally.
+  // Back from Google's check for this account: the dialog reopens ready to delete.
+  const [googleConfirmed, setGoogleConfirmed] = useState(false);
+  useEffect(() => {
+    if (userId && takeGoogleDeleteReauth(userId)) {
+      setGoogleConfirmed(true);
+      setShowDeleteConfirm(true);
+    }
+  }, [userId]);
+
   const handleDeleteAccount = async (password: string) => {
+    if (!hasPassword) {
+      try {
+        await executeDeleteAccount(async () => {
+          if (!googleConfirmed) {
+            if (!userId) throw new Error("Couldn't start the Google check. Try again.");
+            await startGoogleDeleteReauth(userId, settingsSectionPath('account'));
+            return;
+          }
+          try {
+            await store.deleteAccount();
+          } catch (err) {
+            // Past the server's 5 minutes: the Google check has to be done again.
+            setGoogleConfirmed(false);
+            if (err instanceof Error && err.message.includes('password again')) {
+              throw new Error('The Google check expired. Continue with Google again.');
+            }
+            throw err;
+          }
+        });
+      } catch (err) {
+        console.error('Account deletion failed in Settings:', err);
+        return;
+      }
+      if (googleConfirmed) setShowDeleteConfirm(false);
+      return;
+    }
     try {
       await executeDeleteAccount(async () => {
         if (!currentUser?.email) throw new Error("Couldn't check your password. Try again.");
@@ -137,7 +186,7 @@ export function AccountSection({ store, onOpenAuth }: AccountSectionProps) {
     <SettingsCard title="Account">
       <Input id="settings-email" label="Email" readOnly value={currentUser?.email || (isGuest ? 'Guest (no email)' : '')} className="text-content-muted" />
 
-      {!isGuest && (
+      {!isGuest && hasPassword && (
         <div className="border-t border-overlay-subtle pt-2">
           <SettingRow
             title="Password"
@@ -273,9 +322,11 @@ export function AccountSection({ store, onOpenAuth }: AccountSectionProps) {
           error={deleteAccountError ? toUserMessage(deleteAccountError, "Couldn't delete your account. Try again.") : null}
           onClose={() => setShowDeleteConfirm(false)}
           onConfirm={handleDeleteAccount}
+          confirmWith={hasPassword ? 'password' : 'google'}
+          googleConfirmed={googleConfirmed}
         />
       )}
-      {isDeletingAccount && <AscendLoadingOverlay message="Deleting your account…" submessage="Removing all your data" />}
+      {isDeletingAccount && (hasPassword || googleConfirmed) && <AscendLoadingOverlay message="Deleting your account…" submessage="Removing all your data" />}
       {isLoggingOut && <AscendLoadingOverlay message="Logging out…" submessage="Just a moment" />}
     </SettingsCard>
   );

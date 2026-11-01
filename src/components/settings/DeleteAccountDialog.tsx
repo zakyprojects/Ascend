@@ -12,15 +12,31 @@ interface DeleteAccountDialogProps {
   isDeleting: boolean;
   error: string | null;
   onClose: () => void;
+  /** Gets the typed password; empty for a Google account (`confirmWith="google"`). */
   onConfirm: (password: string) => void;
+  /** A Google account has no password: it confirms by signing in with Google again. */
+  confirmWith?: 'password' | 'google';
+  /** The Google check is done (back from Google within the server's 5 minutes). */
+  googleConfirmed?: boolean;
 }
 
 /**
  * Delete account: the button unlocks only once the exact username and the password are typed
- * (D-S1; the password is checked before the server deletes, Security B1). The text names what
- * goes with the account, including shared plans and partners.
+ * (D-S1; the password is checked before the server deletes, Security B1). A Google account types
+ * the username, goes to Google to confirm, and back here types it again to delete. The text names
+ * what goes with the account, including shared plans and partners.
  */
-export function DeleteAccountDialog({ open, username, email, isDeleting, error, onClose, onConfirm }: DeleteAccountDialogProps) {
+export function DeleteAccountDialog({
+  open,
+  username,
+  email,
+  isDeleting,
+  error,
+  onClose,
+  onConfirm,
+  confirmWith = 'password',
+  googleConfirmed = false,
+}: DeleteAccountDialogProps) {
   const [typed, setTyped] = useState('');
   const [password, setPassword] = useState('');
   // Every open starts empty.
@@ -33,7 +49,9 @@ export function DeleteAccountDialog({ open, username, email, isDeleting, error, 
     }
   }
   const matches = Boolean(username) && typed.trim() === username;
-  const ready = matches && password.length > 0;
+  const usesGoogle = confirmWith === 'google';
+  const ready = matches && (usesGoogle || password.length > 0);
+  const toGoogle = usesGoogle && !googleConfirmed;
 
   return (
     <Dialog
@@ -50,7 +68,7 @@ export function DeleteAccountDialog({ open, username, email, isDeleting, error, 
           </button>
           <button type="submit" form="delete-account-form" disabled={isDeleting || !ready} className="btn-danger-solid">
             {isDeleting ? <AscendLoadingIndicator size="sm" /> : null}
-            <span>{isDeleting ? 'Deleting…' : 'Delete account'}</span>
+            <span>{isDeleting ? (toGoogle ? 'Opening Google…' : 'Deleting…') : toGoogle ? 'Continue with Google' : 'Delete account'}</span>
           </button>
         </>
       }
@@ -60,7 +78,7 @@ export function DeleteAccountDialog({ open, username, email, isDeleting, error, 
         className="space-y-3"
         onSubmit={(e) => {
           e.preventDefault();
-          if (ready && !isDeleting) onConfirm(password);
+          if (ready && !isDeleting) onConfirm(usesGoogle ? '' : password);
         }}
       >
         <ul className="list-disc space-y-1 pl-5 text-sm text-content-secondary">
@@ -78,17 +96,27 @@ export function DeleteAccountDialog({ open, username, email, isDeleting, error, 
           autoCapitalize="none"
           spellCheck={false}
         />
-        {/* Tells password managers whose password this is, so they fill the account here and not
-            into the "type your username" field above. */}
-        <input type="hidden" autoComplete="username" value={email} readOnly />
-        <PasswordInput
-          id="delete-account-password"
-          label="Your password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          disabled={isDeleting}
-          autoComplete="current-password"
-        />
+        {usesGoogle ? (
+          <p className="text-xs text-content-muted">
+            {googleConfirmed
+              ? 'Google confirmed it’s you. Delete within 5 minutes.'
+              : 'Your account signs in with Google, so Google confirms it’s you. Pick this same Google account; you come back here to finish.'}
+          </p>
+        ) : (
+          <>
+            {/* Tells password managers whose password this is, so they fill the account here and not
+                into the "type your username" field above. */}
+            <input type="hidden" autoComplete="username" value={email} readOnly />
+            <PasswordInput
+              id="delete-account-password"
+              label="Your password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              disabled={isDeleting}
+              autoComplete="current-password"
+            />
+          </>
+        )}
         {error ? <FieldErrorBubble message={error} attached={false} /> : null}
         <CaptchaSlot />
       </form>
