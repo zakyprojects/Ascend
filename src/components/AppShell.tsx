@@ -33,6 +33,8 @@ import { useRankUpCelebration } from '@/lib/useRankUpCelebration';
 import { ViewEntrance } from './ViewEntrance';
 import { AppStore } from '@/lib/store';
 import { GuestLogoutWarningModal } from './ui/GuestLogoutWarningModal';
+import { ProfileSetupDialog } from './auth/ProfileSetupDialog';
+import { isProfileSetupDue } from '@/lib/auth';
 import { LogoutConfirmModal } from './ui/LogoutConfirmModal';
 import { NotificationCenter } from './ui/NotificationCenter';
 import { AppLogo } from './ui/AppLogo';
@@ -209,6 +211,12 @@ export function AppShell({ currentView, navigationKind, pendingView = null, onVi
   const seasonPoints = useMemo(() => getLeagueData('ninetyDay').userPoints, [getLeagueData, minute]);
   const { celebration, closeCelebration } = useRankUpCelebration(store, seasonPoints);
   const userAvatar = currentUser?.avatar || '🧑';
+  // A new Google account picks its username and avatar once (its name came from the email).
+  const [profileSetupFor, setProfileSetupFor] = useState<string | null>(null);
+  useEffect(() => {
+    const id = currentUser?.id;
+    if (id && !currentUser?.isAnonymous && isProfileSetupDue(id)) setProfileSetupFor(id);
+  }, [currentUser?.id, currentUser?.isAnonymous]);
 
   const handleLogoutClick = () => {
     if (currentUser?.isAnonymous) {
@@ -394,6 +402,10 @@ export function AppShell({ currentView, navigationKind, pendingView = null, onVi
           onClose={closeZoneSheet}
         />
       </div>
+
+      {profileSetupFor && profileSetupFor === currentUser?.id && (
+        <ProfileSetupDialog store={store} onClose={() => setProfileSetupFor(null)} />
+      )}
 
       {celebration && (
         <RankUpCelebration from={celebration.from} to={celebration.to} seasonPoints={seasonPoints} onClose={closeCelebration} />

@@ -397,6 +397,37 @@ export async function recordGoogleTermsConsent(authUser: { user_metadata?: Recor
 }
 
 /**
+ * A new "Continue with Google" account gets its name from the email and the default avatar, so
+ * the app offers once to choose both (ProfileSetupDialog). The mark lives on this device until the
+ * person saves or skips.
+ */
+const profileSetupKey = (userId: string) => `ascend_profile_setup_${userId}`;
+
+export function markProfileSetupDue(userId: string): void {
+  try {
+    localStorage.setItem(profileSetupKey(userId), '1');
+  } catch {
+    /* storage unavailable: the choice stays in Settings */
+  }
+}
+
+export function isProfileSetupDue(userId: string): boolean {
+  try {
+    return localStorage.getItem(profileSetupKey(userId)) === '1';
+  } catch {
+    return false;
+  }
+}
+
+export function clearProfileSetupDue(userId: string): void {
+  try {
+    localStorage.removeItem(profileSetupKey(userId));
+  } catch {
+    /* storage unavailable */
+  }
+}
+
+/**
  * Upgrade an anonymous guest user account to a permanent email/password account.
  *
  * Uses supabase.auth.updateUser({ email, password }) to preserve the user's UUID and data.
