@@ -28,16 +28,17 @@ interface SettingsViewProps {
   onNavigate: (view: View) => void;
 }
 
+// Most used first; account management, then help and about last.
 const SECTIONS: { id: SettingsSection; label: string; icon: LucideIcon }[] = [
   { id: 'profile', label: 'Profile', icon: User },
-  { id: 'account', label: 'Account', icon: KeyRound },
-  { id: 'notifications', label: 'Notifications', icon: Bell },
-  { id: 'privacy', label: 'Privacy', icon: Eye },
   { id: 'appearance', label: 'Appearance', icon: Palette },
   { id: 'sound', label: 'Sound & vibration', icon: Vibrate },
-  { id: 'app', label: 'App info', icon: Info },
+  { id: 'notifications', label: 'Notifications', icon: Bell },
+  { id: 'privacy', label: 'Privacy', icon: Eye },
+  { id: 'account', label: 'Account', icon: KeyRound },
+  { id: 'support', label: 'Support us', icon: Coffee },
   { id: 'about-us', label: 'About us', icon: UserRound },
-  { id: 'support', label: 'Support', icon: Coffee },
+  { id: 'app', label: 'App info', icon: Info },
 ];
 const SECTION_IDS = SECTIONS.map(({ id }) => id);
 
