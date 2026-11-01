@@ -27,10 +27,10 @@ export function leagueNow(): Date {
 /**
  * The season calendar's master values live on the server (public.ascend_season_epoch() /
  * ascend_season_length(), read through the ascend_season_config RPC), so the season changes at
- * one UTC instant for everyone. These defaults (Season 1 starts August 1, 2026 00:00 UTC; 90
+ * one UTC instant for everyone. These defaults (Season 1 starts November 1, 2026 00:00 UTC; 90
  * days) are only used until the server's values arrive, and then the last copy this device saw.
  */
-const DEFAULT_EPOCH_MS = Date.UTC(2026, 7, 1, 0, 0, 0, 0);
+const DEFAULT_EPOCH_MS = Date.UTC(2026, 10, 1, 0, 0, 0, 0);
 const DEFAULT_SEASON_LENGTH_MS = 90 * 24 * 60 * 60 * 1000;
 const SEASON_CONFIG_KEY = 'ascend_season_config';
 const SEASON_CONFIG_TIMEOUT_MS = 3000;

@@ -37,7 +37,7 @@ function runFixtures() {
   assert(now instanceof Date && !isNaN(now.getTime()), 'leagueNow() must return a valid Date instance');
 
   // Test 2: season master defaults (Season 1 start, 90-day length)
-  assert(getSeasonStartByNumber(1).getTime() === Date.UTC(2026, 7, 1), 'Season 1 must start 2026-08-01 00:00 UTC');
+  assert(getSeasonStartByNumber(1).getTime() === Date.UTC(2026, 10, 1), 'Season 1 must start 2026-11-01 00:00 UTC');
   assert(getSeasonStartByNumber(2).getTime() - getSeasonStartByNumber(1).getTime() === 90 * 24 * 60 * 60 * 1000, 'A season must be 90 days');
 
   // Test 3: Week boundary test cases
@@ -76,27 +76,27 @@ function runFixtures() {
   assert(getMonthStart(octStartDate).toISOString() === '2026-10-01T00:00:00.000Z', 'Oct start must be 2026-10-01T00:00:00.000Z');
   assert(getMonthEnd(octStartDate).toISOString() === '2026-11-01T00:00:00.000Z', 'Oct end must be 2026-11-01T00:00:00.000Z');
 
-  // Test 5: Season boundary test cases (Aug 1 + 90 days = Oct 30)
-  const season1EndDate = new Date('2026-10-29T23:59:59.999Z');
-  const season2StartDate = new Date('2026-10-30T00:00:00.000Z');
+  // Test 5: Season boundary test cases (Nov 1 + 90 days = Jan 30)
+  const season1EndDate = new Date('2027-01-29T23:59:59.999Z');
+  const season2StartDate = new Date('2027-01-30T00:00:00.000Z');
 
   const season1Number = getSeasonNumber(season1EndDate);
   const season2Number = getSeasonNumber(season2StartDate);
   const season1Id = getSeasonPeriodId(season1EndDate);
   const season2Id = getSeasonPeriodId(season2StartDate);
 
-  console.log(`[Season Boundary] 2026-10-29T23:59:59.999Z -> Season ${season1Number} (${season1Id})`);
-  console.log(`[Season Boundary] 2026-10-30T00:00:00.000Z -> Season ${season2Number} (${season2Id})`);
+  console.log(`[Season Boundary] 2027-01-29T23:59:59.999Z -> Season ${season1Number} (${season1Id})`);
+  console.log(`[Season Boundary] 2027-01-30T00:00:00.000Z -> Season ${season2Number} (${season2Id})`);
 
   assert(season1Number === 1, `Season 1 number expected 1, got ${season1Number}`);
   assert(season2Number === 2, `Season 2 number expected 2, got ${season2Number}`);
   assert(season1Id === 'S:1', `Season 1 ID expected S:1, got ${season1Id}`);
   assert(season2Id === 'S:2', `Season 2 ID expected S:2, got ${season2Id}`);
 
-  assert(getSeasonStart(season1EndDate).toISOString() === '2026-08-01T00:00:00.000Z', 'Season 1 start must be 2026-08-01T00:00:00.000Z');
-  assert(getSeasonEnd(season1EndDate).toISOString() === '2026-10-30T00:00:00.000Z', 'Season 1 end must be 2026-10-30T00:00:00.000Z');
-  assert(getSeasonStart(season2StartDate).toISOString() === '2026-10-30T00:00:00.000Z', 'Season 2 start must be 2026-10-30T00:00:00.000Z');
-  assert(getSeasonEnd(season2StartDate).toISOString() === '2027-01-28T00:00:00.000Z', 'Season 2 end must be 2027-01-28T00:00:00.000Z');
+  assert(getSeasonStart(season1EndDate).toISOString() === '2026-11-01T00:00:00.000Z', 'Season 1 start must be 2026-11-01T00:00:00.000Z');
+  assert(getSeasonEnd(season1EndDate).toISOString() === '2027-01-30T00:00:00.000Z', 'Season 1 end must be 2027-01-30T00:00:00.000Z');
+  assert(getSeasonStart(season2StartDate).toISOString() === '2027-01-30T00:00:00.000Z', 'Season 2 start must be 2027-01-30T00:00:00.000Z');
+  assert(getSeasonEnd(season2StartDate).toISOString() === '2027-04-30T00:00:00.000Z', 'Season 2 end must be 2027-04-30T00:00:00.000Z');
 
   // Test 6: ISO week-year boundary cases
   const isoYearEndMonday = new Date('2026-12-28T00:00:00.000Z'); // Monday of ISO week 53 in 2026
@@ -149,8 +149,8 @@ function runFixtures() {
 
   assert(preEpochSeasonNumber === 1, `Pre-epoch season number expected 1, got ${preEpochSeasonNumber}`);
   assert(preEpochSeasonId === 'S:1', `Pre-epoch season ID expected S:1, got ${preEpochSeasonId}`);
-  assert(preEpochSeasonStart.toISOString() === '2026-08-01T00:00:00.000Z', 'Pre-epoch season start must clamp to EPOCH_UTC');
-  assert(preEpochSeasonEnd.toISOString() === '2026-10-30T00:00:00.000Z', 'Pre-epoch season end must be EPOCH_UTC + 90 days');
+  assert(preEpochSeasonStart.toISOString() === '2026-11-01T00:00:00.000Z', 'Pre-epoch season start must clamp to EPOCH_UTC');
+  assert(preEpochSeasonEnd.toISOString() === '2027-01-30T00:00:00.000Z', 'Pre-epoch season end must be EPOCH_UTC + 90 days');
 
   // Test 9: Half-open interval invariant [start, end)
   const samples = [
@@ -176,25 +176,27 @@ function runFixtures() {
     const me = getMonthEnd(s);
     assert(s.getTime() >= ms.getTime() && s.getTime() < me.getTime(), `Sample ${s.toISOString()} must satisfy ms <= s < me`);
 
+    // Dates before Season 1 clamp to it (Test 8), so only in-season samples hold [start, end).
+    if (s.getTime() < getSeasonStartByNumber(1).getTime()) continue;
     const ss = getSeasonStart(s);
     const se = getSeasonEnd(s);
     assert(s.getTime() >= ss.getTime() && s.getTime() < se.getTime(), `Sample ${s.toISOString()} must satisfy ss <= s < se`);
   }
 
-  // Test 10: a season start inside a week or month (Season 2 begins Fri 2026-10-30 00:00 UTC,
-  // inside W:2026-W44 Oct 26 - Nov 2 and M:2026-10). The running period resets at the season start.
+  // Test 10: a season start inside a week or month (Season 2 begins Sat 2027-01-30 00:00 UTC,
+  // inside W:2027-W04 Jan 25 - Feb 1 and M:2027-01). The running period resets at the season start.
   const utc = (y: number, m: number, d: number, h = 0, min = 0) => new Date(Date.UTC(y, m - 1, d, h, min));
   const HOUR_MS = 60 * 60 * 1000;
   const endCases: [LeagueType, Date, Date][] = [
-    ['weekly', utc(2026, 10, 28), utc(2026, 10, 30)],
-    ['monthly', utc(2026, 10, 22), utc(2026, 10, 30)],
-    ['weekly', utc(2026, 10, 31), utc(2026, 11, 2)],
-    ['monthly', utc(2026, 10, 31), utc(2026, 11, 1)],
-    ['weekly', utc(2026, 11, 4), utc(2026, 11, 9)],
-    ['monthly', utc(2026, 9, 15), utc(2026, 10, 1)],
-    ['weekly', utc(2026, 10, 21), utc(2026, 10, 26)],
-    ['ninetyDay', utc(2026, 10, 28), utc(2026, 10, 30)],
-    ['weekly', utc(2027, 1, 26), utc(2027, 1, 28)],
+    ['weekly', utc(2027, 1, 27), utc(2027, 1, 30)],
+    ['monthly', utc(2027, 1, 22), utc(2027, 1, 30)],
+    ['weekly', utc(2027, 1, 31), utc(2027, 2, 1)],
+    ['monthly', utc(2027, 1, 31), utc(2027, 2, 1)],
+    ['weekly', utc(2027, 2, 3), utc(2027, 2, 8)],
+    ['monthly', utc(2026, 12, 15), utc(2027, 1, 1)],
+    ['weekly', utc(2027, 1, 20), utc(2027, 1, 25)],
+    ['ninetyDay', utc(2027, 1, 27), utc(2027, 1, 30)],
+    ['weekly', utc(2027, 4, 28), utc(2027, 4, 30)],
   ];
   for (const [type, at, want] of endCases) {
     const got = getLeaguePeriodEnd(type, at);
@@ -202,23 +204,24 @@ function runFixtures() {
   }
 
   // Countdown just before and just after the season start.
-  assert(getTimeUntilReset('weekly', utc(2026, 10, 29, 23)) === HOUR_MS, 'Weekly countdown 1 h before the season start must be 1 h');
-  assert(getTimeUntilReset('monthly', utc(2026, 10, 29, 23)) === HOUR_MS, 'Monthly countdown 1 h before the season start must be 1 h');
-  assert(getTimeUntilReset('weekly', utc(2026, 10, 30)) === 3 * 24 * HOUR_MS, 'Weekly countdown at the season start must run to Mon Nov 2');
-  assert(getTimeUntilReset('monthly', utc(2026, 10, 30)) === 2 * 24 * HOUR_MS, 'Monthly countdown at the season start must run to Nov 1');
+  assert(getTimeUntilReset('weekly', utc(2027, 1, 29, 23)) === HOUR_MS, 'Weekly countdown 1 h before the season start must be 1 h');
+  assert(getTimeUntilReset('monthly', utc(2027, 1, 29, 23)) === HOUR_MS, 'Monthly countdown 1 h before the season start must be 1 h');
+  assert(getTimeUntilReset('weekly', utc(2027, 1, 30)) === 2 * 24 * HOUR_MS, 'Weekly countdown at the season start must run to Mon Feb 1');
+  assert(getTimeUntilReset('monthly', utc(2027, 1, 30)) === 2 * 24 * HOUR_MS, 'Monthly countdown at the season start must run to Feb 1');
 
   // Live labels follow the cut.
   const labelCases: [LeagueType, Date, string][] = [
-    ['weekly', utc(2026, 10, 28), 'Oct 26 – Oct 29'],
-    ['weekly', utc(2026, 10, 31), 'Oct 30 – Nov 1'],
-    ['weekly', utc(2026, 10, 21), 'Oct 19 – Oct 25'],
-    ['monthly', utc(2026, 10, 22), 'Oct 1 – Oct 29'],
-    ['monthly', utc(2026, 10, 31), 'Oct 30 – Oct 31'],
-    ['monthly', utc(2026, 9, 15), 'September 2026'],
+    ['weekly', utc(2027, 1, 27), 'Jan 25 – Jan 29'],
+    ['weekly', utc(2027, 1, 31), 'Jan 30 – Jan 31'],
+    ['weekly', utc(2027, 1, 20), 'Jan 18 – Jan 24'],
+    ['monthly', utc(2027, 1, 22), 'Jan 1 – Jan 29'],
+    ['monthly', utc(2027, 1, 31), 'Jan 30 – Jan 31'],
+    ['monthly', utc(2026, 12, 15), 'December 2026'],
     ['monthly', utc(2026, 11, 15), 'November 2026'],
-    // One-day week parts show one day (Season 5 starts Tue Jul 27, 2027; Season 7 Sun Jan 23, 2028).
-    ['weekly', utc(2027, 7, 26, 12), 'Jul 26'],
-    ['weekly', utc(2028, 1, 23, 12), 'Jan 23'],
+    ['monthly', utc(2027, 2, 15), 'February 2027'],
+    // One-day week parts show one day (Season 1 starts Sun Nov 1, 2026; Season 6 Tue Jan 25, 2028).
+    ['weekly', utc(2026, 11, 1, 12), 'Nov 1'],
+    ['weekly', utc(2028, 1, 24, 12), 'Jan 24'],
   ];
   for (const [type, at, want] of labelCases) {
     const got = getLeaguePeriodLabel(type, at);
@@ -227,25 +230,26 @@ function runFixtures() {
 
   // Test 11: archive ids, including '<id>@S<n>' parts (the part before season n + 1 began).
   const archive = (id: string, type: LeagueType): LeagueArchive =>
-    ({ id, type, periodLabel: 'stored', competitors: [], userRank: 1, userPoints: 1, archivedAt: utc(2026, 11, 2).toISOString() });
+    ({ id, type, periodLabel: 'stored', competitors: [], userRank: 1, userPoints: 1, archivedAt: utc(2027, 2, 2).toISOString() });
   const archiveCases: [string, LeagueType, Date, Date, string][] = [
-    ['W:2026-W44@S1', 'weekly', utc(2026, 10, 26), utc(2026, 10, 30), 'Oct 26 – Oct 29 (Season 1)'],
-    ['W:2026-W44', 'weekly', utc(2026, 10, 26), utc(2026, 11, 2), 'Oct 30 – Nov 1'],
-    ['M:2026-10@S1', 'monthly', utc(2026, 10, 1), utc(2026, 10, 30), 'Oct 1 – Oct 29, 2026 (Season 1)'],
-    ['M:2026-10', 'monthly', utc(2026, 10, 1), utc(2026, 11, 1), 'Oct 30 – Oct 31, 2026 (Season 2)'],
-    ['M:2026-09', 'monthly', utc(2026, 9, 1), utc(2026, 10, 1), 'September 2026'],
-    ['M:2026-08', 'monthly', utc(2026, 8, 1), utc(2026, 9, 1), 'August 2026'],
-    ['W:2026-W31', 'weekly', utc(2026, 7, 27), utc(2026, 8, 3), 'Aug 1 – Aug 2'],
-    ['W:2026-W43', 'weekly', utc(2026, 10, 19), utc(2026, 10, 26), 'Oct 19 – Oct 25'],
-    ['W:2027-W04@S2', 'weekly', utc(2027, 1, 25), utc(2027, 1, 28), 'Jan 25 – Jan 27 (Season 2)'],
-    ['M:2027-01@S2', 'monthly', utc(2027, 1, 1), utc(2027, 1, 28), 'Jan 1 – Jan 27, 2027 (Season 2)'],
-    ['S:1', 'ninetyDay', utc(2026, 8, 1), utc(2026, 10, 30), 'Season 1 (Aug 1 – Oct 29, 2026)'],
-    // Season 5 starts Tue Jul 27, 2027: the week's part before it is one day, shown as that day.
-    ['W:2027-W30@S4', 'weekly', utc(2027, 7, 26), utc(2027, 7, 27), 'Jul 26 (Season 4)'],
-    ['W:2027-W30', 'weekly', utc(2027, 7, 26), utc(2027, 8, 2), 'Jul 27 – Aug 1'],
-    // Season 7 starts Sun Jan 23, 2028: the week's in-season part is one day.
-    ['W:2028-W03', 'weekly', utc(2028, 1, 17), utc(2028, 1, 24), 'Jan 23'],
-    ['W:2028-W03@S6', 'weekly', utc(2028, 1, 17), utc(2028, 1, 23), 'Jan 17 – Jan 22 (Season 6)'],
+    ['W:2027-W04@S1', 'weekly', utc(2027, 1, 25), utc(2027, 1, 30), 'Jan 25 – Jan 29 (Season 1)'],
+    ['W:2027-W04', 'weekly', utc(2027, 1, 25), utc(2027, 2, 1), 'Jan 30 – Jan 31'],
+    ['M:2027-01@S1', 'monthly', utc(2027, 1, 1), utc(2027, 1, 30), 'Jan 1 – Jan 29, 2027 (Season 1)'],
+    ['M:2027-01', 'monthly', utc(2027, 1, 1), utc(2027, 2, 1), 'Jan 30 – Jan 31, 2027 (Season 2)'],
+    ['M:2026-12', 'monthly', utc(2026, 12, 1), utc(2027, 1, 1), 'December 2026'],
+    ['M:2026-11', 'monthly', utc(2026, 11, 1), utc(2026, 12, 1), 'November 2026'],
+    // Season 1 starts Sun Nov 1, 2026: the first week's in-season part is that one day.
+    ['W:2026-W44', 'weekly', utc(2026, 10, 26), utc(2026, 11, 2), 'Nov 1'],
+    ['W:2027-W03', 'weekly', utc(2027, 1, 18), utc(2027, 1, 25), 'Jan 18 – Jan 24'],
+    ['W:2027-W17@S2', 'weekly', utc(2027, 4, 26), utc(2027, 4, 30), 'Apr 26 – Apr 29 (Season 2)'],
+    ['M:2027-04@S2', 'monthly', utc(2027, 4, 1), utc(2027, 4, 30), 'Apr 1 – Apr 29, 2027 (Season 2)'],
+    ['S:1', 'ninetyDay', utc(2026, 11, 1), utc(2027, 1, 30), 'Season 1 (Nov 1, 2026 – Jan 29, 2027)'],
+    // Season 6 starts Tue Jan 25, 2028: the week's part before it is one day, shown as that day.
+    ['W:2028-W04@S5', 'weekly', utc(2028, 1, 24), utc(2028, 1, 25), 'Jan 24 (Season 5)'],
+    ['W:2028-W04', 'weekly', utc(2028, 1, 24), utc(2028, 1, 31), 'Jan 25 – Jan 30'],
+    // Season 8 starts Sun Jul 23, 2028: the week's in-season part is one day.
+    ['W:2028-W29', 'weekly', utc(2028, 7, 17), utc(2028, 7, 24), 'Jul 23'],
+    ['W:2028-W29@S7', 'weekly', utc(2028, 7, 17), utc(2028, 7, 23), 'Jul 17 – Jul 22 (Season 7)'],
   ];
   for (const [id, type, wantStart, wantEnd, wantLabel] of archiveCases) {
     const a = archive(id, type);
@@ -254,18 +258,18 @@ function runFixtures() {
     const label = getArchivePeriodLabel(a);
     assert(label === wantLabel, `getArchivePeriodLabel(${id}) expected "${wantLabel}", got "${label}"`);
   }
-  assert(getArchivePeriodLabel(archive('W:2026-W44@X1', 'weekly')) === 'stored', 'An unknown id falls back to the stored label');
+  assert(getArchivePeriodLabel(archive('W:2027-W04@X1', 'weekly')) === 'stored', 'An unknown id falls back to the stored label');
 
   // Newest first; the in-season part leads its pre-season part (whatever the store order).
-  const weeklyIds = ['W:2026-W44@S1', 'W:2026-W43', 'W:2026-W44', 'W:2026-W45'];
+  const weeklyIds = ['W:2027-W04@S1', 'W:2027-W03', 'W:2027-W04', 'W:2027-W05'];
   for (const order of [weeklyIds, [...weeklyIds].reverse()]) {
     const sorted = order.map((id) => archive(id, 'weekly')).sort(compareArchivesNewestFirst).map((a) => a.id).join(',');
-    assert(sorted === 'W:2026-W45,W:2026-W44,W:2026-W44@S1,W:2026-W43', `Weekly archive order wrong: ${sorted}`);
+    assert(sorted === 'W:2027-W05,W:2027-W04,W:2027-W04@S1,W:2027-W03', `Weekly archive order wrong: ${sorted}`);
   }
-  const monthlyIds = ['M:2026-10@S1', 'M:2026-11', 'M:2026-09', 'M:2026-10'];
+  const monthlyIds = ['M:2027-01@S1', 'M:2027-02', 'M:2026-12', 'M:2027-01'];
   for (const order of [monthlyIds, [...monthlyIds].reverse()]) {
     const sorted = order.map((id) => archive(id, 'monthly')).sort(compareArchivesNewestFirst).map((a) => a.id).join(',');
-    assert(sorted === 'M:2026-11,M:2026-10,M:2026-10@S1,M:2026-09', `Monthly archive order wrong: ${sorted}`);
+    assert(sorted === 'M:2027-02,M:2027-01,M:2027-01@S1,M:2026-12', `Monthly archive order wrong: ${sorted}`);
   }
 
   // ISO week 53 and week-year parity: the id the app builds parses back to the same Monday,
