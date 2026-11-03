@@ -1,11 +1,10 @@
-import { type ReactNode, useState } from 'react';
+import type { ReactNode } from 'react';
 import { CalendarClock, CheckCircle2, Circle, Flame, RotateCcw } from 'lucide-react';
 import { Badge, ProgressBar } from '@/components/ui/primitives';
 import { TAP_TARGET } from '@/components/ui/primitives/shared';
 import { UpdateProgressButton } from '@/components/ui/ProgressUpdateDialog';
 import { formatDateShort } from '@/lib/dates';
 import { ReflectionNotes } from './ReflectionNotes';
-import { ShowMoreToggle } from './ShowMore';
 import {
   type AnyPlan,
   PLAN_TYPE_META,
@@ -30,24 +29,34 @@ export interface PlanActions {
   requestDeleteNote: (noteKey: string) => void;
 }
 
-/** Steps a card shows before "+N more", so a long milestone list never stretches its card. */
-const STEPS_SHOWN = 5;
-/** Discover cards show fewer, so cards in a row stay close in height. */
-const STEPS_SHOWN_READ_ONLY = 3;
+/** Steps a folded card shows; the card's Show more opens the rest. */
+const STEPS_FOLDED = 3;
+
+/** Check-ins sit behind the card's Show more, unless one is due and needs writing now. */
+function notesFolded(plan: AnyPlan, readOnly: boolean): boolean {
+  const type = planTypeOf(plan);
+  const hasSection = (type === 'vision' || effectiveReviewCadence(plan) !== null) && (!readOnly || (plan.reflectionNotes || []).length > 0);
+  return hasSection && (readOnly || !isReviewDue(plan));
+}
+
+/** Whether a folded card hides anything of the body, so the card knows to offer Show more. */
+export function planHasFoldedContent(plan: AnyPlan, readOnly: boolean): boolean {
+  const stepsHidden = planTypeOf(plan) === 'milestone' && (plan.steps || []).length > STEPS_FOLDED;
+  return stepsHidden || notesFolded(plan, readOnly);
+}
 
 function formatNumber(n: number): string {
   return Number.isInteger(n) ? String(n) : n.toFixed(1);
 }
 
-export function PlanBody({ plan, actions }: { plan: AnyPlan; actions?: PlanActions }) {
+export function PlanBody({ plan, actions, expanded }: { plan: AnyPlan; actions?: PlanActions; expanded: boolean }) {
   const type = planTypeOf(plan);
   const meta = PLAN_TYPE_META[type];
   const readOnly = !actions;
   const cadence = effectiveReviewCadence(plan);
   const reviewDue = !readOnly && isReviewDue(plan);
   const notes = plan.reflectionNotes || [];
-  const showNotes = type === 'vision' || cadence !== null;
-  const [allSteps, setAllSteps] = useState(false);
+  const showNotes = (type === 'vision' || cadence !== null) && (expanded || !notesFolded(plan, readOnly));
 
   let body: ReactNode = null;
 
@@ -57,7 +66,7 @@ export function PlanBody({ plan, actions }: { plan: AnyPlan; actions?: PlanActio
     let stepList: ReactNode = null;
     if (type === 'milestone') {
       const steps = plan.steps || [];
-      const hiddenSteps = Math.max(0, steps.length - STEPS_SHOWN_READ_ONLY);
+      const hiddenSteps = expanded ? 0 : Math.max(0, steps.length - STEPS_FOLDED);
       summary = (
         <>
           <span className="figure text-content-primary">{steps.length}</span> {steps.length === 1 ? 'step' : 'steps'}
@@ -66,13 +75,11 @@ export function PlanBody({ plan, actions }: { plan: AnyPlan; actions?: PlanActio
       stepList = steps.length > 0 && (
         <>
           <ol className="list-decimal space-y-1 pl-5 text-sm text-content-secondary marker:text-content-muted">
-            {(allSteps ? steps : steps.slice(0, STEPS_SHOWN_READ_ONLY)).map((step) => (
+            {(expanded ? steps : steps.slice(0, STEPS_FOLDED)).map((step) => (
               <li key={step.id}>{step.title}</li>
             ))}
           </ol>
-          {hiddenSteps > 0 && (
-            <ShowMoreToggle expanded={allSteps} onToggle={() => setAllSteps((v) => !v)} moreLabel={`+${hiddenSteps} more`} />
-          )}
+          {hiddenSteps > 0 && <p className="text-xs text-content-muted">+{hiddenSteps} more steps</p>}
         </>
       );
     } else if (type === 'target_goal') {
@@ -103,7 +110,7 @@ export function PlanBody({ plan, actions }: { plan: AnyPlan; actions?: PlanActio
   } else if (type === 'milestone') {
     const { done, total } = milestoneProgress(plan);
     const steps = plan.steps || [];
-    const hiddenSteps = Math.max(0, steps.length - STEPS_SHOWN);
+    const hiddenSteps = expanded ? 0 : Math.max(0, steps.length - STEPS_FOLDED);
     body = (
       <div className="space-y-3">
         <div className="flex items-baseline justify-between text-xs">
@@ -114,7 +121,7 @@ export function PlanBody({ plan, actions }: { plan: AnyPlan; actions?: PlanActio
         </div>
         <ProgressBar value={done} max={Math.max(total, 1)} label="Steps done" tone={meta.bar} size="sm" />
         <ul className="space-y-0.5">
-          {(allSteps ? steps : steps.slice(0, STEPS_SHOWN)).map((step) => {
+          {(expanded ? steps : steps.slice(0, STEPS_FOLDED)).map((step) => {
             const icon = step.completed ? (
               <CheckCircle2 size={16} className="text-success-text shrink-0" />
             ) : (
@@ -150,13 +157,7 @@ export function PlanBody({ plan, actions }: { plan: AnyPlan; actions?: PlanActio
             );
           })}
         </ul>
-        {hiddenSteps > 0 && (
-          <ShowMoreToggle
-            expanded={allSteps}
-            onToggle={() => setAllSteps((v) => !v)}
-            moreLabel={`+${hiddenSteps} more`}
-          />
-        )}
+        {hiddenSteps > 0 && <p className="text-xs text-content-muted">+{hiddenSteps} more steps</p>}
       </div>
     );
   } else if (type === 'target_goal') {

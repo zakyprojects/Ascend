@@ -1,8 +1,8 @@
-import type { ReactNode } from 'react';
+import { type ReactNode, useRef, useState } from 'react';
 import { Badge } from '@/components/ui/primitives';
 import { PLAN_TYPE_META, type AnyPlan, planTypeOf } from './planMeta';
-import { PlanBody, type PlanActions } from './PlanBody';
-import { ShowMoreText } from './ShowMore';
+import { PlanBody, type PlanActions, planHasFoldedContent } from './PlanBody';
+import { ShowMoreToggle, useClampOverflow } from './ShowMore';
 
 /**
  * One card for every plan on the page: the user's own plans, their copies and Discover. Only the
@@ -30,6 +30,12 @@ export function PlanCard({
 }) {
   const meta = PLAN_TYPE_META[planTypeOf(plan)];
   const TypeIcon = meta.icon;
+  // One fold for the whole card: collapsed shows the essentials, Show more opens the full
+  // description, every step and the check-ins together.
+  const [expanded, setExpanded] = useState(false);
+  const descriptionRef = useRef<HTMLParagraphElement>(null);
+  const descriptionClipped = useClampOverflow(descriptionRef, !expanded, plan.description || '');
+  const foldable = expanded || descriptionClipped || planHasFoldedContent(plan, !actions);
 
   return (
     // self-start: a card is as tall as its own (clamped) content, so one expanded card never
@@ -54,10 +60,23 @@ export function PlanCard({
         </div>
         <h3 className="item-name text-base leading-snug break-words">{plan.title}</h3>
         {source && <p className="text-xs text-content-muted">{source}</p>}
-        <ShowMoreText text={plan.description} lines={2} />
+        {plan.description && (
+          <p
+            ref={descriptionRef}
+            className={`text-sm text-content-muted whitespace-pre-wrap break-words ${expanded ? '' : 'line-clamp-2'}`}
+          >
+            {plan.description}
+          </p>
+        )}
       </header>
 
-      <PlanBody plan={plan} actions={actions} />
+      <PlanBody plan={plan} actions={actions} expanded={expanded} />
+
+      {foldable && (
+        <div className="-mt-2">
+          <ShowMoreToggle expanded={expanded} onToggle={() => setExpanded((v) => !v)} />
+        </div>
+      )}
 
       {footer && <footer className="mt-auto flex items-center justify-between gap-3 border-t border-overlay-subtle pt-3">{footer}</footer>}
     </article>

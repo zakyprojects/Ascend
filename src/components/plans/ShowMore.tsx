@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState } from 'react';
+import { type RefObject, useLayoutEffect, useRef, useState } from 'react';
 
 /** The plan cards' one "Show more" / "Show less" link, for clamped text and long lists alike. */
 export function ShowMoreToggle({
@@ -24,6 +24,25 @@ export function ShowMoreToggle({
   );
 }
 
+/**
+ * Whether a line-clamped element hides text. Re-measured when its width changes (rotation, sidebar
+ * fold), since the line count changes with it. Only measured while the clamp is applied.
+ */
+export function useClampOverflow(ref: RefObject<HTMLElement | null>, clamped: boolean, text: string): boolean {
+  const [overflowing, setOverflowing] = useState(false);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el || !clamped) return;
+    const measure = () => setOverflowing(el.scrollHeight > el.clientHeight + 1);
+    measure();
+    if (typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [ref, clamped, text]);
+  return overflowing;
+}
+
 const CLAMP = { 2: 'line-clamp-2', 4: 'line-clamp-4' } as const;
 
 /**
@@ -40,20 +59,8 @@ export function ShowMoreText({
   className?: string;
 }) {
   const [expanded, setExpanded] = useState(false);
-  const [overflowing, setOverflowing] = useState(false);
   const ref = useRef<HTMLParagraphElement>(null);
-
-  useLayoutEffect(() => {
-    const el = ref.current;
-    if (!el || expanded) return;
-    const measure = () => setOverflowing(el.scrollHeight > el.clientHeight + 1);
-    measure();
-    // The card's width changes with the grid (rotation, sidebar fold), and with it the line count.
-    if (typeof ResizeObserver === 'undefined') return;
-    const observer = new ResizeObserver(measure);
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [text, expanded, lines]);
+  const overflowing = useClampOverflow(ref, !expanded, text);
 
   if (!text) return null;
   return (
