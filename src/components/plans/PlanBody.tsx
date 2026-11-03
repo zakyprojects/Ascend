@@ -32,6 +32,8 @@ export interface PlanActions {
 
 /** Steps a card shows before "+N more", so a long milestone list never stretches its card. */
 const STEPS_SHOWN = 5;
+/** Discover cards show fewer, so cards in a row stay close in height. */
+const STEPS_SHOWN_READ_ONLY = 3;
 
 function formatNumber(n: number): string {
   return Number.isInteger(n) ? String(n) : n.toFixed(1);
@@ -49,7 +51,56 @@ export function PlanBody({ plan, actions }: { plan: AnyPlan; actions?: PlanActio
 
   let body: ReactNode = null;
 
-  if (type === 'milestone') {
+  if (readOnly) {
+    // Discover shows a plan as a template to copy: its shape, never progress, streaks or dates.
+    let summary: ReactNode = null;
+    let stepList: ReactNode = null;
+    if (type === 'milestone') {
+      const steps = plan.steps || [];
+      const hiddenSteps = Math.max(0, steps.length - STEPS_SHOWN_READ_ONLY);
+      summary = (
+        <>
+          <span className="figure text-content-primary">{steps.length}</span> {steps.length === 1 ? 'step' : 'steps'}
+        </>
+      );
+      stepList = steps.length > 0 && (
+        <>
+          <ol className="list-decimal space-y-1 pl-5 text-sm text-content-secondary marker:text-content-muted">
+            {(allSteps ? steps : steps.slice(0, STEPS_SHOWN_READ_ONLY)).map((step) => (
+              <li key={step.id}>{step.title}</li>
+            ))}
+          </ol>
+          {hiddenSteps > 0 && (
+            <ShowMoreToggle expanded={allSteps} onToggle={() => setAllSteps((v) => !v)} moreLabel={`+${hiddenSteps} more`} />
+          )}
+        </>
+      );
+    } else if (type === 'target_goal') {
+      const { target } = targetProgress(plan);
+      summary = (
+        <>
+          Goal: <span className="figure text-content-primary">{formatNumber(target)}</span> {plan.targetUnit || 'units'}
+        </>
+      );
+    } else if (type === 'habit_journey') {
+      const journey = journeyState(plan);
+      const weekly = journey.cadence === 'weekly';
+      summary = (
+        <>
+          {weekly ? 'Weekly' : 'Daily'} for <span className="figure text-content-primary">{journey.length}</span>{' '}
+          {weekly ? (journey.length === 1 ? 'week' : 'weeks') : journey.length === 1 ? 'day' : 'days'}
+        </>
+      );
+    } else if (cadence) {
+      summary = <>{cadence === 'monthly' ? 'Monthly' : 'Weekly'} check-in</>;
+    }
+    body = (summary || stepList) && (
+      <div className="space-y-2">
+        {summary && <p className="text-xs text-content-tertiary">{summary}</p>}
+        {stepList}
+      </div>
+    );
+  } else if (type === 'milestone') {
     const { done, total } = milestoneProgress(plan);
     const steps = plan.steps || [];
     const hiddenSteps = Math.max(0, steps.length - STEPS_SHOWN);
