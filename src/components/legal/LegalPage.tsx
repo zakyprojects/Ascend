@@ -154,8 +154,8 @@ function PrivacyPolicy({ onNavigate }: { onNavigate: (path: string) => void }) {
             tracker.
           </li>
           <li>
-            <Term>The AscendDay team:</Term> may look at an account’s records, including what was logged, only to check
-            points for cheating or abuse, fix a problem you reported, or when the law requires it.
+            <Term>Fair play checks:</Term> if we suspect cheating or abuse, we may review that account’s activity, such as
+            how and when points were earned.
           </li>
         </List>
       </Section>
