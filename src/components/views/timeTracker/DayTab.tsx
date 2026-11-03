@@ -10,6 +10,7 @@ import {
   formatTime12h,
   getAscendViewForModule,
   lastBlockOfDay,
+  suggestNewBlockTimes,
   minutesToTimeString,
   timeStringToMinutes,
 } from '@/lib/timeTracker';
@@ -43,24 +44,6 @@ interface DayTabProps {
   onEditBlock: (block: TimeTrackerBlock) => void;
   onApplyTemplate: () => void;
   onNavigate?: (view: View) => void;
-}
-
-/** Default times for a new block: the first free hour at or after `fromMinutes`, else 9:00. */
-function firstFreeSlot(blocks: TimeTrackerBlock[], fromMinutes: number): { start: string; end: string } {
-  const sorted = [...blocks].sort((a, b) => timeStringToMinutes(a.startTime) - timeStringToMinutes(b.startTime));
-  let cursor = Math.min(1425, Math.ceil(fromMinutes / 15) * 15);
-  for (const b of sorted) {
-    const start = timeStringToMinutes(b.startTime);
-    const rawEnd = timeStringToMinutes(b.endTime);
-    const end = rawEnd === 0 && start > 0 ? 1440 : rawEnd;
-    if (end <= cursor) continue;
-    if (start - cursor >= 15) break;
-    cursor = Math.max(cursor, end);
-  }
-  if (cursor >= 1440) return { start: '09:00', end: '10:00' };
-  const next = sorted.find((b) => timeStringToMinutes(b.startTime) > cursor);
-  const end = Math.min(cursor + 60, next ? timeStringToMinutes(next.startTime) : 1440);
-  return { start: minutesToTimeString(cursor), end: minutesToTimeString(end) };
 }
 
 export function DayTab({
@@ -161,8 +144,7 @@ export function DayTab({
 
   const addBlock = (start?: string, end?: string) => {
     if (start && end) return onAddBlock(start, end);
-    const from = mode === 'today' ? now.getHours() * 60 + now.getMinutes() : 0;
-    const slot = blocks.length === 0 && mode !== 'today' ? { start: '09:00', end: '10:00' } : firstFreeSlot(blocks, from);
+    const slot = suggestNewBlockTimes(blocks, mode === 'today' ? now.getHours() * 60 + now.getMinutes() : 0);
     onAddBlock(slot.start, slot.end);
   };
 

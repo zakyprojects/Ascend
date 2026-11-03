@@ -15,6 +15,7 @@ import {
   getActivityDisplayColor,
   categoryTintStyle,
   templateDays,
+  suggestNewBlockTimes,
 } from '@/lib/timeTracker';
 import { getLocalThemePreference } from '@/lib/store';
 import { ActivityIcon } from './ActivityIcon';
@@ -131,6 +132,8 @@ export function TemplateEditorModal({
       setConflictState(null);
     }
   };
+
+  const newBlockTimes = suggestNewBlockTimes(blocks);
 
   const handleOpenAddBlock = () => {
     setTargetBlockForModal(null);
@@ -390,6 +393,8 @@ export function TemplateEditorModal({
         activities={activities}
         editingBlock={targetBlockForModal}
         context={{ kind: 'template', blocks: blocks.filter((b) => b.id !== targetBlockForModal?.id) }}
+        defaultStartTime={newBlockTimes.start}
+        defaultEndTime={newBlockTimes.end}
       />
 
       {/* Move a weekday from another template */}

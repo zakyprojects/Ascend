@@ -118,6 +118,53 @@ export function lastBlockOfDay<T extends Pick<TimeTrackerBlock, 'startTime' | 'e
   return last;
 }
 
+/** An empty day's first block: the night, 12:00 AM to 7:00 AM. */
+export const FIRST_BLOCK_DEFAULT = { start: '00:00', end: '07:00' } as const;
+const FALLBACK_BLOCK = { start: '09:00', end: '10:00' } as const;
+
+/** The first free stretch (up to an hour) at or after `fromMinutes`, or null when the rest of the day is full. */
+function freeSlotFrom(
+  blocks: Pick<TimeTrackerBlock, 'startTime' | 'endTime'>[],
+  fromMinutes: number
+): { start: string; end: string } | null {
+  const sorted = [...blocks].sort((a, b) => timeStringToMinutes(a.startTime) - timeStringToMinutes(b.startTime));
+  let cursor = Math.min(MINUTES_PER_DAY - 15, fromMinutes);
+  for (const b of sorted) {
+    const start = timeStringToMinutes(b.startTime);
+    const end = endMinutesOf(b.startTime, b.endTime);
+    if (end <= cursor) continue;
+    if (start - cursor >= 15) break;
+    cursor = Math.max(cursor, end);
+  }
+  if (cursor >= MINUTES_PER_DAY) return null;
+  const next = sorted.find((b) => timeStringToMinutes(b.startTime) > cursor);
+  const end = Math.min(cursor + 60, next ? timeStringToMinutes(next.startTime) : MINUTES_PER_DAY);
+  return { start: minutesToTimeString(cursor), end: minutesToTimeString(end) };
+}
+
+/**
+ * Default times for a new block. An empty day starts with the night (12:00 AM to 7:00 AM).
+ * Otherwise the block follows the last block of the day; a block that closes the day at midnight
+ * (the evening part of a sleep block) is not the one to follow, since nothing fits after it.
+ * `notBeforeMinutes` (today: now) keeps the suggestion out of the past. When nothing is free
+ * after that point, the first free stretch of the day is used, and a full day falls back to 9:00 AM.
+ */
+export function suggestNewBlockTimes(
+  blocks: Pick<TimeTrackerBlock, 'startTime' | 'endTime'>[],
+  notBeforeMinutes = 0
+): { start: string; end: string } {
+  if (blocks.length === 0 && notBeforeMinutes === 0) return { ...FIRST_BLOCK_DEFAULT };
+  const last = lastBlockOfDay(blocks.filter((b) => endMinutesOf(b.startTime, b.endTime) < MINUTES_PER_DAY));
+  const after = last ? endMinutesOf(last.startTime, last.endTime) : 0;
+  // "Now" rounds up to the next quarter hour; a block's end is kept exactly.
+  const notBefore = Math.ceil(notBeforeMinutes / 15) * 15;
+  return (
+    freeSlotFrom(blocks, Math.max(after, notBefore)) ??
+    freeSlotFrom(blocks, notBefore) ??
+    { ...FALLBACK_BLOCK }
+  );
+}
+
 /** "09:30" -> "9:30 AM", "22:00" -> "10:00 PM", "24:00" -> "12:00 AM". */
 export function formatTime12h(timeStr: string): string {
   if (!timeStr) return '';
