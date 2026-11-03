@@ -128,7 +128,8 @@ function PrivacyPolicy({ onNavigate }: { onNavigate: (path: string) => void }) {
       <Section title="Why we use it">
         <p>
           To run your account, save and sync your data across devices, award points, run leagues and partner
-          features, send the reminders you turned on, keep AscendDay safe from abuse, and fix bugs. Nothing else.
+          features, send the reminders you turned on, keep leagues fair and AscendDay safe from abuse, and fix bugs.
+          Nothing else.
         </p>
       </Section>
 
@@ -151,6 +152,10 @@ function PrivacyPolicy({ onNavigate }: { onNavigate: (path: string) => void }) {
           <li>
             <Term>Only you:</Term> everything else, including your email, journal, moods, cravings and recovery
             tracker.
+          </li>
+          <li>
+            <Term>The AscendDay team:</Term> may look at an account’s records, including what was logged, only to check
+            points for cheating or abuse, fix a problem you reported, or when the law requires it.
           </li>
         </List>
       </Section>
@@ -294,6 +299,10 @@ function Terms({ onNavigate }: { onNavigate: (path: string) => void }) {
         <p>Points, ranks and leagues should show real effort. Don’t:</p>
         <List>
           <li>log things you didn’t do to get points,</li>
+          <li>
+            add empty, junk or repeated entries just to collect points (point farming), such as placeholder goals or the
+            same workout logged twice,
+          </li>
           <li>use more than one account to get ahead,</li>
           <li>use bots, scripts or bugs to change points or rankings,</li>
           <li>harass, threaten or spam others, through usernames, plans, partner invites or nudges,</li>
@@ -304,8 +313,11 @@ function Terms({ onNavigate }: { onNavigate: (path: string) => void }) {
 
       <Section title="Suspension">
         <p>
-          We may remove points, reset rankings, or suspend or delete accounts that cheat in leagues or abuse AscendDay or
-          other people. Where we can, we’ll tell you why. If you think we got it wrong, email <ContactEmail />.
+          We check points and league activity for cheating. If an account farms points, cheats, or shows activity that
+          looks unfair or suspicious, we may, without warning, remove its points, reset its rankings, keep it out of
+          leagues, ban it for a period of time, or delete it. We decide from the account’s activity, so we may act on a
+          reasonable suspicion without full proof. Where we can, we’ll tell you why. If you think we got it wrong,
+          email <ContactEmail />.
         </p>
       </Section>
 

@@ -143,7 +143,7 @@ export const MARKETING_ROUTES: MarketingRoute[] = [
     ogImage: 'privacy',
     ogAlt: 'AscendDay Privacy Policy: what AscendDay collects and who can see it',
     index: true,
-    updated: '2026-10-25', // legal text (LegalPage, no marketing footer): AscendDay name, Last updated 25 October 2026 (5021878)
+    updated: '2026-11-03', // legal text (LegalPage, no marketing footer): fair play / point farming and team review, Last updated 3 November 2026
   },
   {
     path: '/terms',
@@ -157,7 +157,7 @@ export const MARKETING_ROUTES: MarketingRoute[] = [
     ogImage: 'terms',
     ogAlt: 'AscendDay Terms: the rules for using AscendDay',
     index: true,
-    updated: '2026-10-25', // legal text (LegalPage, no marketing footer): AscendDay name, Last updated 25 October 2026 (5021878)
+    updated: '2026-11-03', // legal text (LegalPage, no marketing footer): fair play / point farming and team review, Last updated 3 November 2026
   },
   {
     path: '/404',
