@@ -21,6 +21,7 @@ import { ProjectCard } from '@/components/projects/ProjectCard';
 import { TaskRow } from '@/components/projects/TaskRow';
 import { GoalFormDialog, ProjectFormDialog, TaskFormDialog, type GoalPayload, type ProjectPayload, type TaskPayload } from '@/components/projects/HierarchyForms';
 import { HowItWorksDialog } from '@/components/projects/HowItWorksDialog';
+import { DoneSection } from '@/components/projects/DoneSection';
 
 type SubViewTab = 'goals' | 'projects' | 'tasks';
 type TabOrder = 'taskFirst' | 'projectFirst' | 'goalFirst';
@@ -219,6 +220,11 @@ export function ProjectsGoalsView({
     () => goalSearchMatches.filter((g) => goalStatusFilter === 'all' || g.status === goalStatusFilter),
     [goalSearchMatches, goalStatusFilter]
   );
+  // "All" folds achieved and abandoned goals into a closed Done section under the open ones.
+  const isGoalFinished = (g: Goal) => g.status === 'achieved' || g.status === 'abandoned';
+  const splitGoals = goalStatusFilter === 'all';
+  const openGoals = splitGoals ? filteredGoals.filter((g) => !isGoalFinished(g)) : filteredGoals;
+  const finishedGoals = splitGoals ? filteredGoals.filter(isGoalFinished) : [];
 
   const activeGoalFilter = filterGoalId || (projectGoalFilter !== 'all' ? projectGoalFilter : null);
   const projectsInScope = useMemo(() => {
@@ -268,6 +274,11 @@ export function ProjectsGoalsView({
     // projectMatchesStatus reads only h, which is listed.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectSearchMatches, projectStatusFilter, scopedGoal, h]);
+  // Completed projects fold into a closed Done section, except in their own view and in a
+  // sequential goal's reorder view, where the order itself is the point.
+  const splitProjects = projectStatusFilter !== 'completed' && !showReorder;
+  const openProjects = splitProjects ? filteredProjects.filter((p) => p.status !== 'completed') : filteredProjects;
+  const finishedProjects = splitProjects ? filteredProjects.filter((p) => p.status === 'completed') : [];
 
   const activeProjectFilter = filterProjectId || (taskProjectFilter !== 'all' ? taskProjectFilter : null);
   const tasksInScope = useMemo(() => {
@@ -292,6 +303,10 @@ export function ProjectsGoalsView({
       return true;
     });
   }, [tasks, activeProjectFilter, taskPriorityFilter, taskView, taskSearch, today, h]);
+  // Done tasks fold into a closed Done section, except in the Done view itself.
+  const splitTasks = taskView !== 'completed';
+  const openTasksList = splitTasks ? filteredTasks.filter((t) => !t.completed) : filteredTasks;
+  const doneTasksList = splitTasks ? filteredTasks.filter((t) => t.completed) : [];
 
   const activeTaskFilterCount =
     Number(taskPriorityFilter !== 'all') + Number(!filterProjectId && taskProjectFilter !== 'all') + Number(taskView !== 'all');
@@ -507,6 +522,78 @@ export function ProjectsGoalsView({
   const filterProject = projectById(filterProjectId ?? undefined);
   const filterProjectLock = filterProject ? h.getLockStatus(filterProject) : undefined;
 
+  const renderGoal = (goal: Goal) => (
+    <GoalCard
+      key={goal.id}
+      goal={goal}
+      prog={h.getGoalProgress(goal)}
+      today={today}
+      onStatusChange={(s) => changeGoalStatus(goal, s)}
+      onOpenProjects={() => openGoalProjects(goal.id)}
+      onAddProject={() => setProjectForm({ key: nextKey(), editing: null, goalId: goal.id })}
+      onUpdateProgress={() =>
+        setProgressUpdate({ kind: 'goal', id: goal.id, title: goal.title, current: h.getGoalProgress(goal).percent })
+      }
+      onEdit={() => setGoalForm({ key: nextKey(), editing: goal })}
+      onDelete={() => setDeleteGoalTarget(goal)}
+    />
+  );
+
+  const renderProject = (project: Project) => {
+    const lock = h.getLockStatus(project);
+    const prog = h.getProjectProgress(project);
+    const index = showReorder ? filteredProjects.indexOf(project) : -1;
+    return (
+      <ProjectCard
+        key={project.id}
+        project={project}
+        prog={prog}
+        lock={lock}
+        goalName={goalName(project.goalId)}
+        today={today}
+        reorder={
+          showReorder
+            ? {
+                canUp: index > 0,
+                canDown: index < filteredProjects.length - 1,
+                onMove: (direction) => store.moveProjectOrder(project.id, direction),
+              }
+            : undefined
+        }
+        onStatusChange={(s) => changeProjectStatus(project, s)}
+        onOpenGoal={() => project.goalId && openGoalProjects(project.goalId)}
+        onOpenTasks={() => openProjectTasks(project.id)}
+        onAddTask={() => startTaskForProject(project.id)}
+        onUpdateProgress={() => setProgressUpdate({ kind: 'project', id: project.id, title: project.title, current: prog.percent })}
+        onEdit={() => setProjectForm({ key: nextKey(), editing: project })}
+        onDelete={() => setDeleteProjectTarget(project)}
+      />
+    );
+  };
+
+  const renderTask = (task: Task) => {
+    const project = projectById(task.projectId);
+    const lock = project ? h.getLockStatus(project) : undefined;
+    return (
+      <TaskRow
+        key={task.id}
+        task={task}
+        today={today}
+        lockedBy={lock?.isLocked ? lock.blockingProject?.title : undefined}
+        projectName={project?.title ?? null}
+        goalName={goalName(project?.goalId)}
+        onToggle={() => store.toggleTaskCompleted(task.id)}
+        onToggleSubtask={(id) => store.toggleSubtask(task.id, id)}
+        onAddSubtask={(title) => store.addSubtask(task.id, title)}
+        onDeleteSubtask={(subtask) => setDeleteSubtaskTarget({ taskId: task.id, subtask })}
+        onOpenProject={() => task.projectId && openProjectTasks(task.projectId)}
+        onFocus={onStartFocusSession ? () => onStartFocusSession(task.title) : undefined}
+        onEdit={() => setTaskForm({ key: nextKey(), editing: task })}
+        onDelete={() => setDeleteTaskTarget(task)}
+      />
+    );
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
@@ -631,23 +718,15 @@ export function ProjectsGoalsView({
                 onCreate={() => setGoalForm({ key: nextKey(), editing: null })}
               />
             ) : (
-              <div className="grid-cards-xl items-start gap-3">
-                {filteredGoals.map((goal) => (
-                  <GoalCard
-                    key={goal.id}
-                    goal={goal}
-                    prog={h.getGoalProgress(goal)}
-                    today={today}
-                    onStatusChange={(s) => changeGoalStatus(goal, s)}
-                    onOpenProjects={() => openGoalProjects(goal.id)}
-                    onAddProject={() => setProjectForm({ key: nextKey(), editing: null, goalId: goal.id })}
-                    onUpdateProgress={() =>
-                      setProgressUpdate({ kind: 'goal', id: goal.id, title: goal.title, current: h.getGoalProgress(goal).percent })
-                    }
-                    onEdit={() => setGoalForm({ key: nextKey(), editing: goal })}
-                    onDelete={() => setDeleteGoalTarget(goal)}
-                  />
-                ))}
+              <div className="space-y-6">
+                {openGoals.length > 0 ? (
+                  <div className="grid-cards-xl items-start gap-3">{openGoals.map(renderGoal)}</div>
+                ) : (
+                  <p className="px-1 text-xs text-content-muted">No open goals. Finished ones are under Done.</p>
+                )}
+                <DoneSection label="Done" count={finishedGoals.length} forceOpen={Boolean(goalSearch.trim())}>
+                  <div className="grid-cards-xl items-start gap-3">{finishedGoals.map(renderGoal)}</div>
+                </DoneSection>
               </div>
             )}
           </div>
@@ -712,38 +791,15 @@ export function ProjectsGoalsView({
                 onCreate={() => setProjectForm({ key: nextKey(), editing: null, goalId: scopedGoal?.id })}
               />
             ) : (
-              <div className="grid-cards-xl items-start gap-3">
-                {filteredProjects.map((project) => {
-                  const lock = h.getLockStatus(project);
-                  const prog = h.getProjectProgress(project);
-                  const index = showReorder ? filteredProjects.indexOf(project) : -1;
-                  return (
-                    <ProjectCard
-                      key={project.id}
-                      project={project}
-                      prog={prog}
-                      lock={lock}
-                      goalName={goalName(project.goalId)}
-                      today={today}
-                      reorder={
-                        showReorder
-                          ? {
-                              canUp: index > 0,
-                              canDown: index < filteredProjects.length - 1,
-                              onMove: (direction) => store.moveProjectOrder(project.id, direction),
-                            }
-                          : undefined
-                      }
-                      onStatusChange={(s) => changeProjectStatus(project, s)}
-                      onOpenGoal={() => project.goalId && openGoalProjects(project.goalId)}
-                      onOpenTasks={() => openProjectTasks(project.id)}
-                      onAddTask={() => startTaskForProject(project.id)}
-                      onUpdateProgress={() => setProgressUpdate({ kind: 'project', id: project.id, title: project.title, current: prog.percent })}
-                      onEdit={() => setProjectForm({ key: nextKey(), editing: project })}
-                      onDelete={() => setDeleteProjectTarget(project)}
-                    />
-                  );
-                })}
+              <div className="space-y-6">
+                {openProjects.length > 0 ? (
+                  <div className="grid-cards-xl items-start gap-3">{openProjects.map(renderProject)}</div>
+                ) : (
+                  <p className="px-1 text-xs text-content-muted">No open projects. Finished ones are under Done.</p>
+                )}
+                <DoneSection label="Done" count={finishedProjects.length} forceOpen={Boolean(projectSearch.trim())}>
+                  <div className="grid-cards-xl items-start gap-3">{finishedProjects.map(renderProject)}</div>
+                </DoneSection>
               </div>
             )}
           </div>
@@ -909,30 +965,14 @@ export function ProjectsGoalsView({
                 {tasks.length <= 3 && taskView === 'all' && !taskSearch.trim() && !filterProjectId && (
                   <p className="px-1 text-xs text-content-muted">A few more small tasks will fill out your day.</p>
                 )}
-                <div className="card divide-y divide-overlay-subtle overflow-hidden p-0">
-                  {filteredTasks.map((task) => {
-                    const project = projectById(task.projectId);
-                    const lock = project ? h.getLockStatus(project) : undefined;
-                    return (
-                      <TaskRow
-                        key={task.id}
-                        task={task}
-                        today={today}
-                        lockedBy={lock?.isLocked ? lock.blockingProject?.title : undefined}
-                        projectName={project?.title ?? null}
-                        goalName={goalName(project?.goalId)}
-                        onToggle={() => store.toggleTaskCompleted(task.id)}
-                        onToggleSubtask={(id) => store.toggleSubtask(task.id, id)}
-                        onAddSubtask={(title) => store.addSubtask(task.id, title)}
-                        onDeleteSubtask={(subtask) => setDeleteSubtaskTarget({ taskId: task.id, subtask })}
-                        onOpenProject={() => task.projectId && openProjectTasks(task.projectId)}
-                        onFocus={onStartFocusSession ? () => onStartFocusSession(task.title) : undefined}
-                        onEdit={() => setTaskForm({ key: nextKey(), editing: task })}
-                        onDelete={() => setDeleteTaskTarget(task)}
-                      />
-                    );
-                  })}
-                </div>
+                {openTasksList.length > 0 ? (
+                  <div className="card divide-y divide-overlay-subtle overflow-hidden p-0">{openTasksList.map(renderTask)}</div>
+                ) : (
+                  <p className="px-1 text-xs text-content-muted">Nothing left to do here. Finished ones are under Done.</p>
+                )}
+                <DoneSection label="Done" count={doneTasksList.length} forceOpen={Boolean(taskSearch.trim())}>
+                  <div className="card divide-y divide-overlay-subtle overflow-hidden p-0">{doneTasksList.map(renderTask)}</div>
+                </DoneSection>
               </div>
             )}
           </div>
