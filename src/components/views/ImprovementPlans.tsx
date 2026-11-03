@@ -20,6 +20,7 @@ import { DiscoverPanel } from '@/components/plans/DiscoverPanel';
 import { useDiscoverPlans } from '@/components/plans/useDiscoverPlans';
 import { type AnyPlan, finishLineShare, isReviewDue, journeyState, ownPlans, planTypeOf, targetProgress } from '@/components/plans/planMeta';
 import { useLocalDayKey } from '@/lib/useLocalDayKey';
+import { MasonryGrid } from '@/components/ui/MasonryGrid';
 
 type Owner = 'own' | 'copy';
 type PlansTab = 'my_plans' | 'discover';
@@ -203,7 +204,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
               {myPlans.length === 0 ? (
                 <EmptyState title="No plans yet" description="Start one from a template or from scratch with New plan." />
               ) : (
-                <div className="grid-cards-lg gap-4">
+                <MasonryGrid minColumnRem={20}>
                   {myPlans.map((plan) => (
                     <PlanCard
                       key={plan.id}
@@ -225,7 +226,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                       }
                     />
                   ))}
-                </div>
+                </MasonryGrid>
               )}
             </section>
 
@@ -234,7 +235,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
               {followedPlans.length === 0 ? (
                 <EmptyState title="No copied plans" description="Copy a plan from Discover. The copy is yours: change it and track your own progress." />
               ) : (
-                <div className="grid-cards-lg gap-4">
+                <MasonryGrid minColumnRem={20}>
                   {followedPlans.map((follow) => (
                     <PlanCard
                       key={follow.id}
@@ -262,7 +263,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                       actions={actionsFor('copy', follow)}
                     />
                   ))}
-                </div>
+                </MasonryGrid>
               )}
             </section>
           </div>

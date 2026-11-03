@@ -9,6 +9,7 @@ import { PLAN_CATEGORIES, type ImprovementPlan } from '@/types';
 import { PlanCard } from './PlanCard';
 import { PLAN_TYPES, PLAN_TYPE_META } from './planMeta';
 import type { DiscoverSort, useDiscoverPlans } from './useDiscoverPlans';
+import { MasonryGrid } from '@/components/ui/MasonryGrid';
 
 type Discover = ReturnType<typeof useDiscoverPlans>;
 
@@ -139,7 +140,7 @@ export function DiscoverPanel({
           }
         />
       ) : (
-        <div className="grid-cards-lg gap-4">
+        <MasonryGrid minColumnRem={20}>
           {visible.map((plan) => {
             const isOwn = Boolean(currentUserId) && plan.creatorId === currentUserId;
             const copied = copiedPlanIds.has(plan.id);
@@ -181,7 +182,7 @@ export function DiscoverPanel({
               />
             );
           })}
-        </div>
+        </MasonryGrid>
       )}
     </div>
   );
