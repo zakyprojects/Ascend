@@ -7,8 +7,8 @@ import { pts } from '../format';
 
 /* /features/exercise. Sources: lib/pointsConfig.ts WORKOUT_POINTS + calculateWorkoutPoints (floor per
    workout, daily cap), lib/workoutAwards.ts (server-written day award), lib/workoutTypes.ts
-   (suggested workouts, one name whatever the spelling), lib/capCopy.ts capNote('exercise'),
-   components/views/ExerciseTracker.tsx (log form, Log again, streak, the page's "How points work"). */
+   (suggested workouts, one name whatever the spelling), components/views/ExerciseTracker.tsx (log
+   form, Log again, streak), components/howItWorks/exercise.tsx (the page's How it works). */
 
 const W = WORKOUT_POINTS;
 const U = W.units;
@@ -75,7 +75,7 @@ export const exercise: FeatureContent = {
         lead={
           <p>
             Each workout is scored on its own, rounded down to whole points, and the day adds them up to a cap. The same
-            rules sit under “How points work” on the Exercise page.
+            rules sit under “How it works” on the Exercise page.
           </p>
         }
       >

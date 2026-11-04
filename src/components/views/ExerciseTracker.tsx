@@ -16,8 +16,10 @@ import { useAsyncAction } from '@/lib/useAsyncAction';
 import { AscendLoadingIndicator } from '@/components/ui/AscendLoadingIndicator';
 import { useToast } from '@/components/ui/Toast';
 import { CapMeterConnected } from '@/components/ui/CapMeterConnected';
+import { HowItWorksButton, HowItWorksDialog, useHowItWorks } from '@/components/ui/HowItWorks';
+import { exerciseGuide } from '@/components/howItWorks/exercise';
 import { PageHero } from '@/components/ui/PageHero';
-import { Dialog, Disclosure, EmptyState, Form, Input, NumberField, PageColumns, useFormController } from '@/components/ui/primitives';
+import { Dialog, EmptyState, Form, Input, NumberField, PageColumns, useFormController } from '@/components/ui/primitives';
 import { useUnsavedChanges } from '@/lib/unsavedChanges';
 import { TAP_TARGET, cx } from '@/components/ui/primitives/shared';
 import { BarChart } from '@/components/ui/charts';
@@ -41,6 +43,7 @@ const formatAmount = (value: number, measure: Measure): string => {
 };
 
 export function ExerciseTracker({ store }: { store: AppStore }) {
+  const guide = useHowItWorks();
   const { showSuccessToast } = useToast();
   const [logModalOpen, setLogModalOpen] = useState(false);
   const [deleteModalWorkout, setDeleteModalWorkout] = useState<WorkoutLog | null>(null);
@@ -213,6 +216,7 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
         <div>
           <h1 className="page-title">Exercise</h1>
           <p className="page-subtitle">Log what you did today. The more you move, the more points.</p>
+          <HowItWorksButton onClick={guide.show} />
         </div>
         <button onClick={() => openLogModal()} className="btn-primary sm:shrink-0">
           <Plus size={18} />
@@ -249,7 +253,7 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
               valueClassName: 'text-brand-text',
             },
           ]}
-          side={<CapMeterConnected state={store.state} capId="exercise" bare />}
+          side={<CapMeterConnected state={store.state} capId="exercise" bare onExplain={guide.showPoints} />}
         />
       </Reveal>
 
@@ -275,20 +279,6 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
                 formatTooltip={(datum, i) => `${formatWeekdayDate(weekDays[i].key)}: ${ptsText(datum.value)}`}
               />
             </Reveal>
-            <Disclosure title="How points work">
-              <ul className="list-disc pl-4 space-y-0.5">
-                <li>
-                  <span className="figure">{WORKOUT_POINTS.units.minsPerPoint}</span> minutes, <span className="figure">{WORKOUT_POINTS.units.repsPerPoint}</span> reps, 1 set or 1 km ={' '}
-                  <span className="figure text-success-text">1 pt</span>.
-                </li>
-                <li>
-                  Up to <span className="figure">{WORKOUT_POINTS.dailyCap}</span> pts a day. More workouts still save, without points.
-                </li>
-                <li>You can only log today's workouts.</li>
-                <li>Deleting today's workout takes its points back. Earlier days keep their points.</li>
-                <li>Deleting old logs can break your exercise streak.</li>
-              </ul>
-            </Disclosure>
           </>
         }
       >
@@ -528,6 +518,7 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
         }`}
         confirmText="Clear logs"
       />
+      <HowItWorksDialog open={guide.open} onClose={guide.close} guide={exerciseGuide} focus={guide.focus} />
     </div>
   );
 }

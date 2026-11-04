@@ -12,8 +12,10 @@ import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { useAsyncAction } from '@/lib/useAsyncAction';
 import { AscendLoadingIndicator } from '@/components/ui/AscendLoadingIndicator';
 import { CapMeterConnected } from '@/components/ui/CapMeterConnected';
+import { HowItWorksButton, HowItWorksDialog, useHowItWorks } from '@/components/ui/HowItWorks';
+import { journalGuide } from '@/components/howItWorks/journal';
 import { useToast } from '@/components/ui/Toast';
-import { Dialog, Disclosure, EmptyState, Form, FormAlert, PageColumns, Tabs, Textarea, focusStillInForm, useFocusOnRender, useFormController } from '@/components/ui/primitives';
+import { Dialog, EmptyState, Form, FormAlert, PageColumns, Tabs, Textarea, focusStillInForm, useFocusOnRender, useFormController } from '@/components/ui/primitives';
 import { TAP_TARGET, cx } from '@/components/ui/primitives/shared';
 import { CountUp, Reveal } from '@/components/ui/Motion';
 import { PageHero } from '@/components/ui/PageHero';
@@ -29,6 +31,7 @@ const ENTRIES_PAGE = 10;
 type ChartRange = '7d' | '30d';
 
 export function Journal({ store }: { store: AppStore }) {
+  const guide = useHowItWorks();
   const existingToday = store.getTodayJournalEntry();
   const today = useLocalDayKey();
 
@@ -205,6 +208,7 @@ export function Journal({ store }: { store: AppStore }) {
         <div>
           <h1 className="page-title">Journal</h1>
           <p className="page-subtitle">Write a few lines each day and see how your mood moves.</p>
+          <HowItWorksButton onClick={guide.show} />
         </div>
       </div>
 
@@ -217,7 +221,7 @@ export function Journal({ store }: { store: AppStore }) {
             { label: 'Entries', value: <CountUp value={entries.length} />, valueClassName: 'text-brand-text' },
             { label: 'Points earned', value: <>{journalPoints > 0 && '+'}<CountUp value={Math.max(0, journalPoints)} /></>, valueClassName: 'text-brand-text' },
           ]}
-          side={<CapMeterConnected state={store.state} capId="journal" bare />}
+          side={<CapMeterConnected state={store.state} capId="journal" bare onExplain={guide.showPoints} />}
         />
       </Reveal>
 
@@ -301,18 +305,6 @@ export function Journal({ store }: { store: AppStore }) {
                 )}
               </div>
             </Reveal>
-
-            <Disclosure title="How points work">
-              <ul className="list-disc pl-4 space-y-0.5">
-                <li>
-                  Today's entry with at least {MIN_JOURNAL_CONTENT_LENGTH} characters ={' '}
-                  <span className="figure text-success-text">+{JOURNAL_POINTS.entryCompleted} pts</span>, once a day.
-                </li>
-                <li>You can write and edit only today's entry.</li>
-                <li>Deleting today's entry takes its points back. Earlier days keep their points.</li>
-                <li>Deleting an entry can break your streak and removes that day from your mood.</li>
-              </ul>
-            </Disclosure>
           </>
         }
       >
@@ -554,6 +546,7 @@ export function Journal({ store }: { store: AppStore }) {
           .filter(Boolean)
           .join(' ')}
       />
+      <HowItWorksDialog open={guide.open} onClose={guide.close} guide={journalGuide} focus={guide.focus} />
     </div>
   );
 }
