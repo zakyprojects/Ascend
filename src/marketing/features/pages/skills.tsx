@@ -8,7 +8,7 @@ import { pts } from '../format';
 /* /features/skills. Sources: lib/pointsConfig.ts SKILLS_POINTS + calculateSkillPoints (floor per
    session, daily cap shared by all skills), lib/skillAwards.ts (server-written day award),
    lib/skillLevels.ts SKILL_LEVELS, components/views/SkillTracker.tsx (log form, quick lengths,
-   streak, categories, the page's "How points work", clear older logs), lib/skillDrills.ts (counts, "drills" in code:
+   streak, categories, clear older logs), components/howItWorks/skills.tsx (the page's How it works), lib/skillDrills.ts (counts, "drills" in code:
    numbers per count on a timed session, no points, weekly goal on a count). */
 
 const S = SKILLS_POINTS;

@@ -13,8 +13,10 @@ import { Skill, SkillDrill, SkillLevel, SkillSessionLog, WeeklyGoalItem } from '
 import { todayKey, formatDateLong, getNow, startOfWeek, calculateStreak, weekKey, formatWeekdayDate, formatWeekdayShort, parseDate, uid } from '@/lib/dates';
 import { SKILLS_POINTS, calculateSkillPoints } from '@/lib/pointsConfig';
 import { CapMeterConnected } from '@/components/ui/CapMeterConnected';
+import { HowItWorksButton, HowItWorksDialog, useHowItWorks } from '@/components/ui/HowItWorks';
+import { skillsGuide } from '@/components/howItWorks/skills';
 import { PageHero } from '@/components/ui/PageHero';
-import { Dialog, Disclosure, EmptyState, FieldRow, Form, Input, NumberField, PageColumns, ProgressBar, Select, Textarea, useFormController } from '@/components/ui/primitives';
+import { Dialog, EmptyState, FieldRow, Form, Input, NumberField, PageColumns, ProgressBar, Select, Textarea, useFormController } from '@/components/ui/primitives';
 import { TAP_TARGET, TAP_TARGET_Y, cx } from '@/components/ui/primitives/shared';
 import { BarChart } from '@/components/ui/charts';
 import { AscendLoadingIndicator } from '@/components/ui/AscendLoadingIndicator';
@@ -105,6 +107,7 @@ function levelOf(minutes: number) {
 }
 
 export function SkillTracker({ store, onNavigate }: { store: AppStore; onNavigate: (view: View) => void }) {
+  const guide = useHowItWorks();
   const { showSuccessToast } = useToast();
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [logModalOpen, setLogModalOpen] = useState(false);
@@ -403,6 +406,7 @@ export function SkillTracker({ store, onNavigate }: { store: AppStore; onNavigat
         <div>
           <h1 className="page-title">Skills</h1>
           <p className="page-subtitle">Practice what you're learning. Your hours build each skill's level.</p>
+          <HowItWorksButton onClick={guide.show} />
         </div>
         <div className="flex gap-2 sm:shrink-0">
           <button onClick={openAddModal} className={skills.length > 0 ? 'btn-secondary' : 'btn-primary'}>
@@ -443,44 +447,29 @@ export function SkillTracker({ store, onNavigate }: { store: AppStore; onNavigat
             { label: 'Total practice', value: formatHours(totalMinutes), valueClassName: 'text-brand-text' },
             { label: 'Skills', value: <CountUp value={skills.length} />, valueClassName: 'text-brand-text' },
           ]}
-          side={<CapMeterConnected state={store.state} capId="skills" bare />}
+          side={<CapMeterConnected state={store.state} capId="skills" bare onExplain={guide.showPoints} />}
         />
       </Reveal>
 
       <PageColumns
         stickyAside
         aside={
-          <>
-            {skillLogs.length > 0 && (
-              <Reveal index={1} className="card p-4 space-y-3">
-                <div className="flex items-baseline justify-between gap-3">
-                  <h2 className="section-title">Last 7 days</h2>
-                  <span className="figure text-xs text-content-muted">
-                    <CountUp value={practiceWeekTotal} /> min
-                  </span>
-                </div>
-                <BarChart
-                  data={practiceDays.map((day, i) => ({ label: formatWeekdayShort(day), value: practiceMinutes[i] }))}
-                  label={`Skill practice minutes per day, last 7 days: ${practiceWeekTotal} total`}
-                  highlightIndex={practiceDays.length - 1}
-                  formatTooltip={(datum, i) => `${formatWeekdayDate(practiceDays[i])}: ${datum.value} min`}
-                />
-              </Reveal>
-            )}
-            <Disclosure title="How points work">
-              <ul className="list-disc pl-4 space-y-0.5">
-                <li>
-                  Every <span className="figure">{SKILLS_POINTS.minutesPerPoint}</span> minutes of practice ={' '}
-                  <span className="figure text-success-text">1 pt</span>, up to <span className="figure">{SKILLS_POINTS.dailyCap}</span> pts a day.
-                </li>
-                <li>Levels: 10 hrs Intermediate, 25 hrs Advanced, 50 hrs Expert.</li>
-                <li>Counts track one part of a skill, like scales, in reps or your own unit. Add one when you log practice. Counts don't earn points; minutes do. A count can be a weekly goal.</li>
-                <li>You can only log today's practice.</li>
-                <li>Deleting today's practice takes its points back. Earlier days keep their points and hours.</li>
-                <li>Deleting old logs can break a skill's streak.</li>
-              </ul>
-            </Disclosure>
-          </>
+          skillLogs.length > 0 && (
+            <Reveal index={1} className="card p-4 space-y-3">
+              <div className="flex items-baseline justify-between gap-3">
+                <h2 className="section-title">Last 7 days</h2>
+                <span className="figure text-xs text-content-muted">
+                  <CountUp value={practiceWeekTotal} /> min
+                </span>
+              </div>
+              <BarChart
+                data={practiceDays.map((day, i) => ({ label: formatWeekdayShort(day), value: practiceMinutes[i] }))}
+                label={`Skill practice minutes per day, last 7 days: ${practiceWeekTotal} total`}
+                highlightIndex={practiceDays.length - 1}
+                formatTooltip={(datum, i) => `${formatWeekdayDate(practiceDays[i])}: ${datum.value} min`}
+              />
+            </Reveal>
+          )
         }
       >
         {skills.length === 0 ? (
@@ -1107,6 +1096,7 @@ export function SkillTracker({ store, onNavigate }: { store: AppStore; onNavigat
         }`}
         confirmText="Clear logs"
       />
+      <HowItWorksDialog open={guide.open} onClose={guide.close} guide={skillsGuide} focus={guide.focus} />
     </div>
   );
 }
