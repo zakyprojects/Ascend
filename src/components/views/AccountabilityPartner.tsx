@@ -6,10 +6,12 @@ import { AppStore } from '@/lib/store';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { TierBadge } from '@/components/ui/TierBadge';
 import { useToast } from '@/components/ui/Toast';
-import { Button, Dialog, Disclosure, EmptyState, Form, Input, Select, Skeleton, StaticTabPanel, Switch, Tabs, useFormController } from '@/components/ui/primitives';
+import { Button, Dialog, EmptyState, Form, Input, Select, Skeleton, StaticTabPanel, Switch, Tabs, useFormController } from '@/components/ui/primitives';
 import { useUnsavedChanges } from '@/lib/unsavedChanges';
 import { CountUp, Reveal } from '@/components/ui/Motion';
 import { PageHero } from '@/components/ui/PageHero';
+import { HowItWorksButton, HowItWorksDialog, useHowItWorks } from '@/components/ui/HowItWorks';
+import { partnersGuide } from '@/components/howItWorks/partners';
 import { FOCUS_RING, TAP_TARGET, TAP_TARGET_Y, cx } from '@/components/ui/primitives/shared';
 import { leagueNow } from '@/lib/leagueTime';
 import { getProfileSeasonPointsByUsername } from '@/lib/auth';
@@ -88,6 +90,7 @@ function initial(name: string | null | undefined): string {
 }
 
 export function AccountabilityPartner({ store, onNavigate }: { store: AppStore; onNavigate?: (view: View) => void }) {
+  const guide = useHowItWorks();
   const { showSuccessToast, showInfoToast, showErrorToast } = useToast();
   const { isLoading: isStatsLoading, executeFn: executeStatsFetch } = useAsyncAction();
   const { isLoading: isSubmittingInvite, executeFn: executeSendInvite } = useAsyncAction();
@@ -702,6 +705,7 @@ export function AccountabilityPartner({ store, onNavigate }: { store: AppStore; 
         <div>
           <h1 className="page-title">Partners</h1>
           <p className="page-subtitle">Do a daily challenge with a friend and keep each other going.</p>
+          <HowItWorksButton onClick={guide.show} />
         </div>
         {!firstLoad && !loadFailed && (
           <button
@@ -981,23 +985,6 @@ export function AccountabilityPartner({ store, onNavigate }: { store: AppStore; 
                 ) : (
                   <div className="space-y-2.5">{runningChallenges.map(renderChallenge)}</div>
                 )}
-
-                <Disclosure title="How challenges work">
-                  <ul className="list-disc pl-4 space-y-0.5">
-                    <li>Tick your challenge each day you do it. A day counts when you both tick it.</li>
-                    <li>Fill every day of the challenge together to finish it.</li>
-                    <li>If your goal is one of your daily habits, the habit and the challenge tick together, here or on Habits.</li>
-                    <li>A Reading (Books) challenge ticks when you log pages or chapters in Reading.</li>
-                    <li>
-                      In a resist challenge you resist a bad habit, the same one or each your own. Linked to your bad
-                      habit, tick it or tap Slipped on the card, or log it on Bad habits; not linked, you tick it by
-                      hand. A slip, or
-                      no tick by midnight, misses the day. Your partner sees only resisted or not yet.
-                    </li>
-                    <li>If a day is missed, the challenge can't finish. Start it again from today.</li>
-                    <li>Challenges don't give points. They're for keeping each other going.</li>
-                  </ul>
-                </Disclosure>
 
                 {finishedChallenges.length > 0 && (
                   <div className="pt-2 space-y-2.5">
@@ -1305,6 +1292,7 @@ export function AccountabilityPartner({ store, onNavigate }: { store: AppStore; 
         description={`Cancel your invite to ${inviteToCancel?.toUsername}?`}
         confirmText="Cancel invite"
       />
+      <HowItWorksDialog open={guide.open} onClose={guide.close} guide={partnersGuide} focus={guide.focus} />
     </div>
   );
 }
