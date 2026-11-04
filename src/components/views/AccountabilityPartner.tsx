@@ -15,10 +15,11 @@ import { leagueNow } from '@/lib/leagueTime';
 import { getProfileSeasonPointsByUsername } from '@/lib/auth';
 import { isPartnershipUser1 } from '@/lib/partnershipSide';
 import { CHALLENGE_LENGTH_OPTIONS, MAX_PARTNERS } from '@/lib/partnerRules';
-import { addDays, calculateElapsedDays, todayKey } from '@/lib/dates';
+import { addDays, calculateElapsedDays, getNow, todayKey } from '@/lib/dates';
+import { getCapStatus } from '@/lib/capStatus';
 import { useLocalDayKey } from '@/lib/useLocalDayKey';
 import { usePartnerDayKeys } from '@/lib/usePartnerDayKeys';
-import { ptUnit, ptsText } from '@/lib/leagues';
+import { getEffectiveSeasonPoints, ptUnit, ptsText } from '@/lib/leagues';
 import { createNotificationSupabase } from '@/lib/supabase';
 import { calculateUnifiedStreak } from '@/lib/streakLogic';
 import { toUserMessage } from '@/lib/userMessage';
@@ -42,6 +43,12 @@ import {
 import { BadHabit, BadHabitLog, Partnership, SharedChallenge, PartnerInvite } from '@/types';
 import type { View } from '@/components/AppShell';
 import { actionFeedback } from '@/lib/actionFeedback';
+import {
+  BadHabitDayAction,
+  BadHabitResistButton,
+  BadHabitSlipWarning,
+  badHabitPointsInfo,
+} from '@/components/badHabits/BadHabitRow';
 
 const EMPTY_PARTNERSHIPS: Partnership[] = [];
 const EMPTY_INVITES: PartnerInvite[] = [];
@@ -453,6 +460,19 @@ export function AccountabilityPartner({ store, onNavigate }: { store: AppStore; 
     showSuccessToast('Habit added', `${goal} is a daily habit now. This challenge ticks with it.`);
   };
 
+  // Resisted / Slipped / Undo on a resist card linked to my bad habit: the same store actions as the
+  // Bad habits page, so the log earns or loses its usual points and the store ticks or unticks the
+  // challenge from the log (the challenge itself gives no points). The day is taken at the tap.
+  const handleResistLinked = (badHabit: BadHabit) => {
+    actionFeedback('tick');
+    store.logBadHabitDay(badHabit.id, todayKey(), 'resisted');
+  };
+  const handleSlipLinked = (badHabit: BadHabit) => store.logBadHabitDay(badHabit.id, todayKey(), 'occurred');
+  const handleUndoLinked = (badHabit: BadHabit) => store.undoTodayBadHabitLog(badHabit.id);
+  // Read once per render for every linked resist card (the Bad habits page reads them the same way).
+  const resistRemaining = getCapStatus(store.state, 'badHabitsResisted', getNow()).remaining;
+  const seasonPoints = getEffectiveSeasonPoints(store.state, leagueNow());
+
   // Adds the bad habit a resist side names (Library preset or custom), so this side links to it.
   const handleAddPactBadHabit = (challenge: SharedChallenge) => {
     const current = store.state.badHabits || [];
@@ -527,6 +547,11 @@ export function AccountabilityPartner({ store, onNavigate }: { store: AppStore; 
     const readingLinked = linkedHabit?.linkedModule === 'reading';
     // Your own slip shows only to you; your partner sees "not yet" (and a missed day after midnight).
     const slipped = !mineDone && linkedBadHabit !== null && badHabitStatusOn(linkedBadHabit.id, badHabitLogs, today) === 'occurred';
+    // My linked bad habit's log today (a no-report row counts as not logged, as on Bad habits).
+    const badTodayLog = linkedBadHabit
+      ? badHabitLogs.find((l) => l && l.badHabitId === linkedBadHabit.id && l.date === today && l.status !== 'no_report')
+      : undefined;
+    const badPoints = linkedBadHabit ? badHabitPointsInfo(linkedBadHabit, badTodayLog, resistRemaining) : null;
     const canAddHabit = !resist && !linked && pactHabitToAdd(c, amUser1, habits || [], today) !== null;
     const canAddBadHabit = resist && !linked && pactBadHabitToAdd(c, amUser1, allBadHabits, today) !== null;
     const doneWord = resist ? 'resisted' : 'done';
@@ -628,6 +653,32 @@ export function AccountabilityPartner({ store, onNavigate }: { store: AppStore; 
                 </span>
               )}
             </div>
+            {/* Linked to my bad habit: log it right here, exactly as on Bad habits (only I see this). */}
+            {linkedBadHabit && badPoints && (
+              <>
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  {!badTodayLog && <BadHabitResistButton name={linkedBadHabit.name} onResist={() => handleResistLinked(linkedBadHabit)} />}
+                  <BadHabitDayAction
+                    name={linkedBadHabit.name}
+                    logged={Boolean(badTodayLog)}
+                    onSlip={() => handleSlipLinked(linkedBadHabit)}
+                    onUndo={() => handleUndoLinked(linkedBadHabit)}
+                  />
+                  <span className={cx('figure text-xs', badPoints.tone || 'text-content-muted')}>
+                    <span className="sr-only">Bad habit points today: </span>
+                    {badPoints.label}
+                  </span>
+                </div>
+                <BadHabitSlipWarning
+                  habit={linkedBadHabit}
+                  logs={badHabitLogs.filter((l) => l && l.badHabitId === linkedBadHabit.id)}
+                  today={today}
+                  logged={Boolean(badTodayLog)}
+                  seasonPoints={seasonPoints}
+                  className="mt-1.5"
+                />
+              </>
+            )}
           </div>
 
           <button
@@ -974,7 +1025,8 @@ export function AccountabilityPartner({ store, onNavigate }: { store: AppStore; 
                     <li>A Reading (Books) challenge ticks when you log pages or chapters in Reading.</li>
                     <li>
                       In a resist challenge you resist a bad habit, the same one or each your own. Linked to your bad
-                      habit, logging Resisted ticks it, here or on Bad habits; not linked, you tick it by hand. A slip, or
+                      habit, log Resisted or Slipped on the card or on Bad habits (its usual points); not linked, you tick
+                      it by hand. A slip, or
                       no tick by midnight, misses the day. Your partner sees only resisted or not yet.
                     </li>
                     <li>If a day is missed, the challenge can't finish. Start it again from today.</li>
