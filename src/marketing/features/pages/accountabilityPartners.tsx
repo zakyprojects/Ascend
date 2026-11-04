@@ -5,7 +5,9 @@ import { Block, Cards, Note, Rules, Steps, type FeatureContent } from '../blocks
 
 /* /features/accountability-partners. Sources: components/views/AccountabilityPartner.tsx (add by
    6-digit ID, waiting invites hold a place, shared or different daily goals, a day counts when both
-   tick, ticking a linked habit ticks the challenge, nudge once per partner per day, "Challenges
+   tick, ticking a linked habit ticks the challenge, resist challenges on a bad habit (logging
+   Resisted ticks them; a partner sees only resisted / not yet), the day chain, "Start again from
+   today" after a missed day, nudge (or "Send support" after a missed day) once per partner per day, "Challenges
    don't give points", season points + streak + rank side by side), lib/partnerRules.ts (limits,
    also enforced by the server), lib/pactLifecycle.ts (finished when every day was done together,
    ended when the days run out, joint streak), settings PreferenceSections ("Partner invites") and
@@ -50,15 +52,15 @@ export const accountabilityPartners: FeatureContent = {
             },
             {
               title: 'Start a challenge',
-              text: `Write what you will both do every day, like “Read 20 pages”, or switch on a different goal for each of you. Choose ${lengths}. Day 1 is today.`,
+              text: `Write what you will both do every day, like “Read 20 pages”, or switch on a different goal for each of you. Or pick a bad habit you will both resist, like doomscrolling. Choose ${lengths}. Day 1 is today.`,
             },
             {
               title: 'Tick your part each day',
-              text: 'Each of you ticks the challenge when you have done it. A day counts once you have both ticked it, and the bar fills with the days you did together.',
+              text: 'Each of you ticks the challenge when you have done it. A day counts once you have both ticked it, and a row of day cells shows each day: done together, done by one of you, or missed.',
             },
             {
               title: 'Nudge a friend, or get nudged',
-              text: 'If your partner has not done today’s part yet, send a nudge: a short notice that you are waiting for them. One nudge per partner per day.',
+              text: 'If your partner has not done today’s part yet, send a nudge: a short notice that you are waiting for them. If they missed yesterday, it becomes Send support instead. One per partner per day.',
             },
           ]}
         />
@@ -68,6 +70,14 @@ export const accountabilityPartners: FeatureContent = {
             habits
           </a>
           , ticking the habit ticks the challenge too, so you only log it once.
+        </Note>
+        <Note title="Resist a bad habit together.">
+          In a resist challenge you both resist the same{' '}
+          <a href={featurePath('bad-habits')} className={LINK_CLASS}>
+            bad habit
+          </a>
+          . Logging Resisted ticks the challenge; a slip, or no log by midnight, misses the day. Your partner sees only
+          resisted or not yet, never a slip. A slip costs only its normal bad-habit points, nothing extra.
         </Note>
       </Block>
 
@@ -90,7 +100,7 @@ export const accountabilityPartners: FeatureContent = {
             },
             {
               title: 'Finished or ended',
-              text: 'Fill every day of the challenge together and it is completed. If the days run out first, it ends. Either way it moves to Finished, where you can start it again.',
+              text: 'Fill every day of the challenge together and it is completed. Once a day is missed it can’t finish, so the card offers to start it again from today. If the days run out first, it ends and moves to Finished, where you can start it again.',
             },
             {
               title: 'Different days, different clocks',
@@ -138,7 +148,8 @@ export const accountabilityPartners: FeatureContent = {
             <p>
               A partner sees your stats, such as your streaks, your season points and rank, and how many habits, journal
               entries, books, exercise minutes and skills you have. They also see your timezone and everything you share
-              in the partnership and its challenges.
+              in the partnership and its challenges, such as the name of a bad habit you resist together (but never
+              your slips).
             </p>
             <p>
               They never see your email, your journal entries, your moods, your cravings or your recovery tracker. Those
@@ -212,7 +223,11 @@ export const accountabilityPartners: FeatureContent = {
     },
     {
       q: 'What happens if one of us misses a day?',
-      a: 'That day does not count together and the together streak starts again. The days you already did together still count toward finishing.',
+      a: 'That day does not count together and the together streak starts again. Finishing needs every day done by both of you, so the card then offers to start the challenge again from today.',
+    },
+    {
+      q: 'Can we resist a bad habit together?',
+      a: 'Yes. Start a resist challenge on a bad habit, such as doomscrolling, and log Resisted each day. Your partner sees whether you resisted today, never a slip. If they don’t track that bad habit yet, one tap adds it.',
     },
   ],
   related: ['leagues', 'habits', 'ranks', 'journal'],
