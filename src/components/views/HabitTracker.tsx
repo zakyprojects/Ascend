@@ -1,20 +1,20 @@
 import { useMemo, useState } from 'react';
-import { Info, ListChecks, Plus } from 'lucide-react';
+import { ListChecks, Plus } from 'lucide-react';
 import { AppStore, runningPactsLinkedTo } from '@/lib/store';
 import { pactUnlinkNote } from '@/lib/pactLifecycle';
 import { Habit } from '@/types';
 import { getNow, weekKey, formatWeekdayDate, formatWeekdayShort } from '@/lib/dates';
-import { getEffectiveSeasonPoints, ptsText } from '@/lib/leagues';
+import { getEffectiveSeasonPoints } from '@/lib/leagues';
 import { leagueNow } from '@/lib/leagueTime';
-import { PRESET_HABIT_POINTS } from '@/lib/pointsConfig';
-import { CUSTOM_HABIT_POINTS } from '@/lib/habitAwards';
 import { actionFeedback } from '@/lib/actionFeedback';
 import { useLocalDayKey } from '@/lib/useLocalDayKey';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { useToast } from '@/components/ui/Toast';
 import { CapMeterConnected } from '@/components/ui/CapMeterConnected';
+import { HowItWorksButton, HowItWorksDialog, useHowItWorks } from '@/components/ui/HowItWorks';
+import { habitsGuide } from '@/components/howItWorks/habits';
 import { PageHero } from '@/components/ui/PageHero';
-import { Disclosure, EmptyState, PageColumns } from '@/components/ui/primitives';
+import { EmptyState, PageColumns } from '@/components/ui/primitives';
 import { BarChart } from '@/components/ui/charts';
 import { CountUp, Reveal } from '@/components/ui/Motion';
 import { dailyHabitCompletions, lastDayKeys } from '@/lib/weeklyActivity';
@@ -25,6 +25,7 @@ import { isReadingLinked } from '@/components/habits/HabitCheck';
 const WEEK_DAYS = 7;
 
 export function HabitTracker({ store }: { store: AppStore }) {
+  const guide = useHowItWorks();
   const { showSuccessToast } = useToast();
   const [showAdd, setShowAdd] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<Habit | null>(null);
@@ -110,6 +111,7 @@ export function HabitTracker({ store }: { store: AppStore }) {
         <div>
           <h1 className="page-title">Habits</h1>
           <p className="page-subtitle">Build consistency, one day at a time.</p>
+          <HowItWorksButton onClick={guide.show} />
         </div>
         <button type="button" onClick={() => setShowAdd(true)} className="btn-primary sm:shrink-0">
           <Plus size={18} aria-hidden="true" />
@@ -149,36 +151,13 @@ export function HabitTracker({ store }: { store: AppStore }) {
               ? [{ label: 'Last 7 days', value: <><CountUp value={activeDays} />/{WEEK_DAYS}</>, hint: 'active days' }]
               : []),
           ]}
-          side={<CapMeterConnected state={store.state} capId="presetHabits" bare />}
+          side={<CapMeterConnected state={store.state} capId="presetHabits" bare onExplain={guide.showPoints} />}
         />
       </Reveal>
 
       <PageColumns
         stickyAside
-        aside={
-          <>
-            {hasDailyHabits && <WeekConsistencyCard days={weekDays} activeDays={activeDays} />}
-
-            <Disclosure title="How points work" icon={Info}>
-              <ul className="list-disc space-y-1 pl-4 text-content-muted">
-                <li>
-                  Preset habits earn their points and daily custom habits{' '}
-                  <span className="figure">{ptsText(CUSTOM_HABIT_POINTS, true)}</span> each, up to{' '}
-                  <span className="figure">{ptsText(PRESET_HABIT_POINTS.dailyCap)}</span> a day for all of them together. The ones
-                  you tick first count first. Weekly custom habits earn no points.
-                </li>
-                <li>You can only tick today, or this week for a weekly habit.</li>
-                <li>
-                  A preset habit left unticked for a day costs its points, from the day you add it. Each further miss in a
-                  row costs ×1.5 its points; from Performer rank, ×2 for the 2nd and ×2.5 from the 3rd (rounded). Ticking it
-                  resets the count. Custom habits have no penalty.
-                </li>
-                <li>The Reading (Books) habit ticks itself when you log pages in Reading Hub. It earns no points and has no penalty.</li>
-                <li>Deleting a habit removes only today's points from it. Earlier points and penalties stay.</li>
-              </ul>
-            </Disclosure>
-          </>
-        }
+        aside={hasDailyHabits && <WeekConsistencyCard days={weekDays} activeDays={activeDays} />}
       >
         {habits.length === 0 ? (
           <EmptyState
@@ -242,6 +221,7 @@ export function HabitTracker({ store }: { store: AppStore }) {
         itemName={confirmDelete?.name}
         description={deleteDescription(confirmDelete)}
       />
+      <HowItWorksDialog open={guide.open} onClose={guide.close} guide={habitsGuide} focus={guide.focus} />
     </div>
   );
 }

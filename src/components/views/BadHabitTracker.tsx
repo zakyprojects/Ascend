@@ -1,19 +1,19 @@
 import { useState } from 'react';
-import { Info, Plus, ShieldAlert } from 'lucide-react';
+import { Plus, ShieldAlert } from 'lucide-react';
 import { AppStore, runningPactsLinkedToBadHabit } from '@/lib/store';
 import { pactUnlinkNote } from '@/lib/pactLifecycle';
 import { useToast } from '@/components/ui/Toast';
 import { BadHabit } from '@/types';
 import { getNow, todayKey } from '@/lib/dates';
-import { BAD_HABIT_POINTS } from '@/lib/pointsConfig';
-import { PRESET_BAD_HABITS } from '@/lib/presets';
 import { CapMeterConnected } from '@/components/ui/CapMeterConnected';
+import { HowItWorksButton, HowItWorksDialog, useHowItWorks } from '@/components/ui/HowItWorks';
+import { badHabitsGuide } from '@/components/howItWorks/badHabits';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { PageHero } from '@/components/ui/PageHero';
-import { Disclosure, EmptyState, PageColumns } from '@/components/ui/primitives';
+import { EmptyState, PageColumns } from '@/components/ui/primitives';
 import { getActiveBadHabitsOrdered } from '@/lib/badHabitEligibility';
 import { getCapStatus } from '@/lib/capStatus';
-import { getEffectiveSeasonPoints, ptsText } from '@/lib/leagues';
+import { getEffectiveSeasonPoints } from '@/lib/leagues';
 import { leagueNow } from '@/lib/leagueTime';
 import { actionFeedback } from '@/lib/actionFeedback';
 import { useLocalDayKey } from '@/lib/useLocalDayKey';
@@ -21,11 +21,8 @@ import { CountUp, Reveal } from '@/components/ui/Motion';
 import { BadHabitRow } from '@/components/badHabits/BadHabitRow';
 import { AddBadHabitDialog } from '@/components/badHabits/AddBadHabitDialog';
 
-// Library slip / not-logged base: each library bad habit's points + penaltyExtra, e.g. "−2 to −4 pts".
-const penaltyBases = PRESET_BAD_HABITS.map((p) => p.points + BAD_HABIT_POINTS.penaltyExtra);
-const penaltyRange = `−${Math.min(...penaltyBases)} to ${ptsText(-Math.max(...penaltyBases))}`;
-
 export function BadHabitTracker({ store }: { store: AppStore }) {
+  const guide = useHowItWorks();
   const { showSuccessToast } = useToast();
   const [showAdd, setShowAdd] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<BadHabit | null>(null);
@@ -95,6 +92,7 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
         <div>
           <h1 className="page-title">Bad habits</h1>
           <p className="page-subtitle">Resist each day, one day at a time.</p>
+          <HowItWorksButton onClick={guide.show} />
         </div>
         <button type="button" onClick={openAdd} className="btn-primary sm:shrink-0">
           <Plus size={18} aria-hidden="true" />
@@ -124,40 +122,11 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
             valueClassName: 'text-brand-text',
           }}
           stats={[{ label: 'Bad habits', value: <CountUp value={habits.length} /> }]}
-          side={<CapMeterConnected state={store.state} capId="badHabitsResisted" bare />}
+          side={<CapMeterConnected state={store.state} capId="badHabitsResisted" bare onExplain={guide.showPoints} />}
         />
       </Reveal>
 
-      <PageColumns stickyAside
-        aside={
-          <Disclosure title="How points work" icon={Info}>
-            <ul className="list-disc space-y-1 pl-4 text-content-muted">
-              <li>
-                Resisted: library bad habits earn their own points (shown when you add them), custom ones{' '}
-                <span className="figure">{ptsText(BAD_HABIT_POINTS.customResist, true)}</span>. Up to{' '}
-                <span className="figure">{ptsText(BAD_HABIT_POINTS.dailyCap)}</span> a day for all of them together; the ones
-                you log first count first.
-              </li>
-              <li>
-                Slipped: the habit&apos;s points + {BAD_HABIT_POINTS.penaltyExtra} (library{' '}
-                <span className="figure">{penaltyRange}</span>, custom{' '}
-                <span className="figure">{ptsText(-(BAD_HABIT_POINTS.customResist + BAD_HABIT_POINTS.penaltyExtra))}</span>). A day
-                you don&apos;t log costs the same, charged after midnight, counting from the day you added the habit.
-              </li>
-              <li>
-                At most <span className="figure">{BAD_HABIT_POINTS.dailyPenaltyLimit}</span> bad habits lose points a day, slips
-                and unlogged days together: the {BAD_HABIT_POINTS.dailyPenaltyLimit} largest penalties count, the rest cost
-                nothing.
-              </li>
-              <li>
-                Each bad day in a row (slipped or not logged) costs more: ×1.5; from Performer rank ×2 for the 2nd and ×2.5
-                from the 3rd (rounded). Resisting resets the count.
-              </li>
-              <li>Deleting a bad habit removes only today&apos;s points from it. Earlier points and penalties stay.</li>
-            </ul>
-          </Disclosure>
-        }
-      >
+      <PageColumns>
         {habits.length === 0 ? (
           <EmptyState
             icon={ShieldAlert}
@@ -221,6 +190,7 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
           confirmDelete ? pactUnlinkNote(runningPactsLinkedToBadHabit(store.state, confirmDelete), 'bad habit') : ''
         }`}
       />
+      <HowItWorksDialog open={guide.open} onClose={guide.close} guide={badHabitsGuide} focus={guide.focus} />
     </div>
   );
 }

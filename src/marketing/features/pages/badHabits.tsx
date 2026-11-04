@@ -8,8 +8,8 @@ import { Block, Cards, Note, Rules, Steps, type FeatureContent } from '../blocks
 import { fmt, pts, range } from '../format';
 
 /* /features/bad-habits. Sources: lib/presets.ts PRESET_BAD_HABITS, lib/pointsConfig.ts
-   BAD_HABIT_POINTS, lib/missPenalty.ts, lib/tiers.ts, and the Bad habits page's own "How points
-   work" (components/views/BadHabitTracker.tsx). */
+   BAD_HABIT_POINTS, lib/missPenalty.ts, lib/tiers.ts, and the Bad habits page's own How it
+   works (components/howItWorks/badHabits.tsx). */
 
 const P = BAD_HABIT_POINTS;
 const resistRange = range(PRESET_BAD_HABITS.map((h) => h.points));

@@ -10,7 +10,7 @@ import { fmt, pts, range } from '../format';
 
 /* /features/habits. Sources: lib/presets.ts (library), lib/habitAwards.ts (custom points),
    lib/pointsConfig.ts (daily cap), lib/missPenalty.ts (miss multiplier), lib/tiers.ts, and the
-   Habits page's own "How points work" (components/views/HabitTracker.tsx). */
+   Habits page's own How it works (components/howItWorks/habits.tsx). */
 
 const library = PRESET_CATEGORIES.flatMap((c) => c.habits);
 const libraryPoints = range(library.map((h) => h.points));
@@ -121,7 +121,7 @@ export const habits: FeatureContent = {
         title="A habit tracker with points: how habits earn and lose them"
         lead={
           <p>
-            These are the same rules the app shows under “How points work” on the Habits page. With an account, points are
+            These are the same rules the app shows under “How it works” on the Habits page. With an account, points are
             counted on the server, so every device shows the same total.
           </p>
         }
