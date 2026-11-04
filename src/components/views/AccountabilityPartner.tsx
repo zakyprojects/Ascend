@@ -39,7 +39,6 @@ import {
   resistPactTitle,
   type PactDayCellState,
 } from '@/lib/pactLifecycle';
-import { PRESET_BAD_HABITS } from '@/lib/presets';
 import { BadHabit, BadHabitLog, Partnership, SharedChallenge, PartnerInvite } from '@/types';
 import type { View } from '@/components/AppShell';
 import { actionFeedback } from '@/lib/actionFeedback';
@@ -104,8 +103,6 @@ export function AccountabilityPartner({ store, onNavigate }: { store: AppStore; 
 
   // New challenge form
   const [challengeKind, setChallengeKind] = useState<ChallengeKind>('do');
-  // Resist: 'bh:<id>' (one of your bad habits) or 'preset:<name>' (Library, added on Start).
-  const [badHabitPick, setBadHabitPick] = useState('');
   // "Start again from today": the running challenge the new one replaces.
   const [replacing, setReplacing] = useState<SharedChallenge | null>(null);
   const [myGoal, setMyGoal] = useState('');
@@ -273,9 +270,11 @@ export function AccountabilityPartner({ store, onNavigate }: { store: AppStore; 
   const allBadHabits = store.state.badHabits || EMPTY_BAD_HABITS;
   const badHabitLogs = store.state.badHabitLogs || EMPTY_BAD_HABIT_LOGS;
   const activeBadHabits = useMemo(() => allBadHabits.filter((b) => b && !b.isCompleted), [allBadHabits]);
+  // Same rule for a resist goal: the picker shows the bad habit the text links to.
+  const pickedBadHabitId = badHabitForPactGoal(myGoal, activeBadHabits)?.id ?? '';
 
   const inviteForm = useUnsavedChanges(inviteModalOpen, partnerUidInput);
-  const challengeForm = useUnsavedChanges(challengeModalOpen, [challengeKind, badHabitPick, myGoal, differentGoal, partnerGoal, lengthDays]);
+  const challengeForm = useUnsavedChanges(challengeModalOpen, [challengeKind, myGoal, differentGoal, partnerGoal, lengthDays]);
   const inviteIssues = useFormController();
   const challengeIssues = useFormController();
 
@@ -284,13 +283,10 @@ export function AccountabilityPartner({ store, onNavigate }: { store: AppStore; 
     const mine = from ? goalOf(from, amUser1) : '';
     const theirs = from ? goalOf(from, !amUser1) : '';
     setChallengeKind(resist ? 'resist' : 'do');
-    // A resist challenge prefills your bad habit by name (or its Library preset when you have none).
-    const ownBadHabit = resist ? badHabitForPactGoal(mine, activeBadHabits) : null;
-    const preset = resist && activeBadHabits.length === 0 ? PRESET_BAD_HABITS.find((b) => sameName(b.name, mine)) : undefined;
-    setBadHabitPick(ownBadHabit ? `bh:${ownBadHabit.id}` : preset ? `preset:${preset.name}` : '');
-    setMyGoal(resist ? '' : mine);
-    setPartnerGoal(resist || theirs === mine ? '' : theirs);
-    setDifferentGoal(Boolean(from) && !resist && theirs !== mine);
+    // Each side keeps its own goal (a resist side: its bad habit's name); the pickers follow the text.
+    setMyGoal(mine);
+    setPartnerGoal(theirs === mine ? '' : theirs);
+    setDifferentGoal(Boolean(from) && theirs !== mine);
     setLengthDays(from && CHALLENGE_LENGTH_OPTIONS.includes(from.durationDays) ? from.durationDays : 14);
     setReplacing(replace && from ? from : null);
     setChallengeModalOpen(true);
@@ -326,26 +322,20 @@ export function AccountabilityPartner({ store, onNavigate }: { store: AppStore; 
     e.preventDefault();
     if (!activePartnership || isSubmittingChallenge) return;
     const resist = challengeKind === 'resist';
-    // Resist: both sides resist the same bad habit, named on both sides and in the title.
-    const pickedBadHabit = badHabitPick.startsWith('bh:')
-      ? activeBadHabits.find((b) => `bh:${b.id}` === badHabitPick)
-      : undefined;
-    const pickedPreset = badHabitPick.startsWith('preset:')
-      ? PRESET_BAD_HABITS.find((b) => `preset:${b.name}` === badHabitPick)
-      : undefined;
-    const badHabitName = (pickedBadHabit?.name || pickedPreset?.name || '').trim();
-    const mine = resist ? badHabitName : myGoal.trim();
-    const theirs = resist ? mine : differentGoal ? partnerGoal.trim() : mine;
-    if (resist && !mine) {
-      challengeIssues.showError('Choose an option.', 'challenge-my-bad-habit');
-      return;
-    }
+    // Like a habit challenge: each side has its own goal text (a resist side names a bad habit) and
+    // links by name to that partner's own habit / bad habit, or is ticked by hand.
+    const mine = myGoal.trim();
+    const theirs = differentGoal ? partnerGoal.trim() : mine;
+    const verb = resist ? 'resist' : 'do';
     if (!mine) {
-      challengeIssues.showError('Write what you will do every day.', 'challenge-my-goal');
+      challengeIssues.showError(
+        differentGoal ? `Write what you will ${verb} every day.` : `Write what you will both ${verb} every day.`,
+        'challenge-my-goal'
+      );
       return;
     }
     if (!theirs) {
-      challengeIssues.showError(`Write what ${partnerName} will do every day.`, 'challenge-partner-goal');
+      challengeIssues.showError(`Write what ${partnerName} will ${verb} every day.`, 'challenge-partner-goal');
       return;
     }
     const title = resist ? resistPactTitle(mine) : mine;
@@ -357,7 +347,7 @@ export function AccountabilityPartner({ store, onNavigate }: { store: AppStore; 
     if (running.some((c) => sameName(c.title, title))) {
       challengeIssues.showError(
         'You already have a running challenge with this name.',
-        resist ? 'challenge-my-bad-habit' : 'challenge-my-goal'
+        'challenge-my-goal'
       );
       return;
     }
@@ -373,10 +363,6 @@ export function AccountabilityPartner({ store, onNavigate }: { store: AppStore; 
           activePartnership.id,
           replacing?.id
         );
-        // A Library pick is added only once the challenge exists; it links by name from then on.
-        if (pickedPreset && !badHabitForPactGoal(pickedPreset.name, store.state.badHabits || [])) {
-          store.addBadHabit(pickedPreset.name, true);
-        }
         setChallengeModalOpen(false);
         if (replacing) {
           try {
@@ -609,7 +595,7 @@ export function AccountabilityPartner({ store, onNavigate }: { store: AppStore; 
             <h3 className="item-name truncate text-content-secondary">{heading}</h3>
             {theirs !== mine && (
               <p className="text-xs text-content-muted truncate">
-                {partnerName}: {theirs}
+                {partnerName}: {isResistSide(c, !amUser1) ? resistPactTitle(theirs) : theirs}
               </p>
             )}
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-xs">
@@ -987,8 +973,9 @@ export function AccountabilityPartner({ store, onNavigate }: { store: AppStore; 
                     <li>If your goal is one of your daily habits, the habit and the challenge tick together, here or on Habits.</li>
                     <li>A Reading (Books) challenge ticks when you log pages or chapters in Reading.</li>
                     <li>
-                      In a resist challenge you both resist the same bad habit. Logging Resisted ticks it, here or on Bad
-                      habits. A slip, or no log by midnight, misses the day. Your partner sees only resisted or not yet.
+                      In a resist challenge you resist a bad habit, the same one or each your own. Linked to your bad
+                      habit, logging Resisted ticks it, here or on Bad habits; not linked, you tick it by hand. A slip, or
+                      no tick by midnight, misses the day. Your partner sees only resisted or not yet.
                     </li>
                     <li>If a day is missed, the challenge can't finish. Start it again from today.</li>
                     <li>Challenges don't give points. They're for keeping each other going.</li>
@@ -1097,7 +1084,7 @@ export function AccountabilityPartner({ store, onNavigate }: { store: AppStore; 
             ? `This replaces "${challengeName(replacing, amUser1)}": it's deleted for both of you, with its days.`
             : undefined
         }
-        initialFocus={challengeKind === 'do' ? 'challenge-my-goal' : undefined}
+        initialFocus="challenge-my-goal"
         footer={
           <>
             <button
@@ -1125,39 +1112,32 @@ export function AccountabilityPartner({ store, onNavigate }: { store: AppStore; 
           />
 
           <StaticTabPanel idBase="challenge-kind" value={challengeKind} className="space-y-5">
-            {challengeKind === 'resist' ? (
-              <Select
-                id="challenge-my-bad-habit"
-                label="Which bad habit?"
-                required
-                hint={`You both resist it, and ${partnerName} sees its name. Logging Resisted on Bad habits ticks it too.${
-                  activeBadHabits.length === 0 ? ' Picking one adds it to your bad habits.' : ''
-                }`}
-                value={badHabitPick}
-                onChange={(e) => setBadHabitPick(e.target.value)}
-              >
-                <option value="" disabled>
-                  Choose a bad habit
-                </option>
-                {activeBadHabits.length > 0 ? (
-                  activeBadHabits.map((b) => (
-                    <option key={b.id} value={`bh:${b.id}`}>
-                      {b.name}
-                    </option>
-                  ))
-                ) : (
-                  <optgroup label="Add from library">
-                    {PRESET_BAD_HABITS.map((b) => (
-                      <option key={b.name} value={`preset:${b.name}`}>
+            {/* Resist mirrors Do: an optional picker of your own (bad) habits that fills the name, the
+                name itself (linked when it matches one of yours, else ticked by hand), and a switch for a
+                different goal for your partner, which links to their own by name on their side. */}
+            {challengeKind === 'resist'
+              ? activeBadHabits.length > 0 && (
+                  <Select
+                    id="challenge-my-bad-habit"
+                    label="Link one of your bad habits"
+                    optional
+                    hint="Logging Resisted on Bad habits ticks the challenge. A slip shows only to you."
+                    value={pickedBadHabitId}
+                    onChange={(e) => {
+                      const picked = activeBadHabits.find((b) => b.id === e.target.value);
+                      // Not linked clears a linked name (the picker follows the text, so it would snap back).
+                      setMyGoal(picked ? picked.name : pickedBadHabitId ? '' : myGoal);
+                    }}
+                  >
+                    <option value="">Not linked</option>
+                    {activeBadHabits.map((b) => (
+                      <option key={b.id} value={b.id}>
                         {b.name}
                       </option>
                     ))}
-                  </optgroup>
-                )}
-              </Select>
-            ) : (
-              <>
-                {linkableHabits.length > 0 && (
+                  </Select>
+                )
+              : linkableHabits.length > 0 && (
                   <Select
                     id="challenge-my-habit"
                     label="Link one of your habits"
@@ -1179,37 +1159,50 @@ export function AccountabilityPartner({ store, onNavigate }: { store: AppStore; 
                   </Select>
                 )}
 
-                <Input
-                  id="challenge-my-goal"
-                  label={differentGoal ? 'What will you do every day?' : 'What will you both do every day?'}
-                  placeholder="e.g. Read 20 pages"
-                  value={myGoal}
-                  onChange={(e) => setMyGoal(e.target.value)}
-                  maxLength={80}
-                  autoComplete="off"
-                />
+            <Input
+              id="challenge-my-goal"
+              label={
+                challengeKind === 'resist'
+                  ? differentGoal
+                    ? 'What will you resist every day?'
+                    : 'What will you both resist every day?'
+                  : differentGoal
+                  ? 'What will you do every day?'
+                  : 'What will you both do every day?'
+              }
+              hint={
+                challengeKind === 'resist'
+                  ? `${partnerName} sees this name. Not linked: you tick it by hand each day you resist.`
+                  : undefined
+              }
+              placeholder={challengeKind === 'resist' ? 'e.g. Doomscrolling' : 'e.g. Read 20 pages'}
+              value={myGoal}
+              onChange={(e) => setMyGoal(e.target.value)}
+              maxLength={80}
+              autoComplete="off"
+            />
 
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-sm text-content-secondary">{partnerName} does something different</span>
-                  <Switch
-                    checked={differentGoal}
-                    onChange={() => setDifferentGoal((v) => !v)}
-                    label={`${partnerName} does something different`}
-                  />
-                </div>
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-sm text-content-secondary">
+                {partnerName} {challengeKind === 'resist' ? 'resists something different' : 'does something different'}
+              </span>
+              <Switch
+                checked={differentGoal}
+                onChange={() => setDifferentGoal((v) => !v)}
+                label={`${partnerName} ${challengeKind === 'resist' ? 'resists something different' : 'does something different'}`}
+              />
+            </div>
 
-                {differentGoal && (
-                  <Input
-                    id="challenge-partner-goal"
-                    label={`What will ${partnerName} do every day?`}
-                    placeholder="e.g. 30 min workout"
-                    value={partnerGoal}
-                    onChange={(e) => setPartnerGoal(e.target.value)}
-                    maxLength={80}
-                    autoComplete="off"
-                  />
-                )}
-              </>
+            {differentGoal && (
+              <Input
+                id="challenge-partner-goal"
+                label={`What will ${partnerName} ${challengeKind === 'resist' ? 'resist' : 'do'} every day?`}
+                placeholder={challengeKind === 'resist' ? 'e.g. Junk food' : 'e.g. 30 min workout'}
+                value={partnerGoal}
+                onChange={(e) => setPartnerGoal(e.target.value)}
+                maxLength={80}
+                autoComplete="off"
+              />
             )}
           </StaticTabPanel>
 

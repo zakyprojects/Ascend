@@ -52,7 +52,7 @@ export const accountabilityPartners: FeatureContent = {
             },
             {
               title: 'Start a challenge',
-              text: `Write what you will both do every day, like “Read 20 pages”, or switch on a different goal for each of you. Or pick a bad habit you will both resist, like doomscrolling. Choose ${lengths}. Day 1 is today.`,
+              text: `Write what you will both do every day, like “Read 20 pages”, or switch on a different goal for each of you. Or start a resist challenge on a bad habit, like doomscrolling, the same for both of you or a different one each. Choose ${lengths}. Day 1 is today.`,
             },
             {
               title: 'Tick your part each day',
@@ -72,11 +72,12 @@ export const accountabilityPartners: FeatureContent = {
           , ticking the habit ticks the challenge too, so you only log it once.
         </Note>
         <Note title="Resist a bad habit together.">
-          In a resist challenge you both resist the same{' '}
+          In a resist challenge you each resist a{' '}
           <a href={featurePath('bad-habits')} className={LINK_CLASS}>
             bad habit
           </a>
-          . Logging Resisted ticks the challenge; a slip, or no log by midnight, misses the day. Your partner sees only
+          , the same one or a different one each. When it is one you track, logging Resisted ticks the challenge;
+          otherwise you tick it by hand. A slip, or no tick by midnight, misses the day. Your partner sees only
           resisted or not yet, never a slip. A slip costs only its normal bad-habit points, nothing extra.
         </Note>
       </Block>
@@ -227,7 +228,7 @@ export const accountabilityPartners: FeatureContent = {
     },
     {
       q: 'Can we resist a bad habit together?',
-      a: 'Yes. Start a resist challenge on a bad habit, such as doomscrolling, and log Resisted each day. Your partner sees whether you resisted today, never a slip. If they don’t track that bad habit yet, one tap adds it.',
+      a: 'Yes. Start a resist challenge on a bad habit, such as doomscrolling (the same one or a different one each), and log Resisted each day. Your partner sees whether you resisted today, never a slip. If they don’t track that bad habit yet, one tap adds it.',
     },
   ],
   related: ['leagues', 'habits', 'ranks', 'journal'],
