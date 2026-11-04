@@ -10,9 +10,11 @@ import { formatDateLong, todayKey, startOfWeek, parseDate } from '@/lib/dates';
 import { useLocalDayKey } from '@/lib/useLocalDayKey';
 import { wouldExceedRecoverySeasonCap, RECOVERY_POINTS, SOBRIETY_MILESTONE_POINTS } from '@/lib/pointsConfig';
 import { CapMeter } from '@/components/ui/CapMeter';
+import { HowItWorksButton, HowItWorksDialog, useHowItWorks } from '@/components/ui/HowItWorks';
+import { recoveryGuide } from '@/components/howItWorks/recovery';
 import { PageHero } from '@/components/ui/PageHero';
 import { CountUp, Reveal } from '@/components/ui/Motion';
-import { Dialog, Disclosure, EmptyState, Form, Input, PageColumns } from '@/components/ui/primitives';
+import { Dialog, EmptyState, Form, Input, PageColumns } from '@/components/ui/primitives';
 import { useUnsavedChanges } from '@/lib/unsavedChanges';
 import { TAP_TARGET, cx } from '@/components/ui/primitives/shared';
 import { trustedNow } from '@/lib/clock';
@@ -44,6 +46,7 @@ const cravingDay = (log: CravingLog): string | null => {
 };
 
 export function AddictionRecovery({ store }: { store: AppStore }) {
+  const guide = useHowItWorks();
   const { showSuccessToast } = useToast();
   const { isKeyLoading, executeWithKey } = useAsyncActionKey();
   const [emergencyModalOpen, setEmergencyModalOpen] = useState(false);
@@ -147,6 +150,7 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
         <div>
           <h1 className="page-title">Recovery</h1>
           <p className="page-subtitle">Your clean streak, cravings and support when it gets hard.</p>
+          <HowItWorksButton onClick={guide.show} />
         </div>
         <div className="flex shrink-0 gap-2">
           <button
@@ -205,7 +209,7 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
               { label: 'Points this season', value: <>{heldSeasonPoints > 0 && '+'}<CountUp value={heldSeasonPoints} /></>, valueClassName: 'text-brand-text' },
               { label: 'Cravings this week', value: <CountUp value={cravingsThisWeek} />, valueClassName: 'text-brand-text' },
             ]}
-            side={<CapMeter variant="bar" label="Recovery points this season" earned={heldSeasonPoints} cap={RECOVERY_POINTS.seasonCap} />}
+            side={<CapMeter variant="bar" label="Recovery points this season" earned={heldSeasonPoints} cap={RECOVERY_POINTS.seasonCap} onExplain={guide.showPoints} />}
           />
         </Reveal>
       )}
@@ -214,18 +218,6 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
         stickyAside
         aside={
           <>
-            <Disclosure title="How points work">
-              <ul className="list-disc pl-4 space-y-0.5">
-                <li>
-                  7 days clean = <span className="figure text-success-text">+{SOBRIETY_MILESTONE_POINTS['1w']}</span>, 30 days ={' '}
-                  <span className="figure text-success-text">+{SOBRIETY_MILESTONE_POINTS['1m']}</span>, 90 days ={' '}
-                  <span className="figure text-success-text">+{SOBRIETY_MILESTONE_POINTS['90d']}</span>.
-                </li>
-                <li>Up to {RECOVERY_POINTS.seasonCap} pts a season. Points arrive within the hour, even with the app closed, if you opened AscendDay in the 7 days before.</li>
-                <li>Reset or delete: the streak's milestone points from this season come off. Earlier seasons keep theirs.</li>
-                <li>A new streak can earn the milestones again. Cravings never change points.</li>
-              </ul>
-            </Disclosure>
             <div className="rounded-2xl border border-warning/30 bg-warning/5 p-4 flex gap-3">
               <AlertTriangle size={16} className="text-warning-text shrink-0 mt-0.5" />
               <p className="text-xs text-content-tertiary leading-relaxed">
@@ -594,6 +586,7 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
         }`}
         confirmText="Clear cravings"
       />
+      <HowItWorksDialog open={guide.open} onClose={guide.close} guide={recoveryGuide} focus={guide.focus} />
     </div>
   );
 }

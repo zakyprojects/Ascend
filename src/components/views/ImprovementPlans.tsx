@@ -7,6 +7,8 @@ import { AscendLoadingIndicator } from '@/components/ui/AscendLoadingIndicator';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { ProgressUpdateDialog } from '@/components/ui/ProgressUpdateDialog';
 import { PageHero } from '@/components/ui/PageHero';
+import { HowItWorksButton, HowItWorksDialog, useHowItWorks } from '@/components/ui/HowItWorks';
+import { plansGuide } from '@/components/howItWorks/plans';
 import { CountUp, Reveal } from '@/components/ui/Motion';
 import { Badge, Dialog, EmptyState, Form, NumberField, TabPanel, Tabs } from '@/components/ui/primitives';
 import { ImprovementPlan, UserPlanFollow } from '@/types';
@@ -27,6 +29,7 @@ type PlansTab = 'my_plans' | 'discover';
 const PLAN_TABS: PlansTab[] = ['my_plans', 'discover'];
 
 export function ImprovementPlans({ store }: { store: AppStore }) {
+  const guide = useHowItWorks();
   const { showSuccessToast, showErrorToast } = useToast();
   const { isKeyLoading, executeWithKey } = useAsyncActionKey();
   // Re-renders at local midnight: journeys' "done this period" and day counts roll over (C5).
@@ -143,6 +146,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
         <div>
           <h1 className="page-title">Plans</h1>
           <p className="page-subtitle">Milestones, targets, habit journeys and visions. Yours or copied.</p>
+          <HowItWorksButton onClick={guide.show} />
         </div>
         <button
           type="button"
@@ -397,6 +401,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
         title="Delete this check-in?"
         description="This check-in note will be deleted."
       />
+      <HowItWorksDialog open={guide.open} onClose={guide.close} guide={plansGuide} focus={guide.focus} />
     </div>
   );
 }

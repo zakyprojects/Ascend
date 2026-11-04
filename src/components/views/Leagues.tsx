@@ -21,6 +21,8 @@ import { CompetitorProfileModal } from '@/components/ui/CompetitorProfileModal';
 import { LeagueCountdown } from '@/components/ui/LeagueCountdown';
 import { GuestSaveBanner } from '@/components/ui/GuestSaveBanner';
 import { PageHero } from '@/components/ui/PageHero';
+import { HowItWorksButton, HowItWorksDialog, useHowItWorks } from '@/components/ui/HowItWorks';
+import { leaguesGuide } from '@/components/howItWorks/leagues';
 import { useLeaguePeriodRollover } from '@/lib/useLeaguePeriodRollover';
 import { useLeagueStandingsRefresh } from '@/lib/useLeagueStandingsRefresh';
 import { useMemberDetails } from '@/lib/useMemberDetails';
@@ -100,6 +102,7 @@ interface LeaguesProps {
 }
 
 export function Leagues({ store, onOpenAuth }: LeaguesProps) {
+  const guide = useHowItWorks();
   const [activeLeague, setActiveLeague] = useState<LeagueType>('weekly');
   const changeLeague = (id: string) => setActiveLeague(id as LeagueType);
   const [openArchiveId, setOpenArchiveId] = useState<string | null>(null);
@@ -184,6 +187,7 @@ export function Leagues({ store, onOpenAuth }: LeaguesProps) {
       <div>
         <h1 className="page-title">Leagues</h1>
         <p className="page-subtitle">Compete with real people and climb the table.</p>
+        <HowItWorksButton onClick={guide.show} />
       </div>
 
       {(!currentUser || currentUser.isAnonymous) && onOpenAuth && (
@@ -434,6 +438,7 @@ export function Leagues({ store, onOpenAuth }: LeaguesProps) {
         open={!!selectedCompetitor}
         onClose={() => setSelectedCompetitor(null)}
       />
+      <HowItWorksDialog open={guide.open} onClose={guide.close} guide={leaguesGuide} focus={guide.focus} />
     </div>
   );
 }
