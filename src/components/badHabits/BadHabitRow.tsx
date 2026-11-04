@@ -97,21 +97,6 @@ export function BadHabitSlipWarning({
 
 const DAY_ACTION_CLASS = cx('inline-flex h-9 items-center gap-1.5 rounded-lg border px-2.5 text-xs', TAP_TARGET, FOCUS_RING, TRANSITION);
 
-/** The labelled Resisted button (the partner card; the Bad habits row resists with its tick or a swipe). */
-export function BadHabitResistButton({ name, onResist }: { name: string; onResist: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onResist}
-      aria-label={`Resisted ${name} today`}
-      className={cx(DAY_ACTION_CLASS, 'border-primary-500/40 bg-primary-500/10 font-semibold text-brand-text hover:bg-primary-500/20')}
-    >
-      <Check size={14} aria-hidden="true" />
-      <span>Resisted</span>
-    </button>
-  );
-}
-
 /** Slipped while today is not logged, Undo once it is: the row's right-hand action. */
 export function BadHabitDayAction({
   name,
