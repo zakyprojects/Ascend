@@ -17,6 +17,8 @@ import {
   logDrillCount,
   normalizeDrillUnit,
   parseDrillMetricKey,
+  addLogDrills,
+  prepareLogDrills,
 } from '../skillDrills';
 import { LINKED_GOAL_METRICS, computeLinkedGoalProgress, linkedGoalCrossing, linkedGoalUnit, linkedItemExists } from '../linkedGoalMetrics';
 import { computeSkillAwards } from '../skillAwards';
@@ -258,6 +260,97 @@ const state = (overrides: Partial<AppState>): AppState => ({ ...DEFAULT_STATE, .
   const oldClientWrite = { ...newer, manualLevel: 'advanced' as const, updatedAt: '2026-11-04T07:00:00.000Z' };
   const merged = mergeAppState(local, state({ skills: [oldClientWrite], skillLogs: [counted] }));
   assert(merged.skills[0].manualLevel === 'advanced' && merged.skills[0].drills?.length === 3, 'spread write keeps drills');
+}
+
+// 12. New drills while logging practice (Zakria 2026-11-04 rework): the Log practice form names a
+// new drill and its count in one save; the drill joins the skill and the count goes on the log.
+{
+  const skill = guitar();
+  const bare: Skill = { id: 'p', name: 'Piano', createdAt: T0 };
+  const range = 'Enter a whole number from 1 to 9,999.';
+
+  // Empty rows (no count, no name) = a minutes-only log.
+  const none = prepareLogDrills([{ drillId: null, name: '  ', unit: 'reps', count: null }], bare);
+  assert(none.counts?.length === 0 && none.newDrills?.length === 0, 'empty new row = no drill');
+  const noneExisting = prepareLogDrills([{ drillId: 'scales', count: null }], skill);
+  assert(noneExisting.counts?.length === 0, 'existing drill without count = not logged');
+
+  // A new drill on a skill without drills: trimmed name, unit default, count kept.
+  const one = prepareLogDrills([{ drillId: null, name: '  Hanon   exercises ', unit: '  ', count: 30 }], bare);
+  assert(one.newDrills?.length === 1 && one.newDrills[0].name === 'Hanon exercises', 'new name trimmed');
+  assert(one.newDrills?.[0].unit === 'reps' && one.newDrills[0].count === 30, 'empty unit = reps, count kept');
+
+  // Name without count / count without name: errors on the missing field.
+  const noCount = prepareLogDrills([{ drillId: null, name: 'Scales', unit: 'reps', count: null }], bare);
+  assert(noCount.problem?.field === 'count' && noCount.problem.message === 'Enter 1 or more.', 'name without count refused on count');
+  const noName = prepareLogDrills([{ drillId: null, name: '', unit: 'reps', count: 5 }], bare);
+  assert(noName.problem?.field === 'name' && noName.problem.message === 'Fill in this field.', 'count without name refused on name');
+  for (const count of [0, 10000, 2.5]) {
+    const r = prepareLogDrills([{ drillId: null, name: 'Scales', unit: 'reps', count }], bare);
+    assert(r.problem?.field === 'count' && r.problem.message === range, `new drill count ${count} refused`);
+  }
+
+  // Names: unique among live drills (case/spaces ignored) and among the new rows; deleted names free.
+  const dupLive = prepareLogDrills([{ drillId: null, name: ' scales ', unit: 'reps', count: 5 }], skill);
+  assert(dupLive.problem?.field === 'name' && dupLive.problem.message === 'You already have a drill with this name.', 'new name of a live drill refused');
+  const dupNew = prepareLogDrills(
+    [
+      { drillId: null, name: 'Riffs', unit: 'reps', count: 5 },
+      { drillId: null, name: ' RIFFS', unit: 'times', count: 6 },
+    ],
+    skill
+  );
+  assert(dupNew.problem?.field === 'name' && dupNew.problem.index === 1, 'two new rows with one name refused on the second');
+  const reuse = prepareLogDrills([{ drillId: null, name: 'Arpeggios', unit: 'reps', count: 5 }], skill);
+  assert(reuse.newDrills?.length === 1, "a deleted drill's name can be a new drill");
+  const long = prepareLogDrills([{ drillId: null, name: 'x'.repeat(60), unit: 'y'.repeat(30), count: 5 }], bare);
+  assert(long.newDrills?.[0].name.length === 40 && long.newDrills[0].unit.length === 16, 'name and unit cut to their lengths');
+  const nearFull: Skill = guitar({
+    drills: Array.from({ length: DRILLS_PER_SKILL_MAX - 1 }, (_, i) => ({ id: `d${i}`, name: `D${i}`, unit: 'reps', createdAt: T0 })),
+  });
+  const overCap = prepareLogDrills(
+    [
+      { drillId: null, name: 'Last one', unit: 'reps', count: 1 },
+      { drillId: null, name: 'Too many', unit: 'reps', count: 1 },
+    ],
+    nearFull
+  );
+  assert(overCap.problem?.field === 'name' && overCap.problem.index === 1, 'cap counts the new rows above');
+
+  // Existing and new rows mix; the same existing drill twice is still refused.
+  const mixed = prepareLogDrills(
+    [
+      { drillId: 'scales', count: 50 },
+      { drillId: null, name: 'Riffs', unit: 'times', count: 12 },
+      { drillId: 'chords', count: null },
+    ],
+    skill
+  );
+  assert(mixed.counts?.length === 1 && mixed.counts[0].drillId === 'scales' && mixed.newDrills?.length === 1, 'existing + new rows');
+  const twice = prepareLogDrills([{ drillId: 'scales', count: 5 }, { drillId: 'scales', count: 6 }], skill);
+  assert(twice.problem?.field === 'drill' && twice.problem.index === 1, 'same existing drill twice refused');
+
+  // The store's step: the new drill joins the skill with its id, the count goes on the log with that id.
+  const nowIso = '2026-11-04T07:00:00.000Z';
+  const made = [{ drill: { id: 'riffs', name: 'Riffs', unit: 'times', createdAt: nowIso }, count: 12 }];
+  const grown = addLogDrills(skill, made, nowIso);
+  assert(grown.skill?.drills?.some((d) => d.id === 'riffs' && d.name === 'Riffs' && d.unit === 'times') === true, 'drill added to the skill');
+  assert(grown.skill?.updatedAt === nowIso && grown.skill.drills?.length === 4, 'skill stamped, old drills kept');
+  assert(grown.counts?.length === 1 && grown.counts[0].drillId === 'riffs' && grown.counts[0].count === 12, 'count saved with the new drill id');
+  const kept = keepValidDrillCounts([...(mixed.counts || []), ...(grown.counts || [])], grown.skill!);
+  assert(kept.length === 2 && kept[1].drillId === 'riffs', "the log keeps both counts against the grown skill");
+  const logged = log('l-new', WED, 10, kept);
+  assert(drillTotal(grown.skill!, [logged], 'riffs') === 12 && logDrillCount(logged, 'scales') === 50, 'totals read the new drill');
+  // A name another write took in between: the store refuses it instead of making a duplicate.
+  const raced = addLogDrills(guitar({ drills: [...(skill.drills || []), { id: 'other', name: 'riffs', unit: 'reps', createdAt: T0 }] }), made, nowIso);
+  assert(raced.problem === 'You already have a drill with this name.', 'raced duplicate refused');
+  assert(addLogDrills(skill, [], nowIso).skill === skill, 'no new drills = same skill object');
+  // Points stay minutes only: the new drill's count changes nothing.
+  const dayStart = new Date(`${WED}T00:00:00`).getTime();
+  const nowMs = dayStart + 20 * 3600_000;
+  const withCount = computeSkillAwards([log('a', WED, 9, [{ drillId: 'riffs', count: 9999 }])], [grown.skill!], WED, dayStart, nowMs);
+  const without = computeSkillAwards([log('a', WED, 9)], [grown.skill!], WED, dayStart, nowMs);
+  assert(withCount.entry?.amount === 2 && without.entry?.amount === 2, 'new drill counts earn no points (30 min = 2 pts)');
 }
 
 console.log('skillDrills fixtures: all passed');

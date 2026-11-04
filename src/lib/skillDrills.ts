@@ -1,5 +1,5 @@
 import type { Skill, SkillDrill, SkillDrillCount, SkillSessionLog, WeeklyGoalItem } from '@/types';
-import { nameTaken } from './uniqueNames';
+import { nameTaken, sameName } from './uniqueNames';
 
 /**
  * Drills: things inside a skill that are counted, not timed (Guitar → Scales, 50 reps; Zakria
@@ -168,4 +168,84 @@ export function keepValidDrillCounts(counts: readonly SkillDrillCount[] | undefi
     kept.push({ drillId: c.drillId, count: c.count });
   }
   return kept;
+}
+
+/** A drill the Log practice form creates as it saves, with the count of this log. */
+export type NewLogDrill = { name: string; unit: string; count: number };
+
+/**
+ * One drill row of the Log practice form: an existing drill (drillId) or a new one (drillId null,
+ * name + unit typed in the form). count null = left empty.
+ */
+export type LogDrillRow = { drillId: string | null; name?: string; unit?: string; count: number | null };
+
+/**
+ * What a log saves from the form's drill rows (Zakria 2026-11-04: drills are asked about while
+ * logging practice): counts for existing drills and the new drills to create, each with its count.
+ * An empty row (no count, and no name on a new one) is skipped, so a minutes-only log stays fine.
+ * A new name follows the drill dialog's rules (drillNameProblem) against the skill's live drills
+ * and the new rows above it. Returns the first problem instead, with its row and field.
+ */
+export function prepareLogDrills(
+  rows: readonly LogDrillRow[],
+  skill: Pick<Skill, 'drills'>
+):
+  | { counts: SkillDrillCount[]; newDrills: NewLogDrill[]; problem?: undefined }
+  | { counts?: undefined; newDrills?: undefined; problem: { index: number; field: 'drill' | 'name' | 'count'; message: string } } {
+  const liveIds = new Set(liveDrills(skill).map((d) => d.id));
+  const seen = new Set<string>();
+  const counts: SkillDrillCount[] = [];
+  const newDrills: NewLogDrill[] = [];
+  // The skill as it would be with the new rows above added, so names and the cap are checked in order.
+  let grown: Pick<Skill, 'drills'> = { drills: liveDrills(skill) };
+  const countProblem = (index: number) => ({
+    problem: { index, field: 'count' as const, message: `Enter a whole number from 1 to ${DRILL_COUNT_MAX.toLocaleString('en-US')}.` },
+  });
+  for (let index = 0; index < rows.length; index++) {
+    const row = rows[index];
+    const hasCount = row.count !== null && row.count !== undefined;
+    if (row.drillId !== null) {
+      if (!hasCount) continue;
+      if (!row.drillId || !liveIds.has(row.drillId)) return { problem: { index, field: 'drill', message: 'Choose an option.' } };
+      if (seen.has(row.drillId)) return { problem: { index, field: 'drill', message: 'This drill is already in the list.' } };
+      if (!isValidDrillCount(row.count)) return countProblem(index);
+      seen.add(row.drillId);
+      counts.push({ drillId: row.drillId, count: row.count });
+      continue;
+    }
+    const name = normalizeDrillName(row.name);
+    if (!name && !hasCount) continue;
+    if (!name) return { problem: { index, field: 'name', message: 'Fill in this field.' } };
+    if (newDrills.some((d) => sameName(d.name, name))) return { problem: { index, field: 'name', message: 'This drill is already in the list.' } };
+    const problem = drillNameProblem(name, grown);
+    if (problem) return { problem: { index, field: 'name', message: problem } };
+    if (!hasCount) return { problem: { index, field: 'count', message: 'Enter 1 or more.' } };
+    if (!isValidDrillCount(row.count)) return countProblem(index);
+    const unit = normalizeDrillUnit(row.unit);
+    newDrills.push({ name, unit, count: row.count });
+    grown = { drills: [...(grown.drills || []), { id: `new-${index}`, name, unit, createdAt: '' }] };
+  }
+  return { counts, newDrills };
+}
+
+/**
+ * The skill with the log's new drills added (ids already made, so a repeated state update adds
+ * the same drills), and the counts that go on the log. Each name is checked by the drill dialog's
+ * rule against the skill as it grows; the first that can't be used comes back as a problem.
+ */
+export function addLogDrills<S extends Pick<Skill, 'drills'>>(
+  skill: S,
+  made: readonly { drill: SkillDrill; count: number }[],
+  nowIso: string
+): { skill: S; counts: SkillDrillCount[]; problem?: undefined } | { skill?: undefined; counts?: undefined; problem: string } {
+  if (made.length === 0) return { skill, counts: [] };
+  let drills = [...(skill.drills || [])];
+  const counts: SkillDrillCount[] = [];
+  for (const { drill, count } of made) {
+    const problem = drillNameProblem(drill.name, { drills });
+    if (problem) return { problem };
+    drills = [...drills, drill];
+    if (isValidDrillCount(count)) counts.push({ drillId: drill.id, count });
+  }
+  return { skill: { ...skill, drills, updatedAt: nowIso }, counts };
 }
