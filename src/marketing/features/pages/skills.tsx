@@ -61,7 +61,7 @@ export const skills: FeatureContent = {
             },
             {
               title: 'Count drills, if you like',
-              text: 'Add drills to a skill for the parts you count, not time, like Scales in reps or Serves in times. When you log a session, add how many you did of one drill or several. Minutes stay required: they earn the points, the counts earn none. Each drill shows its count this week and in total, and can be a weekly goal.',
+              text: 'When you log a session, add the parts you count, not time, like Scales in reps or Serves in times: pick a drill or name a new one, then say how many, for one drill or several. Minutes stay required: they earn the points, the counts earn none. Each drill shows its count this week and in total on the skill card, and can be a weekly goal.',
             },
             {
               title: 'Keep the streak',
@@ -248,7 +248,7 @@ export const skills: FeatureContent = {
     },
     {
       q: 'Can I count reps instead of minutes?',
-      a: 'Yes, next to them. Add a drill to the skill, like Scales in reps, and add how many you did when you log a session, for one drill or several. Minutes are still required and are the only thing that earns points, because reps differ too much in difficulty to score fairly. A weekly goal can count one drill, like “Scales 50 reps”, and earns the usual weekly goal points when you reach it.',
+      a: 'Yes, next to them. When you log a session, name a drill, like Scales in reps, and add how many you did, for one drill or several. Next time, pick it from the list. Minutes are still required and are the only thing that earns points, because reps differ too much in difficulty to score fairly. A weekly goal can count one drill, like “Scales 50 reps”, and earns the usual weekly goal points when you reach it.',
     },
     {
       q: 'Can I set my own level for a skill I already know well?',
