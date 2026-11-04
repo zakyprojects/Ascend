@@ -13,6 +13,7 @@ import {
 } from './deviceTimezone';
 import { computeStateDataWeight, savedItemCount, type UserDataWeight } from './dataWeight';
 import { withoutSyncedCollections } from './sync/syncedCollections';
+import { storeTabSyncedHashes } from './sync/tabVersions';
 import { withoutRetiredKeys, withoutUnsavedBlobKeys } from './retiredStateKeys';
 import { withoutDeviceLocalKeys } from './deviceLocalState';
 import { trustedNow, trustedNowMs } from './clock';
@@ -519,6 +520,7 @@ export async function saveUserDataToSupabase(
   if (typeof window !== 'undefined') {
     try {
       localStorage.setItem(`ascend_user_cache_${userId}`, JSON.stringify(finalState));
+      storeTabSyncedHashes(userId);
     } catch {
       /* ignore */
     }

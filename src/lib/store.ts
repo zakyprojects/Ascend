@@ -219,8 +219,9 @@ import {
   hasSessionFor,
 } from './supabase';
 import { GuardBlockedError, SessionLostError } from './errors';
-import { flushOutbox, hasPendingSyncOps, recordSyncedChanges } from './sync/outbox';
-import { applyRemoteChanges, prepareRemoteRows, pullSyncedRows, type RemoteChange } from './sync/pull';
+import { SYNC_BEHIND_EVENT, flushOutbox, hasPendingSyncOps, readBaseline, recordSyncedChanges } from './sync/outbox';
+import { setTabSyncedHashes, storeTabSyncedHashes, tabSyncedHashes, type Baseline } from './sync/tabVersions';
+import { adoptTabState, applyRemoteChanges, prepareRemoteRows, pullSyncedRows, type RemoteChange } from './sync/pull';
 import { SYNCED_COLLECTIONS, itemsOf, rowIdOf, syncKeyOf } from './sync/syncedCollections';
 import { mergeAppState, deduplicatePresetHabits, mergeAppStateWithGuardResult, isLegitimateTombstoneId, signInMergeBase } from './stateMerger';
 import { toUserMessage } from './userMessage';
@@ -268,6 +269,8 @@ export interface StateSyncMessage {
   senderTabId: string;
   userId?: string;
   state: AppState;
+  /** The sender's row versions for this state (tabSyncedHashes); absent from older app versions. */
+  syncHashes?: Baseline;
   timestamp: number;
 }
 
@@ -280,6 +283,7 @@ export function broadcastStateToTabs(state: AppState, senderTabId: string) {
       senderTabId,
       userId: state.currentUser?.id,
       state,
+      ...(state.currentUser?.id ? { syncHashes: tabSyncedHashes(state.currentUser.id) } : {}),
       timestamp: trustedNowMs(),
     };
     channel.postMessage(msg);
@@ -2093,6 +2097,7 @@ export function useAppState() {
         try {
           if (stateToSave.currentUser?.id) {
             localStorage.setItem(`ascend_user_cache_${stateToSave.currentUser.id}`, JSON.stringify(stateToSave));
+            storeTabSyncedHashes(stateToSave.currentUser.id);
             localStorage.removeItem(`ascend_dirty_${stateToSave.currentUser.id}`);
           } else {
             localStorage.setItem(GUEST_STORAGE_KEY, JSON.stringify(stateToSave));
@@ -2142,6 +2147,7 @@ export function useAppState() {
         try {
           if (preDeleteState.currentUser?.id) {
             localStorage.setItem(`ascend_user_cache_${preDeleteState.currentUser.id}`, JSON.stringify(preDeleteState));
+            storeTabSyncedHashes(preDeleteState.currentUser.id);
             localStorage.removeItem(`ascend_dirty_${preDeleteState.currentUser.id}`);
           } else {
             localStorage.setItem(GUEST_STORAGE_KEY, JSON.stringify(preDeleteState));
@@ -2215,12 +2221,28 @@ export function useAppState() {
       const applied = everyTableRead && isHydrated.current && currentUserRef.current?.id === userId;
       if (changes.length > 0) {
         lowerUserDataWatermark(userId, countRemoteRemovals(stateRef.current, changes));
-        setState((prev) => (prev.currentUser?.id === userId ? applyRemoteChanges(prev, changes) : prev));
+        setState((prev) => (prev.currentUser?.id === userId ? applyRemoteChanges(prev, changes, userId) : prev));
       }
       if (applied) setIsServerDataApplied(true);
     },
     [setState]
   );
+
+  // A save held back old copies (another tab of this browser synced newer rows first): pull, so
+  // this tab shows the newer rows. At most once per 15 s, so a copy that cannot be replaced never loops.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    let lastPull = 0;
+    const onBehind = (event: Event) => {
+      const userId = (event as CustomEvent<{ userId?: string }>).detail?.userId;
+      if (!userId || userId !== currentUserRef.current?.id || !isHydrated.current || isDeviceOffline()) return;
+      if (trustedNowMs() - lastPull < 15_000) return;
+      lastPull = trustedNowMs();
+      void syncTables(userId, false);
+    };
+    window.addEventListener(SYNC_BEHIND_EVENT, onBehind);
+    return () => window.removeEventListener(SYNC_BEHIND_EVENT, onBehind);
+  }, [syncTables]);
 
   // Live updates from the user's other devices.
   const syncedUserId = state.currentUser?.id;
@@ -2238,7 +2260,9 @@ export function useAppState() {
           const changes = prepareRemoteRows(syncedUserId, collection, [row]);
           if (changes.length === 0) return;
           lowerUserDataWatermark(syncedUserId, countRemoteRemovals(stateRef.current, changes));
-          setState((prev) => (prev.currentUser?.id === syncedUserId ? applyRemoteChanges(prev, changes) : prev));
+          setState((prev) =>
+            prev.currentUser?.id === syncedUserId ? applyRemoteChanges(prev, changes, syncedUserId) : prev
+          );
         }
       );
     }
@@ -2284,7 +2308,17 @@ export function useAppState() {
       setStateRaw((current) => {
         // When receiving a state broadcast from another tab, that tab's state is the authoritative
         // recent snapshot of user mutations. Set directly to prevent un-deleting items via union merge.
-        let targetState = data.state;
+        // Except synced rows the sender still held at an older version (it saved before its pull
+        // caught up): those keep this tab's newer copy, so an old copy never spreads to this tab.
+        const adopted = adoptTabState(
+          data.state,
+          data.syncHashes,
+          current,
+          readBaseline(currentUserId),
+          tabSyncedHashes(currentUserId)
+        );
+        setTabSyncedHashes(currentUserId, adopted.tabHashes);
+        let targetState = adopted.state;
         if (pledgesInFlight.size > 0 && Array.isArray(targetState.sharedChallenges)) {
           const ours = new Map((current.sharedChallenges || []).map((c) => [c.id, c]));
           targetState = {
@@ -2402,6 +2436,7 @@ export function useAppState() {
           if (state.currentUser?.id) {
             const uid = state.currentUser.id;
             localStorage.setItem(`ascend_user_cache_${uid}`, JSON.stringify(state));
+            storeTabSyncedHashes(uid);
             if (hasStateData(state)) {
               localStorage.setItem(`ascend_dirty_${uid}`, '1');
             }
