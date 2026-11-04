@@ -294,6 +294,20 @@ export interface UserBook {
 // Module 3: Skill Learning Tracker
 export type SkillLevel = 'beginner' | 'intermediate' | 'advanced' | 'expert';
 
+/** One thing inside a skill that is counted, not timed (Guitar → Scales, 50 reps). Counts earn no points. */
+export interface SkillDrill {
+  /** Stable: logs and weekly goals ('drill_count:<id>') point here, so a rename follows. */
+  id: string;
+  name: string;
+  /** Free text, short ("reps", "times", "problems"). */
+  unit: string;
+  /** Counts of earlier-day logs the user deleted or cleared; still count toward the drill's total. */
+  clearedCount?: number;
+  createdAt: string;
+  /** Deleted drills stay in the doc, so old logs still show their name. */
+  deletedAt?: string;
+}
+
 export interface Skill {
   id: string;
   name: string;
@@ -301,16 +315,28 @@ export interface Skill {
   manualLevel?: SkillLevel;
   /** Practice minutes of logs the user cleared; still count toward hours and level. */
   clearedMinutes?: number;
+  drills?: SkillDrill[];
   createdAt: string;
+  /** Last change to the skill doc (drills, cleared totals, level). Missing on older skills (createdAt counts). */
+  updatedAt?: string;
+}
+
+/** How many of one drill a practice log did. */
+export interface SkillDrillCount {
+  drillId: string;
+  count: number;
 }
 
 export interface SkillSessionLog {
   id: string;
   skillId: string;
   date: string; // YYYY-MM-DD
+  /** Always required (1 or more): only minutes earn points. */
   durationMinutes: number;
   note: string;
   pointsAwarded: number;
+  /** Drill counts done in this session (optional; earn no points). */
+  counts?: SkillDrillCount[];
   createdAt: string;
 }
 
