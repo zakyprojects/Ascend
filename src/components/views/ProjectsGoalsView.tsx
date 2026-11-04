@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowDownUp, CheckSquare, Filter, FolderKanban, HelpCircle, Plus, Search, Target, X } from 'lucide-react';
+import { ArrowDownUp, CheckSquare, Filter, FolderKanban, Plus, Search, Target, X } from 'lucide-react';
 import { cx, EmptyState as EmptyStateBase, SlidingPill, TabPanel, Tabs, ToolbarInput, ToolbarSelect } from '@/components/ui/primitives';
 import { TAP_TARGET } from '@/components/ui/primitives/shared';
 import { PageHero } from '@/components/ui/PageHero';
@@ -20,7 +20,8 @@ import { GoalCard } from '@/components/projects/GoalCard';
 import { ProjectCard } from '@/components/projects/ProjectCard';
 import { TaskRow } from '@/components/projects/TaskRow';
 import { GoalFormDialog, ProjectFormDialog, TaskFormDialog, type GoalPayload, type ProjectPayload, type TaskPayload } from '@/components/projects/HierarchyForms';
-import { HowItWorksDialog } from '@/components/projects/HowItWorksDialog';
+import { HowItWorksButton, HowItWorksDialog, useHowItWorks } from '@/components/ui/HowItWorks';
+import { projectsGoalsGuide } from '@/components/howItWorks/projectsGoals';
 import { DoneSection } from '@/components/projects/DoneSection';
 
 type SubViewTab = 'goals' | 'projects' | 'tasks';
@@ -173,7 +174,7 @@ export function ProjectsGoalsView({
   }, [focusQuickAdd, activeTab]);
 
   // Dialogs (each form is keyed so it opens fresh)
-  const [guideOpen, setGuideOpen] = useState(false);
+  const guide = useHowItWorks();
   const [goalForm, setGoalForm] = useState<{ key: number; editing: Goal | null } | null>(null);
   const [projectForm, setProjectForm] = useState<{ key: number; editing: Project | null; goalId?: string } | null>(null);
   const [taskForm, setTaskForm] = useState<{ key: number; editing: Task | null; projectId?: string } | null>(null);
@@ -599,17 +600,8 @@ export function ProjectsGoalsView({
       <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div>
           <h1 className="page-title">Projects & Goals</h1>
-          <p className="page-subtitle">
-            Dream it, plan it, do it.{' '}
-            <button
-              type="button"
-              onClick={() => setGuideOpen(true)}
-              className="inline-flex items-center gap-1 font-medium text-content-secondary underline-offset-2 hover:text-content-primary hover:underline"
-            >
-              <HelpCircle size={13} aria-hidden="true" />
-              How it works
-            </button>
-          </p>
+          <p className="page-subtitle">Dream it, plan it, do it.</p>
+          <HowItWorksButton onClick={guide.show} />
         </div>
         <button type="button" onClick={primaryAction.onClick} className="btn-primary self-start md:self-auto">
           <Plus size={16} aria-hidden="true" /> {primaryAction.label}
@@ -1070,7 +1062,7 @@ export function ProjectsGoalsView({
         confirmText="Delete subtask"
       />
 
-      <HowItWorksDialog open={guideOpen} onClose={() => setGuideOpen(false)} />
+      <HowItWorksDialog open={guide.open} onClose={guide.close} guide={projectsGoalsGuide} focus={guide.focus} />
     </div>
   );
 }

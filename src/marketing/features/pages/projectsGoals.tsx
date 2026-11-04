@@ -7,7 +7,7 @@ import { Block, Cards, Note, Steps, type FeatureContent } from '../blocks';
 import { pts } from '../format';
 
 /* /features/projects-goals. Sources: lib/projectProgress.ts (bottom-up progress, automatic status),
-   components/projects/HowItWorksDialog.tsx (the three levels, projects in order),
+   components/howItWorks/projectsGoals.tsx (the three levels, projects in order),
    components/views/ProjectsGoalsView.tsx (task views, filters, tab order), components/projects/TaskRow.tsx
    (focus button), types.ts Goal/Project/Task. This feature writes no points (no award in lib/ or SQL). */
 
