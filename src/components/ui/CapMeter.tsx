@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ChevronDown, ChevronRight } from 'lucide-react';
+import { ChevronRight } from 'lucide-react';
 import { ProgressBar } from './primitives/ProgressBar';
 import { cx, FOCUS_RING, TAP_TARGET_Y } from './primitives/shared';
 
@@ -10,8 +10,6 @@ export interface CapMeterProps {
   cap: number;
   slotsUsed?: number;
   slotsTotal?: number;
-  /** Old inline rules text; pages move to `onExplain`. */
-  note?: string;
   /** Opens the page's How it works dialog at its Points section. */
   onExplain?: () => void;
 }
@@ -23,7 +21,6 @@ export function CapMeter({
   cap,
   slotsUsed = 0,
   slotsTotal = 0,
-  note,
   onExplain,
 }: CapMeterProps) {
   const isCapped = earned >= cap;
@@ -91,15 +88,6 @@ export function CapMeter({
           How points work
           <ChevronRight size={12} aria-hidden="true" />
         </button>
-      )}
-      {note && !onExplain && (
-        <details className="group">
-          <summary className="inline-flex cursor-pointer list-none items-center gap-1 text-micro text-content-muted hover:text-content-secondary [&::-webkit-details-marker]:hidden">
-            How points work
-            <ChevronDown size={12} aria-hidden="true" className="transition-transform group-open:rotate-180" />
-          </summary>
-          <p className="mt-1.5 text-micro leading-relaxed text-content-muted">{note}</p>
-        </details>
       )}
     </div>
   );

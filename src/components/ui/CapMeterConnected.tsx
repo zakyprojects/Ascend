@@ -1,6 +1,6 @@
 import { AppState } from '@/types';
 import { CapId, getCapStatus } from '@/lib/capStatus';
-import { capLabels, capNote, capReachedText } from '@/lib/capCopy';
+import { capLabels, capReachedText } from '@/lib/capCopy';
 import { CapMeter } from '@/components/ui/CapMeter';
 import { getNow } from '@/lib/dates';
 import { useLocalDayKey } from '@/lib/useLocalDayKey';
@@ -43,7 +43,6 @@ export function CapMeterConnected({ state, capId, bare = false, onExplain }: Cap
         cap={status.cap}
         slotsUsed={status.slotsUsed}
         slotsTotal={status.slotsTotal}
-        note={onExplain ? undefined : capNote(capId)}
         onExplain={onExplain}
       />
       {timezoneWait ? (

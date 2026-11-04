@@ -780,10 +780,10 @@ function SegmentedDemo() {
 function DisclosureDemo() {
   return (
     <div className="space-y-3">
-      <Disclosure title="How points work">
+      <Disclosure title="The 8+8+8 guide">
         <ul className="list-disc pl-4 space-y-0.5">
-          <li>Preset habits earn their points the first time you tick them each day.</li>
-          <li>All habits together earn up to the daily cap.</li>
+          <li>Content guides and background reads, not a page's rules (those are in How it works).</li>
+          <li>The summary stays on the page; the detail opens on demand.</li>
         </ul>
       </Disclosure>
       <Disclosure title="Missing a habit costs points" icon={AlertTriangle} tone="warning">
@@ -840,7 +840,7 @@ function PagePartsDemo() {
               label="Habit points today"
               earned={earned}
               cap={30}
-              note="Preset habits earn points up to 30 a day. The ones you tick first count first."
+              onExplain={() => undefined}
             />
           }
         />
@@ -858,7 +858,7 @@ function PagePartsDemo() {
         <Caption>PageHero without ring or side; CapMeter slots variant</Caption>
         <PageHero ariaLabel="Reading" lead={{ label: 'Pages this week', value: '214' }} stats={[{ label: 'Books open', value: '2' }]} />
         <div className="card max-w-sm p-4">
-          <CapMeter variant="slots" label="Workouts this week" earned={2} cap={3} slotsUsed={2} slotsTotal={3} note="Up to 3 workouts a week earn points." />
+          <CapMeter variant="slots" label="Workouts this week" earned={2} cap={3} slotsUsed={2} slotsTotal={3} />
         </div>
       </div>
 

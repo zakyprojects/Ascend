@@ -1,26 +1,7 @@
 import { CapId } from '@/lib/capStatus';
-import { FOCUS_RULE_SHORT } from '@/lib/focusPoints';
-import {
-  WORKOUT_POINTS,
-  READING_POINTS,
-  SKILLS_POINTS,
-  PFC_POINTS,
-  PRESET_HABIT_POINTS,
-  JOURNAL_POINTS,
-  BAD_HABIT_POINTS,
-  TIME_TRACKER_POINTS,
-  WEEKLY_GOALS_POINTS,
-  WEEKLY_REFLECTION_POINTS,
-} from '@/lib/pointsConfig';
-import { CUSTOM_HABIT_POINTS } from '@/lib/habitAwards';
-import { PRESET_BAD_HABITS } from '@/lib/presets';
 
-/** "1–3": the lowest and highest resist points in the bad-habit library. */
-function presetBadHabitRange(): string {
-  const points = PRESET_BAD_HABITS.map((p) => p.points);
-  return `${Math.min(...points)}–${Math.max(...points)}`;
-}
-
+/** The CapMeter labels and the cap-reached line. The rules themselves are in each page's How it
+ *  works (components/howItWorks/). */
 export const capLabels: Record<CapId, string> = {
   exercise: 'Exercise points today',
   reading: 'Reading points today',
@@ -33,52 +14,4 @@ export const capLabels: Record<CapId, string> = {
 
 export function capReachedText(earned: number, cap: number): string {
   return `Daily cap reached (${earned}/${cap}). More activity today won't earn points. Resets at midnight.`;
-}
-
-export function weeklyGoalsCapNote(): string {
-  return `Each achieved goal = ${WEEKLY_GOALS_POINTS.pointsPerGoal} pts; only the first ${WEEKLY_GOALS_POINTS.maxGoalsCounted} achieved goals (by completion time) count; goals max = ${WEEKLY_GOALS_POINTS.maxWeeklyPoints} pts; the weekly reflection's +${WEEKLY_REFLECTION_POINTS.awarded} pts goes to the first reflection written in the week's Reflection Window (Friday 6:00 AM to the end of Monday, your local time); only the current week earns points; a goal achieved on an earlier day keeps its points even if you untick or delete it later, and so does a reflection rewarded on an earlier day.`;
-}
-
-export function timeTrackerCapNote(): string {
-  const { high, medium, low } = TIME_TRACKER_POINTS.tiers;
-  const skipRatioPct = Math.round(TIME_TRACKER_POINTS.skipExclusionRatio * 100);
-  return `>=${high.minPercent}% of blocks = ${high.points} pts, ${medium.minPercent}–${high.minPercent - 1}% = ${medium.points}, below ${medium.minPercent}% = ${low.points}; unresolved blocks count as failed; skipped blocks are excluded up to min(skips, ${skipRatioPct}% of total blocks rounded down, ${TIME_TRACKER_POINTS.maxExcludedSkips}); routines of ${TIME_TRACKER_POINTS.smallRoutineThreshold} blocks or fewer exclude no skips; only today's blocks can be completed, past days are read-only.`;
-}
-
-export function capNote(capId: CapId | 'timeTracker'): string {
-  if (capId === 'timeTracker') {
-    return timeTrackerCapNote();
-  }
-
-  if (capId === 'exercise') {
-    const { minsPerPoint, repsPerPoint } = WORKOUT_POINTS.units;
-    return `${minsPerPoint} min, ${repsPerPoint} reps, 1 set or 1 km each earn 1 pt. Only full blocks count. Resets at midnight.`;
-  }
-
-  if (capId === 'reading') {
-    return `${READING_POINTS.pagesPerPoint} pages = 1 pt, 1 chapter = ${READING_POINTS.pointsPerChapter} pts. Cap ${READING_POINTS.dailyCap} pts per day. Resets at midnight.`;
-  }
-
-  if (capId === 'skills') {
-    return `${SKILLS_POINTS.minutesPerPoint} min of practice = 1 pt. Cap ${SKILLS_POINTS.dailyCap} pts per day, shared across all skills. Resets at midnight.`;
-  }
-
-  if (capId === 'pfc') {
-    return `${FOCUS_RULE_SHORT}. Paused time does not count. Cap ${PFC_POINTS.focus.dailyCap} pts per day. Resets at midnight.`;
-  }
-
-  if (capId === 'presetHabits') {
-    return `Preset habits earn their points and daily custom habits ${CUSTOM_HABIT_POINTS} pt each, up to ${PRESET_HABIT_POINTS.dailyCap} per day for all of them together. Weekly custom habits track your streak only. Resets at midnight.`;
-  }
-
-  if (capId === 'journal') {
-    return `One journal per day earns ${JOURNAL_POINTS.entryCompleted} pts. Editing today's entry earns nothing extra. Resets at midnight.`;
-  }
-
-  if (capId === 'badHabitsResisted') {
-    return `Each resist earns its bad habit's points (library bad habits ${presetBadHabitRange()}, custom ${BAD_HABIT_POINTS.customResist}), up to ${BAD_HABIT_POINTS.dailyCap} per day for all of them together, in the order you log. A slip or an unlogged day costs the habit's points + ${BAD_HABIT_POINTS.penaltyExtra}, on at most ${BAD_HABIT_POINTS.dailyPenaltyLimit} bad habits a day (the largest penalties count). Resets at midnight.`;
-  }
-
-  const _exhaustive: never = capId;
-  throw new Error(`Unknown capId: ${_exhaustive}`);
 }
