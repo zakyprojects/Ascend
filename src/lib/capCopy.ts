@@ -80,7 +80,7 @@ export function capNote(capId: CapId | 'timeTracker'): string {
   }
 
   if (capId === 'badHabitsResisted') {
-    return `Each resist earns its bad habit's points (library bad habits ${presetBadHabitRange()}, custom ${BAD_HABIT_POINTS.customResist}), up to ${BAD_HABIT_POINTS.dailyCap} per day for all of them together, in the order you log. Slips and unlogged days cost points only on your ${BAD_HABIT_POINTS.eligibleSlots} oldest bad habits. Resets at midnight.`;
+    return `Each resist earns its bad habit's points (library bad habits ${presetBadHabitRange()}, custom ${BAD_HABIT_POINTS.customResist}), up to ${BAD_HABIT_POINTS.dailyCap} per day for all of them together, in the order you log. A slip or an unlogged day costs the habit's points + ${BAD_HABIT_POINTS.penaltyExtra}, on at most ${BAD_HABIT_POINTS.dailyPenaltyLimit} bad habits a day (the largest penalties count). Resets at midnight.`;
   }
 
   const _exhaustive: never = capId;

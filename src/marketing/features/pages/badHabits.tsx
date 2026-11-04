@@ -16,8 +16,12 @@ const resistRange = range(PRESET_BAD_HABITS.map((h) => h.points));
 const performer = TIERS.find((t) => t.name === 'Performer') ?? TIERS[0];
 const cost = (base: number, nth: number, season = 0) => Math.round(base * getMissPenaltyMultiplier(nth, season));
 const times = (m: number) => `×${m}`;
-const slipRun = [1, 2, 3].map((n) => cost(P.occurBase, n));
-const silentRun = [1, 2, 3].map((n) => cost(P.noReportBase, n));
+// A slip and a day not logged cost the same: the habit's resist value + penaltyExtra.
+const penaltyRange = range(PRESET_BAD_HABITS.map((h) => h.points + P.penaltyExtra));
+const customPenalty = P.customResist + P.penaltyExtra;
+const example = PRESET_BAD_HABITS.find((h) => h.name === 'Doomscrolling') ?? PRESET_BAD_HABITS[0];
+const badRun = [1, 2, 3].map((n) => cost(example.points + P.penaltyExtra, n));
+const limit = P.dailyPenaltyLimit;
 const neg = (list: number[]) => list.map((n) => `−${n}`).join(', ');
 
 export const badHabits: FeatureContent = {
@@ -91,7 +95,7 @@ export const badHabits: FeatureContent = {
       <Block
         id="how-points-work"
         title="How resisting earns and slipping costs"
-        lead={<p>Resist points add up across all your bad habits; penalties apply only to your oldest ones.</p>}
+        lead={<p>Resist points add up across all your bad habits, and every one of them can lose points, at most {limit} a day.</p>}
       >
         <Rules
           caption="Each day"
@@ -104,12 +108,23 @@ export const badHabits: FeatureContent = {
               tone: 'none',
               note: 'The ones you log first count first.',
             },
-            { what: 'Slipped', amount: `−${P.occurBase}`, tone: 'loss', note: 'Logged the same day.' },
+            {
+              what: 'Slipped',
+              amount: `−${penaltyRange}`,
+              tone: 'loss',
+              note: `The habit’s resist value + ${P.penaltyExtra}; a custom bad habit −${customPenalty}. Logged the same day.`,
+            },
             {
               what: 'Not logged at all',
-              amount: `−${P.noReportBase}`,
+              amount: `−${penaltyRange}`,
               tone: 'loss',
-              note: 'Charged after midnight, counting from the day you added the habit.',
+              note: 'The same as a slip. Charged after midnight, counting from the day you added the habit.',
+            },
+            {
+              what: 'Bad habits that can lose points in one day',
+              amount: `${limit} at most`,
+              tone: 'none',
+              note: `Slips and unlogged days together. The ${limit} largest penalties count; the rest cost nothing.`,
             },
           ]}
         />
@@ -134,8 +149,8 @@ export const badHabits: FeatureContent = {
           cols={2}
           items={[
             {
-              title: `Only your ${P.eligibleSlots} oldest can cost points`,
-              text: `Penalties apply to the ${P.eligibleSlots} bad habits you added first. Any you add after that earn resist points but never lose any, so adding a new habit to watch is never a risk.`,
+              title: `At most ${limit} lose points a day`,
+              text: `However many bad habits you track, at most ${limit} lose points on one day, counting slips and unlogged days together. The ${limit} largest penalties count, so the order you log in changes nothing.`,
             },
             {
               title: 'Earlier days stay as they were',
@@ -144,9 +159,9 @@ export const badHabits: FeatureContent = {
           ]}
         />
         <Note title="Being straight about the numbers.">
-          Three slips in a row cost {neg(slipRun)}. Three days left blank cost {neg(silentRun)}. A blank day costs less
-          than a slip, but it still costs points and still counts as a bad day in a row, so the honest answer is always
-          the better habit, and a resisted day is the only thing that resets the count.
+          Three slips in a row on {example.name} cost {neg(badRun)}. Three days left blank cost the same: a blank day costs
+          the same as a slip and still counts as a bad day in a row, so staying silent never saves points, and a resisted
+          day is the only thing that resets the count.
         </Note>
       </Block>
 
@@ -184,9 +199,9 @@ export const badHabits: FeatureContent = {
     ['Library', `${PRESET_BAD_HABITS.length} bad habits, ${resistRange} points per resisted day`],
     ['Custom bad habits', `${pts(P.customResist)} per resisted day`],
     ['Daily cap', `${P.dailyCap} resist points`],
-    ['Slipped', `−${P.occurBase}, more for bad days in a row`],
-    ['Not logged', `−${P.noReportBase}, more for bad days in a row`],
-    ['Can lose points', `Your ${P.eligibleSlots} oldest bad habits only`],
+    ['Slipped', `−${penaltyRange} (resist value + ${P.penaltyExtra}), more for bad days in a row`],
+    ['Not logged', 'The same as a slip'],
+    ['Can lose points', `Every bad habit, at most ${limit} a day`],
     ['Price', 'Free while in beta'],
     ['Works on', 'Any browser on phone or computer'],
   ],
@@ -206,7 +221,7 @@ export const badHabits: FeatureContent = {
     },
     {
       q: 'Why do slips and unlogged days cost points?',
-      a: `Because a tracker that only rewards good days lets you hide the bad ones. A slip costs ${P.occurBase} points and a day you don’t log costs ${P.noReportBase}, more when it keeps happening, so staying silent is never free. Only your ${P.eligibleSlots} oldest bad habits carry this risk, which keeps the pressure on the ones that matter most to you.`,
+      a: `Because a tracker that only rewards good days lets you hide the bad ones. A slip costs the habit’s resist value plus ${P.penaltyExtra} (${penaltyRange} points) and a day you don’t log costs the same, more when it keeps happening, so staying silent is never cheaper than an honest answer. At most ${limit} bad habits lose points on one day.`,
     },
     {
       q: 'What counts as a slip?',
@@ -214,11 +229,11 @@ export const badHabits: FeatureContent = {
     },
     {
       q: 'What if I forget to log a day?',
-      a: `For your ${P.eligibleSlots} oldest bad habits, a day with no log costs ${P.noReportBase} points after midnight, more if it keeps happening. Habits you added later never cost points.`,
+      a: `A day with no log costs the same as a slip, the habit’s resist value plus ${P.penaltyExtra}, charged after midnight and more if it keeps happening. It counts toward the ${limit} bad habits a day that can lose points.`,
     },
     {
-      q: 'Why do only some bad habits lose points?',
-      a: `So the penalties stay focused on what matters most to you. Your first ${P.eligibleSlots} bad habits carry the risk; the rest are for tracking and resist points.`,
+      q: 'Is there a limit on what bad habits can cost in a day?',
+      a: `Yes. At most ${limit} bad habits lose points on one day, slips and unlogged days together. If more have a bad day, the ${limit} largest penalties count and the rest cost nothing, so logging small slips first changes nothing.`,
     },
     {
       q: 'Can I undo a wrong tap?',

@@ -1,10 +1,9 @@
 import { AlertTriangle, Check, Flame, Trash2, Undo2, X } from 'lucide-react';
 import type { BadHabit, BadHabitLog } from '@/types';
 import { todayKey, parseDate, calculateStreak, calculateBestStreak } from '@/lib/dates';
-import { BAD_HABIT_POINTS } from '@/lib/pointsConfig';
-import { badHabitCreatedDay, getBadHabitBadDaysBefore, getMissPenaltyMultiplier } from '@/lib/habitPenalties';
+import { badHabitCreatedDay, getBadHabitBadDaysBefore } from '@/lib/habitPenalties';
 import { ptsText } from '@/lib/leagues';
-import { badHabitResistPoints } from '@/lib/badHabitAwards';
+import { badHabitPenalty, badHabitResistPoints } from '@/lib/badHabitAwards';
 import { lastDayKeys } from '@/lib/weeklyActivity';
 import { SwipeRow } from '@/components/ui/SwipeRow';
 import { cx, FOCUS_RING, TAP_TARGET, TRANSITION } from '@/components/ui/primitives/shared';
@@ -29,11 +28,6 @@ function resistStreaks(logs: BadHabitLog[], today: string): { current: number; b
  */
 function slipsInARow(habit: BadHabit, logs: BadHabitLog[], today: string): number {
   return getBadHabitBadDaysBefore(logs, habit.id, today, badHabitCreatedDay(habit.createdAt));
-}
-
-/** What slipping today would cost: the server's formula and rounding (D-B1). */
-function slipCost(slipsBefore: number, seasonPoints: number): number {
-  return Math.round(BAD_HABIT_POINTS.occurBase * getMissPenaltyMultiplier(slipsBefore + 1, seasonPoints));
 }
 
 interface BadHabitCheckProps {
@@ -130,8 +124,6 @@ interface BadHabitRowProps {
   logs: BadHabitLog[];
   todayLog: BadHabitLog | undefined;
   today: string;
-  /** One of the oldest bad habits that lose points when slipped or not logged. */
-  penalised: boolean;
   /** Resist points still left under today's cap. */
   resistRemaining: number;
   seasonPoints: number;
@@ -149,7 +141,6 @@ export function BadHabitRow({
   logs,
   todayLog,
   today,
-  penalised,
   resistRemaining,
   seasonPoints,
   popClass,
@@ -160,17 +151,18 @@ export function BadHabitRow({
 }: BadHabitRowProps) {
   const status = todayLog?.status === 'no_report' ? undefined : todayLog?.status;
   const { current, best } = resistStreaks(logs, today);
-  const slips = penalised && !status ? slipsInARow(habit, logs, today) : 0;
+  const slips = !status ? slipsInARow(habit, logs, today) : 0;
   const points = todayLog?.pointsAwardedOrDeducted ?? 0;
   // What resisting now would earn: its points, or what is left of today's cap.
   const resistNow = Math.min(badHabitResistPoints(habit), resistRemaining);
 
+  // A slip outside the day's largest penalties (BAD_HABIT_POINTS.dailyPenaltyLimit) costs 0.
   const pointsLabel = status
     ? points !== 0
       ? ptsText(points, true)
       : status === 'resisted'
         ? '0 pts, daily cap reached'
-        : 'No points'
+        : '0 pts, daily limit reached'
     : resistNow <= 0
       ? 'Daily cap reached'
       : ptsText(resistNow, true);
@@ -226,7 +218,7 @@ export function BadHabitRow({
                 <AlertTriangle size={13} aria-hidden="true" className="mt-px shrink-0" />
                 <span>
                   {slips} bad {slips === 1 ? 'day' : 'days'} in a row. Slipping today costs{' '}
-                  <span className="figure">{ptsText(-slipCost(slips, seasonPoints))}</span>.
+                  <span className="figure">{ptsText(-badHabitPenalty(habit, slips + 1, seasonPoints))}</span>.
                 </span>
               </p>
             )}

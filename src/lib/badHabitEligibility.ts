@@ -1,5 +1,4 @@
 import { BadHabit } from '@/types';
-import { BAD_HABIT_POINTS } from './pointsConfig';
 
 function compareIds(a: string, b: string): number {
   return a < b ? -1 : a > b ? 1 : 0;
@@ -30,32 +29,4 @@ export function getActiveBadHabitsOrdered(badHabits: BadHabit[]): BadHabit[] {
       if (!validA && validB) return 1;
       return compareIds(a.id || '', b.id || '');
     });
-}
-
-/**
- * Returns a Set of bad habit IDs that occupy the first N eligible slots.
- */
-export function getPointEligibleHabitIds(badHabits: BadHabit[]): Set<string> {
-  const activeOrdered = getActiveBadHabitsOrdered(badHabits);
-  const eligible = activeOrdered.slice(0, BAD_HABIT_POINTS.eligibleSlots);
-  return new Set(eligible.map((h) => h.id).filter(Boolean));
-}
-
-/**
- * Returns 1-based slot assignment and total slot count among eligible habits,
- * or null if the habit is tracking-only (outside the top N slots) or not active.
- */
-export function getBadHabitSlot(
-  badHabits: BadHabit[],
-  badHabitId: string
-): { slot: number; total: number } | null {
-  const activeOrdered = getActiveBadHabitsOrdered(badHabits);
-  const index = activeOrdered.findIndex((h) => h.id === badHabitId);
-  if (index === -1 || index >= BAD_HABIT_POINTS.eligibleSlots) {
-    return null;
-  }
-  return {
-    slot: index + 1,
-    total: BAD_HABIT_POINTS.eligibleSlots,
-  };
 }

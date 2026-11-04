@@ -44,7 +44,7 @@ export const LANDING_WHY: FaqItem[] = [
   },
   {
     q: 'Why can a missed habit cost points?',
-    a: `Because a streak is easier to protect when breaking it costs something. Losing points you already have tends to feel stronger than not earning new ones, the well-known idea of loss aversion, so a small cost is enough to get you to tick a habit on a tired day. Only library habits and your ${BAD_HABIT_POINTS.eligibleSlots} oldest bad habits can cost points; custom habits never do. A first miss costs the habit’s own points, each further miss in a row ×${repeatMiss} (more from ${performer.name} rank), and ticking the habit again resets the count.`,
+    a: `Because a streak is easier to protect when breaking it costs something. Losing points you already have tends to feel stronger than not earning new ones, the well-known idea of loss aversion, so a small cost is enough to get you to tick a habit on a tired day. Library habits can cost points, and so can any bad habit (at most ${BAD_HABIT_POINTS.dailyPenaltyLimit} bad habits a day); custom habits never do. A first miss costs the habit’s own points, each further miss in a row ×${repeatMiss} (more from ${performer.name} rank), and ticking the habit again resets the count.`,
   },
   {
     q: 'Why compete in leagues against real people?',

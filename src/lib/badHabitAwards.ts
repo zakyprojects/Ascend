@@ -1,7 +1,6 @@
 import type { BadHabit, BadHabitLog, PointsEntry } from '@/types';
 import { BAD_HABIT_POINTS } from './pointsConfig';
 import { PRESET_BAD_HABITS } from './presets';
-import { getPointEligibleHabitIds } from './badHabitEligibility';
 import { badHabitCreatedDay, getBadHabitBadDaysBefore, getMissPenaltyMultiplier } from './habitPenalties';
 
 /**
@@ -26,6 +25,19 @@ export const isServerOwnedBadHabitLogId = (id: string): boolean => id.startsWith
 export function badHabitResistPoints(habit: Pick<BadHabit, 'isPreset' | 'name'>): number {
   const preset = habit.isPreset === true ? PRESET_BAD_HABITS.find((p) => p.name === habit.name) : undefined;
   return preset?.points ?? BAD_HABIT_POINTS.customResist;
+}
+
+/**
+ * Base of a slip and of a day not logged (before the miss multiplier): the habit's resist points
+ * + BAD_HABIT_POINTS.penaltyExtra, so library 2 to 4 and custom 2.
+ */
+export function badHabitPenaltyBase(habit: Pick<BadHabit, 'isPreset' | 'name'>): number {
+  return badHabitResistPoints(habit) + BAD_HABIT_POINTS.penaltyExtra;
+}
+
+/** What a slip (or a day not logged) costs at the nth bad day in a row: rounded, then negated by the caller. */
+export function badHabitPenalty(habit: Pick<BadHabit, 'isPreset' | 'name'>, badDayInARow: number, seasonPoints: number): number {
+  return Math.round(badHabitPenaltyBase(habit) * getMissPenaltyMultiplier(badDayInARow, seasonPoints));
 }
 
 const APP_WRITTEN_DAY_SOURCES = new Set(['bad_habit_resisted', 'bad_habit_occurred', 'bad_habit_undo']);
@@ -65,9 +77,11 @@ function firstLogPerHabit(logs: BadHabitLog[], liveIds: Set<string>, day: string
  * Mirror of ascend_recompute_bad_habit_awards: the resist and occurred rows of one local day,
  * and each of the day's logs' points. Resists: every active bad habit earns its points
  * (badHabitResistPoints) in log order until the daily cap; a resist that already earned goes
- * first and keeps at least what it earned. Occurred: a penalty already written keeps its
- * amount; a new one is 5 x the miss multiplier (bad days in a row, see
- * getBadHabitBadDaysBefore), point-eligible habits only.
+ * first and keeps at least what it earned. Occurred: every active bad habit; a penalty already
+ * written keeps its amount, a new one is badHabitPenalty (bad days in a row, see
+ * getBadHabitBadDaysBefore). At most BAD_HABIT_POINTS.dailyPenaltyLimit slips are charged: the
+ * largest penalties (ties: earlier log, then log id); the others get 0 and lose their row, and
+ * get it back if a larger one is undone. Only today is recomputed, so earlier days never change.
  */
 export function computeBadHabitAwards(
   badHabits: BadHabit[],
@@ -78,7 +92,7 @@ export function computeBadHabitAwards(
   nowMs: number,
   seasonPoints: number
 ): { entries: PointsEntry[]; logPoints: Map<string, number> } {
-  const eligible = getPointEligibleHabitIds(badHabits);
+  const habitsById = new Map(badHabits.filter(Boolean).map((h) => [h.id, h]));
   const names = new Map(badHabits.filter(Boolean).map((h) => [h.id, h.name]));
   const resistPoints = new Map(badHabits.filter(Boolean).map((h) => [h.id, badHabitResistPoints(h)]));
   const liveIds = new Set(names.keys());
@@ -114,21 +128,30 @@ export function computeBadHabitAwards(
     });
   }
 
-  // b) Occurred.
-  for (const log of firstLogPerHabit(logs, liveIds, day, 'occurred')) {
+  // b) Occurred: each slip's penalty, then only the largest dailyPenaltyLimit of them count.
+  const slips = firstLogPerHabit(logs, liveIds, day, 'occurred').map((log) => {
     const existing = live.get(badHabitOccurredId(log.badHabitId, day));
+    if (existing) return { log, existing, penalty: Math.max(Math.round(-(existing.amount || 0)), 0), multiplier: 0 };
+    // 1 + the bad days in a row before the day (slipped, no-report or not logged).
+    const occurrences = 1 + getBadHabitBadDaysBefore(logs, log.badHabitId, day, created.get(log.badHabitId) ?? null);
+    return {
+      log,
+      existing: undefined,
+      penalty: badHabitPenalty(habitsById.get(log.badHabitId)!, occurrences, seasonPoints),
+      multiplier: getMissPenaltyMultiplier(occurrences, seasonPoints),
+    };
+  });
+  slips.sort((a, b) => b.penalty - a.penalty || byTimeThenId(a.log, b.log));
+  let charged = 0;
+  for (const { log, penalty, existing, multiplier } of slips) {
+    if (penalty <= 0) continue;
+    charged += 1;
+    if (charged > BAD_HABIT_POINTS.dailyPenaltyLimit) continue;
     if (existing) {
       entries.push(existing);
       logPoints.set(log.id, existing.amount);
       continue;
     }
-    if (!eligible.has(log.badHabitId)) continue;
-
-    // 1 + the bad days in a row before the day (slipped, no-report or not logged).
-    const occurrences = 1 + getBadHabitBadDaysBefore(logs, log.badHabitId, day, created.get(log.badHabitId) ?? null);
-    const multiplier = getMissPenaltyMultiplier(occurrences, seasonPoints);
-    const penalty = Math.round(BAD_HABIT_POINTS.occurBase * multiplier);
-    if (penalty <= 0) continue;
     logPoints.set(log.id, -penalty);
     entries.push({
       id: badHabitOccurredId(log.badHabitId, day),

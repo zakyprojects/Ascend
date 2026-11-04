@@ -1,7 +1,14 @@
 // Fixtures for server-owned bad-habit points: the app's copy of ascend_recompute_bad_habit_awards
-// (20261019210100_bad_habit_resist_points.sql). Change both together.
+// (20261019210100_bad_habit_resist_points.sql, 20261104*_bad_habit_penalties_all.sql). Change both together.
 import type { BadHabit, BadHabitLog, PointsEntry } from '@/types';
-import { badHabitResistId, badHabitResistPoints, computeBadHabitAwards } from '../badHabitAwards';
+import {
+  badHabitOccurredId,
+  badHabitPenalty,
+  badHabitPenaltyBase,
+  badHabitResistId,
+  badHabitResistPoints,
+  computeBadHabitAwards,
+} from '../badHabitAwards';
 
 function assert(condition: boolean, msg: string) {
   if (!condition) {
@@ -69,13 +76,90 @@ const resists = (entries: PointsEntry[]) =>
   assert(r.a === 3 && r.b === 3 && !('c' in r), 'earned rows kept first');
 }
 
-// 4. Slip penalties unchanged: only the 2 oldest active bad habits.
+const slipsOf = (entries: PointsEntry[]) =>
+  Object.fromEntries(entries.filter((e) => e.source === 'bad_habit_occurred').map((e) => [e.metadata?.badHabitId, e.amount]));
+const dayLog = (id: string, badHabitId: string, date: string, status: BadHabitLog['status']): BadHabitLog => ({
+  ...log(id, badHabitId, 1, status),
+  date,
+});
+const before = (days: number) => {
+  const d = new Date(START - days * 86400_000);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+
+// 4. Every active bad habit can lose points (no 2-oldest slots): a slip = resist points + 1 at 1x.
 {
-  const habits = [bh('e1', 'Porn', 1, true), bh('e2', 'Junk food', 2, true), bh('e3', 'Staying up late', 3, true)];
+  // Added today, so no bad days before: 1x.
+  const habits = [bh('e1', 'Porn', 30, true), bh('e2', 'Junk food', 30, true), bh('e3', 'Staying up late', 30, true)];
   const logs = [log('o1', 'e1', 1, 'occurred'), log('o3', 'e3', 2, 'occurred')];
-  const { entries } = computeBadHabitAwards(habits, logs, [], DAY, START, NOW, 0);
-  const occ = entries.filter((e) => e.source === 'bad_habit_occurred').map((e) => e.metadata?.badHabitId);
-  assert(occ.length === 1 && occ[0] === 'e1', 'slot-3 habit has no slip penalty');
+  const { entries, logPoints } = computeBadHabitAwards(habits, logs, [], DAY, START, NOW, 0);
+  const s = slipsOf(entries);
+  assert(s.e1 === -4 && s.e3 === -2 && !('e2' in s), 'third habit is charged too: Porn -4, Staying up late -2');
+  assert(logPoints.get('o1') === -4 && logPoints.get('o3') === -2, 'logs carry their penalty');
+}
+
+// 5. Slip base = resist points + 1; custom bad habit (resist 1) is penalised: base 2.
+{
+  assert(badHabitPenaltyBase({ name: 'Porn', isPreset: true }) === 4, 'Porn base 4');
+  assert(badHabitPenaltyBase({ name: 'Doomscrolling', isPreset: true }) === 3, 'Doomscrolling base 3');
+  assert(badHabitPenaltyBase({ name: 'Junk food', isPreset: true }) === 2, 'Junk food base 2');
+  assert(badHabitPenaltyBase({ name: 'Nail biting' }) === 2, 'custom base 2');
+  const { entries } = computeBadHabitAwards([bh('c', 'Nail biting', 30)], [log('oc', 'c', 1, 'occurred')], [], DAY, START, NOW, 0);
+  assert(slipsOf(entries).c === -2, 'custom slip -2');
+}
+
+// 6. Miss multiplier: 1x, 1.5x (round half up); Performer+ 2x, 2.5x. Positive product rounded, then negated.
+{
+  const porn = { name: 'Porn', isPreset: true };
+  const junk = { name: 'Junk food', isPreset: true };
+  assert(badHabitPenalty(porn, 1, 0) === 4 && badHabitPenalty(porn, 2, 0) === 6 && badHabitPenalty(porn, 3, 0) === 6, 'Porn 4, 6, 6');
+  assert(badHabitPenalty(junk, 2, 0) === 3, 'Junk food 2 x 1.5 = 3');
+  assert(badHabitPenalty({ name: 'Doomscrolling', isPreset: true }, 2, 0) === 5, 'Doomscrolling 3 x 1.5 = 4.5 -> 5');
+  assert(badHabitPenalty(porn, 2, 2000) === 8 && badHabitPenalty(porn, 3, 2000) === 10, 'Performer Porn 8, 10');
+  assert(badHabitPenalty({ name: 'Doomscrolling', isPreset: true }, 3, 2000) === 8, 'Performer 3 x 2.5 = 7.5 -> 8');
+  // Added 29 days ago, never resisted: today is far past the 3rd bad day in a row.
+  const habits = [bh('d', 'Doomscrolling', 1, true)];
+  const logs = [dayLog('y2', 'd', before(2), 'occurred'), log('o', 'd', 3, 'occurred')];
+  assert(slipsOf(computeBadHabitAwards(habits, logs, [], DAY, START, NOW, 0).entries).d === -5, 'bad days in a row, 1.5x: -5');
+  assert(slipsOf(computeBadHabitAwards(habits, logs, [], DAY, START, NOW, 2500).entries).d === -8, 'bad days in a row, Performer 2.5x: -8');
+}
+
+// 7. Five slips in one day: only the 4 largest penalties count, whatever the log order; the rest 0.
+{
+  const habits = [
+    bh('j', 'Junk food', 30, true),
+    bh('s', 'Sugary drinks', 30, true),
+    bh('p', 'Porn', 30, true),
+    bh('k', 'Smoking / vaping', 30, true),
+    bh('g', 'Gaming too long', 30, true),
+  ];
+  // Cheap slips logged first (j, s at 2), then the expensive ones.
+  const logs = [log('oj', 'j', 1, 'occurred'), log('os', 's', 2, 'occurred'), log('op', 'p', 3, 'occurred'), log('ok', 'k', 4, 'occurred'), log('og', 'g', 5, 'occurred')];
+  const { entries, logPoints } = computeBadHabitAwards(habits, logs, [], DAY, START, NOW, 0);
+  const s = slipsOf(entries);
+  assert(s.p === -4 && s.k === -4 && s.g === -3 && s.j === -2 && !('s' in s), 'top 4 by amount; tie -2/-2 goes to the earlier log');
+  assert(logPoints.get('os') === 0, 'the 5th slip shows 0');
+  // Undo the Porn slip: the Sugary drinks slip comes back.
+  const undone = computeBadHabitAwards(habits, logs.filter((l) => l.id !== 'op'), entries, DAY, START, NOW, 0);
+  const u = slipsOf(undone.entries);
+  assert(u.s === -2 && u.j === -2 && u.k === -4 && u.g === -3 && !('p' in u), 'a freed slot goes to the next largest');
+}
+
+// 8. A penalty already written today keeps its amount and its rank uses it; other days' rows are never returned.
+{
+  const habits = [bh('a', 'Junk food', 1, true), bh('b', 'Porn', 2, true)];
+  const kept: PointsEntry = {
+    id: badHabitOccurredId('a', DAY), amount: -5, reason: '', source: 'bad_habit_occurred', timestamp: at(1), metadata: { badHabitId: 'a', date: DAY, status: 'occurred' },
+  };
+  const yesterday: PointsEntry = {
+    id: badHabitOccurredId('b', before(1)), amount: -5, reason: '', source: 'bad_habit_occurred', timestamp: at(-5), metadata: { badHabitId: 'b', date: before(1), status: 'occurred' },
+  };
+  const logs = [log('oa', 'a', 1, 'occurred'), log('ob', 'b', 2, 'occurred'), dayLog('yb', 'b', before(1), 'occurred')];
+  const { entries } = computeBadHabitAwards(habits, logs, [kept, yesterday], DAY, START, NOW, 0);
+  const s = slipsOf(entries);
+  assert(s.a === -5, 'old -5 row kept');
+  assert(s.b === -6, 'new slip: Porn 4 x 1.5 = -6');
+  assert(entries.every((e) => e.metadata?.date === DAY), 'only today is recomputed; yesterday stays frozen');
 }
 
 console.log('badHabitAwards fixtures: all passed');

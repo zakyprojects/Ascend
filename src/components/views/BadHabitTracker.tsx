@@ -6,11 +6,12 @@ import { useToast } from '@/components/ui/Toast';
 import { BadHabit } from '@/types';
 import { getNow, todayKey } from '@/lib/dates';
 import { BAD_HABIT_POINTS } from '@/lib/pointsConfig';
+import { PRESET_BAD_HABITS } from '@/lib/presets';
 import { CapMeterConnected } from '@/components/ui/CapMeterConnected';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { PageHero } from '@/components/ui/PageHero';
 import { Disclosure, EmptyState, PageColumns } from '@/components/ui/primitives';
-import { getActiveBadHabitsOrdered, getPointEligibleHabitIds } from '@/lib/badHabitEligibility';
+import { getActiveBadHabitsOrdered } from '@/lib/badHabitEligibility';
 import { getCapStatus } from '@/lib/capStatus';
 import { getEffectiveSeasonPoints, ptsText } from '@/lib/leagues';
 import { leagueNow } from '@/lib/leagueTime';
@@ -19,6 +20,10 @@ import { useLocalDayKey } from '@/lib/useLocalDayKey';
 import { CountUp, Reveal } from '@/components/ui/Motion';
 import { BadHabitRow } from '@/components/badHabits/BadHabitRow';
 import { AddBadHabitDialog } from '@/components/badHabits/AddBadHabitDialog';
+
+// Library slip / not-logged base: each library bad habit's points + penaltyExtra, e.g. "−2 to −4 pts".
+const penaltyBases = PRESET_BAD_HABITS.map((p) => p.points + BAD_HABIT_POINTS.penaltyExtra);
+const penaltyRange = `−${Math.min(...penaltyBases)} to ${ptsText(-Math.max(...penaltyBases))}`;
 
 export function BadHabitTracker({ store }: { store: AppStore }) {
   const { showSuccessToast } = useToast();
@@ -30,8 +35,6 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
   const today = useLocalDayKey();
   const habits = getActiveBadHabitsOrdered(store.state.badHabits || []);
   const logs = store.state.badHabitLogs || [];
-  // Only these can lose points (slipped, not logged); every bad habit earns its resist points.
-  const penalised = getPointEligibleHabitIds(store.state.badHabits || []);
   const todayLogOf = (id: string) => logs.find((l) => l.badHabitId === id && l.date === today && l.status !== 'no_report');
   const toLog = habits.filter((h) => !todayLogOf(h.id));
   const logged = habits.filter((h) => todayLogOf(h.id));
@@ -75,7 +78,6 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
         logs={logs.filter((l) => l.badHabitId === habit.id)}
         todayLog={todayLog}
         today={today}
-        penalised={penalised.has(habit.id)}
         resistRemaining={resistRemaining}
         seasonPoints={seasonPoints}
         popClass={todayLog?.status === 'resisted' && popIds.has(habit.id) ? 'animate-pop' : ''}
@@ -137,13 +139,15 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
                 you log first count first.
               </li>
               <li>
-                Only your <span className="figure">{BAD_HABIT_POINTS.eligibleSlots}</span> oldest bad habits lose points. The
-                others never do.
+                Slipped: the habit&apos;s points + {BAD_HABIT_POINTS.penaltyExtra} (library{' '}
+                <span className="figure">{penaltyRange}</span>, custom{' '}
+                <span className="figure">{ptsText(-(BAD_HABIT_POINTS.customResist + BAD_HABIT_POINTS.penaltyExtra))}</span>). A day
+                you don&apos;t log costs the same, charged after midnight, counting from the day you added the habit.
               </li>
               <li>
-                Slipped: <span className="figure">{ptsText(-BAD_HABIT_POINTS.occurBase)}</span>. A day you don&apos;t log:{' '}
-                <span className="figure">{ptsText(-BAD_HABIT_POINTS.noReportBase)}</span>, charged after midnight, counting from
-                the day you added the habit.
+                At most <span className="figure">{BAD_HABIT_POINTS.dailyPenaltyLimit}</span> bad habits lose points a day, slips
+                and unlogged days together: the {BAD_HABIT_POINTS.dailyPenaltyLimit} largest penalties count, the rest cost
+                nothing.
               </li>
               <li>
                 Each bad day in a row (slipped or not logged) costs more: ×1.5; from Performer rank ×2 for the 2nd and ×2.5
