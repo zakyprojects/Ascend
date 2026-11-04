@@ -14,6 +14,8 @@ import {
   Skill,
   SkillSessionLog,
   SkillLevel,
+  SkillDrill,
+  SkillDrillCount,
   BadHabit,
   BadHabitLog,
   AddictionTracker,
@@ -87,6 +89,7 @@ import { sameName } from './uniqueNames';
 import { computeHabitAwards, isHabitAwardEntry, isRetiredAppHabitAward, presetHabitPoints } from './habitAwards';
 import { computeWorkoutAwards, isRetiredAppWorkoutAward, isWorkoutDayEntry } from './workoutAwards';
 import { computeSkillAwards, isRetiredAppSkillAward, isSkillDayEntry } from './skillAwards';
+import { drillNameProblem, foldClearedCounts, isDrillGoal, keepValidDrillCounts, normalizeDrillName, normalizeDrillUnit } from './skillDrills';
 import { computeRecoveryChanges, RECOVERY_MILESTONES, trackerStartMs } from './recoveryAwards';
 import { computeJournalAward, isJournalDayEntry, isRetiredAppJournalAward, journalEntryEarns } from './journalAwards';
 import { computeFocusAwards, focusFloorDay, isFocusDayEntry, isRetiredAppFocusAward } from './focusAwards';
@@ -318,10 +321,21 @@ function removeLinkedWeeklyGoals(
   currentWeekKey: string
 ): { weeklyGoals: WeeklyGoal[]; removedGoalIds: string[] } {
   const validIds = new Set(itemIds.filter((id): id is string => Boolean(id)));
-  const removedGoalIds: string[] = [];
-  if (validIds.size === 0) return { weeklyGoals, removedGoalIds };
+  if (validIds.size === 0) return { weeklyGoals, removedGoalIds: [] };
+  return removeWeeklyGoalsWhere(
+    weeklyGoals,
+    (g) => g.linkedModule === linkedModule && Boolean(g.linkedItemId) && validIds.has(g.linkedItemId!),
+    currentWeekKey
+  );
+}
 
-  const isLinked = (g: WeeklyGoalItem) => g.linkedModule === linkedModule && Boolean(g.linkedItemId) && validIds.has(g.linkedItemId!);
+/** Removes the current and future weeks' goals that match (past weeks keep theirs), with tombstones as above. */
+function removeWeeklyGoalsWhere(
+  weeklyGoals: WeeklyGoal[],
+  isLinked: (g: WeeklyGoalItem) => boolean,
+  currentWeekKey: string
+): { weeklyGoals: WeeklyGoal[]; removedGoalIds: string[] } {
+  const removedGoalIds: string[] = [];
   const updated = weeklyGoals.map((w) => {
     if (w.weekKey < currentWeekKey) return w;
     const removed = w.goals.filter(isLinked).map((g) => g.id);
@@ -5053,12 +5067,14 @@ export function useAppState() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const logSkillPractice = useCallback((skillId: string, durationMinutes: number, note: string) => {
+  /** Minutes are required and earn the points; drill counts ride along and earn nothing. */
+  const logSkillPractice = useCallback((skillId: string, durationMinutes: number, note: string, counts?: SkillDrillCount[]) => {
     const date = todayKey();
     setState((prev) => {
       const targetSkill = prev.skills.find((s) => s.id === skillId);
       if (!targetSkill) return prev;
 
+      const drillCounts = keepValidDrillCounts(counts, targetSkill);
       const session: SkillSessionLog = {
         id: uid(),
         skillId,
@@ -5066,6 +5082,7 @@ export function useAppState() {
         durationMinutes,
         note: note.trim(),
         pointsAwarded: 0,
+        ...(drillCounts.length > 0 ? { counts: drillCounts } : {}),
         createdAt: trustedNow().toISOString(),
       };
 
@@ -5085,7 +5102,7 @@ export function useAppState() {
     setState((prev) => {
       return {
         ...prev,
-        skills: prev.skills.map((s) => (s.id === skillId ? { ...s, manualLevel } : s)),
+        skills: prev.skills.map((s) => (s.id === skillId ? { ...s, manualLevel, updatedAt: trustedNow().toISOString() } : s)),
       };
     });
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
@@ -5142,14 +5159,17 @@ export function useAppState() {
 
         // Only today's award follows the sessions; an earlier day's points stay (as on the server),
         // and so do its practice minutes (clearedMinutes), so the skill's hours and level hold.
+        // Its drill counts go to each drill's clearedCount the same way, so drill totals hold.
         const today = todayKey();
         if (target.date !== today) {
           const mins = typeof target.durationMinutes === 'number' && Number.isFinite(target.durationMinutes) ? target.durationMinutes : 0;
+          const nowIso = trustedNow().toISOString();
+          const withMinutes = mins > 0
+            ? prev.skills.map((sk) => (sk.id === target.skillId ? { ...sk, clearedMinutes: (sk.clearedMinutes || 0) + mins, updatedAt: nowIso } : sk))
+            : prev.skills;
           return reconcileLinkedWeeklyGoals({
             ...prev,
-            skills: mins > 0
-              ? prev.skills.map((sk) => (sk.id === target.skillId ? { ...sk, clearedMinutes: (sk.clearedMinutes || 0) + mins } : sk))
-              : prev.skills,
+            skills: foldClearedCounts(withMinutes, [target], nowIso),
             skillLogs: remainingSkillLogs,
             deletedEntityIds: updatedDeletedEntityIds,
           });
@@ -5187,16 +5207,93 @@ export function useAppState() {
             const mins = typeof l.durationMinutes === 'number' && Number.isFinite(l.durationMinutes) ? l.durationMinutes : 0;
             minutesBySkill.set(l.skillId, (minutesBySkill.get(l.skillId) || 0) + mins);
           }
+          const nowIso = trustedNow().toISOString();
+          const withMinutes = prev.skills.map((sk) =>
+            minutesBySkill.get(sk.id) ? { ...sk, clearedMinutes: (sk.clearedMinutes || 0) + minutesBySkill.get(sk.id)!, updatedAt: nowIso } : sk
+          );
           return {
             ...prev,
-            skills: prev.skills.map((sk) =>
-              minutesBySkill.get(sk.id) ? { ...sk, clearedMinutes: (sk.clearedMinutes || 0) + minutesBySkill.get(sk.id)! } : sk
-            ),
+            // Drill counts of the cleared logs stay in each drill's clearedCount.
+            skills: foldClearedCounts(withMinutes, toClear, nowIso),
             skillLogs: prev.skillLogs.filter((l) => !cleared.has(l.id)),
             deletedEntityIds: [...(prev.deletedEntityIds || []), ...cleared].slice(-500),
           };
         },
         { immediate: true, actionLabel: 'Clearing old practice logs' }
+      )
+    );
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  /** Adds a drill to a skill. Throws with the form's message when the name can't be used. */
+  const addSkillDrill = useCallback((skillId: string, name: string, unit: string) => {
+    const skill = get().skills.find((s) => s.id === skillId);
+    if (!skill) throw new Error('This skill was deleted.');
+    const problem = drillNameProblem(name, skill);
+    if (problem) throw new Error(problem);
+    const nowIso = trustedNow().toISOString();
+    const drill: SkillDrill = { id: uid(), name: normalizeDrillName(name), unit: normalizeDrillUnit(unit), createdAt: nowIso };
+    setState((prev) => ({
+      ...prev,
+      skills: prev.skills.map((s) => (s.id === skillId ? { ...s, drills: [...(s.drills || []), drill], updatedAt: nowIso } : s)),
+    }));
+    return drill;
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  /** Renames a drill or changes its unit. Logs and goals follow it by id. */
+  const updateSkillDrill = useCallback((skillId: string, drillId: string, name: string, unit: string) => {
+    const skill = get().skills.find((s) => s.id === skillId);
+    if (!skill) throw new Error('This skill was deleted.');
+    const problem = drillNameProblem(name, skill, drillId);
+    if (problem) throw new Error(problem);
+    const nowIso = trustedNow().toISOString();
+    setState((prev) => ({
+      ...prev,
+      skills: prev.skills.map((s) =>
+        s.id === skillId
+          ? {
+              ...s,
+              drills: (s.drills || []).map((d) => (d.id === drillId ? { ...d, name: normalizeDrillName(name), unit: normalizeDrillUnit(unit) } : d)),
+              updatedAt: nowIso,
+            }
+          : s
+      ),
+    }));
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  /**
+   * Deletes a drill: it stays in the skill doc marked deleted, so old logs keep their counts and
+   * name. Weekly goals on it this week and later go (past weeks keep theirs, like a skill delete).
+   */
+  const deleteSkillDrill = useCallback((skillId: string, drillId: string) => {
+    const currentWeekKey = weekKey(getNow());
+    void (
+      setState(
+        (prev) => {
+          const skill = prev.skills.find((s) => s.id === skillId);
+          const drill = skill?.drills?.find((d) => d.id === drillId);
+          if (!skill || !drill || drill.deletedAt) return prev;
+          const nowIso = trustedNow().toISOString();
+          const linkedRemoval = removeWeeklyGoalsWhere(prev.weeklyGoals, (g) => isDrillGoal(g, skillId, drillId), currentWeekKey);
+          return {
+            ...prev,
+            skills: prev.skills.map((s) =>
+              s.id === skillId
+                ? { ...s, drills: (s.drills || []).map((d) => (d.id === drillId ? { ...d, deletedAt: nowIso } : d)), updatedAt: nowIso }
+                : s
+            ),
+            weeklyGoals: linkedRemoval.weeklyGoals,
+            deletedEntityIds: linkedRemoval.removedGoalIds.length > 0
+              ? [...(prev.deletedEntityIds || []), ...linkedRemoval.removedGoalIds].slice(-500)
+              : prev.deletedEntityIds,
+          };
+        },
+        { immediate: true, actionLabel: 'Drill deletion', entityId: drillId }
       )
     );
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
@@ -9695,6 +9792,9 @@ export function useAppState() {
     deleteSkill,
     deleteSkillLog,
     clearSkillLogsBefore,
+    addSkillDrill,
+    updateSkillDrill,
+    deleteSkillDrill,
     addBadHabit,
     logBadHabitDay,
     undoTodayBadHabitLog,
