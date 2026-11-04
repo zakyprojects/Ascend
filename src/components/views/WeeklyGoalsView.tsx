@@ -22,7 +22,7 @@ import { GoalRow } from '@/components/weekly/GoalRow';
 import { GoalFormDialog, type GoalPayload } from '@/components/weekly/GoalFormDialog';
 import { ReflectionsCard } from '@/components/weekly/ReflectionsCard';
 import { CarryOverCard, type UnfinishedGoal } from '@/components/weekly/CarryOverCard';
-import { DELETED_ITEM, heldWeekGoals, isGoalAchieved, isLinkedGoal, pointsLostOnDelete, recordedProgress, weekLabel, weekLabelInline, weekPointsFromLedger } from '@/components/weekly/weekMeta';
+import { deletedLinkNoun, heldWeekGoals, isGoalAchieved, isLinkedGoal, pointsLostOnDelete, recordedProgress, weekLabel, weekLabelInline, weekPointsFromLedger } from '@/components/weekly/weekMeta';
 import type { View } from '@/lib/views';
 
 const TREND_WEEKS = 8;
@@ -142,7 +142,7 @@ export function WeeklyGoalsView({ store, onNavigate }: { store: AppStore; onNavi
         const settled = g.completed || g.done || getGoalProgress(g, doc.weekKey).percent >= 100;
         const addressed = carriedIds.has(g.id) || currentTitles.has(title) || supersededKeys.has(`${doc.weekKey}:${title}`);
         if (!settled && !g.archived && !g.carryOverDismissed && !addressed) {
-          const deletedLink = isLinkedGoal(g) && !linkedItemExists(g, store.state) ? DELETED_ITEM[g.linkedModule || ''] : undefined;
+          const deletedLink = isLinkedGoal(g) && !linkedItemExists(g, store.state) ? deletedLinkNoun(g, store.state) : undefined;
           result.push({ weekKey: doc.weekKey, goal: g, ...(deletedLink ? { deletedLink } : {}) });
         }
       })

@@ -18,6 +18,7 @@ import type { View } from '@/lib/views';
 import { useUnsavedChanges } from '@/lib/unsavedChanges';
 import { toUserMessage } from '@/lib/userMessage';
 import { nameTaken } from '@/lib/uniqueNames';
+import { DRILL_WEEKLY_TARGET_MAX, drillMetricKey, findDrill, liveDrills, parseDrillMetricKey } from '@/lib/skillDrills';
 
 export type GoalPayload = Pick<
   WeeklyGoalItem,
@@ -39,6 +40,7 @@ const DEFAULT_TARGET: Record<MetricKey, number> = {
   chapters_read: 5,
   minutes_practiced: 150,
   sessions_logged: 3,
+  drill_count: 50,
 };
 
 const MAX_TARGET = 100000;
@@ -56,11 +58,13 @@ const EMPTY_LIST: Partial<Record<LinkedModule, { text: string; link: string; vie
 
 /**
  * Add or edit one weekly goal. Mounted fresh for every open (the parent keys it), so the form
- * always starts from the goal being edited or from empty.
+ * always starts from the goal being edited, from `initial` (a new goal another page set up, e.g. a
+ * skill's drill) or from empty.
  */
 export function GoalFormDialog({
   open,
   editing,
+  initial,
   state,
   weekGoals,
   weekText,
@@ -70,6 +74,8 @@ export function GoalFormDialog({
 }: {
   open: boolean;
   editing: WeeklyGoalItem | null;
+  /** Starting values for a new goal (ignored when editing). */
+  initial?: Partial<GoalPayload>;
   state: AppState;
   /** The goals already in this week, so a new or renamed one can't repeat a name. */
   weekGoals: WeeklyGoalItem[];
@@ -81,20 +87,30 @@ export function GoalFormDialog({
   /** Opens another page (the empty item list links to Habits, Reading or Skills). */
   onNavigate: (view: View) => void;
 }) {
-  const editingLinked = Boolean(editing?.linkedModule && editing.linkedModule !== 'none');
-  const [title, setTitle] = useState(editing?.title ?? '');
-  const [targetDescription, setTargetDescription] = useState(editing?.targetDescription ?? '');
-  const [priority, setPriority] = useState<WeeklyGoalPriority>(editing?.priority ?? 'medium');
-  const [linkedModule, setLinkedModule] = useState<WeeklyGoalLinkedModule>(editing?.linkedModule || 'none');
+  // A new goal starts from `initial` the same way an edit starts from its goal.
+  const source: Partial<GoalPayload> | null = editing ?? initial ?? null;
+  const sourceLinked = Boolean(source?.linkedModule && source.linkedModule !== 'none');
+  const [title, setTitle] = useState(source?.title ?? '');
+  const [targetDescription, setTargetDescription] = useState(source?.targetDescription ?? '');
+  const [priority, setPriority] = useState<WeeklyGoalPriority>(source?.priority ?? 'medium');
+  const [linkedModule, setLinkedModule] = useState<WeeklyGoalLinkedModule>(source?.linkedModule || 'none');
   // A goal whose habit, book or skill was deleted starts with no item, so a live one is chosen.
+  // A drill goal whose drill was deleted keeps its skill and only its Count is chosen again.
   const [linkedItemId, setLinkedItemId] = useState(() => {
-    if (!editing || !editingLinked) return '';
-    if (!editing.linkedItemId) return ANY_ITEM;
-    return linkedItemExists(editing, state) ? editing.linkedItemId : '';
+    if (!source || !sourceLinked) return '';
+    if (!source.linkedItemId) return ANY_ITEM;
+    const item = { ...source, linkedMetricKey: undefined } as WeeklyGoalItem;
+    return linkedItemExists(item, state) ? source.linkedItemId : '';
   });
-  const [linkedMetricKey, setLinkedMetricKey] = useState(editing?.linkedMetricKey ?? '');
-  const [targetValue, setTargetValue] = useState<number>(editing?.targetValue || 1);
-  const [unit, setUnit] = useState(editing?.unit || 'times');
+  const [linkedMetricKey, setLinkedMetricKey] = useState(() => {
+    const key = source?.linkedMetricKey ?? '';
+    const drillId = parseDrillMetricKey(key);
+    if (drillId === null) return key;
+    const drill = findDrill(state.skills.find((s) => s.id === source?.linkedItemId), drillId);
+    return drill && !drill.deletedAt ? key : '';
+  });
+  const [targetValue, setTargetValue] = useState<number>(source?.targetValue || 1);
+  const [unit, setUnit] = useState(source?.unit || 'times');
   const issues = useFormController();
   const form = useUnsavedChanges(
     open,
@@ -140,6 +156,9 @@ export function GoalFormDialog({
   const habit = module === 'habit' ? state.habits.find((h) => h.id === itemId) : undefined;
   const weeklyHabit = habit?.frequency === 'weekly';
   const book = module === 'reading' ? linkedBook(state, itemId) : undefined;
+  const skill = module === 'skill' ? state.skills.find((s) => s.id === itemId) : undefined;
+  const drillId = parseDrillMetricKey(linkedMetricKey);
+  const drill = drillId !== null ? findDrill(skill, drillId) : undefined;
   const itemCount = module === 'habit' ? state.habits.length : module === 'reading' ? state.libraryBooks.length : module === 'skill' ? state.skills.length : 1;
   const emptyList = module && itemCount === 0 ? EMPTY_LIST[module] : undefined;
 
@@ -150,11 +169,17 @@ export function GoalFormDialog({
       ? LINKED_GOAL_METRICS.reading
           .filter((m) => m.key === (linkedMetricKey === 'pages_read' || linkedMetricKey === 'chapters_read' ? linkedMetricKey : readingMetricFor(book)))
           .map((m) => ({ ...m, label: isChapterBook(book) ? 'chapters' : 'pages' }))
-      : LINKED_GOAL_METRICS[module];
+      : module === 'skill' && skill
+        ? [
+            ...LINKED_GOAL_METRICS.skill,
+            // Each live drill of the skill counts on its own: "Scales (reps)".
+            ...liveDrills(skill).map((d) => ({ ...LINKED_GOAL_METRICS.skill[0], key: drillMetricKey(d.id) as MetricKey, label: `${d.name} (${d.unit})` })),
+          ]
+        : LINKED_GOAL_METRICS[module];
 
   /** The target a new Count starts at (a weekly habit is done once; a week has 7 days). */
   const defaultTarget = (key: string, weekly = weeklyHabit): number =>
-    key === 'days_completed' && weekly ? 1 : DEFAULT_TARGET[key as MetricKey] ?? 1;
+    key === 'days_completed' && weekly ? 1 : parseDrillMetricKey(key) !== null ? DEFAULT_TARGET.drill_count : DEFAULT_TARGET[key as MetricKey] ?? 1;
 
   const chooseMetric = (key: string, weekly?: boolean) => {
     setLinkedMetricKey(key);
@@ -184,6 +209,9 @@ export function GoalFormDialog({
       const picked = linkedBook(state, id);
       if (picked) chooseMetric(readingMetricFor(picked));
       else if (linkedMetricKey !== 'pages_read' && linkedMetricKey !== 'chapters_read') setLinkedMetricKey('');
+    } else if (module === 'skill' && drillId !== null && !liveDrills(state.skills.find((s) => s.id === id)).some((d) => d.id === drillId)) {
+      // A drill belongs to one skill: another skill (or Any skill) chooses its Count again.
+      setLinkedMetricKey('');
     } else if (module === 'exercise' && id) {
       // Count starts at how this workout is usually logged.
       const usual = workoutMeasures(id)[0];
@@ -198,6 +226,7 @@ export function GoalFormDialog({
   const countHint = (): string | undefined => {
     if (!module || !linkedMetricKey || (!itemId && !isAny)) return undefined;
     const workouts = isAny ? 'all workouts' : `${itemName} logs`;
+    if (drill) return `Adds the ${drill.unit} you log for ${drill.name} in ${itemName} this week.`;
     switch (linkedMetricKey as MetricKey) {
       case 'days_completed':
         return weeklyHabit ? `Done once you tick ${itemName} this week.` : `Counts the days you tick ${itemName} this week.`;
@@ -390,7 +419,7 @@ export function GoalFormDialog({
               id="goal-target-amount"
               label="Target"
               min={1}
-              max={linkedMetricKey === 'days_completed' && module === 'habit' ? MAX_HABIT_DAYS : MAX_TARGET}
+              max={linkedMetricKey === 'days_completed' && module === 'habit' ? MAX_HABIT_DAYS : drill ? DRILL_WEEKLY_TARGET_MAX : MAX_TARGET}
               value={weeklyHabit ? 1 : targetValue}
               onValueChange={setTargetValue}
               disabled={weeklyHabit}

@@ -2,6 +2,7 @@ import { AppState, UserBook, WeeklyGoalItem, WorkoutLog } from '@/types';
 import { parseDate, weekKey } from './dates';
 import { isChapterBook } from './readingAwards';
 import { workoutMeasureOf, workoutTypeKey, type WorkoutMeasure } from './workoutTypes';
+import { findDrill, logDrillCount, parseDrillMetricKey } from './skillDrills';
 
 export type LinkedModule = 'habit' | 'exercise' | 'reading' | 'skill';
 
@@ -15,7 +16,9 @@ export type MetricKey =
   | 'pages_read'
   | 'chapters_read'
   | 'minutes_practiced'
-  | 'sessions_logged';
+  | 'sessions_logged'
+  /** Stored as 'drill_count:<drillId>' (one drill of the linked skill). */
+  | 'drill_count';
 
 /** One log's part in a goal: the log (habit: the ticked day or week key), when it was made, how much it adds. */
 export interface MetricEntry {
@@ -75,6 +78,13 @@ const skillEntries = (value: (minutes: number) => number) => (state: AppState, i
     .filter((l) => dateStrings.includes(l.date) && (!item.linkedItemId || l.skillId === item.linkedItemId))
     .map((l) => ({ id: l.id, at: l.createdAt || dayInstant(l.date), value: value(l.durationMinutes || 0) }));
 
+/** The week's logs of the goal's skill that counted the drill, each adding its count. */
+const drillEntries = (drillId: string) => (state: AppState, item: WeeklyGoalItem, dateStrings: string[]): MetricEntry[] =>
+  (state.skillLogs || [])
+    .filter((l) => dateStrings.includes(l.date) && l.skillId === item.linkedItemId)
+    .map((l) => ({ id: l.id, at: l.createdAt || dayInstant(l.date), value: logDrillCount(l, drillId) }))
+    .filter((e) => e.value > 0);
+
 export const LINKED_GOAL_METRICS: Record<LinkedModule, LinkedGoalMetricDefinition[]> = {
   habit: [
     {
@@ -130,14 +140,24 @@ export const EXERCISE_METRIC_BY_MEASURE: Record<WorkoutMeasure, MetricKey> = {
 /** The reading metric of a book: its own unit. */
 export const readingMetricFor = (book: Pick<UserBook, 'unit'>): MetricKey => (isChapterBook(book) ? 'chapters_read' : 'pages_read');
 
-function metricOf(item: WeeklyGoalItem): LinkedGoalMetricDefinition | undefined {
+/**
+ * The metric a goal counts. A drill goal needs its skill and the drill (deleted or not) on this
+ * device; otherwise it is a metric this build can't count yet, like an unknown key.
+ */
+function metricOf(item: WeeklyGoalItem, state: Pick<AppState, 'skills'>): LinkedGoalMetricDefinition | undefined {
   if (!item.linkedModule || item.linkedModule === 'none' || !item.linkedMetricKey) return undefined;
+  const drillId = parseDrillMetricKey(item.linkedMetricKey);
+  if (drillId !== null) {
+    if (item.linkedModule !== 'skill' || !item.linkedItemId) return undefined;
+    const drill = findDrill((state.skills || []).find((s) => s.id === item.linkedItemId), drillId);
+    return drill ? { key: 'drill_count', label: drill.unit, entries: drillEntries(drillId) } : undefined;
+  }
   return LINKED_GOAL_METRICS[item.linkedModule as LinkedModule]?.find((m) => m.key === item.linkedMetricKey);
 }
 
-/** What a linked goal counts, as shown next to its numbers. A goal on one book counts in the book's unit. */
-export function linkedGoalUnit(item: WeeklyGoalItem, state: Pick<AppState, 'libraryBooks'>): string | null {
-  const metric = metricOf(item);
+/** What a linked goal counts, as shown next to its numbers. A goal on one book counts in the book's unit; a drill goal in the drill's unit. */
+export function linkedGoalUnit(item: WeeklyGoalItem, state: Pick<AppState, 'libraryBooks' | 'skills'>): string | null {
+  const metric = metricOf(item, state);
   if (!metric) return null;
   if (item.linkedModule === 'reading' && item.linkedItemId) {
     const book = linkedBook(state, item.linkedItemId);
@@ -147,8 +167,9 @@ export function linkedGoalUnit(item: WeeklyGoalItem, state: Pick<AppState, 'libr
 }
 
 /**
- * Whether the habit, book or skill a goal is linked to still exists. Exercise goals follow a
- * workout name, and a goal on "any" item follows them all, so those are always live.
+ * Whether the habit, book or skill a goal is linked to still exists (a drill goal: the drill too,
+ * not deleted). Exercise goals follow a workout name, and a goal on "any" item follows them all,
+ * so those are always live.
  */
 export function linkedItemExists(item: WeeklyGoalItem, state: Pick<AppState, 'habits' | 'libraryBooks' | 'skills'>): boolean {
   const id = item.linkedItemId;
@@ -158,8 +179,14 @@ export function linkedItemExists(item: WeeklyGoalItem, state: Pick<AppState, 'ha
       return (state.habits || []).some((h) => h.id === id);
     case 'reading':
       return Boolean(linkedBook(state, id));
-    case 'skill':
-      return (state.skills || []).some((s) => s.id === id);
+    case 'skill': {
+      const skill = (state.skills || []).find((s) => s.id === id);
+      if (!skill) return false;
+      const drillId = parseDrillMetricKey(item.linkedMetricKey);
+      if (drillId === null) return true;
+      const drill = findDrill(skill, drillId);
+      return Boolean(drill && !drill.deletedAt);
+    }
     default:
       return true;
   }
@@ -173,7 +200,7 @@ const sortedEntries = (entries: MetricEntry[]): MetricEntry[] =>
  * undefined while the target is not reached. Its `at` is when the goal was achieved by its logs.
  */
 export function linkedGoalCrossing(item: WeeklyGoalItem, state: AppState, dateStrings: string[]): MetricEntry | undefined {
-  const metric = metricOf(item);
+  const metric = metricOf(item, state);
   if (!metric) return undefined;
   const target = item.targetValue && item.targetValue > 0 ? item.targetValue : 1;
   let sum = 0;
@@ -244,7 +271,7 @@ export function computeLinkedGoalProgress(
   }
 
   // No metric chosen yet, or one this build does not know.
-  const metric = metricOf(item);
+  const metric = metricOf(item, state);
   if (!metric) {
     return {
       needsMetricSelection: true,

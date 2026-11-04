@@ -7,7 +7,8 @@ import { TAP_TARGET, TAP_TARGET_Y } from '@/components/ui/primitives/shared';
 import { ProgressUpdateDialog, UpdateProgressButton } from '@/components/ui/ProgressUpdateDialog';
 import { useCompletionPop } from '@/lib/useCompletionPop';
 import { linkedItemExists } from '@/lib/linkedGoalMetrics';
-import { DELETED_ITEM, formatAmount, formatNumber, isGoalAchieved, isLinkedGoal } from './weekMeta';
+import { findDrill, parseDrillMetricKey } from '@/lib/skillDrills';
+import { deletedLinkNoun, formatAmount, formatNumber, isGoalAchieved, isLinkedGoal } from './weekMeta';
 
 const PRIORITY_DOT: Record<WeeklyGoalPriority, string> = {
   high: 'bg-rose-500',
@@ -41,6 +42,9 @@ function linkedLabel(item: WeeklyGoalItem, state: AppState): string {
         : item.linkedModule === 'skill'
           ? state.skills.find((s) => s.id === id)?.name
           : id; // exercise goals store the workout type itself
+  const drillId = item.linkedModule === 'skill' ? parseDrillMetricKey(item.linkedMetricKey) : null;
+  const drill = drillId !== null ? findDrill(state.skills.find((s) => s.id === id), drillId) : undefined;
+  if (name && drill) return `${module} · ${name} · ${drill.name}`;
   return name ? `${module} · ${name}` : module;
 }
 
@@ -148,7 +152,7 @@ export function GoalRow({
                 <span className="truncate">{linkedLabel(item, state)}</span>
               </span>
             )}
-            {deadLink && <span className="text-rose-theme">Linked {DELETED_ITEM[item.linkedModule || ''] ?? 'item'} was deleted</span>}
+            {deadLink && <span className="text-rose-theme">Linked {deletedLinkNoun(item, state)} was deleted</span>}
             {carriedFromLabel && <span>From {carriedFromLabel}</span>}
           </div>
 

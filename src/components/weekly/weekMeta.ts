@@ -3,6 +3,7 @@ import type { GoalProgressResult } from '@/lib/linkedGoalMetrics';
 import { formatWeekRange, offsetWeekKey } from '@/lib/dates';
 import { calculateWeeklyGoalsPoints } from '@/lib/pointsConfig';
 import { heldCountedGoals, weeklyScoringGoals, type CountedGoalRef } from '@/lib/weeklyAwards';
+import { parseDrillMetricKey } from '@/lib/skillDrills';
 
 /** "This week", "Last week", "Next week", or the week's dates, never the raw week key. */
 export function weekLabel(targetWeekKey: string, currentWeekKey: string): string {
@@ -20,6 +21,14 @@ export function weekLabelInline(targetWeekKey: string, currentWeekKey: string): 
 
 /** "habit", "book", "skill": what a goal's linked item is called when it was deleted. */
 export const DELETED_ITEM: Record<string, string> = { habit: 'habit', reading: 'book', skill: 'skill' };
+
+/** What a goal's deleted link is called: its item ("skill"), or "drill" when only the drill of a drill goal was deleted. */
+export function deletedLinkNoun(item: WeeklyGoalItem, state: Pick<AppState, 'skills'>): string {
+  if (item.linkedModule === 'skill' && parseDrillMetricKey(item.linkedMetricKey) !== null && (state.skills || []).some((s) => s.id === item.linkedItemId)) {
+    return 'drill';
+  }
+  return DELETED_ITEM[item.linkedModule || ''] ?? 'item';
+}
 
 export function isLinkedGoal(item: WeeklyGoalItem): boolean {
   return Boolean(item.linkedModule && item.linkedModule !== 'none');
