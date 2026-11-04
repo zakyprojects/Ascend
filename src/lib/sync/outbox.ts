@@ -3,6 +3,7 @@ import type { AppState } from '../../types';
 import { supabase } from '../supabase';
 import { SYNCED_COLLECTIONS, itemsOf, rowIdOf, syncKeyOf } from './syncedCollections';
 import { trustedNow } from '../clock';
+import { clearTabSyncedHashes, setTabSyncedHashes, tabSyncedHashes, type Baseline } from './tabVersions';
 
 /**
  * Relational sync outbox (DB normalization, S2 dual-write).
@@ -38,7 +39,7 @@ type Outbox = Record<string, OutboxOp>;
  * DELETED marks a row this device knows is deleted, so bringing the id back is a
  * local re-creation (a re-awarded points entry), not an old copy.
  */
-type Baseline = Record<string, Record<string, string>>;
+export type { Baseline } from './tabVersions';
 export const DELETED = '';
 /** A mirror collection never deletes more than this share of its rows in one diff. */
 const MASS_REMOVAL_MIN = 20;
@@ -50,6 +51,8 @@ export const cursorKey = (userId: string, table: string) => `ascend_sync_cursor_
 /** When this device last read every synced table in full (see pull.ts, PURGE_AFTER_DAYS). */
 export const lastFullPullKey = (userId: string) => `ascend_sync_last_full_pull_${userId}`;
 const DELETE_CHUNK = 100;
+/** Fired (window event, detail { userId }) when a save held old copies back: this tab should pull. */
+export const SYNC_BEHIND_EVENT = 'ascend-sync-behind';
 
 function readJson<T>(key: string): T | null {
   try {
@@ -75,32 +78,61 @@ export function hashRow(row: Record<string, unknown>): string {
   return (hash >>> 0).toString(36);
 }
 
-/** Pure diff: the next baseline and the ops it adds to the outbox. */
+/**
+ * Pure diff: the next baseline, the ops it adds to the outbox, and this tab's next row versions
+ * (`tabHashes`, see tabSyncedHashes). `behind` counts old copies held back: rows another tab synced
+ * past this tab's unchanged copy. Without tabHashes every changed known row is an edit.
+ */
 export function diffSyncedCollections(
   state: AppState,
   baseline: Baseline,
   outbox: Outbox,
-  nowIso: string
-): { baseline: Baseline; outbox: Outbox; changed: boolean } {
+  nowIso: string,
+  tabHashes: Baseline = {}
+): { baseline: Baseline; outbox: Outbox; changed: boolean; tabHashes: Baseline; behind: number } {
   const tombstones = new Set(state.deletedEntityIds || []);
   const nextOutbox: Outbox = { ...outbox };
   const nextBaseline: Baseline = {};
+  const nextTabHashes: Baseline = {};
   let changed = false;
+  let behind = 0;
 
   for (const collection of SYNCED_COLLECTIONS) {
     const prev = baseline[syncKeyOf(collection)] || {};
+    const tabPrev = tabHashes[syncKeyOf(collection)] || {};
     const next: Record<string, string> = {};
+    const tabNext: Record<string, string> = {};
     const items = itemsOf(collection, state);
 
     const serverOwned = (id: string) => collection.serverOwnedId?.(id) === true;
 
     for (const item of items) {
       const id = item ? rowIdOf(collection, item) : '';
-      if (!id || tombstones.has(id) || serverOwned(id)) continue;
+      if (!id || tombstones.has(id)) continue;
       const row = collection.toRow(item as never);
       const hash = hashRow(row);
+      if (serverOwned(id)) {
+        // Never uploaded; the version only tells the pull whether this tab's copy is behind.
+        if (prev[id] === hash) tabNext[id] = hash;
+        else if (id in tabPrev) tabNext[id] = tabPrev[id];
+        continue;
+      }
+      if (prev[id] === hash) {
+        next[id] = hash;
+        tabNext[id] = hash;
+        continue;
+      }
+      // Unchanged in this tab since it last synced the row, while the baseline moved on (another
+      // tab pulled a newer row or a delete): an old copy. Uploading it would stamp old content
+      // with "now" and undo the newer row, so it is held back and the next pull replaces it.
+      if (id in prev && id in tabPrev && tabPrev[id] === hash) {
+        next[id] = prev[id];
+        tabNext[id] = hash;
+        behind++;
+        continue;
+      }
       next[id] = hash;
-      if (prev[id] === hash) continue;
+      tabNext[id] = hash;
 
       const key = opKey(collection.table, id);
       // A pending delete wins, except where the table revives rows (a re-award or a restore).
@@ -137,20 +169,23 @@ export function diffSyncedCollections(
       if (id in next) continue;
       if (prev[id] === DELETED) {
         next[id] = DELETED;
+        if (!(id in tabNext)) tabNext[id] = DELETED;
         continue;
       }
       const deletes = tombstones.has(id) || (collection.mirrorRemovals && !massRemoval);
       if (!deletes) continue;
       nextOutbox[opKey(collection.table, id)] = { kind: 'delete', table: collection.table, id };
       next[id] = DELETED;
+      tabNext[id] = DELETED;
       changed = true;
     }
 
     if (Object.keys(prev).length !== Object.keys(next).length) changed = true;
     nextBaseline[syncKeyOf(collection)] = next;
+    nextTabHashes[syncKeyOf(collection)] = tabNext;
   }
 
-  return { baseline: nextBaseline, outbox: nextOutbox, changed };
+  return { baseline: nextBaseline, outbox: nextOutbox, changed, tabHashes: nextTabHashes, behind };
 }
 
 /** Call after the blob save for this state succeeded. */
@@ -162,8 +197,11 @@ export function recordSyncedChanges(state: AppState): void {
     state,
     readJson<Baseline>(baselineKey(userId)) || {},
     readJson<Outbox>(outboxKey(userId)) || {},
-    trustedNow().toISOString()
+    trustedNow().toISOString(),
+    tabSyncedHashes(userId)
   );
+  setTabSyncedHashes(userId, result.tabHashes);
+  if (result.behind > 0) window.dispatchEvent(new CustomEvent(SYNC_BEHIND_EVENT, { detail: { userId } }));
   if (!result.changed) return;
 
   try {
@@ -193,7 +231,12 @@ export function hasPendingSyncOps(userId: string): boolean {
 }
 
 export function knownHashes(userId: string, key: string): Record<string, string> {
-  return (readJson<Baseline>(baselineKey(userId)) || {})[key] || {};
+  return readBaseline(userId)[key] || {};
+}
+
+/** The shared baseline: every collection's row hashes as last sent to or received from the server. */
+export function readBaseline(userId: string): Baseline {
+  return readJson<Baseline>(baselineKey(userId)) || {};
 }
 
 /** Records server rows the state now holds, so the next diff does not send them back as edits. */
@@ -211,6 +254,7 @@ export function clearSyncStorage(userId: string): void {
     localStorage.removeItem(baselineKey(userId));
     for (const { table } of SYNCED_COLLECTIONS) localStorage.removeItem(cursorKey(userId, table));
     localStorage.removeItem(lastFullPullKey(userId));
+    clearTabSyncedHashes(userId);
   } catch {
     /* ignore */
   }
