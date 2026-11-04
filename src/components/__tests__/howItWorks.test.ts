@@ -55,7 +55,7 @@ const textOf = (html: string) =>
     .replace(/&amp;/g, '&')
     .replace(/\s+/g, ' ');
 
-const BANNED = ['dream stays', 'just a wish', 'A dream becomes', 'AscendDay', 'For example', 'locked ·', '· open', 'Without a'];
+const BANNED = ['dream stays', 'just a wish', 'A dream becomes', 'AscendDay', 'For example', 'locked ·', '· open', 'Without a', 'guitar', 'Guitar', 'scales', 'Scales'];
 
 const guides: [string, HowItWorksGuide, (string | number)[]][] = [
   ['projectsGoals', projectsGoalsGuide, ['earns no points']],
@@ -68,6 +68,8 @@ const guides: [string, HowItWorksGuide, (string | number)[]][] = [
       ...SKILL_LEVELS.filter((l) => l.next).map((l) => `${l.below} hrs ${l.next}`),
       `+${WEEKLY_GOALS_POINTS.pointsPerGoal} pts`,
       'Only minutes earn points',
+      'LeetCode problems',
+      'every log needs its minutes',
     ],
   ],
   [
@@ -105,6 +107,11 @@ const guides: [string, HowItWorksGuide, (string | number)[]][] = [
       `${WEEKLY_GOALS_POINTS.maxWeeklyPoints} pts`,
       `+${WEEKLY_REFLECTION_POINTS.awarded} pts`,
       'Friday 6:00 AM',
+      'I update it myself',
+      'workouts, minutes, reps, sets or km',
+      'pages or chapters',
+      'one of its counts',
+      'Linked and manual goals earn the same',
     ],
   ],
   [
