@@ -2,6 +2,7 @@ import type { AppState } from '../../types';
 import { trustedNow, trustedNowMs } from '../clock';
 import { supabase } from '../supabase';
 import { DELETED, acceptServerRows, cursorKey, hashRow, knownHashes, lastFullPullKey, pendingOpIds } from './outbox';
+import { setTabSyncedHashes, tabSyncedHashes, type Baseline } from './tabVersions';
 import { SYNCED_COLLECTIONS, itemsOf, rowIdOf, syncKeyOf, withItems, type SyncedCollection } from './syncedCollections';
 
 /**
@@ -25,6 +26,12 @@ export interface RemoteChange {
   serverOwnedLive?: string[];
   /** A local op for this row is still waiting to be sent (only collections that merge conflicts get these rows). */
   pending?: boolean;
+  /**
+   * This tab's version of the row (tabSyncedHashes) when it has one. A local copy still equal to it
+   * is unchanged here, so the server row replaces it even where the shared baseline already held
+   * that row (another tab pulled it); on a delete (`item` null) it limits the removal to that copy.
+   */
+  tabHash?: string;
 }
 
 /** Re-reads rows this close to the cursor, so a late-committing write is not skipped. */
@@ -61,6 +68,7 @@ export function prepareRemoteRows(
   const pending = pendingOpIds(userId, collection.table);
   const key = syncKeyOf(collection);
   const known = knownHashes(userId, key);
+  const tab = tabSyncedHashes(userId)[key] || {};
   const hashes: Record<string, string | null> = {};
   const changes: RemoteChange[] = [];
 
@@ -73,19 +81,27 @@ export function prepareRemoteRows(
     if (row.deleted_at) {
       // A delete this device already applied: a local copy is a re-award or restore
       // not yet saved (the diff runs after the debounced save) and must not be removed.
-      if (collection.revivable && known[id] === DELETED) continue;
+      // Unless this tab never saw the delete (another tab applied it): its copy, while unchanged, goes.
+      if (collection.revivable && known[id] === DELETED) {
+        if (tab[id] !== undefined && tab[id] !== DELETED) changes.push({ key, id, item: null, tabHash: tab[id] });
+        continue;
+      }
       hashes[id] = null;
       changes.push({ key, id, item: null });
       continue;
     }
     const item = collection.fromRow(row) as { id: string };
     const hash = hashRow(collection.toRow(item as never));
+    const tabHash = id in tab ? { tabHash: tab[id] } : {};
     if (known[id] === hash && !isPending) {
-      if (full) changes.push({ key, id, item, missingOnly: true });
+      // Another tab of this browser already took this row into the shared baseline: this tab still
+      // needs it when its own version is older.
+      const behind = id in tab && tab[id] !== hash;
+      if (full || behind) changes.push({ key, id, item, missingOnly: true, ...(behind ? tabHash : {}) });
       continue;
     }
     hashes[id] = hash;
-    changes.push({ key, id, item, baseHash: known[id], ...(isPending ? { pending: true } : {}) });
+    changes.push({ key, id, item, baseHash: known[id], ...tabHash, ...(isPending ? { pending: true } : {}) });
   }
 
   // stale (full pull only): a row this device once synced that the server no longer has was
@@ -116,9 +132,18 @@ export function prepareRemoteRows(
  * edit (updatedAt = now). Without a baseline (or a known delete) the server row wins.
  */
 function isUnsentEdit(collection: SyncedCollection, local: unknown, change: RemoteChange): boolean {
-  if (!change.baseHash || !change.item || collection.serverOwnedId?.(change.id)) return false;
+  const base = baseOf(change);
+  if (!base || !change.item || collection.serverOwnedId?.(change.id)) return false;
   const localHash = hashRow(collection.toRow(local as never));
-  return localHash !== change.baseHash && localHash !== hashRow(collection.toRow(change.item as never));
+  return localHash !== base && localHash !== hashRow(collection.toRow(change.item as never));
+}
+
+/**
+ * The version the local copy is compared with to tell an edit made here: this tab's own version
+ * when it has one (another tab may have moved the shared baseline past it), else the baseline.
+ */
+function baseOf(change: RemoteChange): string | undefined {
+  return change.tabHash !== undefined ? change.tabHash : change.baseHash;
 }
 
 /**
@@ -132,13 +157,17 @@ function mergedRemoteItem(collection: SyncedCollection, local: unknown, change: 
   const remoteHash = hashRow(collection.toRow(change.item as never));
   if (localHash === remoteHash) return local;
   const edited = Boolean(collection.editTimestamp?.(local as never));
-  const conflict = change.pending || (change.baseHash ? localHash !== change.baseHash : edited);
+  const base = baseOf(change);
+  const conflict = change.pending || (base ? localHash !== base : edited);
   if (!conflict) return change.item;
   return collection.mergeConflict!(local as never, change.item as never, trustedNow().toISOString(), Boolean(change.pending));
 }
 
-/** Pure: returns prev itself when nothing changes, so no save is triggered. */
-export function applyRemoteChanges(prev: AppState, changes: RemoteChange[]): AppState {
+/**
+ * Returns prev itself when nothing changes, so no save is triggered. With userId, also records the
+ * rows the result now holds as this tab's versions (noteHeldRows); without it, pure.
+ */
+export function applyRemoteChanges(prev: AppState, changes: RemoteChange[], userId?: string): AppState {
   const tombstones = new Set(prev.deletedEntityIds || []);
   const revived = new Set<string>();
   let next = prev;
@@ -164,7 +193,8 @@ export function applyRemoteChanges(prev: AppState, changes: RemoteChange[]): App
       }
       const index = items.findIndex((item) => rowIdOf(collection, item) === change.id);
       if (change.item === null) {
-        if (index !== -1) items = items.filter((_, i) => i !== index);
+        const untouched = change.tabHash === undefined || (index !== -1 && hashOf(collection, items[index]) === change.tabHash);
+        if (index !== -1 && untouched) items = items.filter((_, i) => i !== index);
       } else if (!tombstones.has(change.id) || collection.revivable) {
         // A revivable table only keeps a row alive over a delete when the revival is newer
         // (and a delete still in the outbox never gets here), so another device's re-award or
@@ -176,6 +206,8 @@ export function applyRemoteChanges(prev: AppState, changes: RemoteChange[]): App
           if (next !== items[index]) items = items.map((item, i) => (i === index ? next : item));
         } else if (!change.missingOnly && !isUnsentEdit(collection, items[index], change)) {
           items = items.map((item, i) => (i === index ? change.item! : item));
+        } else if (change.missingOnly && change.tabHash !== undefined && isBehindCopy(collection, items[index], change)) {
+          items = items.map((item, i) => (i === index ? change.item! : item));
         }
       }
     }
@@ -185,7 +217,110 @@ export function applyRemoteChanges(prev: AppState, changes: RemoteChange[]): App
   if (revived.size > 0) {
     next = { ...next, deletedEntityIds: (next.deletedEntityIds || []).filter((id) => !revived.has(id)) };
   }
+  if (userId) noteHeldRows(userId, next, changes);
   return next;
+}
+
+const hashOf = (collection: SyncedCollection, item: unknown): string => hashRow(collection.toRow(item as never));
+
+/** A local copy still at this tab's older version of a row the baseline already holds newer. */
+function isBehindCopy(collection: SyncedCollection, local: unknown, change: RemoteChange): boolean {
+  const localHash = hashOf(collection, local);
+  if (localHash === hashOf(collection, change.item)) return false;
+  // The server's own rows always take its copy (isUnsentEdit never keeps one either).
+  return localHash === change.tabHash || collection.serverOwnedId?.(change.id) === true;
+}
+
+/**
+ * Records, as this tab's versions, the pulled rows its state now holds exactly (and deletes it
+ * applied), so its next save compares them with what it really has. Safe to run twice.
+ */
+export function noteHeldRows(userId: string, state: AppState, changes: RemoteChange[]): void {
+  const current = tabSyncedHashes(userId);
+  let hashes: Baseline | null = null;
+  for (const collection of SYNCED_COLLECTIONS) {
+    const key = syncKeyOf(collection);
+    const forKey = changes.filter((c) => c.key === key && c.id);
+    if (forKey.length === 0) continue;
+    const held = new Map(itemsOf(collection, state).map((item) => [rowIdOf(collection, item), item]));
+    const tab = { ...(current[key] || {}) };
+    for (const change of forKey) {
+      const local = held.get(change.id);
+      if (change.item === null) {
+        if (!local) tab[change.id] = DELETED;
+      } else if (local) {
+        const hash = hashOf(collection, change.item);
+        if (hashOf(collection, local) === hash) tab[change.id] = hash;
+      }
+    }
+    hashes = { ...(hashes || current), [key]: tab };
+  }
+  if (hashes) setTabSyncedHashes(userId, hashes);
+}
+
+/**
+ * A state another tab of this browser broadcast, made safe to show here. A row the sender still
+ * held unchanged at an older version than the shared baseline (it saved before its pull caught up)
+ * keeps this tab's copy (the baseline's row, or an edit made here); a synced row the sender never
+ * had is kept from this tab; a row the sender holds that the baseline knows deleted is dropped when
+ * this tab dropped it. Everything else is the sender's, as sent. Returns the state to show and this
+ * tab's versions for it. Without the sender's versions (an older app version) the state is taken
+ * as sent and this tab's versions are cleared, so every difference counts as an edit, as before.
+ */
+export function adoptTabState(
+  incoming: AppState,
+  incomingHashes: Baseline | undefined,
+  current: AppState,
+  baseline: Baseline,
+  currentHashes: Baseline = {}
+): { state: AppState; tabHashes: Baseline } {
+  if (!incomingHashes) return { state: incoming, tabHashes: {} };
+  const tombstones = new Set(incoming.deletedEntityIds || []);
+  let next = incoming;
+  const tabHashes: Baseline = { ...incomingHashes };
+
+  for (const collection of SYNCED_COLLECTIONS) {
+    const key = syncKeyOf(collection);
+    const sent = incomingHashes[key] || {};
+    const known = baseline[key] || {};
+    const mine = currentHashes[key] || {};
+    const tab = { ...sent };
+    const ours = new Map(itemsOf(collection, current).map((item) => [rowIdOf(collection, item), item]));
+    const fresh = (id: string) => {
+      const item = ours.get(id);
+      return item !== undefined && known[id] !== undefined && known[id] !== DELETED && hashOf(collection, item) === known[id];
+    };
+    const incomingItems = itemsOf(collection, next);
+    const seen = new Set<string>();
+    let changed = false;
+    const items: unknown[] = [];
+    for (const item of incomingItems) {
+      const id = rowIdOf(collection, item);
+      seen.add(id);
+      const behind = id in sent && sent[id] === hashOf(collection, item) && known[id] !== undefined && known[id] !== sent[id];
+      if (behind && ours.has(id)) {
+        items.push(ours.get(id));
+        if (fresh(id)) tab[id] = known[id];
+        else if (id in mine) tab[id] = mine[id];
+        else delete tab[id];
+        changed = true;
+      } else if (behind && known[id] === DELETED && !ours.has(id)) {
+        tab[id] = DELETED;
+        changed = true;
+      } else {
+        items.push(item);
+      }
+    }
+    for (const [id, item] of ours) {
+      if (seen.has(id) || id in sent || tombstones.has(id) || !fresh(id)) continue;
+      items.push(item);
+      tab[id] = known[id];
+      changed = true;
+    }
+    if (changed) next = withItems(collection, next, items);
+    tabHashes[key] = tab;
+  }
+  return { state: next, tabHashes };
 }
 
 /** The API returns at most PAGE_SIZE rows per request, so larger tables are read page by page. */
@@ -209,6 +344,38 @@ async function fetchRows(
     rows.push(...data);
     if (data.length < PAGE_SIZE) return rows;
   }
+}
+
+/** Ids whose row this tab holds at a different version than the shared baseline. */
+function behindIds(userId: string, collection: SyncedCollection): string[] {
+  const key = syncKeyOf(collection);
+  const known = knownHashes(userId, key);
+  const tab = tabSyncedHashes(userId)[key] || {};
+  return Object.keys(tab).filter((id) => known[id] !== undefined && known[id] !== tab[id]);
+}
+
+const ID_CHUNK = 100;
+
+/** The user's rows with these ids; null when a read fails. */
+async function fetchRowsById(
+  table: string,
+  userId: string,
+  ids: string[]
+): Promise<Array<Record<string, unknown>> | null> {
+  const rows: Array<Record<string, unknown>> = [];
+  for (let i = 0; i < ids.length; i += ID_CHUNK) {
+    const { data, error } = await supabase
+      .from(table)
+      .select('*')
+      .eq('user_id', userId)
+      .in('id', ids.slice(i, i + ID_CHUNK));
+    if (error || !data) {
+      console.error(`[SYNC PULL] ${table} catch-up failed, keeping local data:`, error?.message);
+      return null;
+    }
+    rows.push(...data);
+  }
+  return rows;
 }
 
 export interface PullResult {
@@ -235,6 +402,18 @@ export async function pullSyncedRows(userId: string, full: boolean): Promise<Pul
       if (!rows) {
         everyTableRead = false;
         return [];
+      }
+      // Rows another tab already pulled past this tab's version sit behind the shared cursor:
+      // read them by id, so this tab catches up too.
+      if (since) {
+        const fetched = new Set(rows.map((row) => String(row.id)));
+        const behind = behindIds(userId, collection).filter((id) => !fetched.has(id));
+        const extra = behind.length > 0 ? await fetchRowsById(collection.table, userId, behind) : [];
+        if (!extra) {
+          everyTableRead = false;
+        } else {
+          rows.push(...extra);
+        }
       }
 
       const changes = prepareRemoteRows(userId, collection, rows, full, stale);

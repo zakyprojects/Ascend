@@ -274,7 +274,7 @@ export async function hydrateUserSession(
       currentUser: user,
       username: user.username,
     };
-    state = applyRemoteChanges(state, tablePull.changes);
+    state = applyRemoteChanges(state, tablePull.changes, userId);
     const now = getNow();
     state = applyPresetHabitRemovalMigration(state, weekKey(now), todayKey(now));
     setUserDataWatermark(userId, state);
