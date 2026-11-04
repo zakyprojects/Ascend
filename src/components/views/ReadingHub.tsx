@@ -3,15 +3,17 @@ import { BookOpen, CheckCircle2, ListTodo, Pause, Pencil, PlayCircle, Plus, Rota
 import { AppStore, runningPactsLinkedTo } from '@/lib/store';
 import { pactUnlinkNote } from '@/lib/pactLifecycle';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
-import { Badge, Dialog, Disclosure, EmptyState, PageColumns, ProgressBar, Switch, TabPanel, Tabs, ToolbarInput, ToolbarSelect } from '@/components/ui/primitives';
+import { Badge, Dialog, EmptyState, PageColumns, ProgressBar, Switch, TabPanel, Tabs, ToolbarInput, ToolbarSelect } from '@/components/ui/primitives';
 import { TAP_TARGET, cx } from '@/components/ui/primitives/shared';
 import { CURATED_BOOKS, BOOK_CATEGORIES } from '@/lib/books';
 import type { BookCategory, CuratedBook, UserBook } from '@/types';
 import { formatDateLong, getNow, weekKey, formatWeekdayDate, formatWeekdayShort, calculateStreak, parseDate } from '@/lib/dates';
 import { READING_POINTS } from '@/lib/pointsConfig';
-import { READING_BONUS_COOLDOWN_DAYS, READING_BONUS_MIN_LOG_DAYS, READING_BONUS_MIN_SPAN_DAYS, bookRemovalPoints, isChapterBook, isRetiredAppReadingAward } from '@/lib/readingAwards';
+import { bookRemovalPoints, isChapterBook, isRetiredAppReadingAward } from '@/lib/readingAwards';
 import { getCapStatus } from '@/lib/capStatus';
 import { CapMeterConnected } from '@/components/ui/CapMeterConnected';
+import { HowItWorksButton, HowItWorksDialog, useHowItWorks } from '@/components/ui/HowItWorks';
+import { readingGuide } from '@/components/howItWorks/reading';
 import { PageHero } from '@/components/ui/PageHero';
 import { ProgressUpdateDialog, UpdateProgressButton } from '@/components/ui/ProgressUpdateDialog';
 import { useToast } from '@/components/ui/Toast';
@@ -55,6 +57,7 @@ function IconAction({ label, onClick, danger, children }: { label: string; onCli
 }
 
 export function ReadingHub({ store }: { store: AppStore }) {
+  const guide = useHowItWorks();
   const { showSuccessToast } = useToast();
   const [activeTab, setActiveTab] = useState<ReadingHubTab>('reading');
   const [searchQuery, setSearchQuery] = useState('');
@@ -213,6 +216,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
         <div>
           <h1 className="page-title">Reading Hub</h1>
           <p className="page-subtitle">Log pages, keep the streak, and line up what to read next.</p>
+          <HowItWorksButton onClick={guide.show} />
         </div>
         <div className="page-header-actions">
           <button type="button" onClick={() => openAdd(activeTab === 'library' ? 'to-read' : 'reading')} className="btn-primary">
@@ -248,7 +252,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
             { label: 'Finished', value: <CountUp value={finishedBooks.length} />, valueClassName: 'text-brand-text' },
             { label: 'Points earned', value: <>{readingPoints > 0 && '+'}<CountUp value={Math.max(0, readingPoints)} /></>, valueClassName: 'text-brand-text' },
           ]}
-          side={<CapMeterConnected state={store.state} capId="reading" bare />}
+          side={<CapMeterConnected state={store.state} capId="reading" bare onExplain={guide.showPoints} />}
         />
       </Reveal>
 
@@ -298,25 +302,6 @@ export function ReadingHub({ store }: { store: AppStore }) {
                 />
               </div>
             </Reveal>
-
-            <Disclosure title="How points work">
-              <ul className="list-disc pl-4 space-y-0.5">
-                <li>
-                  Every <span className="figure">{READING_POINTS.pagesPerPoint}</span> pages ={' '}
-                  <span className="figure text-success-text">1 pt</span>; in a book counted in chapters, every chapter ={' '}
-                  <span className="figure text-success-text">{READING_POINTS.pointsPerChapter} pts</span>. Up to{' '}
-                  <span className="figure">{READING_POINTS.dailyCap}</span> pts a day, across all books.
-                </li>
-                <li>
-                  Finishing a book gives <span className="figure text-success-text">+{READING_POINTS.completionBonus}</span> once,
-                  when you logged pages on {READING_BONUS_MIN_LOG_DAYS} separate days and the first was {READING_BONUS_MIN_SPAN_DAYS}+
-                  days ago. Finish bonuses come at most once every {READING_BONUS_COOLDOWN_DAYS} days; a book finished sooner gets
-                  none.
-                </li>
-                <li>The pages Finish adds for you earn no page points.</li>
-                <li>Removing a book takes back its finish bonus and today's points from it. Earlier days keep their points.</li>
-              </ul>
-            </Disclosure>
           </>
         }
       >
@@ -769,6 +754,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
         }`}
         confirmText="Remove book"
       />
+      <HowItWorksDialog open={guide.open} onClose={guide.close} guide={readingGuide} focus={guide.focus} />
     </div>
   );
 }

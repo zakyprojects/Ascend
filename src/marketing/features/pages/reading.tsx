@@ -9,7 +9,7 @@ import { pts } from '../format';
 /* /features/reading. Sources: lib/pointsConfig.ts READING_POINTS, lib/readingAwards.ts (server-written
    day award + finish bonus gates and cooldown, bookRemovalPoints), lib/books.ts (Discover list and
    categories), components/views/ReadingHub.tsx and components/reading/* (tabs, streak, Finish,
-   the Reading habit switch, the page's "How points work"). */
+   the Reading habit switch), components/howItWorks/reading.tsx (the page's How it works). */
 
 const R = READING_POINTS;
 const pagesForCap = R.dailyCap * R.pagesPerPoint;
@@ -84,7 +84,7 @@ export const reading: FeatureContent = {
         title="How reading earns points"
         lead={
           <p>
-            The rules below are the same ones the Reading Hub shows under “How points work”. With an account the server
+            The rules below are the same ones the Reading Hub shows under “How it works”. With an account the server
             counts them, so the total matches on every device.
           </p>
         }
