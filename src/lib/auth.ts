@@ -14,6 +14,7 @@ import { trustedNow, trustedNowMs } from './clock';
 import { ilikeExact, isUsernameTakenError, looksLikeUsername, sameUsername, USERNAME_TAKEN, usernameFormatProblem } from './usernameRules';
 import { NETWORK_MESSAGE } from './userMessage';
 import { clearDrafts } from './unsavedChanges';
+import { dropStoredSession, pauseStoredSessionsForSignOut } from './focusSession';
 import { FunctionRegion, FunctionsHttpError } from '@supabase/supabase-js';
 import { CaptchaRejectedError, isCaptchaRejection } from './captcha';
 import { TERMS_VERSION } from './legal';
@@ -517,11 +518,21 @@ const ACCOUNT_CHANNEL_TOPIC = /^realtime:(synced_tables|social_realtime)_/;
 
 /**
  * Logout current user session from Supabase.
- * `scope: 'local'` only clears this device's session (used after account deletion,
- * when the server no longer knows the user and a global sign-out would fail).
+ * `scope: 'local'` only clears this device's session: the app's normal logout (Zakria
+ * 2026-11-04) and account deletion. `'global'` (every device) stays available for an explicit
+ * "sign out everywhere".
+ * A running focus session is paused and kept for this account (resumable within 30 minutes of
+ * the next sign-in); `dropFocusFor` removes it instead (account deletion).
  */
-export async function logoutUser({ scope = 'global' }: { scope?: 'global' | 'local' } = {}): Promise<void> {
+export async function logoutUser({
+  scope = 'global',
+  dropFocusFor,
+}: { scope?: 'global' | 'local'; dropFocusFor?: string } = {}): Promise<void> {
   signOutByUser = true;
+  if (typeof window !== 'undefined') {
+    if (dropFocusFor) dropStoredSession(dropFocusFor);
+    pauseStoredSessionsForSignOut();
+  }
   if (isSupabaseConfigured) {
     // Close this account's live channels first. Left open, they rejoin without a user once the
     // session ends and the server refuses their user filters (a harmless but noisy Realtime error).
@@ -540,7 +551,6 @@ export async function logoutUser({ scope = 'global' }: { scope?: 'global' | 'loc
   }
   if (typeof window !== 'undefined') {
     try {
-      localStorage.removeItem('ascend_active_focus_session');
       sessionStorage.removeItem('ascend_focus_tab_alive');
       clearDrafts();
     } catch (e) {

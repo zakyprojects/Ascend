@@ -239,6 +239,11 @@ const focusLogs: SyncedCollection<'focusLogs'> = {
     points_awarded: f.pointsAwarded ?? 0,
     reflection: f.reflection ?? null,
     created_at: f.createdAt,
+    // Partial-points timer (20261104140000_focus_partial_points.sql). Sent only by rows that have
+    // them, so older rows upload unchanged (and an upload never clears what the server has).
+    ...(f.plannedMinutes != null
+      ? { planned_minutes: f.plannedMinutes, started_at: f.startedAt ?? null, milestones_at: f.milestonesAt ?? [] }
+      : {}),
   }),
   fromRow: (r) => ({
     id: String(r.id),
@@ -249,6 +254,9 @@ const focusLogs: SyncedCollection<'focusLogs'> = {
     pointsAwarded: Number(r.points_awarded ?? 0),
     ...optional('reflection', r.reflection, String),
     createdAt: isoTime(r.created_at),
+    ...optional('plannedMinutes', r.planned_minutes, Number),
+    ...optional('startedAt', r.started_at, isoTime),
+    ...(Array.isArray(r.milestones_at) ? { milestonesAt: (r.milestones_at as unknown[]).map(isoTime) } : {}),
   }),
   ownTimestamp: (f) => f.createdAt,
 };

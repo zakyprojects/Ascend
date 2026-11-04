@@ -1,9 +1,23 @@
-import { useEffect, useState } from 'react';
-import { Bell, BellOff, Coffee, Pause, Play, SkipForward, Square } from 'lucide-react';
+import { useEffect, useReducer, useState } from 'react';
+import { Bell, BellOff, Check, Coffee, Pause, Play, SkipForward, Square, X } from 'lucide-react';
 import type { AppStore } from '@/lib/store';
 import { Dialog, FieldErrorBubble, Input, NumberField, ProgressBar, Select } from '@/components/ui/primitives';
 import { cx } from '@/components/ui/primitives/shared';
-import { FOCUS_PRESETS, focusAlertsEnabled, focusTierPoints, formatClock, remainingSeconds, type FocusSession } from './focusSession';
+import { trustedNowMs } from '@/lib/clock';
+import { FOCUS_RULE_SHORT, focusR1Points, nextFocusReward } from '@/lib/focusPoints';
+import {
+  FOCUS_MIN_MINUTES_TO_SAVE,
+  FOCUS_PRESETS,
+  FOCUS_RESUME_WINDOW_MINUTES,
+  activeMinutesAt,
+  focusAlertsEnabled,
+  focusFinishedPoints,
+  formatClock,
+  remainingSeconds,
+  resumeDeadlineMs,
+  type FocusNotice,
+  type FocusSession,
+} from './focusSession';
 import { useFocusCountdown, useFocusSession } from './FocusSessionProvider';
 import { notificationPermission, requestNotificationPermission } from './focusNotifications';
 
@@ -18,6 +32,62 @@ function pendingTask(): string | null {
 }
 
 const pts = (n: number) => `${n} ${n === 1 ? 'pt' : 'pts'}`;
+
+/** Re-renders the caller once a second while `on` (pause countdown, points so far). */
+function useSecondTick(on: boolean): number {
+  const [, tick] = useReducer((n: number) => n + 1, 0);
+  useEffect(() => {
+    if (!on) return;
+    const timer = window.setInterval(tick, 1000);
+    return () => window.clearInterval(timer);
+  }, [on]);
+  return trustedNowMs();
+}
+
+/** Points so far and the next one on a focus session; while paused, the time left to resume. */
+function FocusProgressLine({ session }: { session: FocusSession }) {
+  const nowMs = useSecondTick(true);
+  const active = activeMinutesAt(session, nowMs);
+  const earned = focusR1Points(active, session.focusMinutes);
+  const next = nextFocusReward(active, session.focusMinutes);
+  const deadline = resumeDeadlineMs(session);
+  return (
+    <p className="text-center text-xs text-content-muted" aria-live="off">
+      {session.isPaused && deadline !== null && (
+        <>
+          Resume within <span className="font-mono tabular-nums text-content-primary">{formatClock(Math.max(0, (deadline - nowMs) / 1000))}</span>
+          {' · '}
+        </>
+      )}
+      <span className="figure text-success-text">{pts(earned)}</span> so far
+      {next && (
+        <>
+          {' · '}
+          {next.kind === 'finish' ? 'finish' : 'next'} <span className="figure">+{next.points}</span> at{' '}
+          <span className="figure">{next.atMinutes}</span> min
+        </>
+      )}
+    </p>
+  );
+}
+
+/** What the timer did on its own while the user was away. */
+function FocusNoticeLine({ notice, onClose }: { notice: FocusNotice; onClose: () => void }) {
+  const text =
+    notice.kind === 'gap'
+      ? `The app was closed for ${notice.minutes} min. That time is not counted.`
+      : notice.saved
+        ? `Your session ended after a ${FOCUS_RESUME_WINDOW_MINUTES}-minute break. Saved ${notice.minutes} min.`
+        : `Your session ended after a ${FOCUS_RESUME_WINDOW_MINUTES}-minute break. Not enough time to save (under ${FOCUS_MIN_MINUTES_TO_SAVE} min).`;
+  return (
+    <div className="flex items-start justify-between gap-2 rounded-xl bg-overlay-subtle px-3 py-2 text-xs text-content-secondary" role="status">
+      <span>{text}</span>
+      <button type="button" onClick={onClose} className="btn-ghost min-h-10 min-w-10 -my-2 -mr-2 text-content-muted" aria-label="Dismiss">
+        <X size={14} aria-hidden="true" />
+      </button>
+    </div>
+  );
+}
 
 /** The timer card on the Focus tab (Follow schedule has its own tab: SchedulePanel). */
 export function FocusTimerCard({ store }: { store: AppStore }) {
@@ -87,7 +157,7 @@ function TimerDisplay({ session, readySeconds }: { session: FocusSession | null;
 }
 
 function ManualTimer({ store }: { store: AppStore }) {
-  const { session, start, pause, resume, stop } = useFocusSession();
+  const { session, notice, start, pause, resume, complete, stop, clearNotice } = useFocusSession();
   const skills = store.state.skills;
 
   // The last chosen length; a session already running sets it on first render.
@@ -102,6 +172,11 @@ function ManualTimer({ store }: { store: AppStore }) {
   const [taskName, setTaskName] = useState(() => pendingTask() || 'Deep Work');
   const [skillId, setSkillId] = useState('');
   const [confirmStop, setConfirmStop] = useState(false);
+  const [confirmComplete, setConfirmComplete] = useState(false);
+  // Discard turns into Complete at 25 active minutes; re-checked each second while it runs.
+  const nowMs = useSecondTick(Boolean(session && session.mode === 'focus'));
+  const activeNow = session && session.mode === 'focus' ? activeMinutesAt(session, nowMs) : 0;
+  const canComplete = activeNow >= FOCUS_MIN_MINUTES_TO_SAVE;
   const [permission, setPermission] = useState(notificationPermission);
 
   const focusMinutes = preset.custom ? customFocus : preset.focus;
@@ -151,7 +226,7 @@ function ManualTimer({ store }: { store: AppStore }) {
                 )}
               >
                 <span className="figure text-sm">{p.focus} min</span>
-                <span className="text-2xs opacity-80">{pts(focusTierPoints(p.focus))}</span>
+                <span className="text-2xs opacity-80">{pts(focusFinishedPoints(p.focus))}</span>
               </button>
             );
           })}
@@ -165,7 +240,7 @@ function ManualTimer({ store }: { store: AppStore }) {
             )}
           >
             <span className="text-sm">Custom</span>
-            <span className="text-2xs opacity-80">{preset.custom ? pts(focusTierPoints(customFocus)) : 'any length'}</span>
+            <span className="text-2xs opacity-80">{preset.custom ? pts(focusFinishedPoints(customFocus)) : 'any length'}</span>
           </button>
         </div>
       )}
@@ -194,12 +269,16 @@ function ManualTimer({ store }: { store: AppStore }) {
               className="tabular-nums"
             />
           </div>
-          <p className="text-2xs text-content-muted">At least 1 min. 25 min earns 2 pts, 50 min 5 pts, 90 min or more 10 pts.</p>
+          <p className="text-2xs text-content-muted">At least 1 min. {FOCUS_RULE_SHORT}.</p>
           {customError && <FieldErrorBubble message={customError} attached={false} />}
         </div>
       )}
 
+      {notice && <FocusNoticeLine notice={notice} onClose={clearNotice} />}
+
       <TimerDisplay session={session} readySeconds={Math.max(0, focusMinutes) * 60} />
+
+      {session && !isBreak && <FocusProgressLine session={session} />}
 
       {session ? (
         <p className="text-center text-xs text-content-muted break-words [overflow-wrap:anywhere]">
@@ -208,8 +287,7 @@ function ManualTimer({ store }: { store: AppStore }) {
           ) : (
             <>
               <span className="text-content-secondary font-medium">{session.taskName}</span>
-              {skillName(session.skillId) ? ` · ${skillName(session.skillId)}` : ''} · {session.focusMinutes} min ·{' '}
-              {pts(focusTierPoints(session.focusMinutes))}
+              {skillName(session.skillId) ? ` · ${skillName(session.skillId)}` : ''} · {session.focusMinutes} min planned
             </>
           )}
         </p>
@@ -259,20 +337,32 @@ function ManualTimer({ store }: { store: AppStore }) {
                 <span>Pause</span>
               </button>
             )}
-            <button
-              type="button"
-              onClick={() => setConfirmStop(true)}
-              className="btn-ghost w-full min-[420px]:w-auto min-h-11 text-xs text-content-muted hover:text-rose-theme"
-            >
-              <Square size={14} aria-hidden="true" />
-              <span>Discard session</span>
-            </button>
+            {canComplete ? (
+              <button type="button" onClick={() => setConfirmComplete(true)} className="btn-secondary w-full min-[420px]:w-auto min-h-11 px-5">
+                <Check size={16} aria-hidden="true" />
+                <span>Complete</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setConfirmStop(true)}
+                className="btn-ghost w-full min-[420px]:w-auto min-h-11 text-xs text-content-muted hover:text-rose-theme"
+              >
+                <Square size={14} aria-hidden="true" />
+                <span>Discard session</span>
+              </button>
+            )}
           </>
         )}
       </div>
 
       <div className="space-y-1 text-center text-2xs text-content-muted">
-        {session && !isBreak && <p>Keeps running if you switch pages, reload or close the app.</p>}
+        {session && !isBreak && (
+          <p>
+            Keeps running if you switch pages or reload. Closing the app or logging out pauses it: resume within{' '}
+            {FOCUS_RESUME_WINDOW_MINUTES} min, or it is saved from {FOCUS_MIN_MINUTES_TO_SAVE} min.
+          </p>
+        )}
         {isBreak && session && <p className="inline-flex items-center gap-1"><Coffee size={12} aria-hidden="true" /> Back to the timer when the break ends.</p>}
         <AlertsLine permission={permission} onAsk={() => void requestNotificationPermission().then(setPermission)} />
       </div>
@@ -281,7 +371,7 @@ function ManualTimer({ store }: { store: AppStore }) {
         open={confirmStop}
         onClose={() => setConfirmStop(false)}
         title="Discard focus session?"
-        description="The timer stops. Nothing is saved and no points are earned."
+        description={`The timer stops. Nothing is saved and no points are earned. From ${FOCUS_MIN_MINUTES_TO_SAVE} min a session is completed instead.`}
         footer={
           <>
             <button type="button" onClick={() => setConfirmStop(false)} className="btn-secondary">
@@ -290,13 +380,40 @@ function ManualTimer({ store }: { store: AppStore }) {
             <button
               type="button"
               onClick={() => {
-                // A session that already ran out is ended (and logged) by the provider, not discarded.
+                // A session that already ran out is ended (and logged) by the provider, not discarded;
+                // from 25 active minutes the provider refuses to discard.
                 if (session && remainingSeconds(session) > 0) stop();
                 setConfirmStop(false);
               }}
               className="btn-danger-solid"
             >
               Discard session
+            </button>
+          </>
+        }
+      >
+        {null}
+      </Dialog>
+
+      <Dialog
+        open={confirmComplete && Boolean(session) && !isBreak}
+        onClose={() => setConfirmComplete(false)}
+        title="Complete focus session?"
+        description={`You focused ${activeNow} min. It is saved with ${pts(session && !isBreak ? focusR1Points(activeNow, session.focusMinutes) : 0)}.`}
+        footer={
+          <>
+            <button type="button" onClick={() => setConfirmComplete(false)} className="btn-secondary">
+              Keep going
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                complete();
+                setConfirmComplete(false);
+              }}
+              className="btn-primary"
+            >
+              Complete
             </button>
           </>
         }

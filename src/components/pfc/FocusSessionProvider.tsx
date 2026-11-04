@@ -2,28 +2,47 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useReducer,
 import type { AppStore } from '@/lib/store';
 import { trustedNowMs } from '@/lib/clock';
 import {
-  FOCUS_STORAGE_KEY,
+  FOCUS_ALIVE_INTERVAL_MS,
+  FOCUS_MIN_MINUTES_TO_SAVE,
+  activeMinutesAt,
   breakIdFor,
+  canResume,
+  closeAt,
   focusLogIdFor,
+  focusStorageKey,
   newSessionId,
   parseSession,
+  pauseAt,
+  readAlive,
   readStoredSession,
   remainingSeconds,
+  resumeAt,
+  resumeDeadlineMs,
   sessionEndMs,
+  settleSession,
+  writeAlive,
   writeStoredSession,
+  type FocusClose,
+  type FocusNotice,
   type FocusSession,
 } from './focusSession';
 import { showFocusNotification } from './focusNotifications';
 
 /**
  * The running focus timer for the whole app (mounted around AppShell in App.tsx), so a session
- * ends, logs and alerts whatever page is open, and resumes after a reload or reopening the app.
+ * ends, logs and alerts whatever page is open, and resumes after a reload.
  *
- * Tabs share the session through localStorage and follow each other's changes (`storage`
- * events). Ending is done once: inside a Web Lock the tab re-reads the stored session and acts
- * only if it is still the one that ended, and the log row id comes from the session id, so a
- * second attempt (another tab, a race in this one) writes the same row, never a second one.
- * A session that ended while the app was closed is logged on the local day it ended.
+ * The session is stored per account (focusSession.ts): another account on this device never sees
+ * it, and logout pauses it instead of removing it. Tabs of the account share it and follow each
+ * other's changes (`storage` events). Every change that can end a session runs inside a Web Lock
+ * on the stored copy, and a log row id comes from the session id, so a second attempt (another
+ * tab, a race) writes the same row, never a second one.
+ *
+ * While a focus session runs, a heartbeat is written every 15 s and when the page hides. A
+ * longer silence (app closed, killed, asleep) counts as a pause at the last heartbeat: back
+ * within 30 minutes the session runs on without the gap; later it is closed at the heartbeat
+ * (saved from 25 active minutes, dropped below). A manual or logout pause follows the same
+ * 30-minute window. Logs go through the store's outbox, which keeps them until they upload.
  */
 
 export interface FocusStartInput {
@@ -44,12 +63,17 @@ interface FocusSessionContextValue {
   session: FocusSession | null;
   /** The session that just ended in this tab, waiting for its reflection. */
   finished: FinishedFocusSession | null;
+  /** Something the timer did on its own (closed after a long break, skipped a gap). */
+  notice: FocusNotice | null;
   start: (input: FocusStartInput) => void;
   pause: () => void;
   resume: () => void;
-  /** Stops a focus session without logging it, or ends a break early. */
+  /** Ends a focus session of 25+ active minutes now and logs it (keeps its points). */
+  complete: () => void;
+  /** Discards a focus session under 25 active minutes (nothing logged), or ends a break early. */
   stop: () => void;
   clearFinished: () => void;
+  clearNotice: () => void;
 }
 
 const FocusSessionContext = createContext<FocusSessionContextValue | null>(null);
@@ -71,7 +95,7 @@ function withFocusLock(task: () => void): Promise<void> {
     try {
       task();
     } catch (error) {
-      console.error('[focus] ending the session failed', error);
+      console.error('[focus] updating the session failed', error);
     }
   };
   const locks = typeof navigator !== 'undefined' ? (navigator as Navigator & { locks?: LockManagerLike }).locks : undefined;
@@ -95,9 +119,18 @@ export function FocusSessionProvider({
   onOpenFocus: () => void;
   children: ReactNode;
 }) {
-  const [session, setSession] = useState<FocusSession | null>(() => readStoredSession());
-  const [finished, setFinished] = useState<FinishedFocusSession | null>(null);
+  const userId = store.state.currentUser?.id ?? null;
+  /** The account's data is on screen: a session may be closed and logged now. */
+  const ready = Boolean(userId) && !store.isAuthChecking && !store.isSessionLoading;
 
+  const [session, setSession] = useState<FocusSession | null>(() => readStoredSession(userId));
+  const [finished, setFinished] = useState<FinishedFocusSession | null>(null);
+  const [notice, setNotice] = useState<FocusNotice | null>(null);
+
+  const userRef = useRef(userId);
+  userRef.current = userId;
+  const readyRef = useRef(ready);
+  readyRef.current = ready;
   const sessionRef = useRef(session);
   sessionRef.current = session;
   const logRef = useRef(store.logFocusSession);
@@ -106,115 +139,181 @@ export function FocusSessionProvider({
   openRef.current = onOpenFocus;
   /** False after a failed storage write: this tab's copy is then the only one. */
   const storedRef = useRef(true);
-  const handlingRef = useRef(new Set<string>());
+  /** The account whose stored session was checked against the alive and resume rules. */
+  const settledForRef = useRef<string | null>(null);
 
   const persist = useCallback((next: FocusSession | null) => {
-    storedRef.current = writeStoredSession(next);
+    storedRef.current = writeStoredSession(userRef.current, next);
     setSession(next);
   }, []);
 
-  const finish = useCallback((expected: FocusSession) => {
-    if (handlingRef.current.has(expected.id)) return;
-    handlingRef.current.add(expected.id);
-    void withFocusLock(() => {
-      const current = storedRef.current ? readStoredSession() : sessionRef.current;
-      if (!current || current.id !== expected.id || current.mode !== expected.mode || current.isPaused) {
-        // Another tab ended, stopped or changed it: follow what is stored.
-        handlingRef.current.delete(expected.id);
-        setSession(current);
-        return;
-      }
-      const endMs = sessionEndMs(current);
-      const nowMs = trustedNowMs();
-      if (endMs === null || endMs > nowMs) {
-        handlingRef.current.delete(expected.id);
-        setSession(current);
-        return;
-      }
-      const live = nowMs - endMs < LIVE_ALERT_WINDOW_MS;
-      const open = () => openRef.current();
-
-      if (current.mode === 'focus') {
-        const breakSeconds = Math.max(0, Math.round(current.breakMinutes * 60));
-        // The break follows the focus end in real time, so one that already ran out is skipped.
-        const breakSession: FocusSession = {
-          ...current,
-          id: breakIdFor(current.id),
-          mode: 'break',
-          startTime: endMs,
-          plannedDurationSeconds: breakSeconds,
-          isPaused: false,
-          pausedRemainingSeconds: breakSeconds,
-        };
-        const next = breakSeconds > 0 && remainingSeconds(breakSession, nowMs) > 0 ? breakSession : null;
-        persist(next);
-        const logId = logRef.current(current.taskName, current.focusMinutes, current.skillId, undefined, {
-          id: focusLogIdFor(current.id),
-          endedAtMs: endMs,
-        });
-        setFinished({ logId, taskName: current.taskName, minutes: current.focusMinutes });
-        if (live) {
-          void showFocusNotification(
-            'Focus session done',
-            `You focused ${current.focusMinutes} min on ${current.taskName}.`,
-            open
-          );
-        }
-      } else {
-        persist(null);
-        if (live) void showFocusNotification('Break over', 'Start your next session when you are ready.', open);
-      }
+  const logClose = useCallback((close: FocusClose): string => {
+    return logRef.current(close.taskName, close.activeMinutes, close.skillId, undefined, {
+      id: focusLogIdFor(close.sessionId),
+      endedAtMs: close.endMs,
+      startedAtMs: close.startedAtMs,
+      plannedMinutes: close.plannedMinutes,
+      milestonesAt: close.milestonesAt,
     });
-  }, [persist]);
+  }, []);
 
-  // Ends the running session on time; re-checks when the page comes back into view.
+  /** The stored session, run through the alive / resume-window rules and ended when its time is up. */
+  const settleNow = useCallback(() => {
+    const uid = userRef.current;
+    if (!uid || !readyRef.current) return;
+    const nowMs = trustedNowMs();
+    const stored = storedRef.current ? readStoredSession(uid, nowMs) : sessionRef.current;
+    const settled = settleSession(stored, nowMs, readAlive(uid));
+    let current = settled.session;
+    if (settled.changed) persist(current);
+    else if (JSON.stringify(current) !== JSON.stringify(sessionRef.current)) setSession(current);
+    if (settled.close?.save) logClose(settled.close);
+    if (settled.notice) setNotice(settled.notice);
+    settledForRef.current = uid;
+
+    if (!current || current.isPaused) return;
+    const endMs = sessionEndMs(current);
+    if (endMs === null) return;
+    if (endMs > nowMs) {
+      if (current.mode === 'focus') writeAlive(uid, nowMs);
+      return;
+    }
+    const live = nowMs - endMs < LIVE_ALERT_WINDOW_MS;
+    const open = () => openRef.current();
+    if (current.mode === 'focus') {
+      const breakSeconds = Math.max(0, Math.round(current.breakMinutes * 60));
+      // The break follows the focus end in real time, so one that already ran out is skipped.
+      const breakSession: FocusSession = {
+        ...current,
+        id: breakIdFor(current.id),
+        mode: 'break',
+        startTime: endMs,
+        plannedDurationSeconds: breakSeconds,
+        isPaused: false,
+        pausedRemainingSeconds: breakSeconds,
+        pausedAt: null,
+      };
+      const close = closeAt(current, endMs);
+      current = breakSeconds > 0 && remainingSeconds(breakSession, nowMs) > 0 ? breakSession : null;
+      persist(current);
+      // A finished plan is always logged (also under 25 min, earning nothing), as before.
+      const logId = logClose(close);
+      setFinished({ logId, taskName: close.taskName, minutes: close.activeMinutes });
+      if (live) {
+        void showFocusNotification('Focus session done', `You focused ${close.activeMinutes} min on ${close.taskName}.`, open);
+      }
+    } else {
+      persist(null);
+      if (live) void showFocusNotification('Break over', 'Start your next session when you are ready.', open);
+    }
+  }, [logClose, persist]);
+
+  const settle = useCallback(() => {
+    void withFocusLock(settleNow);
+  }, [settleNow]);
+
+  // Another account signed in, or this one signed out: show only this account's stored session.
   useEffect(() => {
-    if (!session || session.isPaused) return;
+    settledForRef.current = null;
+    setSession(readStoredSession(userId));
+    setFinished(null);
+    setNotice(null);
+  }, [userId]);
+
+  // Once the account's data is on screen: apply the alive and resume rules to what is stored.
+  useEffect(() => {
+    if (ready) settle();
+  }, [ready, userId, settle]);
+
+  // Running: end on time, write the heartbeat, and re-check when the page comes back into view.
+  useEffect(() => {
+    if (!ready || !session || session.isPaused) return;
     const endMs = sessionEndMs(session);
     if (endMs === null) return;
-    let timer = 0;
-    const check = () => {
-      window.clearTimeout(timer);
+    let endTimer = 0;
+    const checkEnd = () => {
+      window.clearTimeout(endTimer);
       const left = endMs - trustedNowMs();
       if (left <= 0) {
-        finish(session);
+        settle();
         return;
       }
-      timer = window.setTimeout(check, Math.min(left + 50, MAX_WAIT_MS));
+      endTimer = window.setTimeout(checkEnd, Math.min(left + 50, MAX_WAIT_MS));
+    };
+    // Each beat first checks the silence since the last one (a sleeping device wakes here).
+    const beat = window.setInterval(settle, FOCUS_ALIVE_INTERVAL_MS);
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        settle();
+        checkEnd();
+      } else if (session.mode === 'focus' && settledForRef.current === userRef.current) {
+        writeAlive(userRef.current, trustedNowMs());
+      }
+    };
+    const onHide = () => {
+      if (session.mode === 'focus' && settledForRef.current === userRef.current) writeAlive(userRef.current, trustedNowMs());
+    };
+    checkEnd();
+    document.addEventListener('visibilitychange', onVisibility);
+    window.addEventListener('pageshow', onVisibility);
+    window.addEventListener('pagehide', onHide);
+    return () => {
+      window.clearTimeout(endTimer);
+      window.clearInterval(beat);
+      document.removeEventListener('visibilitychange', onVisibility);
+      window.removeEventListener('pageshow', onVisibility);
+      window.removeEventListener('pagehide', onHide);
+    };
+  }, [ready, session, settle]);
+
+  // Paused: close it when the resume window runs out while the app is open.
+  useEffect(() => {
+    if (!ready || !session || !session.isPaused) return;
+    const deadline = resumeDeadlineMs(session);
+    if (deadline === null) return;
+    let timer = 0;
+    const check = () => {
+      const left = deadline - trustedNowMs();
+      if (left < 0) {
+        settle();
+        return;
+      }
+      timer = window.setTimeout(check, Math.min(left + 1050, MAX_WAIT_MS));
     };
     const onVisible = () => {
       if (document.visibilityState === 'visible') check();
     };
     check();
     document.addEventListener('visibilitychange', onVisible);
-    window.addEventListener('pageshow', onVisible);
     return () => {
       window.clearTimeout(timer);
       document.removeEventListener('visibilitychange', onVisible);
-      window.removeEventListener('pageshow', onVisible);
     };
-  }, [session, finish]);
+  }, [ready, session, settle]);
 
-  // Other tabs: start, pause, stop and endings show up here too.
+  // Other tabs of this account: start, pause, stop and endings show up here too. A storage wipe
+  // or another account's key never removes this account's session.
   useEffect(() => {
     const onStorage = (event: StorageEvent) => {
-      if (event.key !== FOCUS_STORAGE_KEY && event.key !== null) return;
+      const uid = userRef.current;
+      if (!uid) return;
+      if (event.key === null) {
+        setSession(readStoredSession(uid));
+        return;
+      }
+      if (event.key !== focusStorageKey(uid)) return;
       storedRef.current = true;
-      setSession(event.key === null ? null : parseSession(event.newValue));
+      const next = parseSession(event.newValue);
+      setSession(next && (!next.userId || next.userId === uid) ? next : null);
     };
     window.addEventListener('storage', onStorage);
     return () => window.removeEventListener('storage', onStorage);
   }, []);
 
-  // Another account signed in: its stored session (logout clears the old one) is the one to show.
-  const userId = store.state.currentUser?.id ?? null;
-  useEffect(() => {
-    setSession(readStoredSession());
-    setFinished(null);
-  }, [userId]);
-
   const start = useCallback((input: FocusStartInput) => {
+    const nowMs = trustedNowMs();
     const focusSeconds = Math.round(input.focusMinutes * 60);
+    setNotice(null);
     persist({
       id: newSessionId(),
       mode: 'focus',
@@ -223,41 +322,75 @@ export function FocusSessionProvider({
       focusMinutes: input.focusMinutes,
       breakMinutes: input.breakMinutes,
       isCustom: input.isCustom,
-      startTime: trustedNowMs(),
+      startTime: nowMs,
       plannedDurationSeconds: focusSeconds,
       isPaused: false,
       pausedRemainingSeconds: focusSeconds,
+      userId: userRef.current ?? undefined,
+      startedAt: nowMs,
+      pausedAt: null,
+      marksAt: [],
     });
+    settledForRef.current = userRef.current;
+    writeAlive(userRef.current, nowMs);
   }, [persist]);
 
   const pause = useCallback(() => {
-    const current = sessionRef.current;
-    if (!current || current.isPaused) return;
-    const left = remainingSeconds(current);
-    if (left <= 0) {
-      finish(current);
-      return;
-    }
-    persist({ ...current, isPaused: true, pausedRemainingSeconds: left });
-  }, [finish, persist]);
+    void withFocusLock(() => {
+      settleNow();
+      const current = storedRef.current ? readStoredSession(userRef.current) : sessionRef.current;
+      if (!current || current.isPaused) return;
+      const nowMs = trustedNowMs();
+      if (remainingSeconds(current, nowMs) <= 0) return; // settleNow ended it
+      persist(pauseAt(current, nowMs));
+    });
+  }, [persist, settleNow]);
 
   const resume = useCallback(() => {
-    const current = sessionRef.current;
-    if (!current || !current.isPaused) return;
-    persist({
-      ...current,
-      startTime: trustedNowMs(),
-      plannedDurationSeconds: current.pausedRemainingSeconds,
-      isPaused: false,
+    void withFocusLock(() => {
+      settleNow(); // closes it when the resume window has passed
+      const current = storedRef.current ? readStoredSession(userRef.current) : sessionRef.current;
+      if (!current || !current.isPaused) return;
+      const nowMs = trustedNowMs();
+      if (!canResume(current, nowMs)) return;
+      persist(resumeAt(current, nowMs));
+      writeAlive(userRef.current, nowMs);
+    });
+  }, [persist, settleNow]);
+
+  const complete = useCallback(() => {
+    void withFocusLock(() => {
+      settleNow();
+      const current = storedRef.current ? readStoredSession(userRef.current) : sessionRef.current;
+      if (!current || current.mode !== 'focus') return;
+      const nowMs = trustedNowMs();
+      const close = closeAt(current, nowMs);
+      if (!close.save) return;
+      persist(null);
+      const logId = logClose(close);
+      setFinished({ logId, taskName: close.taskName, minutes: close.activeMinutes });
+    });
+  }, [logClose, persist, settleNow]);
+
+  const stop = useCallback(() => {
+    void withFocusLock(() => {
+      const current = storedRef.current ? readStoredSession(userRef.current) : sessionRef.current;
+      if (!current) {
+        setSession(null);
+        return;
+      }
+      // From 25 active minutes a session is completed, never discarded.
+      if (current.mode === 'focus' && activeMinutesAt(current, trustedNowMs()) >= FOCUS_MIN_MINUTES_TO_SAVE) return;
+      persist(null);
     });
   }, [persist]);
 
-  const stop = useCallback(() => persist(null), [persist]);
   const clearFinished = useCallback(() => setFinished(null), []);
+  const clearNotice = useCallback(() => setNotice(null), []);
 
   const value = useMemo(
-    () => ({ session, finished, start, pause, resume, stop, clearFinished }),
-    [session, finished, start, pause, resume, stop, clearFinished]
+    () => ({ session, finished, notice, start, pause, resume, complete, stop, clearFinished, clearNotice }),
+    [session, finished, notice, start, pause, resume, complete, stop, clearFinished, clearNotice]
   );
 
   return <FocusSessionContext.Provider value={value}>{children}</FocusSessionContext.Provider>;

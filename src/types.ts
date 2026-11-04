@@ -377,10 +377,18 @@ export interface FocusSessionLog {
   date: string; // YYYY-MM-DD
   taskName: string;
   skillId?: string;
+  /** Active minutes focused (paused time excluded); older rows: the planned length. */
   durationMinutes: number;
   pointsAwarded: number;
   reflection?: string;
+  /** When the session ended. */
   createdAt: string;
+  /** Planned length. Set by the partial-points timer (2026-11-04); rows without it earn the old tiers. */
+  plannedMinutes?: number;
+  /** When the session first started. */
+  startedAt?: string;
+  /** When each milestone (25, 35, ... 85 active min) was crossed, in order. */
+  milestonesAt?: string[];
 }
 
 export interface DecisionLog {

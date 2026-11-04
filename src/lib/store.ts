@@ -90,6 +90,7 @@ import { computeSkillAwards, isRetiredAppSkillAward, isSkillDayEntry } from './s
 import { computeRecoveryChanges, RECOVERY_MILESTONES, trackerStartMs } from './recoveryAwards';
 import { computeJournalAward, isJournalDayEntry, isRetiredAppJournalAward, journalEntryEarns } from './journalAwards';
 import { computeFocusAwards, isFocusDayEntry, isRetiredAppFocusAward } from './focusAwards';
+import { pauseStoredSessionsForSignOut } from './focusSession';
 import { computeTimeTrackerAward, timeTrackerAwardId, timeTrackerGraceDay } from './timeTrackerAwards';
 import {
   countedGoalRefs,
@@ -1264,16 +1265,29 @@ function applySkillAwardsInternal(
 function applyFocusAwardsInternal(
   state: AppState,
   focusLogs: FocusSessionLog[],
-  day: string
+  day: string,
+  opts: { floor?: boolean } = {}
 ): { points: Pick<AppState, 'seasonPoints' | 'totalPoints' | 'seasonId' | 'pointsHistory' | 'leagueArchives'>; focusLogs: FocusSessionLog[] } {
   if (timezoneWaitHoldsPreview(day)) return { points: unchangedPoints(state), focusLogs };
+  const existing = (state.pointsHistory || []).find((e) => isFocusDayEntry(e, day));
   const { entry, sessionPoints } = computeFocusAwards(
     focusLogs,
     day,
     new Date(`${day}T00:00:00`).getTime(),
     trustedNow().getTime(),
-    (state.pointsHistory || []).find((e) => isFocusDayEntry(e, day))
+    existing,
+    opts
   );
+  // The day before (a session across midnight): the server only ever raises it, and its
+  // sessions keep the points they show.
+  if (opts.floor) {
+    if (!entry || entry === existing) return { points: unchangedPoints(state), focusLogs };
+    const { excisedEntryIds: _gone, ...without } = excisePointsEntriesInternal(state, (e) => isFocusDayEntry(e, day));
+    return {
+      points: addPointsInternal({ ...state, ...without }, entry.amount, entry.reason, entry.source, entry.metadata, entry.timestamp, entry.id),
+      focusLogs,
+    };
+  }
 
   const { excisedEntryIds: _excised, ...excised } = excisePointsEntriesInternal(state, (e) => isFocusDayEntry(e, day));
   const points = entry
@@ -2622,7 +2636,9 @@ export function useAppState() {
 
       if (typeof window !== 'undefined') {
         try {
-          localStorage.removeItem('ascend_active_focus_session');
+          // A running focus session is paused and kept for this account, never removed
+          // (also for a sign-out from another device or an expired session).
+          pauseStoredSessionsForSignOut();
           sessionStorage.removeItem('ascend_focus_tab_alive');
         } catch (e) {
           /* ignore */
@@ -3607,7 +3623,7 @@ export function useAppState() {
       // 4. Attempt remote sign-out
       let networkError: unknown = null;
       try {
-        await Promise.race([logoutUser({ scope: accountDeleted ? 'local' : 'global' }), timeoutPromise]);
+        await Promise.race([logoutUser({ scope: 'local', dropFocusFor: accountDeleted && userId ? userId : undefined }), timeoutPromise]);
       } catch (err: unknown) {
         networkError = err;
         console.error('Logout error in auth service:', err);
@@ -5490,9 +5506,13 @@ export function useAppState() {
 
   // --- MODULE 7: PREFRONTAL CORTEX ACTIONS ---
   /**
-   * Logs a finished focus session and returns its id. `id` makes the log idempotent (a second call
-   * with the same id, or one for a deleted log, changes nothing); `endedAtMs` dates it on the local
-   * day it ended. The server awards only its own today, so only a session of today gets a preview.
+   * Logs a focus session and returns its id. `id` makes the log idempotent (a second call with the
+   * same id, or one for a deleted log, changes nothing); `endedAtMs` dates it on the local day it
+   * ended. `durationMinutes` is the active time; the timer also passes the plan, the first start
+   * and the milestone crossings, which make the server use the partial-points rule (focusPoints.ts).
+   * The server awards only its own today (and raises the day before for a session across
+   * midnight), so only those get a preview. The log reaches the server through the outbox, which
+   * keeps it on this device until the upload succeeds.
    */
   const logFocusSession = useCallback(
     (
@@ -5500,11 +5520,12 @@ export function useAppState() {
       durationMinutes: number,
       skillId?: string,
       reflection?: string,
-      opts?: { id?: string; endedAtMs?: number }
+      opts?: { id?: string; endedAtMs?: number; startedAtMs?: number; plannedMinutes?: number; milestonesAt?: number[] }
     ): string => {
       const id = opts?.id || uid();
       const endedAt = opts?.endedAtMs !== undefined ? new Date(Math.min(opts.endedAtMs, trustedNowMs())) : trustedNow();
       const date = todayKey(endedAt);
+      const planned = opts?.plannedMinutes;
       setState((prev) => {
         if (prev.focusLogs.some((f) => f.id === id) || (prev.deletedEntityIds || []).includes(id)) return prev;
         const focusLog: FocusSessionLog = {
@@ -5516,11 +5537,24 @@ export function useAppState() {
           pointsAwarded: 0,
           reflection: reflection?.trim() || undefined,
           createdAt: endedAt.toISOString(),
+          ...(planned !== undefined && opts?.startedAtMs !== undefined
+            ? {
+                plannedMinutes: planned,
+                startedAt: new Date(Math.min(opts.startedAtMs, endedAt.getTime())).toISOString(),
+                milestonesAt: (opts.milestonesAt || []).map((ms) => new Date(Math.min(ms, endedAt.getTime())).toISOString()),
+              }
+            : {}),
         };
         if (date !== todayKey()) return { ...prev, focusLogs: [focusLog, ...prev.focusLogs] };
         // The server writes the day's award (applyFocusAwardsInternal shows the same row now).
-        const awards = applyFocusAwardsInternal(prev, [focusLog, ...prev.focusLogs], date);
-        return { ...prev, focusLogs: awards.focusLogs, ...awards.points };
+        const logs = [focusLog, ...prev.focusLogs];
+        const awards = applyFocusAwardsInternal(prev, logs, date);
+        let next: AppState = { ...prev, focusLogs: awards.focusLogs, ...awards.points };
+        if (focusLog.startedAt && todayKey(new Date(focusLog.startedAt)) < date) {
+          const before = applyFocusAwardsInternal(next, awards.focusLogs, addDays(date, -1), { floor: true });
+          next = { ...next, ...before.points };
+        }
+        return next;
       });
       return id;
     },
