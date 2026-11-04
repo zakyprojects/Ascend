@@ -32,7 +32,7 @@ export const skills: FeatureContent = {
       <p>
         Skills in AscendDay is a free skill practice tracker: add what you are learning, log your practice minutes, and watch each
         skill climb from {levels[0].name} to {top.name} as the hours add up. Every {S.minutesPerPoint} minutes of practice
-        also earn a point, so an hour of guitar or coding counts toward your rank like a workout does.
+        also earn a point, so an hour of coding or Spanish counts toward your rank like a workout does.
       </p>
       <p>
         Learning something takes hundreds of quiet hours that nobody sees. Skills makes them visible: a level, a streak
@@ -53,7 +53,7 @@ export const skills: FeatureContent = {
           items={[
             {
               title: 'Add a skill',
-              text: 'Name it, like Python, Spanish or guitar, and give it a category if you like. Once you have a few categories, chips let you filter the list by them.',
+              text: 'Name it, like Programming, Public speaking or Spanish, and give it a category if you like. Once you have a few categories, chips let you filter the list by them.',
             },
             {
               title: 'Log a session',
@@ -61,7 +61,7 @@ export const skills: FeatureContent = {
             },
             {
               title: 'Add counts, if you like',
-              text: 'When you log a session, add the parts you count, not time, like Scales in reps or Serves in times: pick a count or name a new one, then say how many, for one count or several. Minutes stay required: they earn the points, the counts earn none. Each count shows its number this week and in total on the skill card, and can be a weekly goal.',
+              text: 'When you log a session, add the output you count next to the time, like LeetCode problems in Programming or new words in Spanish: pick a count or name a new one, then say how many, for one count or several. Minutes stay required: they earn the points, the counts earn none. Each count shows its number this week and in total on the skill card, and can be a weekly goal.',
             },
             {
               title: 'Keep the streak',
@@ -161,7 +161,7 @@ export const skills: FeatureContent = {
                   <a href={featurePath('weekly-goals')} className={LINK_CLASS}>
                     weekly goal
                   </a>{' '}
-                  like “Practise Spanish 150 minutes”, “4 guitar sessions” or “Scales 50 reps” and it fills in from your logs.
+                  like “Practise Spanish 150 minutes”, “4 public speaking sessions” or “15 LeetCode problems” and it fills in from your logs.
                 </>
               ),
             },
@@ -247,8 +247,8 @@ export const skills: FeatureContent = {
       a: `No. All skills share one cap of ${pts(S.dailyCap)} a day, reached after about ${minutesForCap / 60} hours of practice in total.`,
     },
     {
-      q: 'Can I count reps instead of minutes?',
-      a: 'Yes, next to them. When you log a session, name a count, like Scales in reps, and add how many you did, for one count or several. Next time, pick it from the list. Minutes are still required and are the only thing that earns points, because reps differ too much in difficulty to score fairly. A weekly goal can track one count, like “Scales 50 reps”, and earns the usual weekly goal points when you reach it.',
+      q: 'Can I count problems, words or talks instead of minutes?',
+      a: 'Yes, next to them. When you log a session, name a count, like LeetCode problems for Programming, and add how many you did, for one count or several. Next time, pick it from the list. Minutes are still required and are the only thing that earns points, because counts differ too much in difficulty to score fairly. A weekly goal can track one count, like “15 LeetCode problems”, and earns the usual weekly goal points when you reach it.',
     },
     {
       q: 'Can I set my own level for a skill I already know well?',

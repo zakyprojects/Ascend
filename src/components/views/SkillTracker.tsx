@@ -476,7 +476,7 @@ export function SkillTracker({ store, onNavigate }: { store: AppStore; onNavigat
           <EmptyState
             icon={Target}
             title="No skills yet"
-            description="Add something you're learning, like coding, Spanish or guitar, then log practice to earn points."
+            description="Add something you're learning, like Programming, Public speaking or Spanish, then log practice to earn points."
             action={
               <button onClick={openAddModal} className="btn-primary mx-auto">
                 <Plus size={18} /> Add your first skill
@@ -679,7 +679,7 @@ export function SkillTracker({ store, onNavigate }: { store: AppStore; onNavigat
             label="Skill name"
             value={skillName}
             onChange={(e) => setSkillName(e.target.value)}
-            placeholder="e.g. Web development, Guitar, Spanish"
+            placeholder="e.g. Programming, Public speaking, Spanish"
             maxLength={80}
             autoComplete="off"
           />
@@ -690,7 +690,7 @@ export function SkillTracker({ store, onNavigate }: { store: AppStore; onNavigat
               optional
               value={category}
               onChange={(e) => setCategory(e.target.value)}
-              placeholder="e.g. Technology, Music, Language"
+              placeholder="e.g. Technology, Communication, Language"
               maxLength={40}
               autoComplete="off"
               enterKeyHint="done"
@@ -801,7 +801,7 @@ export function SkillTracker({ store, onNavigate }: { store: AppStore; onNavigat
                     value={row.count}
                     onChange={(e) => setRow(row.key, { count: e.target.value })}
                     // A new drill types its unit beside this, so it isn't repeated here.
-                    placeholder={isNew ? 'e.g. 50' : unit}
+                    placeholder={isNew ? 'e.g. 3' : unit}
                     disabled={row.drillId === NO_DRILL}
                     enterKeyHint="done"
                   />
@@ -826,7 +826,7 @@ export function SkillTracker({ store, onNavigate }: { store: AppStore; onNavigat
                     optional={labelled && !showPicker}
                     value={row.name}
                     onChange={(e) => setRow(row.key, { name: e.target.value })}
-                    placeholder="e.g. Scales"
+                    placeholder="e.g. LeetCode problems"
                     maxLength={DRILL_NAME_MAX_LENGTH}
                     autoComplete="off"
                   />
@@ -879,7 +879,7 @@ export function SkillTracker({ store, onNavigate }: { store: AppStore; onNavigat
                 );
               })}
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <p className="text-xs text-content-muted">Something you count, like scales. Counts don't earn points; minutes do.</p>
+                <p className="text-xs text-content-muted">Something you count, like LeetCode problems. Counts don't earn points; minutes do.</p>
                 {canAddRow && (
                   <button
                     type="button"
@@ -956,7 +956,7 @@ export function SkillTracker({ store, onNavigate }: { store: AppStore; onNavigat
               label="Count"
               value={drillName}
               onChange={(e) => setDrillName(e.target.value)}
-              placeholder="e.g. Scales, Chords"
+              placeholder="e.g. LeetCode problems, New words"
               maxLength={DRILL_NAME_MAX_LENGTH}
               autoComplete="off"
               required
@@ -967,7 +967,7 @@ export function SkillTracker({ store, onNavigate }: { store: AppStore; onNavigat
               value={drillUnit}
               onChange={(e) => setDrillUnit(e.target.value)}
               placeholder={DRILL_UNIT_DEFAULT}
-              hint="What you count, like reps or times."
+              hint="What you count, like problems or words."
               maxLength={DRILL_UNIT_MAX_LENGTH}
               autoComplete="off"
               enterKeyHint="done"

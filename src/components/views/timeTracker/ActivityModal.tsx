@@ -161,7 +161,7 @@ export function ActivityModal({
           label="Name"
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="e.g. Client work, Meditation, Piano"
+          placeholder="e.g. Client work, Meditation, Spanish"
           maxLength={60}
           autoComplete="off"
           required
