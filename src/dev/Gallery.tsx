@@ -60,6 +60,7 @@ import { DiscardChangesDialog } from '../components/ui/DiscardChangesDialog';
 import { ProgressUpdateDialog, UpdateProgressButton } from '../components/ui/ProgressUpdateDialog';
 import { PageHero } from '../components/ui/PageHero';
 import { CapMeter } from '../components/ui/CapMeter';
+import { Gain, HowItWorksButton, HowItWorksDialog, useHowItWorks, type HowItWorksGuide } from '../components/ui/HowItWorks';
 import { SwipeRow } from '../components/ui/SwipeRow';
 import { ThemeToggle } from '../components/ui/ThemeToggle';
 import { ToastProvider, useToast } from '../components/ui/Toast';
@@ -1070,6 +1071,38 @@ function FormDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   );
 }
 
+const DEMO_GUIDE: HowItWorksGuide = {
+  title: 'How this page works',
+  intro: 'One plain line on what the page is for.',
+  steps: [
+    { title: 'First part', text: 'What it does, in one or two short lines, like a real page.' },
+    { title: 'Second part', text: 'How it links to another page, with at most two short examples.' },
+    { title: 'Third part', text: 'A rule the user has to know before they start.' },
+  ],
+  notes: ['Deleting today’s entry takes its points back. Earlier days keep theirs.'],
+  points: [
+    <>Every 12 min = <Gain>1 pt</Gain>, up to 10 pts a day.</>,
+    'Numbers come from the points constants, never typed by hand.',
+  ],
+};
+
+function HowItWorksDemo() {
+  const guide = useHowItWorks();
+  return (
+    <div className="space-y-4">
+      <div>
+        <h1 className="page-title">Skills</h1>
+        <p className="page-subtitle">Practice what you’re learning. Your hours build each skill’s level.</p>
+        <HowItWorksButton onClick={guide.show} />
+      </div>
+      <div className="card max-w-sm p-4">
+        <CapMeter variant="bar" label="Skill points today" earned={4} cap={10} onExplain={guide.showPoints} />
+      </div>
+      <HowItWorksDialog open={guide.open} onClose={guide.close} guide={DEMO_GUIDE} focus={guide.focus} />
+    </div>
+  );
+}
+
 function DialogDemo() {
   const [formOpen, setFormOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -1873,6 +1906,10 @@ function GalleryContent() {
 
         <Section title="Dialogs" note="title, description, body and a pinned footer; Discard changes? guard; preventClose while saving.">
           <DialogDemo />
+        </Section>
+
+        <Section title="How it works" note="Button under the page subtitle; the CapMeter's How points work opens the same dialog at Points. Never opens on its own.">
+          <HowItWorksDemo />
         </Section>
 
         <Section title="Empty states">

@@ -35,7 +35,6 @@ export function Disclosure({ title, icon: Icon, tone = 'neutral', defaultOpen = 
           <Icon size={18} aria-hidden="true" className={cx('shrink-0', warning ? 'text-warning-text' : 'text-content-muted')} />
         )}
         <span className={cx('min-w-0 flex-1 font-bold', warning ? 'text-warning-text' : 'text-content-secondary')}>{title}</span>
-        <span className="hidden text-2xs font-medium text-content-muted sm:inline group-open:hidden">How it works</span>
         <ChevronDown
           size={16}
           aria-hidden="true"

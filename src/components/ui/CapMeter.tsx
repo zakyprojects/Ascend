@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, ChevronRight } from 'lucide-react';
 import { ProgressBar } from './primitives/ProgressBar';
+import { cx, FOCUS_RING, TAP_TARGET_Y } from './primitives/shared';
 
 export interface CapMeterProps {
   variant: 'bar' | 'slots';
@@ -9,7 +10,10 @@ export interface CapMeterProps {
   cap: number;
   slotsUsed?: number;
   slotsTotal?: number;
+  /** Old inline rules text; pages move to `onExplain`. */
   note?: string;
+  /** Opens the page's How it works dialog at its Points section. */
+  onExplain?: () => void;
 }
 
 export function CapMeter({
@@ -20,6 +24,7 @@ export function CapMeter({
   slotsUsed = 0,
   slotsTotal = 0,
   note,
+  onExplain,
 }: CapMeterProps) {
   const isCapped = earned >= cap;
 
@@ -71,8 +76,23 @@ export function CapMeter({
         </div>
       )}
 
-      {/* The rules stay one tap away instead of a paragraph above every page (Design v3). */}
-      {note && (
+      {/* The rules live in the page's How it works dialog; this opens it at Points. */}
+      {onExplain && (
+        <button
+          type="button"
+          onClick={onExplain}
+          aria-haspopup="dialog"
+          className={cx(
+            'inline-flex items-center gap-0.5 rounded text-micro text-content-muted hover:text-content-secondary',
+            TAP_TARGET_Y,
+            FOCUS_RING
+          )}
+        >
+          How points work
+          <ChevronRight size={12} aria-hidden="true" />
+        </button>
+      )}
+      {note && !onExplain && (
         <details className="group">
           <summary className="inline-flex cursor-pointer list-none items-center gap-1 text-micro text-content-muted hover:text-content-secondary [&::-webkit-details-marker]:hidden">
             How points work

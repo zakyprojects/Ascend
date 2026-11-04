@@ -20,9 +20,11 @@ export interface CapMeterConnectedProps {
   capId: CapId;
   /** Render without its own card, for use inside another surface (PageHero's side slot). */
   bare?: boolean;
+  /** Opens the page's How it works dialog at Points. */
+  onExplain?: () => void;
 }
 
-export function CapMeterConnected({ state, capId, bare = false }: CapMeterConnectedProps) {
+export function CapMeterConnected({ state, capId, bare = false, onExplain }: CapMeterConnectedProps) {
   // Re-render when the local day changes, so the cap resets at midnight.
   useLocalDayKey();
   // While a timezone change waits on the server, today's logs earn nothing: say when they will
@@ -41,7 +43,8 @@ export function CapMeterConnected({ state, capId, bare = false }: CapMeterConnec
         cap={status.cap}
         slotsUsed={status.slotsUsed}
         slotsTotal={status.slotsTotal}
-        note={capNote(capId)}
+        note={onExplain ? undefined : capNote(capId)}
+        onExplain={onExplain}
       />
       {timezoneWait ? (
         <div className="mt-1.5 text-micro text-content-muted">{pointsResumeText(timezoneWait)}</div>
