@@ -1,7 +1,7 @@
-import { Habit, SharedChallenge } from '@/types';
-import { todayKey, previousPeriodKey, calculateElapsedDays, getNow } from './dates';
+import { BadHabit, BadHabitLog, Habit, SharedChallenge } from '@/types';
+import { todayKey, previousPeriodKey, calculateElapsedDays, getNow, addDays, parseDate } from './dates';
 import { sameName } from './uniqueNames';
-import { PRESET_CATEGORIES, type PresetHabit } from './presets';
+import { PRESET_BAD_HABITS, PRESET_CATEGORIES, type PresetBadHabit, type PresetHabit } from './presets';
 
 const safeNum = (val: any): number => {
   const n = Number(val);
@@ -350,11 +350,155 @@ export function tickLinkedPacts(
   return { challenges: next, ticks };
 }
 
-/** The delete / stop warning for a habit that running pacts tick (empty when none do). */
-export function pactUnlinkNote(runningLinked: number): string {
+/** The delete / stop warning for a habit (or bad habit) that running pacts tick (empty when none do). */
+export function pactUnlinkNote(runningLinked: number, noun = 'habit'): string {
   if (runningLinked <= 0) return '';
   const one = runningLinked === 1;
-  return ` ${runningLinked} running challenge${one ? ' uses' : 's use'} this habit; ${one ? 'it keeps' : 'they keep'} going and you tick ${one ? 'it' : 'them'} by hand.`;
+  return ` ${runningLinked} running challenge${one ? ' uses' : 's use'} this ${noun}; ${one ? 'it keeps' : 'they keep'} going and you tick ${one ? 'it' : 'them'} by hand.`;
+}
+
+// ── Resist challenges (bad-habit pacts) ───────────────────────────────────────────────────────
+// A resist challenge has both sides in category 'bad_habit' with the bad habit's name as the goal
+// (title "Resist <name>"). Each side links by name to the viewer's own active bad habit (the
+// creator can't see the partner's ids, and Library names are fixed). A day counts for a side when
+// that bad habit is logged Resisted; a slip or no log leaves it unticked (missed after midnight).
+// Challenges give no points: the bad habit's own resist points and penalties are unchanged.
+
+/** Whether this side of the pact resists a bad habit. */
+export function isResistSide(challenge: SharedChallenge, isUser1: boolean): boolean {
+  return (isUser1 ? challenge.user1Category : challenge.user2Category) === 'bad_habit';
+}
+
+/** The title of a resist challenge on this bad habit. */
+export function resistPactTitle(badHabitName: string): string {
+  return `Resist ${badHabitName.trim()}`;
+}
+
+/** The active bad habit this goal text names, if any. */
+export function badHabitForPactGoal(goal: string, badHabits: readonly BadHabit[]): BadHabit | null {
+  if (!goal.trim()) return null;
+  return badHabits.find((b) => b && !b.isCompleted && sameName(b.name, goal)) ?? null;
+}
+
+/** The bad habit this side of a resist pact is linked to, if any. */
+export function linkedBadHabitFor(
+  challenge: SharedChallenge,
+  isUser1: boolean,
+  badHabits: readonly BadHabit[]
+): BadHabit | null {
+  if (!isResistSide(challenge, isUser1)) return null;
+  return badHabitForPactGoal(pactSideGoal(challenge, isUser1), badHabits);
+}
+
+/** This bad habit's log status on a day ('resisted' / 'occurred' / 'no_report'), or null when not logged. */
+export function badHabitStatusOn(
+  badHabitId: string,
+  logs: readonly BadHabitLog[],
+  day: string
+): BadHabitLog['status'] | null {
+  return logs.find((l) => l && l.badHabitId === badHabitId && l.date === day)?.status ?? null;
+}
+
+/**
+ * "Add to my bad habits" for a resist side that links to nothing: the Library preset when the
+ * name is one, else a custom bad habit with that name. Null when nothing is offered: the pact is
+ * finished, the side does not resist, an active bad habit already has the name, or the side is
+ * ticked today (the new bad habit has no log yet, so the repair pass would take the tick back; the
+ * offer returns tomorrow).
+ */
+export function pactBadHabitToAdd(
+  challenge: SharedChallenge,
+  isUser1: boolean,
+  badHabits: readonly BadHabit[],
+  today: string
+): { kind: 'preset'; preset: PresetBadHabit } | { kind: 'custom'; name: string } | null {
+  if (challenge.status !== 'active' || !isResistSide(challenge, isUser1)) return null;
+  if (pactSideDoneOn(challenge, isUser1, today)) return null;
+  const goal = pactSideGoal(challenge, isUser1).trim().replace(/\s+/g, ' ');
+  if (!goal || badHabitForPactGoal(goal, badHabits)) return null;
+  const preset = PRESET_BAD_HABITS.find((b) => sameName(b.name, goal));
+  return preset ? { kind: 'preset', preset } : { kind: 'custom', name: goal };
+}
+
+/**
+ * A bad habit's today changed (resisted or not): every running pact whose viewer side links to it
+ * takes the same state for today, only where it differs (a slip on an unticked day saves nothing).
+ * The partner's side is never touched.
+ */
+export function tickLinkedBadHabitPacts(
+  challenges: readonly SharedChallenge[],
+  sideOf: (challenge: SharedChallenge) => boolean | null,
+  badHabit: BadHabit,
+  resisted: boolean,
+  today: string = todayKey()
+): { challenges: SharedChallenge[]; ticks: LinkedPactTick[] } {
+  const ticks: LinkedPactTick[] = [];
+  const next = challenges.map((challenge) => {
+    if (challenge.status !== 'active') return challenge;
+    const isUser1 = sideOf(challenge);
+    if (isUser1 === null || !linkedBadHabitFor(challenge, isUser1, [badHabit])) return challenge;
+    if (pactSideDoneOn(challenge, isUser1, today) === resisted) return challenge;
+    const { updated } = applyPledgeToggle(challenge, isUser1, resisted);
+    ticks.push({ updated, isUser1 });
+    return updated;
+  });
+  return { challenges: next, ticks };
+}
+
+// ── Day chain and "can it still finish" (every challenge) ─────────────────────────────────────
+
+export type PactDayCellState = 'both' | 'one' | 'missed' | 'open' | 'future';
+
+export interface PactDayCell {
+  /** 1-based challenge day. */
+  day: number;
+  date: string;
+  mine: boolean;
+  theirs: boolean;
+  /** This day can no longer be done by both (a side's day is over without a tick). */
+  lost: boolean;
+  isToday: boolean;
+  state: PactDayCellState;
+}
+
+/**
+ * One cell per challenge day, dated from the viewer's creation day (the dates the viewer's side
+ * ticks; "together" is the same-date match of both sides, as on the server). A day is lost once
+ * either side's local day has passed it without a tick: past days can never be ticked. Shows only
+ * done / not done for each side, never why (a slip and a day not logged look the same).
+ */
+export function pactDayCells(
+  challenge: SharedChallenge,
+  isUser1: boolean,
+  today: string,
+  partnerToday: string
+): PactDayCell[] {
+  const start = parseDate(challenge.createdAt);
+  if (!start) return [];
+  const first = todayKey(start);
+  const norm = normalizeChallengeDates(challenge);
+  const mineSet = new Set(isUser1 ? norm.user1DoneDates : norm.user2DoneDates);
+  const theirsSet = new Set(isUser1 ? norm.user2DoneDates : norm.user1DoneDates);
+  const length = Math.max(1, challenge.durationDays || 1);
+  const cells: PactDayCell[] = [];
+  for (let i = 0; i < length; i++) {
+    const date = addDays(first, i);
+    const mine = mineSet.has(date);
+    const theirs = theirsSet.has(date);
+    const lost = (!mine && date < today) || (!theirs && date < partnerToday);
+    let state: PactDayCellState;
+    if (mine && theirs) state = 'both';
+    else if (mine || theirs) state = 'one';
+    else if (lost) state = 'missed';
+    else state = date > today ? 'future' : 'open';
+    cells.push({ day: i + 1, date, mine, theirs, lost, isToday: date === today, state });
+  }
+  return cells;
+}
+
+/** Whether a running challenge can still finish: finishing needs every day done by both. */
+export function pactCanStillFinish(cells: readonly PactDayCell[]): boolean {
+  return !cells.some((c) => c.lost);
 }
 
 /** Whether a daily habit is done on this day (today unless given). */
@@ -374,6 +518,9 @@ export function pactSideDoneOn(challenge: SharedChallenge, isUser1: boolean, day
 export interface LinkedPactReconcileInput {
   challenges: readonly SharedChallenge[];
   habits: readonly Habit[];
+  /** Resist pacts follow these (a side is done today when its bad habit is logged Resisted). */
+  badHabits?: readonly BadHabit[];
+  badHabitLogs?: readonly BadHabitLog[];
   /** The viewer's side of a pact, or null when its partnership is not known here. */
   sideOf: (challenge: SharedChallenge) => boolean | null;
   /** The viewer's local day. */
@@ -391,15 +538,15 @@ export interface LinkedPactReconcileInput {
 export interface LinkedPactRepair {
   challenge: SharedChallenge;
   isUser1: boolean;
-  /** What today should be on the viewer's side: the habit's state. */
+  /** What today should be on the viewer's side: the habit's (or bad habit's resisted) state. */
   done: boolean;
   /** A resend of a failed save (not a repair, so it does not use up the day's attempt). */
   isRetry: boolean;
 }
 
 /**
- * One pass of keeping running, habit-linked pacts in step with their habit (the viewer's own side
- * only; the partner's device does theirs). A pact that differs from its habit is repaired only
+ * One pass of keeping running, habit-linked pacts in step with their habit, and resist pacts with
+ * their bad habit's Resisted log (the viewer's own side only; the partner's device does theirs). A pact that differs from its habit is repaired only
  * when it also differed on the previous pass (about a minute earlier), so a habit change still on
  * its way from another device is not undone; and at most once per pact per day, so a day the
  * server will not take (device day not the server's day) is not sent again every minute. A failed
@@ -416,8 +563,11 @@ export function planLinkedPactRepairs(input: LinkedPactReconcileInput): {
     const isUser1 = input.sideOf(challenge);
     if (isUser1 === null) continue;
     const habit = linkedHabitFor(challenge, isUser1, input.habits);
-    if (!habit) continue;
-    const done = habitDoneOn(habit, input.today);
+    const badHabit = habit ? null : linkedBadHabitFor(challenge, isUser1, input.badHabits ?? []);
+    let done: boolean;
+    if (habit) done = habitDoneOn(habit, input.today);
+    else if (badHabit) done = badHabitStatusOn(badHabit.id, input.badHabitLogs ?? [], input.today) === 'resisted';
+    else continue;
     if (input.retry.has(challenge.id)) {
       repairs.push({ challenge, isUser1, done, isRetry: true });
       continue;
