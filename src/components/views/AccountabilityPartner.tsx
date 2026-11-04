@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { BookOpen, Check, Clock, Flame, Plus, RotateCcw, ShieldCheck, Trash2, UserPlus, UserMinus, Users, WifiOff, X, Zap } from 'lucide-react';
+import { BookOpen, Check, Clock, Flame, Plus, Ban, RotateCcw, Trash2, UserPlus, UserMinus, Users, WifiOff, X, Zap } from 'lucide-react';
 import { AscendLoadingIndicator } from '@/components/ui/AscendLoadingIndicator';
 import { useAsyncAction, useAsyncActionKey } from '@/lib/useAsyncAction';
 import { AppStore } from '@/lib/store';
@@ -53,7 +53,7 @@ const EMPTY_BAD_HABIT_LOGS: BadHabitLog[] = [];
 type ChallengeKind = 'do' | 'resist';
 const CHALLENGE_KINDS = [
   { id: 'do', label: 'Do something', icon: Check },
-  { id: 'resist', label: 'Resist something', icon: ShieldCheck },
+  { id: 'resist', label: 'Resist something', icon: Ban },
 ];
 
 // Day chain cells: both done, one of you, missed, today still open, still to come.
@@ -600,8 +600,6 @@ export function AccountabilityPartner({ store, onNavigate }: { store: AppStore; 
               <BookOpen size={20} aria-hidden="true" />
             ) : slipped ? (
               <X size={20} aria-hidden="true" />
-            ) : resist ? (
-              <ShieldCheck size={20} aria-hidden="true" />
             ) : (
               <Check size={22} />
             )}
