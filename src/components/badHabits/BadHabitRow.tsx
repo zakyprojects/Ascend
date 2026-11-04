@@ -30,6 +30,126 @@ function slipsInARow(habit: BadHabit, logs: BadHabitLog[], today: string): numbe
   return getBadHabitBadDaysBefore(logs, habit.id, today, badHabitCreatedDay(habit.createdAt));
 }
 
+/** Today's log status as the row shows it: a no-report row counts as not logged. */
+export function badHabitTodayStatus(todayLog: BadHabitLog | undefined): TodayStatus {
+  return todayLog?.status === 'no_report' ? undefined : todayLog?.status;
+}
+
+/**
+ * The points text a bad habit shows today: what its log earned or lost, or (not logged) what
+ * resisting now would earn under today's cap. Shared by the Bad habits row and the partner card.
+ */
+export function badHabitPointsInfo(
+  habit: BadHabit,
+  todayLog: BadHabitLog | undefined,
+  resistRemaining: number
+): { label: string; tone: string } {
+  const status = badHabitTodayStatus(todayLog);
+  const points = todayLog?.pointsAwardedOrDeducted ?? 0;
+  // What resisting now would earn: its points, or what is left of today's cap.
+  const resistNow = Math.min(badHabitResistPoints(habit), resistRemaining);
+  // A slip outside the day's largest penalties (BAD_HABIT_POINTS.dailyPenaltyLimit) costs 0.
+  const label = status
+    ? points !== 0
+      ? ptsText(points, true)
+      : status === 'resisted'
+        ? '0 pts, daily cap reached'
+        : '0 pts, daily limit reached'
+    : resistNow <= 0
+      ? 'Daily cap reached'
+      : ptsText(resistNow, true);
+  const tone = points < 0 ? 'text-rose-theme' : (status ? points > 0 : resistNow > 0) ? 'text-brand-text' : '';
+  return { label, tone };
+}
+
+/**
+ * "N bad days in a row. Slipping today costs −X." Shown only while today is not logged and the
+ * habit has bad days before today (the row's warning; the partner card shows the same one).
+ */
+export function BadHabitSlipWarning({
+  habit,
+  logs,
+  today,
+  logged,
+  seasonPoints,
+  className,
+}: {
+  habit: BadHabit;
+  /** This habit's logs (every day). */
+  logs: BadHabitLog[];
+  today: string;
+  logged: boolean;
+  seasonPoints: number;
+  className?: string;
+}) {
+  const slips = logged ? 0 : slipsInARow(habit, logs, today);
+  if (slips <= 0) return null;
+  return (
+    <p className={cx('flex items-start gap-1 text-xs font-medium text-rose-theme', className)}>
+      <AlertTriangle size={13} aria-hidden="true" className="mt-px shrink-0" />
+      <span>
+        {slips} bad {slips === 1 ? 'day' : 'days'} in a row. Slipping today costs{' '}
+        <span className="figure">{ptsText(-badHabitPenalty(habit, slips + 1, seasonPoints))}</span>.
+      </span>
+    </p>
+  );
+}
+
+const DAY_ACTION_CLASS = cx('inline-flex h-9 items-center gap-1.5 rounded-lg border px-2.5 text-xs', TAP_TARGET, FOCUS_RING, TRANSITION);
+
+/** The labelled Resisted button (the partner card; the Bad habits row resists with its tick or a swipe). */
+export function BadHabitResistButton({ name, onResist }: { name: string; onResist: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onResist}
+      aria-label={`Resisted ${name} today`}
+      className={cx(DAY_ACTION_CLASS, 'border-primary-500/40 bg-primary-500/10 font-semibold text-brand-text hover:bg-primary-500/20')}
+    >
+      <Check size={14} aria-hidden="true" />
+      <span>Resisted</span>
+    </button>
+  );
+}
+
+/** Slipped while today is not logged, Undo once it is: the row's right-hand action. */
+export function BadHabitDayAction({
+  name,
+  logged,
+  onSlip,
+  onUndo,
+}: {
+  name: string;
+  logged: boolean;
+  onSlip: () => void;
+  onUndo: () => void;
+}) {
+  return logged ? (
+    <button
+      type="button"
+      onClick={onUndo}
+      aria-label={`Undo today's log for ${name}`}
+      className={cx(
+        DAY_ACTION_CLASS,
+        'border-overlay-default bg-bg-600 font-medium text-content-secondary hover:bg-bg-500 hover:text-content-primary'
+      )}
+    >
+      <Undo2 size={14} aria-hidden="true" />
+      <span>Undo</span>
+    </button>
+  ) : (
+    <button
+      type="button"
+      onClick={onSlip}
+      aria-label={`Slipped on ${name} today`}
+      className={cx(DAY_ACTION_CLASS, 'border-rose-500/40 bg-rose-500/10 font-semibold text-rose-theme hover:bg-rose-500/20')}
+    >
+      <X size={14} aria-hidden="true" />
+      <span>Slipped</span>
+    </button>
+  );
+}
+
 interface BadHabitCheckProps {
   name: string;
   status: TodayStatus;
@@ -149,24 +269,9 @@ export function BadHabitRow({
   onUndo,
   onDelete,
 }: BadHabitRowProps) {
-  const status = todayLog?.status === 'no_report' ? undefined : todayLog?.status;
+  const status = badHabitTodayStatus(todayLog);
   const { current, best } = resistStreaks(logs, today);
-  const slips = !status ? slipsInARow(habit, logs, today) : 0;
-  const points = todayLog?.pointsAwardedOrDeducted ?? 0;
-  // What resisting now would earn: its points, or what is left of today's cap.
-  const resistNow = Math.min(badHabitResistPoints(habit), resistRemaining);
-
-  // A slip outside the day's largest penalties (BAD_HABIT_POINTS.dailyPenaltyLimit) costs 0.
-  const pointsLabel = status
-    ? points !== 0
-      ? ptsText(points, true)
-      : status === 'resisted'
-        ? '0 pts, daily cap reached'
-        : '0 pts, daily limit reached'
-    : resistNow <= 0
-      ? 'Daily cap reached'
-      : ptsText(resistNow, true);
-  const pointsTone = points < 0 ? 'text-rose-theme' : (status ? points > 0 : resistNow > 0) ? 'text-brand-text' : '';
+  const { label: pointsLabel, tone: pointsTone } = badHabitPointsInfo(habit, todayLog, resistRemaining);
 
   return (
     <SwipeRow
@@ -213,51 +318,13 @@ export function BadHabitRow({
               <span className={cx('figure', pointsTone)}>{pointsLabel}</span>
             </div>
 
-            {slips > 0 && (
-              <p className="mt-1.5 flex items-start gap-1 text-xs font-medium text-rose-theme">
-                <AlertTriangle size={13} aria-hidden="true" className="mt-px shrink-0" />
-                <span>
-                  {slips} bad {slips === 1 ? 'day' : 'days'} in a row. Slipping today costs{' '}
-                  <span className="figure">{ptsText(-badHabitPenalty(habit, slips + 1, seasonPoints))}</span>.
-                </span>
-              </p>
-            )}
+            <BadHabitSlipWarning habit={habit} logs={logs} today={today} logged={Boolean(status)} seasonPoints={seasonPoints} className="mt-1.5" />
 
             <BadHabitHistory habit={habit} logs={logs} today={today} className="mt-2 flex sm:hidden" />
           </div>
 
           <div className="flex shrink-0 items-center gap-2">
-            {status ? (
-              <button
-                type="button"
-                onClick={onUndo}
-                aria-label={`Undo today's log for ${habit.name}`}
-                className={cx(
-                  'inline-flex h-9 items-center gap-1.5 rounded-lg border border-overlay-default bg-bg-600 px-2.5 text-xs font-medium text-content-secondary hover:bg-bg-500 hover:text-content-primary',
-                  TAP_TARGET,
-                  FOCUS_RING,
-                  TRANSITION
-                )}
-              >
-                <Undo2 size={14} aria-hidden="true" />
-                <span>Undo</span>
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={onSlip}
-                aria-label={`Slipped on ${habit.name} today`}
-                className={cx(
-                  'inline-flex h-9 items-center gap-1.5 rounded-lg border border-rose-500/40 bg-rose-500/10 px-2.5 text-xs font-semibold text-rose-theme hover:bg-rose-500/20',
-                  TAP_TARGET,
-                  FOCUS_RING,
-                  TRANSITION
-                )}
-              >
-                <X size={14} aria-hidden="true" />
-                <span>Slipped</span>
-              </button>
-            )}
+            <BadHabitDayAction name={habit.name} logged={Boolean(status)} onSlip={onSlip} onUndo={onUndo} />
             <button
               type="button"
               onClick={onDelete}
