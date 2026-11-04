@@ -51,8 +51,8 @@ const EMPTY_BAD_HABIT_LOGS: BadHabitLog[] = [];
 
 type ChallengeKind = 'do' | 'resist';
 const CHALLENGE_KINDS = [
-  { id: 'do', label: 'Do something', icon: Check },
-  { id: 'resist', label: 'Resist something', icon: Ban },
+  { id: 'do', label: 'Do (habit)', icon: Check },
+  { id: 'resist', label: 'Resist (bad habit)', icon: Ban },
 ];
 
 // Day chain cells: both done, one of you, missed, today still open, still to come.
