@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Info, Plus, ShieldAlert } from 'lucide-react';
-import { AppStore } from '@/lib/store';
+import { AppStore, runningPactsLinkedToBadHabit } from '@/lib/store';
+import { pactUnlinkNote } from '@/lib/pactLifecycle';
 import { useToast } from '@/components/ui/Toast';
 import { BadHabit } from '@/types';
 import { getNow, todayKey } from '@/lib/dates';
@@ -212,7 +213,9 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
         }}
         title="Delete bad habit?"
         itemName={confirmDelete?.name}
-        description="This permanently removes its history and streak. Only today's points from it are removed; earlier points and penalties stay."
+        description={`This permanently removes its history and streak. Only today's points from it are removed; earlier points and penalties stay.${
+          confirmDelete ? pactUnlinkNote(runningPactsLinkedToBadHabit(store.state, confirmDelete), 'bad habit') : ''
+        }`}
       />
     </div>
   );

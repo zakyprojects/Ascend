@@ -80,7 +80,7 @@ import { autoStatusChanges } from './projectProgress';
 import { adoptServerInviteId } from './partnerInvites';
 import { singleFlight } from './singleFlight';
 import { timezoneWaitHoldsPreview } from './useTimezoneWait';
-import { reconcileSharedChallengeLifecycle, applyPledgeToggle, mergeSharedChallenge, linkedHabitFor, habitDoneOn, planLinkedPactRepairs, pactTickRefused, tickLinkedPacts, type LinkedPactTick } from './pactLifecycle';
+import { reconcileSharedChallengeLifecycle, applyPledgeToggle, mergeSharedChallenge, linkedHabitFor, linkedBadHabitFor, badHabitStatusOn, habitDoneOn, planLinkedPactRepairs, pactTickRefused, tickLinkedPacts, tickLinkedBadHabitPacts, type LinkedPactTick } from './pactLifecycle';
 import { isPartnershipUser1 } from './partnershipSide';
 import { PresetHabit } from './presets';
 import { sameName } from './uniqueNames';
@@ -248,6 +248,15 @@ function tickPactsLinkedTo(state: AppState, habit: Habit, done: boolean) {
 /** How many running pacts this habit ticks (the delete / stop warnings: they become hand-ticked). */
 export function runningPactsLinkedTo(state: AppState, habit: Habit): number {
   return tickPactsLinkedTo(state, habit, true).ticks.length;
+}
+
+/** How many running resist pacts this bad habit ticks (the delete warning: they become hand-ticked). */
+export function runningPactsLinkedToBadHabit(state: AppState, badHabit: BadHabit): number {
+  const sideOf = pactSideIn(state);
+  return (state.sharedChallenges || []).filter((c) => {
+    const isUser1 = c.status === 'active' ? sideOf(c) : null;
+    return isUser1 !== null && linkedBadHabitFor(c, isUser1, [badHabit]) !== null;
+  }).length;
 }
 
 export interface StateSyncMessage {
@@ -5199,8 +5208,12 @@ export function useAppState() {
 
   // Bad-habit points come from the server (src/lib/badHabitAwards.ts); each action below only
   // changes habits and logs and shows the server's result at once. Only today can be logged.
+  // A log change also ticks (Resisted) or unticks (Slipped, undone) today on the running resist
+  // challenges linked to that bad habit; challenges give no points.
   const logBadHabitDay = useCallback((badHabitId: string, date: string, status: 'resisted' | 'occurred') => {
+    let pactTicks: LinkedPactTick[] = [];
     setState((prev) => {
+      pactTicks = [];
       const bh = prev.badHabits.find((b) => b.id === badHabitId);
       if (!bh || bh.isCompleted || date !== todayKey()) return prev;
 
@@ -5226,32 +5239,45 @@ export function useAppState() {
       };
       const logs = [newLog, ...prev.badHabitLogs.filter((l) => !(l && l.badHabitId === badHabitId && l.date === date))];
       const awards = applyBadHabitAwardsInternal(prev, prev.badHabits, logs, date);
+      const linked = tickLinkedBadHabitPacts(prev.sharedChallenges || [], pactSideIn(prev), bh, status === 'resisted', date);
+      pactTicks = linked.ticks;
       return {
         ...prev,
         badHabitLogs: awards.logs,
         deletedEntityIds: (prev.deletedEntityIds || []).filter((id) => id !== `${badHabitId}_${date}`),
         ...awards.points,
+        sharedChallenges: linked.challenges,
       };
     });
+    sendLinkedPactTicks(pactTicks, 'Your log is saved.');
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const undoTodayBadHabitLog = useCallback((badHabitId: string) => {
+    let pactTicks: LinkedPactTick[] = [];
     setState((prev) => {
+      pactTicks = [];
       const today = todayKey();
       const target = prev.badHabitLogs.find((l) => l.badHabitId === badHabitId && l.date === today);
       if (!target || target.status === 'no_report') return prev;
 
       const logs = prev.badHabitLogs.filter((l) => !(l.badHabitId === badHabitId && l.date === today));
       const awards = applyBadHabitAwardsInternal(prev, prev.badHabits, logs, today);
+      const bh = prev.badHabits.find((b) => b.id === badHabitId);
+      const linked = bh
+        ? tickLinkedBadHabitPacts(prev.sharedChallenges || [], pactSideIn(prev), bh, false, today)
+        : { challenges: prev.sharedChallenges, ticks: [] };
+      pactTicks = linked.ticks;
       return {
         ...prev,
         badHabitLogs: awards.logs,
         deletedEntityIds: Array.from(new Set([...(prev.deletedEntityIds || []), target.id])).slice(-500),
         ...awards.points,
+        sharedChallenges: linked.challenges,
       };
     });
+    sendLinkedPactTicks(pactTicks, 'Your log is saved.');
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -7982,7 +8008,9 @@ export function useAppState() {
       user1Target: string = '',
       user2Category: SharedChallengeCategory = 'habit',
       user2Target: string = '',
-      targetPartnershipId?: string
+      targetPartnershipId?: string,
+      /** A running challenge this one replaces ("Start again from today"): its name may be reused. */
+      replacesChallengeId?: string
     ) => {
       const pId = targetPartnershipId || state.partnership?.id || state.partnerships[0]?.id;
       if (!pId) {
@@ -8002,6 +8030,7 @@ export function useAppState() {
           c &&
           c.partnershipId === pId &&
           c.status === 'active' &&
+          c.id !== replacesChallengeId &&
           (c.title || '').trim().toLowerCase() === normTitle
       );
       if (existingActive) {
@@ -8038,7 +8067,11 @@ export function useAppState() {
         ? isPartnershipUser1(creatorPartnership, latest.currentUser?.id, latest.username)
         : true;
       const linkedHabit = linkedHabitFor(challenge, isUser1, latest.habits || []);
-      const startsTicked = Boolean(linkedHabit && habitDoneOn(linkedHabit));
+      // A resist challenge starts ticked when its bad habit is already logged Resisted today.
+      const linkedBadHabit = linkedBadHabitFor(challenge, isUser1, latest.badHabits || []);
+      const startsTicked = linkedHabit
+        ? habitDoneOn(linkedHabit)
+        : Boolean(linkedBadHabit && badHabitStatusOn(linkedBadHabit.id, latest.badHabitLogs || [], todayKey()) === 'resisted');
       const shown = startsTicked ? applyPledgeToggle(challenge, isUser1, true).updated : challenge;
 
       // Optimistically update local UI state
@@ -8234,6 +8267,8 @@ export function useAppState() {
       const { repairs, diverged } = planLinkedPactRepairs({
         challenges: current.sharedChallenges || [],
         habits: current.habits || [],
+        badHabits: current.badHabits || [],
+        badHabitLogs: current.badHabitLogs || [],
         sideOf: (c) => {
           const partnership =
             (current.partnerships || []).find((p) => p.id === c.partnershipId) ||
