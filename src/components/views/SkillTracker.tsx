@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Clock, Flame, Plus, Target, Trash2 } from 'lucide-react';
+import { Clock, Flame, Pencil, Plus, Target, Trash2, X } from 'lucide-react';
 import { AppStore, CLEAR_SKILL_LOGS_MAX } from '@/lib/store';
 import { ledgerPointsByDay } from '@/lib/ledgerDayPoints';
 import { isRetiredAppSkillAward } from '@/lib/skillAwards';
@@ -9,12 +9,12 @@ import { pointsResumeText, useTimezoneWait } from '@/lib/useTimezoneWait';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { useToast } from '@/components/ui/Toast';
 import { useAsyncAction } from '@/lib/useAsyncAction';
-import { Skill, SkillLevel, SkillSessionLog } from '@/types';
-import { todayKey, formatDateLong, getNow, startOfWeek, calculateStreak, weekKey, formatWeekdayDate, formatWeekdayShort } from '@/lib/dates';
+import { Skill, SkillDrill, SkillLevel, SkillSessionLog, WeeklyGoalItem } from '@/types';
+import { todayKey, formatDateLong, getNow, startOfWeek, calculateStreak, weekKey, formatWeekdayDate, formatWeekdayShort, parseDate, uid } from '@/lib/dates';
 import { SKILLS_POINTS, calculateSkillPoints } from '@/lib/pointsConfig';
 import { CapMeterConnected } from '@/components/ui/CapMeterConnected';
 import { PageHero } from '@/components/ui/PageHero';
-import { Dialog, Disclosure, EmptyState, Form, Input, NumberField, PageColumns, ProgressBar, Select, Textarea, useFormController } from '@/components/ui/primitives';
+import { Dialog, Disclosure, EmptyState, FieldRow, Form, Input, NumberField, PageColumns, ProgressBar, Select, Textarea, useFormController } from '@/components/ui/primitives';
 import { TAP_TARGET, cx } from '@/components/ui/primitives/shared';
 import { BarChart } from '@/components/ui/charts';
 import { AscendLoadingIndicator } from '@/components/ui/AscendLoadingIndicator';
@@ -23,6 +23,24 @@ import { lastDayKeys, sumPerDay } from '@/lib/weeklyActivity';
 import { useUnsavedChanges } from '@/lib/unsavedChanges';
 import { nameTaken } from '@/lib/uniqueNames';
 import { SKILL_LEVELS } from '@/lib/skillLevels';
+import {
+  DRILL_COUNT_MAX,
+  DRILL_NAME_MAX_LENGTH,
+  DRILL_UNIT_DEFAULT,
+  DRILL_UNIT_MAX_LENGTH,
+  cleanDrillCounts,
+  drillCountInLogs,
+  drillMetricKey,
+  drillNameProblem,
+  drillTotal,
+  findDrill,
+  formatDrillCount,
+  isDrillGoal,
+  liveDrills,
+} from '@/lib/skillDrills';
+import { GoalFormDialog, type GoalPayload } from '@/components/weekly/GoalFormDialog';
+import { toUserMessage } from '@/lib/userMessage';
+import type { View } from '@/lib/views';
 
 const DAYS_PAGE = 7;
 const QUICK_MINUTES = [45, 60, 120, 180];
@@ -40,6 +58,25 @@ const minutesOf = (l: SkillSessionLog): number =>
 
 const formatHours = (minutes: number): string => `${(Math.round(minutes / 6) / 10).toFixed(1)} hrs`;
 
+/** One drill row of the Log practice form; an empty count is not logged. */
+type CountRow = { key: string; drillId: string; count: string };
+
+/** The rows a log of this skill starts with: its first drill, no count yet (none for a skill without drills). */
+const startRows = (skill: Skill | undefined): CountRow[] => {
+  const first = liveDrills(skill)[0];
+  return first ? [{ key: uid(), drillId: first.id, count: '' }] : [];
+};
+
+/** "Scales 50 reps · Chords 20 reps": a log's drill counts (a drill this device doesn't know is left out). */
+const countsText = (log: SkillSessionLog, skill: Skill | undefined): string =>
+  (Array.isArray(log.counts) ? log.counts : [])
+    .map((c) => {
+      const drill = c ? findDrill(skill, c.drillId) : undefined;
+      return drill && c.count > 0 ? `${drill.name} ${formatDrillCount(c.count, drill.unit)}` : '';
+    })
+    .filter(Boolean)
+    .join(' · ');
+
 function levelOf(minutes: number) {
   const hours = minutes / 60;
   const index = SKILL_LEVELS.findIndex((l) => l.below === null || hours < l.below);
@@ -51,7 +88,7 @@ function levelOf(minutes: number) {
   return { level: current.level, progress, text };
 }
 
-export function SkillTracker({ store }: { store: AppStore }) {
+export function SkillTracker({ store, onNavigate }: { store: AppStore; onNavigate: (view: View) => void }) {
   const { showSuccessToast } = useToast();
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [logModalOpen, setLogModalOpen] = useState(false);
@@ -67,17 +104,30 @@ export function SkillTracker({ store }: { store: AppStore }) {
   const [logSkillId, setLogSkillId] = useState('');
   const [duration, setDuration] = useState(QUICK_MINUTES[0]);
   const [note, setNote] = useState('');
+  const [countRows, setCountRows] = useState<CountRow[]>([]);
   const addForm = useUnsavedChanges(addModalOpen, [skillName, category]);
-  const logForm = useUnsavedChanges(logModalOpen, [logSkillId, duration, note] as const, {
+  const logForm = useUnsavedChanges(logModalOpen, [logSkillId, duration, note, JSON.stringify(countRows)] as const, {
     key: 'skill-log',
-    restore: ([s, d, n]) => {
+    restore: ([s, d, n, rows]) => {
       setLogSkillId(s);
       setDuration(d);
       setNote(n);
+      setCountRows(JSON.parse(rows) as CountRow[]);
     },
   });
   const addIssues = useFormController();
   const logIssues = useFormController();
+
+  // Add / edit drill dialog (drill null = a new one).
+  const [drillDialog, setDrillDialog] = useState<{ skillId: string; drill: SkillDrill | null } | null>(null);
+  const [drillName, setDrillName] = useState('');
+  const [drillUnit, setDrillUnit] = useState(DRILL_UNIT_DEFAULT);
+  const drillForm = useUnsavedChanges(Boolean(drillDialog), [drillName, drillUnit]);
+  const drillIssues = useFormController();
+  const [deleteDrillTarget, setDeleteDrillTarget] = useState<{ skill: Skill; drill: SkillDrill } | null>(null);
+
+  // "Make it a weekly goal": the Weekly goals form, opened here for this week.
+  const [goalForm, setGoalForm] = useState<{ key: number; editing: WeeklyGoalItem | null; initial?: Partial<GoalPayload> } | null>(null);
 
   const { isLoading: isLogging, executeFn: executeLog } = useAsyncAction();
   const { isLoading: isDeleting, executeFn: executeDelete } = useAsyncAction();
@@ -135,6 +185,11 @@ export function SkillTracker({ store }: { store: AppStore }) {
   const weekActiveDays = new Set(weekLogs.map((l) => l.date)).size;
   const olderLogCount = skillLogs.filter((l) => l.date < weekStartKey).length;
 
+  // This week's goals (Weekly goals' week: Monday local), for each drill's "Make it a weekly goal".
+  const currentWeekKey = weekKey(parseDate(today) ?? undefined);
+  const currentWeekGoals = store.state.weeklyGoals.find((w) => w.weekKey === currentWeekKey)?.goals ?? [];
+  const drillGoal = (skillId: string, drillId: string) => currentWeekGoals.find((g) => !g.archived && isDrillGoal(g, skillId, drillId));
+
   const pointsToday = todayLogs.reduce((sum, l) => sum + (l.pointsAwarded || 0), 0);
   // No points preview while a timezone change waits: the server awards 0 today.
   const timezoneWait = useTimezoneWait();
@@ -149,6 +204,16 @@ export function SkillTracker({ store }: { store: AppStore }) {
       .reduce((n, doc) => n + doc.goals.filter((g) => g.linkedModule === 'skill' && g.linkedItemId === deleteModalSkill.id).length, 0);
   }, [deleteModalSkill, store.state.weeklyGoals]);
 
+  // Same rule as deleteSkillDrill: this week's and later goals on the drill go.
+  const linkedDrillGoalsCount = useMemo(() => {
+    if (!deleteDrillTarget) return 0;
+    const currentKey = weekKey(getNow());
+    const { skill, drill } = deleteDrillTarget;
+    return store.state.weeklyGoals
+      .filter((doc) => doc.weekKey >= currentKey)
+      .reduce((n, doc) => n + doc.goals.filter((g) => isDrillGoal(g, skill.id, drill.id)).length, 0);
+  }, [deleteDrillTarget, store.state.weeklyGoals]);
+
   // Every open starts clean.
   const openAddModal = () => {
     setSkillName('');
@@ -156,10 +221,76 @@ export function SkillTracker({ store }: { store: AppStore }) {
     setAddModalOpen(true);
   };
   const openLogModal = (skillId?: string) => {
-    setLogSkillId(skillId || (skills.length === 1 ? skills[0].id : ''));
+    const id = skillId || (skills.length === 1 ? skills[0].id : '');
+    setLogSkillId(id);
     setDuration(QUICK_MINUTES[0]);
     setNote('');
+    setCountRows(startRows(skills.find((s) => s.id === id)));
     setLogModalOpen(true);
+  };
+  const chooseLogSkill = (id: string) => {
+    setLogSkillId(id);
+    setCountRows(startRows(skills.find((s) => s.id === id)));
+  };
+  const logSkill = skills.find((s) => s.id === logSkillId);
+  const logDrills = liveDrills(logSkill);
+  const setRow = (key: string, patch: Partial<CountRow>) => setCountRows((rows) => rows.map((r) => (r.key === key ? { ...r, ...patch } : r)));
+  const addRow = () => {
+    const free = logDrills.find((d) => !countRows.some((r) => r.drillId === d.id));
+    if (free) setCountRows((rows) => [...rows, { key: uid(), drillId: free.id, count: '' }]);
+  };
+
+  const openDrillDialog = (skillId: string, drill: SkillDrill | null) => {
+    setDrillName(drill?.name ?? '');
+    setDrillUnit(drill?.unit ?? DRILL_UNIT_DEFAULT);
+    setDrillDialog({ skillId, drill });
+  };
+  const drillSkill = drillDialog ? skills.find((s) => s.id === drillDialog.skillId) : undefined;
+
+  const handleDrillSubmit = () => {
+    if (!drillDialog || !drillSkill) return;
+    const problem = drillNameProblem(drillName, drillSkill, drillDialog.drill?.id);
+    if (problem) {
+      drillIssues.showError(problem, 'drill-name-input');
+      return;
+    }
+    try {
+      if (drillDialog.drill) {
+        store.updateSkillDrill(drillSkill.id, drillDialog.drill.id, drillName, drillUnit);
+        showSuccessToast('Drill saved', drillName.trim());
+      } else {
+        store.addSkillDrill(drillSkill.id, drillName, drillUnit);
+        showSuccessToast('Drill added', drillName.trim());
+      }
+      setDrillDialog(null);
+    } catch (err) {
+      drillIssues.showError(toUserMessage(err, "Couldn't save the drill. Try again."));
+    }
+  };
+
+  const openDrillGoal = (skill: Skill, drill: SkillDrill) => {
+    const existing = drillGoal(skill.id, drill.id) ?? null;
+    setGoalForm((prev) => ({
+      key: (prev?.key ?? 0) + 1,
+      editing: existing,
+      initial: existing
+        ? undefined
+        : {
+            title: `${skill.name}: ${drill.name}`,
+            priority: 'medium',
+            linkedModule: 'skill',
+            linkedItemId: skill.id,
+            linkedMetricKey: drillMetricKey(drill.id),
+            targetValue: 50,
+          },
+    }));
+  };
+  const saveDrillGoal = (payload: GoalPayload) => {
+    if (goalForm?.editing) store.updateWeeklyGoalItem(currentWeekKey, goalForm.editing.id, payload);
+    else store.addWeeklyGoalItem(currentWeekKey, payload);
+    // Ticks it at once when this week's counts already reach the target.
+    store.syncLinkedWeeklyGoals();
+    showSuccessToast(goalForm?.editing ? 'Goal saved' : 'Weekly goal added', 'It counts this week in Weekly goals.');
   };
 
   const handleAddSkillSubmit = (e: React.FormEvent) => {
@@ -187,41 +318,56 @@ export function SkillTracker({ store }: { store: AppStore }) {
       logIssues.showError('Enter 1 or more.', 'skill-duration-input');
       return;
     }
+    // Counts are optional: a row left empty is not logged. Minutes stay required.
+    const filled = countRows.filter((r) => r.count.trim() !== '');
+    const cleaned = cleanDrillCounts(
+      filled.map((r) => ({ drillId: r.drillId, count: Number(r.count) })),
+      logSkill ?? {}
+    );
+    if (cleaned.problem) {
+      const row = filled[cleaned.problem.index];
+      logIssues.showError(cleaned.problem.message, `skill-count-${cleaned.problem.field}-${row.key}`);
+      return;
+    }
     await executeLog(async () => {
-      await store.logSkillPractice(logSkillId, Number(duration), note.trim());
+      await store.logSkillPractice(logSkillId, Number(duration), note.trim(), cleaned.counts);
       setLogModalOpen(false);
       showSuccessToast('Practice logged', previewPoints > 0 && !timezoneWait ? ptsText(previewPoints, true) : `${nameOf(logSkillId)} saved.`);
     });
   };
 
-  const renderRow = (log: SkillSessionLog) => (
-    <div key={log.id} className="enter-item p-3.5 flex items-center justify-between gap-3 transition-colors hover:bg-overlay-subtle">
-      <div className="flex min-w-0 flex-1 items-center gap-3">
-        <div className="w-9 h-9 rounded-xl bg-primary-500/15 flex items-center justify-center text-brand-text shrink-0">
-          <Clock size={18} />
+  const renderRow = (log: SkillSessionLog) => {
+    const counts = countsText(log, skills.find((s) => s.id === log.skillId));
+    return (
+      <div key={log.id} className="enter-item p-3.5 flex items-center justify-between gap-3 transition-colors hover:bg-overlay-subtle">
+        <div className="flex min-w-0 flex-1 items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-primary-500/15 flex items-center justify-center text-brand-text shrink-0">
+            <Clock size={18} />
+          </div>
+          <div className="min-w-0">
+            <h3 className="item-name text-sm text-content-secondary truncate">
+              {nameOf(log.skillId)} <span className="figure text-xs font-normal text-content-muted">{minutesOf(log)} min</span>
+            </h3>
+            {counts && <p className="figure text-xs text-content-muted truncate">{counts}</p>}
+            {log.note && <p className="text-xs text-content-muted truncate">{log.note}</p>}
+          </div>
         </div>
-        <div className="min-w-0">
-          <h3 className="item-name text-sm text-content-secondary truncate">
-            {nameOf(log.skillId)} <span className="figure text-xs font-normal text-content-muted">{minutesOf(log)} min</span>
-          </h3>
-          {log.note && <p className="text-xs text-content-muted truncate">{log.note}</p>}
+        <div className="flex shrink-0 items-center gap-2">
+          {(log.pointsAwarded || 0) > 0 && (
+            <span className="figure text-xs text-brand-text whitespace-nowrap">{ptsText(log.pointsAwarded, true)}</span>
+          )}
+          <button
+            onClick={() => setDeleteModalLog(log)}
+            aria-label="Delete practice log"
+            title="Delete practice log"
+            className={`p-1.5 rounded-lg text-content-muted hover:text-rose-theme hover:bg-rose-500/10 transition-colors ${TAP_TARGET}`}
+          >
+            <Trash2 size={16} />
+          </button>
         </div>
       </div>
-      <div className="flex shrink-0 items-center gap-2">
-        {(log.pointsAwarded || 0) > 0 && (
-          <span className="figure text-xs text-brand-text whitespace-nowrap">{ptsText(log.pointsAwarded, true)}</span>
-        )}
-        <button
-          onClick={() => setDeleteModalLog(log)}
-          aria-label="Delete practice log"
-          title="Delete practice log"
-          className={`p-1.5 rounded-lg text-content-muted hover:text-rose-theme hover:bg-rose-500/10 transition-colors ${TAP_TARGET}`}
-        >
-          <Trash2 size={16} />
-        </button>
-      </div>
-    </div>
-  );
+    );
+  };
 
   const deletingTodayLog = deleteModalLog?.date === today;
   const skillHasToday = !!deleteModalSkill && todayLogs.some((l) => l.skillId === deleteModalSkill.id);
@@ -303,6 +449,7 @@ export function SkillTracker({ store }: { store: AppStore }) {
                   <span className="figure text-success-text">1 pt</span>, up to <span className="figure">{SKILLS_POINTS.dailyCap}</span> pts a day.
                 </li>
                 <li>Levels: 10 hrs Intermediate, 25 hrs Advanced, 50 hrs Expert.</li>
+                <li>Drills count one part of a skill, like scales, in reps or your own unit. Counts don't earn points; minutes do. A drill can be a weekly goal.</li>
                 <li>You can only log today's practice.</li>
                 <li>Deleting today's practice takes its points back. Earlier days keep their points and hours.</li>
                 <li>Deleting old logs can break a skill's streak.</li>
@@ -357,6 +504,7 @@ export function SkillTracker({ store }: { store: AppStore }) {
                     'daily'
                   );
                   const practicedToday = todayLogs.some((l) => l.skillId === skill.id);
+                  const drills = liveDrills(skill);
                   return (
                     <div key={skill.id} className="card enter-item p-4 flex flex-col gap-3">
                       <div className="flex items-start justify-between gap-2">
@@ -389,6 +537,61 @@ export function SkillTracker({ store }: { store: AppStore }) {
                         </div>
                         <ProgressBar value={progress} label={`${skill.name} level progress`} size="sm" />
                       </div>
+
+                      {drills.length > 0 && (
+                        <ul className="space-y-1 border-t border-overlay-subtle pt-2" aria-label={`${skill.name} drills`}>
+                          {drills.map((drill) => {
+                            const week = drillCountInLogs(weekLogs, skill.id, drill.id);
+                            const goal = drillGoal(skill.id, drill.id);
+                            const target = goal?.targetValue && goal.targetValue > 0 ? goal.targetValue : null;
+                            return (
+                              <li key={drill.id} className="flex items-center gap-1">
+                                <div className="min-w-0 flex-1">
+                                  <p className="text-sm text-content-secondary truncate">{drill.name}</p>
+                                  <p className="figure text-xs text-content-muted truncate">
+                                    <span className={target !== null ? 'text-brand-text' : undefined}>
+                                      {target !== null
+                                        ? `${week.toLocaleString('en-US')}/${formatDrillCount(target, drill.unit)}`
+                                        : formatDrillCount(week, drill.unit)}
+                                    </span>{' '}
+                                    this week · {drillTotal(skill, skillLogs, drill.id).toLocaleString('en-US')} total
+                                  </p>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => openDrillGoal(skill, drill)}
+                                  aria-label={goal ? `Edit the weekly goal for ${drill.name}` : `Make ${drill.name} a weekly goal`}
+                                  title={goal ? 'Edit weekly goal' : 'Make it a weekly goal'}
+                                  className={cx(
+                                    'p-1.5 rounded-lg transition-colors hover:bg-overlay-subtle',
+                                    goal ? 'text-brand-text' : 'text-content-muted hover:text-content-secondary',
+                                    TAP_TARGET
+                                  )}
+                                >
+                                  <Target size={16} />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => openDrillDialog(skill.id, drill)}
+                                  aria-label={`Edit ${drill.name}`}
+                                  title="Edit drill"
+                                  className={`p-1.5 rounded-lg text-content-muted hover:text-content-secondary hover:bg-overlay-subtle transition-colors ${TAP_TARGET}`}
+                                >
+                                  <Pencil size={16} />
+                                </button>
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      )}
+
+                      <button
+                        type="button"
+                        onClick={() => openDrillDialog(skill.id, null)}
+                        className="btn-ghost self-start text-xs text-content-muted hover:text-content-secondary flex items-center gap-1.5 max-sm:px-2 max-sm:py-1"
+                      >
+                        <Plus size={14} /> Add drill
+                      </button>
 
                       <button
                         onClick={() => openLogModal(skill.id)}
@@ -531,7 +734,7 @@ export function SkillTracker({ store }: { store: AppStore }) {
         }
       >
         <Form id="skill-log-form" onSubmit={handleLogSubmit} controller={logIssues} className="space-y-5">
-          <Select id="skill-log-skill" label="Skill" value={logSkillId} onChange={(e) => setLogSkillId(e.target.value)}>
+          <Select id="skill-log-skill" label="Skill" value={logSkillId} onChange={(e) => chooseLogSkill(e.target.value)}>
             <option value="" disabled>
               Choose a skill
             </option>
@@ -572,6 +775,70 @@ export function SkillTracker({ store }: { store: AppStore }) {
             </div>
           </div>
 
+          {logDrills.length > 0 && (
+            <div className="space-y-2">
+              {countRows.map((row, index) => (
+                <div key={row.key} className="flex items-end gap-2">
+                  <div className="min-w-0 flex-1">
+                    <Select
+                      id={`skill-count-drill-${row.key}`}
+                      label={index === 0 ? 'Drill' : undefined}
+                      aria-label={index === 0 ? undefined : `Drill ${index + 1}`}
+                      value={row.drillId}
+                      onChange={(e) => setRow(row.key, { drillId: e.target.value })}
+                    >
+                      {logDrills.map((d) => (
+                        <option key={d.id} value={d.id} disabled={d.id !== row.drillId && countRows.some((r) => r.drillId === d.id)}>
+                          {d.name}
+                        </option>
+                      ))}
+                    </Select>
+                  </div>
+                  <div className="w-28 shrink-0">
+                    <Input
+                      id={`skill-count-count-${row.key}`}
+                      label={index === 0 ? 'How many?' : undefined}
+                      optional={index === 0}
+                      aria-label={index === 0 ? undefined : `How many ${logDrills.find((d) => d.id === row.drillId)?.unit ?? DRILL_UNIT_DEFAULT}, drill ${index + 1}`}
+                      type="number"
+                      inputMode="numeric"
+                      min={1}
+                      max={DRILL_COUNT_MAX}
+                      step={1}
+                      value={row.count}
+                      onChange={(e) => setRow(row.key, { count: e.target.value })}
+                      placeholder={logDrills.find((d) => d.id === row.drillId)?.unit ?? DRILL_UNIT_DEFAULT}
+                      enterKeyHint="done"
+                    />
+                  </div>
+                  {index > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setCountRows((rows) => rows.filter((r) => r.key !== row.key))}
+                      aria-label={`Remove drill ${index + 1}`}
+                      title="Remove"
+                      className={`mb-1 p-1.5 rounded-lg text-content-muted hover:text-rose-theme hover:bg-rose-500/10 transition-colors ${TAP_TARGET}`}
+                    >
+                      <X size={16} />
+                    </button>
+                  )}
+                </div>
+              ))}
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="text-xs text-content-muted">Counts don't earn points. Minutes do.</p>
+                {countRows.length < logDrills.length && (
+                  <button
+                    type="button"
+                    onClick={addRow}
+                    className="btn-ghost text-xs text-content-muted hover:text-content-secondary flex items-center gap-1.5 max-sm:px-2 max-sm:py-1"
+                  >
+                    <Plus size={14} /> Add drill
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
           <Textarea
             id="skill-note-input"
             label="What did you practice?"
@@ -597,6 +864,104 @@ export function SkillTracker({ store }: { store: AppStore }) {
         </Form>
       </Dialog>
 
+      <Dialog
+        open={Boolean(drillDialog)}
+        onClose={() => setDrillDialog(null)}
+        dirty={drillForm.dirty}
+        title={drillDialog?.drill ? 'Edit drill' : 'Add drill'}
+        description={drillSkill ? `Something in ${drillSkill.name} you count, not time. Counts don't earn points.` : undefined}
+        footer={
+          <>
+            {drillDialog?.drill && drillSkill && (
+              <button
+                type="button"
+                onClick={() => {
+                  const target = { skill: drillSkill, drill: drillDialog.drill! };
+                  setDrillDialog(null);
+                  setDeleteDrillTarget(target);
+                }}
+                className="btn-danger sm:mr-auto"
+              >
+                <Trash2 size={16} />
+                <span>Delete</span>
+              </button>
+            )}
+            <button type="button" onClick={() => drillForm.confirmDiscard(() => setDrillDialog(null))} className="btn-secondary">
+              Cancel
+            </button>
+            <button type="submit" form="skill-drill-form" className="btn-primary">
+              {drillDialog?.drill ? 'Save drill' : 'Add drill'}
+            </button>
+          </>
+        }
+      >
+        <Form id="skill-drill-form" onSubmit={handleDrillSubmit} controller={drillIssues} className="space-y-4">
+          <FieldRow>
+            <Input
+              id="drill-name-input"
+              label="Drill"
+              value={drillName}
+              onChange={(e) => setDrillName(e.target.value)}
+              placeholder="e.g. Scales, Chords"
+              maxLength={DRILL_NAME_MAX_LENGTH}
+              autoComplete="off"
+              required
+            />
+            <Input
+              id="drill-unit-input"
+              label="Unit"
+              value={drillUnit}
+              onChange={(e) => setDrillUnit(e.target.value)}
+              placeholder={DRILL_UNIT_DEFAULT}
+              hint="What you count, like reps or times."
+              maxLength={DRILL_UNIT_MAX_LENGTH}
+              autoComplete="off"
+              enterKeyHint="done"
+            />
+          </FieldRow>
+        </Form>
+      </Dialog>
+
+      {goalForm && (
+        <GoalFormDialog
+          key={goalForm.key}
+          open
+          editing={goalForm.editing}
+          initial={goalForm.initial}
+          state={store.state}
+          weekGoals={currentWeekGoals}
+          weekText="this week"
+          onClose={() => setGoalForm(null)}
+          onSave={saveDrillGoal}
+          onNavigate={onNavigate}
+        />
+      )}
+
+      <ConfirmDeleteModal
+        open={Boolean(deleteDrillTarget)}
+        onClose={() => setDeleteDrillTarget(null)}
+        isDeleting={isDeleting}
+        onConfirm={async () => {
+          if (!deleteDrillTarget) return;
+          const { skill, drill } = deleteDrillTarget;
+          await executeDelete(async () => {
+            await store.deleteSkillDrill(skill.id, drill.id);
+            setDeleteDrillTarget(null);
+            showSuccessToast('Drill deleted', `${drill.name} removed.`, `skill_drill_${drill.id}`);
+          });
+        }}
+        title="Delete drill?"
+        itemName={deleteDrillTarget?.drill.name}
+        description={[
+          'It leaves the skill card. Practice logs keep their minutes, points and counts.',
+          linkedDrillGoalsCount > 0
+            ? `${linkedDrillGoalsCount} linked weekly goal${linkedDrillGoalsCount > 1 ? 's' : ''} for this week and later go too.`
+            : '',
+        ]
+          .filter(Boolean)
+          .join(' ')}
+      />
+
       <ConfirmDeleteModal
         open={!!deleteModalSkill}
         onClose={() => setDeleteModalSkill(null)}
@@ -613,7 +978,9 @@ export function SkillTracker({ store }: { store: AppStore }) {
         title="Delete skill?"
         itemName={deleteModalSkill?.name}
         description={[
-          'This removes the skill and all its practice logs.',
+          liveDrills(deleteModalSkill).length > 0
+            ? 'This removes the skill, its drills and all its practice logs.'
+            : 'This removes the skill and all its practice logs.',
           skillHasToday
             ? "Points from today's practice come off today's total. Earlier days keep their points."
             : 'The points you already earned stay.',
@@ -642,8 +1009,8 @@ export function SkillTracker({ store }: { store: AppStore }) {
         itemName={deleteModalLog ? `${nameOf(deleteModalLog.skillId)} (${minutesOf(deleteModalLog)} min)` : ''}
         description={
           deletingTodayLog
-            ? "Its points and minutes come off today's total. The skill's streak may go down."
-            : "The points and practice hours you earned that day stay. The skill's streak may go down."
+            ? `Its points and minutes${deleteModalLog?.counts?.length ? ' and drill counts' : ''} come off today's total. The skill's streak may go down.`
+            : `The points and practice hours you earned that day stay${deleteModalLog?.counts?.length ? ', and so do drill totals' : ''}. The skill's streak may go down.`
         }
       />
 
@@ -658,8 +1025,8 @@ export function SkillTracker({ store }: { store: AppStore }) {
             showSuccessToast(
               'Older logs cleared',
               olderLogCount > CLEAR_SKILL_LOGS_MAX
-                ? `${CLEAR_SKILL_LOGS_MAX} cleared. Tap Clear older logs again for the rest. Points, hours and levels stay.`
-                : 'Your points, hours and levels stay as they were.',
+                ? `${CLEAR_SKILL_LOGS_MAX} cleared. Tap Clear older logs again for the rest. Points, hours, levels and drill totals stay.`
+                : 'Your points, hours, levels and drill totals stay as they were.',
               'skill_logs_cleared'
             );
           });
@@ -670,7 +1037,7 @@ export function SkillTracker({ store }: { store: AppStore }) {
             ? `${CLEAR_SKILL_LOGS_MAX} of the ${olderLogCount} practice logs before this week`
             : `${olderLogCount} practice ${olderLogCount === 1 ? 'log' : 'logs'} before this week`
         }
-        description={`The points you earned stay, and each skill keeps its hours and level. Skill streaks can break, and your session count goes down. This week's logs are kept.${
+        description={`The points you earned stay, and each skill keeps its hours, level and drill totals. Skill streaks can break, and your session count goes down. This week's logs are kept.${
           olderLogCount > CLEAR_SKILL_LOGS_MAX ? ` Up to ${CLEAR_SKILL_LOGS_MAX} go at a time: tap again for the rest.` : ''
         }`}
         confirmText="Clear logs"

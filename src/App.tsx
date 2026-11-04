@@ -335,7 +335,7 @@ function App() {
                   {view === 'journal' && <Journal store={store} />}
                   {view === 'exercise' && <ExerciseTracker store={store} />}
                   {view === 'reading' && <ReadingHub store={store} />}
-                  {view === 'skills' && <SkillTracker store={store} />}
+                  {view === 'skills' && <SkillTracker store={store} onNavigate={setView} />}
                   {view === 'bad-habits' && <BadHabitTracker store={store} />}
                   {view === 'recovery' && <AddictionRecovery store={store} />}
                   {view === 'prefrontal' && <PrefrontalCortex store={store} onNavigate={setView} />}
