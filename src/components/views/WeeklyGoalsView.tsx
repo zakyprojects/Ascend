@@ -4,7 +4,8 @@ import { AppStore } from '@/lib/store';
 import { WEEKLY_REFLECTION_POINTS, WEEKLY_GOALS_POINTS, calculateWeeklyGoalsPoints } from '@/lib/pointsConfig';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { CapMeter } from '@/components/ui/CapMeter';
-import { weeklyGoalsCapNote } from '@/lib/capCopy';
+import { HowItWorksButton, HowItWorksDialog, useHowItWorks } from '@/components/ui/HowItWorks';
+import { weeklyGoalsGuide } from '@/components/howItWorks/weeklyGoals';
 import { EmptyState, PageColumns } from '@/components/ui/primitives';
 import { useToast } from '@/components/ui/Toast';
 import { useAsyncActionKey } from '@/lib/useAsyncAction';
@@ -30,6 +31,7 @@ const CARRY_OVER_LOOKBACK_WEEKS = 4;
 const WEEK_POINTS_MAX = WEEKLY_GOALS_POINTS.maxWeeklyPoints + WEEKLY_REFLECTION_POINTS.awarded;
 
 export function WeeklyGoalsView({ store, onNavigate }: { store: AppStore; onNavigate: (view: View) => void }) {
+  const guide = useHowItWorks();
   const { showErrorToast, showSuccessToast } = useToast();
   const { isKeyLoading, executeWithKey } = useAsyncActionKey();
   // Re-renders at local midnight, so Monday 00:00 starts the new week with the page open (C5).
@@ -207,6 +209,7 @@ export function WeeklyGoalsView({ store, onNavigate }: { store: AppStore; onNavi
         <div>
           <h1 className="page-title">Weekly Goals</h1>
           <p className="page-subtitle">Pick a few goals, watch them fill in, reflect at the weekend.</p>
+          <HowItWorksButton onClick={guide.show} />
         </div>
         {!isPastWeek && (
           <button type="button" onClick={() => openForm(null)} className="btn-primary self-start md:self-auto">
@@ -277,7 +280,7 @@ export function WeeklyGoalsView({ store, onNavigate }: { store: AppStore; onNavi
                 label="Goal points"
                 earned={isCurrentWeek ? goalPointsPreview.pointsAwarded : Math.max(0, ledgerPoints.goals)}
                 cap={WEEKLY_GOALS_POINTS.maxWeeklyPoints}
-                note={weeklyGoalsCapNote()}
+                onExplain={guide.showPoints}
               />
             )
           }
@@ -409,6 +412,7 @@ export function WeeklyGoalsView({ store, onNavigate }: { store: AppStore; onNavi
         description={deleteDescription}
         confirmText="Delete goal"
       />
+      <HowItWorksDialog open={guide.open} onClose={guide.close} guide={weeklyGoalsGuide} focus={guide.focus} />
     </div>
   );
 }

@@ -6,8 +6,8 @@ import { pts } from '../format';
 
 /* /features/weekly-goals. Sources: lib/pointsConfig.ts WEEKLY_GOALS_POINTS +
    WEEKLY_REFLECTION_POINTS, lib/weeklyAwards.ts reflectionWindow (Friday 06:00 to the end of
-   Monday, local time), lib/linkedGoalMetrics.ts (what a goal can link to), lib/capCopy.ts
-   weeklyGoalsCapNote, components/views/WeeklyGoalsView.tsx and components/weekly/*. */
+   Monday, local time), lib/linkedGoalMetrics.ts (what a goal can link to), components/howItWorks/
+   weeklyGoals.tsx (the page's How it works), components/views/WeeklyGoalsView.tsx and components/weekly/*. */
 
 const G = WEEKLY_GOALS_POINTS;
 const reflection = WEEKLY_REFLECTION_POINTS.awarded;
