@@ -15,7 +15,6 @@ import {
   timeStringToMinutes,
 } from '@/lib/timeTracker';
 import { calculateTimeTrackerDailyPoints, TIME_TRACKER_POINTS } from '@/lib/pointsConfig';
-import { timeTrackerCapNote } from '@/lib/capCopy';
 import { TIME_TRACKER_GRACE_MINUTES, timeTrackerGraceDay } from '@/lib/timeTrackerAwards';
 import { formatDateKeyHuman, formatWeekdayDate } from '@/lib/dates';
 import { PageHero } from '@/components/ui/PageHero';
@@ -44,6 +43,8 @@ interface DayTabProps {
   onEditBlock: (block: TimeTrackerBlock) => void;
   onApplyTemplate: () => void;
   onNavigate?: (view: View) => void;
+  /** Opens the page's How it works at Points (the CapMeter's How points work). */
+  onExplainPoints?: () => void;
 }
 
 export function DayTab({
@@ -58,6 +59,7 @@ export function DayTab({
   onEditBlock,
   onApplyTemplate,
   onNavigate,
+  onExplainPoints,
 }: DayTabProps) {
   const { showSuccessToast, showErrorToast } = useToast();
   const now = useNowTick();
@@ -211,7 +213,7 @@ export function DayTab({
           ]}
           side={
             mode === 'today' ? (
-              <CapMeter variant="bar" label="Points today" earned={points} cap={TIME_TRACKER_POINTS.dailyCap} note={timeTrackerCapNote()} />
+              <CapMeter variant="bar" label="Points today" earned={points} cap={TIME_TRACKER_POINTS.dailyCap} onExplain={onExplainPoints} />
             ) : undefined
           }
         />

@@ -8,7 +8,7 @@ import { pts } from '../format';
 
 /* /features/time-blocking. Sources: lib/pointsConfig.ts TIME_TRACKER_POINTS +
    calculateTimeTrackerDailyPoints (tiers, skip rule), lib/timeTrackerAwards.ts (server-written,
-   TIME_TRACKER_GRACE_MINUTES), lib/capCopy.ts timeTrackerCapNote, types.ts
+   TIME_TRACKER_GRACE_MINUTES), components/howItWorks/timeTracker.tsx (the page's How it works), types.ts
    DEFAULT_TIME_TRACKER_ACTIVITIES + ASCEND_RECOMMENDED_DAY_BLOCKS, components/views/TimeTrackerView.tsx
    and components/views/timeTracker/* (Day, Templates, Categories, the 8+8+8 guide, NowCard). */
 

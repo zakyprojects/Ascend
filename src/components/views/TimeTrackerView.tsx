@@ -12,6 +12,8 @@ import { TemplateEditorModal } from './timeTracker/TemplateEditorModal';
 import { ApplyTemplateModal } from './timeTracker/ApplyTemplateModal';
 import { ActivityModal } from './timeTracker/ActivityModal';
 import { useToast } from '@/components/ui/Toast';
+import { HowItWorksButton, HowItWorksDialog, useHowItWorks } from '@/components/ui/HowItWorks';
+import { timeTrackerGuide } from '@/components/howItWorks/timeTracker';
 import { TabPanel, Tabs } from '@/components/ui/primitives';
 import { CalendarClock, Layers, Tag } from 'lucide-react';
 import { View } from '@/components/AppShell';
@@ -25,6 +27,7 @@ type TabType = 'day' | 'templates' | 'categories';
 const TIME_TRACKER_TABS: TabType[] = ['day', 'templates', 'categories'];
 
 export function TimeTrackerView({ store, onNavigate }: TimeTrackerViewProps) {
+  const guide = useHowItWorks();
   const { showSuccessToast } = useToast();
   const today = useLocalDayKey();
 
@@ -157,6 +160,7 @@ export function TimeTrackerView({ store, onNavigate }: TimeTrackerViewProps) {
         <div>
           <h1 className="page-title">Time Tracker</h1>
           <p className="page-subtitle">Plan your day in blocks and tick them off.</p>
+          <HowItWorksButton onClick={guide.show} />
         </div>
         <div className="max-w-full shrink-0 self-start md:self-auto">
           <Tabs
@@ -190,6 +194,7 @@ export function TimeTrackerView({ store, onNavigate }: TimeTrackerViewProps) {
             onEditBlock={openEditBlock}
             onApplyTemplate={() => openApply()}
             onNavigate={onNavigate}
+            onExplainPoints={guide.showPoints}
           />
         )}
 
@@ -256,6 +261,7 @@ export function TimeTrackerView({ store, onNavigate }: TimeTrackerViewProps) {
         editingActivity={editingActivity}
         activities={activities}
       />
+      <HowItWorksDialog open={guide.open} onClose={guide.close} guide={timeTrackerGuide} focus={guide.focus} />
     </div>
   );
 }
