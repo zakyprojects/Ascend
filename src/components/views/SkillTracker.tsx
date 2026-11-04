@@ -67,6 +67,8 @@ const DRILL_ICON_BUTTON = cx(
 
 /** The Log practice drill picker's value for a drill this save creates. */
 const NEW_DRILL = 'new';
+/** The Log practice drill picker's value for "no count on this log". */
+const NO_DRILL = '';
 /** Most drill rows one log form shows. */
 const DRILL_ROWS_MAX = 10;
 
@@ -78,8 +80,8 @@ type CountRow = { key: string; drillId: string; name: string; unit: string; coun
 
 const newRow = (drillId: string): CountRow => ({ key: uid(), drillId, name: '', unit: DRILL_UNIT_DEFAULT, count: '' });
 
-/** The row a log of this skill starts with: its first drill, or a new drill when it has none. */
-const startRows = (skill: Skill | undefined): CountRow[] => [newRow(liveDrills(skill)[0]?.id ?? NEW_DRILL)];
+/** The row a log of this skill starts with: "None" when it has drills, else an empty new drill (both log nothing). */
+const startRows = (skill: Skill | undefined): CountRow[] => [newRow(liveDrills(skill).length > 0 ? NO_DRILL : NEW_DRILL)];
 
 /** "Scales 50 reps · Chords 20 reps": a log's drill counts (a drill this device doesn't know is left out). */
 const countsText = (log: SkillSessionLog, skill: Skill | undefined): string =>
@@ -334,10 +336,11 @@ export function SkillTracker({ store, onNavigate }: { store: AppStore; onNavigat
     // name and count save together: the drill joins the skill and its count goes on this log.
     const cleaned = prepareLogDrills(
       countRows.map((r) => ({
-        drillId: r.drillId === NEW_DRILL ? null : r.drillId,
-        name: r.name,
+        // A "None" row is sent as an empty new row, which logs nothing.
+        drillId: r.drillId === NEW_DRILL || r.drillId === NO_DRILL ? null : r.drillId,
+        name: r.drillId === NO_DRILL ? '' : r.name,
         unit: r.unit,
-        count: r.count.trim() === '' ? null : Number(r.count),
+        count: r.drillId === NO_DRILL || r.count.trim() === '' ? null : Number(r.count),
       })),
       logSkill ?? {}
     );
@@ -808,7 +811,9 @@ export function SkillTracker({ store, onNavigate }: { store: AppStore; onNavigat
                     step={1}
                     value={row.count}
                     onChange={(e) => setRow(row.key, { count: e.target.value })}
-                    placeholder={unit}
+                    // A new drill types its unit beside this, so it isn't repeated here.
+                    placeholder={isNew ? 'e.g. 50' : unit}
+                    disabled={row.drillId === NO_DRILL}
                     enterKeyHint="done"
                   />
                 );
@@ -848,8 +853,9 @@ export function SkillTracker({ store, onNavigate }: { store: AppStore; onNavigat
                             aria-label={index === 0 ? undefined : `Count ${index + 1}`}
                             optional={index === 0}
                             value={row.drillId}
-                            onChange={(e) => setRow(row.key, { drillId: e.target.value })}
+                            onChange={(e) => setRow(row.key, { drillId: e.target.value, ...(e.target.value === NO_DRILL ? { count: '' } : {}) })}
                           >
+                            <option value={NO_DRILL}>None</option>
                             {logDrills.map((d) => (
                               <option key={d.id} value={d.id} disabled={d.id !== row.drillId && countRows.some((r) => r.drillId === d.id)}>
                                 {d.name}
