@@ -72,7 +72,7 @@ export function FocusPanel({ store, today }: { store: AppStore; today: string })
               <li>
                 Up to <span className="figure">{PFC_POINTS.focus.dailyCap}</span> pts a day, counted on the day each point is reached.
               </li>
-              <li>Paused time does not count. Closing the app or logging out pauses the session too.</li>
+              <li>Closing the app or locking your phone keeps the session running. Paused time does not count, and logging out pauses it.</li>
               <li>
                 Resume within {FOCUS_RESUME_WINDOW_MINUTES} min. After that the session ends at the pause: saved from{' '}
                 {FOCUS_MIN_MINUTES} min, dropped below.

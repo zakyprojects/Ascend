@@ -89,6 +89,11 @@ export function syncClock(): Promise<void> {
   return syncing;
 }
 
+/** Resolves when the server read in flight (e.g. the one after a device sleep) is done; at once when none is. */
+export function clockSettled(): Promise<void> {
+  return syncing ?? Promise.resolve();
+}
+
 /**
  * Resolves once the server time is known, or after a short timeout (offline), so code that
  * decides days and periods on start-up does not run on an unchecked device clock.

@@ -73,12 +73,9 @@ function FocusProgressLine({ session }: { session: FocusSession }) {
 
 /** What the timer did on its own while the user was away. */
 function FocusNoticeLine({ notice, onClose }: { notice: FocusNotice; onClose: () => void }) {
-  const text =
-    notice.kind === 'gap'
-      ? `The app was closed for ${notice.minutes} min. That time is not counted.`
-      : notice.saved
-        ? `Your session ended after a ${FOCUS_RESUME_WINDOW_MINUTES}-minute break. Saved ${notice.minutes} min.`
-        : `Your session ended after a ${FOCUS_RESUME_WINDOW_MINUTES}-minute break. Not enough time to save (under ${FOCUS_MIN_MINUTES_TO_SAVE} min).`;
+  const text = notice.saved
+    ? `Your session ended after a ${FOCUS_RESUME_WINDOW_MINUTES}-minute break. Saved ${notice.minutes} min.`
+    : `Your session ended after a ${FOCUS_RESUME_WINDOW_MINUTES}-minute break. Not enough time to save (under ${FOCUS_MIN_MINUTES_TO_SAVE} min).`;
   return (
     <div className="flex items-start justify-between gap-2 rounded-xl bg-overlay-subtle px-3 py-2 text-xs text-content-secondary" role="status">
       <span>{text}</span>
@@ -359,7 +356,7 @@ function ManualTimer({ store }: { store: AppStore }) {
       <div className="space-y-1 text-center text-2xs text-content-muted">
         {session && !isBreak && (
           <p>
-            Keeps running if you switch pages or reload. Closing the app or logging out pauses it: resume within{' '}
+            Keeps running if you switch pages, close the app or lock your phone. Logging out pauses it: resume within{' '}
             {FOCUS_RESUME_WINDOW_MINUTES} min, or it is saved from {FOCUS_MIN_MINUTES_TO_SAVE} min.
           </p>
         )}

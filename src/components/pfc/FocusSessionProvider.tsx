@@ -1,8 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useReducer, useRef, useState, type ReactNode } from 'react';
 import type { AppStore } from '@/lib/store';
-import { trustedNowMs } from '@/lib/clock';
+import { clockSettled, trustedNowMs } from '@/lib/clock';
 import {
-  FOCUS_ALIVE_INTERVAL_MS,
   FOCUS_MIN_MINUTES_TO_SAVE,
   activeMinutesAt,
   breakIdFor,
@@ -13,14 +12,12 @@ import {
   newSessionId,
   parseSession,
   pauseAt,
-  readAlive,
   readStoredSession,
   remainingSeconds,
   resumeAt,
   resumeDeadlineMs,
   sessionEndMs,
   settleSession,
-  writeAlive,
   writeStoredSession,
   type FocusClose,
   type FocusNotice,
@@ -38,11 +35,12 @@ import { showFocusNotification } from './focusNotifications';
  * on the stored copy, and a log row id comes from the session id, so a second attempt (another
  * tab, a race) writes the same row, never a second one.
  *
- * While a focus session runs, a heartbeat is written every 15 s and when the page hides. A
- * longer silence (app closed, killed, asleep) counts as a pause at the last heartbeat: back
- * within 30 minutes the session runs on without the gap; later it is closed at the heartbeat
- * (saved from 25 active minutes, dropped below). A manual or logout pause follows the same
- * 30-minute window. Logs go through the store's outbox, which keeps them until they upload.
+ * A running focus session runs on wall time: in the background, with the screen locked, the tab
+ * closed or the device asleep, the time still counts. Opened after its planned end, it ends at
+ * the planned end (finish bonus, milestones at start + their minutes). Only a manual or logout
+ * pause stops it; a pause can be resumed within 30 minutes, later it is closed at the pause
+ * (saved from 25 active minutes, dropped below). Logs go through the store's outbox, which keeps
+ * them until they upload.
  */
 
 export interface FocusStartInput {
@@ -63,7 +61,7 @@ interface FocusSessionContextValue {
   session: FocusSession | null;
   /** The session that just ended in this tab, waiting for its reflection. */
   finished: FinishedFocusSession | null;
-  /** Something the timer did on its own (closed after a long break, skipped a gap). */
+  /** Something the timer did on its own (closed after a long break). */
   notice: FocusNotice | null;
   start: (input: FocusStartInput) => void;
   pause: () => void;
@@ -139,8 +137,6 @@ export function FocusSessionProvider({
   openRef.current = onOpenFocus;
   /** False after a failed storage write: this tab's copy is then the only one. */
   const storedRef = useRef(true);
-  /** The account whose stored session was checked against the alive and resume rules. */
-  const settledForRef = useRef<string | null>(null);
 
   const persist = useCallback((next: FocusSession | null) => {
     storedRef.current = writeStoredSession(userRef.current, next);
@@ -157,27 +153,23 @@ export function FocusSessionProvider({
     });
   }, []);
 
-  /** The stored session, run through the alive / resume-window rules and ended when its time is up. */
+  /** The stored session, run through the resume-window rule and ended when its time is up. */
   const settleNow = useCallback(() => {
     const uid = userRef.current;
     if (!uid || !readyRef.current) return;
     const nowMs = trustedNowMs();
     const stored = storedRef.current ? readStoredSession(uid, nowMs) : sessionRef.current;
-    const settled = settleSession(stored, nowMs, readAlive(uid));
+    const settled = settleSession(stored, nowMs);
     let current = settled.session;
     if (settled.changed) persist(current);
     else if (JSON.stringify(current) !== JSON.stringify(sessionRef.current)) setSession(current);
     if (settled.close?.save) logClose(settled.close);
     if (settled.notice) setNotice(settled.notice);
-    settledForRef.current = uid;
 
     if (!current || current.isPaused) return;
     const endMs = sessionEndMs(current);
     if (endMs === null) return;
-    if (endMs > nowMs) {
-      if (current.mode === 'focus') writeAlive(uid, nowMs);
-      return;
-    }
+    if (endMs > nowMs) return;
     const live = nowMs - endMs < LIVE_ALERT_WINDOW_MS;
     const open = () => openRef.current();
     if (current.mode === 'focus') {
@@ -214,18 +206,18 @@ export function FocusSessionProvider({
 
   // Another account signed in, or this one signed out: show only this account's stored session.
   useEffect(() => {
-    settledForRef.current = null;
     setSession(readStoredSession(userId));
     setFinished(null);
     setNotice(null);
   }, [userId]);
 
-  // Once the account's data is on screen: apply the alive and resume rules to what is stored.
+  // Once the account's data is on screen: apply the resume rule to what is stored and end what ran out.
   useEffect(() => {
     if (ready) settle();
   }, [ready, userId, settle]);
 
-  // Running: end on time, write the heartbeat, and re-check when the page comes back into view.
+  // Running: end on time, and re-check when the page comes back into view (the end may have
+  // passed while it was hidden, locked or asleep).
   useEffect(() => {
     if (!ready || !session || session.isPaused) return;
     const endMs = sessionEndMs(session);
@@ -240,29 +232,27 @@ export function FocusSessionProvider({
       }
       endTimer = window.setTimeout(checkEnd, Math.min(left + 50, MAX_WAIT_MS));
     };
-    // Each beat first checks the silence since the last one (a sleeping device wakes here).
-    const beat = window.setInterval(settle, FOCUS_ALIVE_INTERVAL_MS);
+    let active = true;
     const onVisibility = () => {
-      if (document.visibilityState === 'visible') {
+      if (document.visibilityState !== 'visible') return;
+      settle();
+      checkEnd();
+      // After a device sleep the clock re-reads the server time (its timer may have paused):
+      // check again with the corrected time.
+      void clockSettled().then(() => {
+        if (!active) return;
         settle();
         checkEnd();
-      } else if (session.mode === 'focus' && settledForRef.current === userRef.current) {
-        writeAlive(userRef.current, trustedNowMs());
-      }
-    };
-    const onHide = () => {
-      if (session.mode === 'focus' && settledForRef.current === userRef.current) writeAlive(userRef.current, trustedNowMs());
+      });
     };
     checkEnd();
     document.addEventListener('visibilitychange', onVisibility);
     window.addEventListener('pageshow', onVisibility);
-    window.addEventListener('pagehide', onHide);
     return () => {
+      active = false;
       window.clearTimeout(endTimer);
-      window.clearInterval(beat);
       document.removeEventListener('visibilitychange', onVisibility);
       window.removeEventListener('pageshow', onVisibility);
-      window.removeEventListener('pagehide', onHide);
     };
   }, [ready, session, settle]);
 
@@ -331,8 +321,6 @@ export function FocusSessionProvider({
       pausedAt: null,
       marksAt: [],
     });
-    settledForRef.current = userRef.current;
-    writeAlive(userRef.current, nowMs);
   }, [persist]);
 
   const pause = useCallback(() => {
@@ -354,7 +342,6 @@ export function FocusSessionProvider({
       const nowMs = trustedNowMs();
       if (!canResume(current, nowMs)) return;
       persist(resumeAt(current, nowMs));
-      writeAlive(userRef.current, nowMs);
     });
   }, [persist, settleNow]);
 

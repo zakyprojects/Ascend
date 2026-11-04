@@ -12,7 +12,8 @@ import { pts, range } from '../format';
 /* /features/brain-lessons (Prefrontal Cortex page + Neuroplasticity guide + Lessons in one page).
    Sources: lib/focusPoints.ts (partial points: 2 at 25 min, +1 every 10 min, finish bonus),
    lib/pointsConfig.ts PFC_POINTS (daily cap), lib/focusSession.ts FOCUS_PRESETS and the 30-minute
-   resume window, components/pfc/FocusPanel.tsx "How points work" (paused time does not count,
+   resume window (running sessions keep running when closed or locked; logout pauses),
+   components/pfc/FocusPanel.tsx "How points work" (paused time does not count,
    Complete from 25 min, breaks/decisions/emotions earn nothing, only today earns, delete recounts today only),
    FocusTimerCard/FocusReflectionDialog/SchedulePanel, DecisionJournal + DecisionFormDialog,
    EmotionLabeler + pfcLists COMMON_EMOTIONS, components/views/Neuroplasticity.tsx (its sections),
@@ -87,7 +88,7 @@ export const brainLessons: FeatureContent = {
             },
             {
               title: 'Name the task',
-              text: `Write what you are working on and, if you like, tag one of your skills. The timer keeps running when you switch pages, and you can pause it. Closing the app or logging out pauses it too; come back within ${FOCUS_RESUME_WINDOW_MINUTES} minutes to carry on.`,
+              text: `Write what you are working on and, if you like, tag one of your skills. The timer keeps running when you switch pages, close the app or lock your phone. You can pause it, and logging out pauses it too; resume within ${FOCUS_RESUME_WINDOW_MINUTES} minutes to carry on.`,
             },
             {
               title: 'Stay with it',

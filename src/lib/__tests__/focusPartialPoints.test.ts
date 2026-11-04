@@ -1,7 +1,7 @@
 // Focus timer partial points (rule R1, Zakria 2026-11-04) and the session rules around it:
 // the R1 value table, the server mirror (cap, midnight split, wall-clock clamp, old rows),
-// paused time never counting, the 30-minute resume window, the alive heartbeat, and logout
-// pausing the session for the same account only.
+// paused time never counting, the 30-minute resume window, a running session counting wall time
+// while the app is closed or the phone locked, and logout pausing it for the same account only.
 import type { FocusSessionLog, PointsEntry } from '@/types';
 import type { FocusSession } from '../focusSession';
 
@@ -167,10 +167,10 @@ eq(S.FOCUS_RESUME_WINDOW_MINUTES, 30, 'resume window is 30 minutes');
 {
   const paused = S.pauseAt(newSession(90), T0 + 40 * MIN);
   const p0 = paused.pausedAt!;
-  const r1 = S.settleSession(paused, p0 + 29 * MIN + 59_000, null);
+  const r1 = S.settleSession(paused, p0 + 29 * MIN + 59_000);
   assert(!r1.changed && r1.session?.isPaused === true, '29:59 paused: still resumable');
   assert(S.canResume(paused, p0 + 29 * MIN + 59_000), 'canResume at 29:59');
-  const r2 = S.settleSession(paused, p0 + 30 * MIN + 1_000, null);
+  const r2 = S.settleSession(paused, p0 + 30 * MIN + 1_000);
   assert(r2.session === null && r2.close !== null, '30:01 paused: closed');
   eq(r2.close!.endMs, p0, 'closed at the pause moment');
   eq(r2.close!.activeMinutes, 40, 'credited only up to the pause');
@@ -179,27 +179,47 @@ eq(S.FOCUS_RESUME_WINDOW_MINUTES, 30, 'resume window is 30 minutes');
   assert(r2.notice?.kind === 'expired' && r2.notice.saved, 'notice: saved');
 
   const short = S.pauseAt(newSession(90), T0 + 20 * MIN);
-  const r3 = S.settleSession(short, short.pausedAt! + 31 * MIN, null);
+  const r3 = S.settleSession(short, short.pausedAt! + 31 * MIN);
   assert(r3.session === null && r3.close !== null && !r3.close.save, 'under 25 min: dropped, nothing to log');
   assert(r3.notice?.kind === 'expired' && !r3.notice.saved, 'notice: not saved');
+  const at30 = S.settleSession(paused, p0 + 30 * MIN);
+  assert(!at30.changed && S.canResume(paused, p0 + 30 * MIN), '30:00 paused: still resumable');
 }
 
-// --- 5. Alive heartbeat: app closed / killed / asleep ---
+// --- 5. Running sessions count wall time: app closed, phone locked, device asleep ---
 {
   const s = newSession(90);
-  const alive = T0 + 30 * MIN;
-  const same = S.settleSession(s, alive + 60_000, alive);
-  assert(!same.changed, 'a 60 s silence (hidden tab) still counts as running');
-  const back = S.settleSession(s, alive + 10 * MIN, alive);
-  assert(back.session !== null && !back.session.isPaused, 'back within 30 min: runs on');
-  eq(S.activeMinutesAt(back.session!, alive + 10 * MIN), 30, 'the 10-min gap is not counted');
-  assert(back.notice?.kind === 'gap', 'gap notice');
-  const gone = S.settleSession(s, alive + 31 * MIN, alive);
-  assert(gone.session === null && gone.close?.save === true, 'gone over 30 min: closed and saved');
-  eq(gone.close!.endMs, alive, 'closed at the last heartbeat, never later');
-  eq(gone.close!.activeMinutes, 30, '30 active min credited');
-  const done = S.settleSession(newSession(25), T0 + 40 * MIN, T0 + 26 * MIN);
-  assert(!done.changed, 'a session that ended before the last heartbeat ends normally (full time)');
+  // Locked for 20 minutes in the middle (no tab alive from 30 to 50 min): all of it counts.
+  const reopen = T0 + 50 * MIN;
+  const back = S.settleSession(s, reopen);
+  assert(!back.changed && back.session === s && back.notice === null, 'reopened before the end: nothing changes, no notice');
+  eq(S.activeMinutesAt(s, reopen), 50, 'locked 20 min mid-session: all 50 wall minutes count');
+  eq(S.remainingSeconds(s, reopen), 40 * 60, '40 min left after 50');
+  // Away for hours, even past the old 30-minute window: still running, nothing closed early.
+  const longAway = S.settleSession(s, T0 + 89 * MIN);
+  assert(!longAway.changed && longAway.session?.isPaused === false, 'away 59 min (end not reached): still running');
+  // Away past the planned end: it ends at the planned end with the finish bonus.
+  const later = T0 + 5 * 60 * MIN;
+  assert(!S.settleSession(s, later).changed, 'settle leaves a running session to the end check');
+  const endMs = S.sessionEndMs(s)!;
+  eq(endMs, T0 + 90 * MIN, 'ends at the planned end');
+  assert(S.remainingSeconds(s, later) === 0, 'time is up on reopen');
+  const close = S.closeAt(s, endMs);
+  eq(close.endMs, T0 + 90 * MIN, 'logged at the planned end, not at the reopen time');
+  eq(close.activeMinutes, 90, '90 active min');
+  eq(close.points, 10, 'finished 90 = 10 with the finish bonus');
+  eq(close.milestonesAt.length, 7, 'all 7 milestones');
+  eq(close.milestonesAt[0], T0 + 25 * MIN, '25-min mark at start + 25 min');
+  eq(close.milestonesAt[6], T0 + 85 * MIN, '85-min mark at start + 85 min (not the reopen time)');
+  const log = r1Log('away', T0, 90, 90, { createdAt: iso(later), milestonesAt: close.milestonesAt.map(iso) });
+  eq(amount([log]), 10, 'mirror: the late upload of a finished 90 earns 10');
+  // After a pause and resume, a later lock still counts and marks skip only the pause.
+  let p = S.pauseAt(newSession(50), T0 + 10 * MIN);
+  p = S.resumeAt(p, T0 + 20 * MIN); // 10 min paused
+  const pc = S.closeAt(p, S.sessionEndMs(p)!);
+  eq(pc.endMs, T0 + 60 * MIN, 'planned end moves by the pause only');
+  eq(pc.points, 5, 'finished 50 = 5');
+  eq(pc.milestonesAt[0], T0 + 35 * MIN, '25-min mark = start + 25 + 10 paused');
 }
 
 // --- 6. Logout pauses; the same account resumes; another account never inherits ---
@@ -207,7 +227,6 @@ eq(S.FOCUS_RESUME_WINDOW_MINUTES, 30, 'resume window is 30 minutes');
   store.clear();
   const s = newSession(90, 'user-a');
   assert(S.writeStoredSession('user-a', s), 'stored under user-a');
-  S.writeAlive('user-a', T0 + 30 * MIN);
   const signOutAt = T0 + 30 * MIN + 5_000;
   S.pauseStoredSessionsForSignOut(signOutAt);
   const afterA = S.readStoredSession('user-a', signOutAt + 5 * MIN);
@@ -225,12 +244,20 @@ eq(S.FOCUS_RESUME_WINDOW_MINUTES, 30, 'resume window is 30 minutes');
   // A session stamped for user-a under user-b's key is not shown to user-b.
   store.set(S.focusStorageKey('user-b'), JSON.stringify({ ...s, userId: 'user-a' }));
   assert(S.readStoredSession('user-b', signOutAt) === null, 'a session of another account is never returned');
-  // Logout while the app was already gone pauses at the last heartbeat.
+  // Logout after the app was closed for a while: the time until the sign-out counts.
   store.clear();
   S.writeStoredSession('user-a', newSession(90, 'user-a'));
-  S.writeAlive('user-a', T0 + 30 * MIN);
   S.pauseStoredSessionsForSignOut(T0 + 50 * MIN);
-  eq(S.readStoredSession('user-a', T0 + 50 * MIN)?.pausedAt, T0 + 30 * MIN, 'paused at the last heartbeat');
+  const late = S.readStoredSession('user-a', T0 + 50 * MIN);
+  eq(late?.pausedAt, T0 + 50 * MIN, 'paused at the sign-out');
+  eq(S.activeMinutesAt(late!, T0 + 70 * MIN), 50, 'credited up to the sign-out');
+  // Logout after the planned end: left running, so the next sign-in ends it at the planned end.
+  store.clear();
+  S.writeStoredSession('user-a', newSession(25, 'user-a'));
+  S.pauseStoredSessionsForSignOut(T0 + 40 * MIN);
+  const over = S.readStoredSession('user-a', T0 + 40 * MIN);
+  assert(over !== null && !over.isPaused, 'ended before the logout: left running');
+  eq(S.closeAt(over!, S.sessionEndMs(over!)!).points, 2, 'ends at 25 min with 2 pts');
   // A break is dropped at logout.
   store.clear();
   S.writeStoredSession('user-a', { ...newSession(90, 'user-a'), id: 's1-break', mode: 'break' });

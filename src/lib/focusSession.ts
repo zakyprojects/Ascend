@@ -7,18 +7,16 @@ import { FOCUS_MILESTONES, FOCUS_MIN_MINUTES, focusR1Points } from '@/lib/focusP
  * tab of the app shares it and it survives a reload. Another account on this device never sees it.
  * One session at a time: a focus session, then its break.
  *
- * Time only counts while the app is alive (Zakria 2026-11-04): a running tab writes a heartbeat
- * (focusAliveKey) every FOCUS_ALIVE_INTERVAL_MS. When the app was closed, killed or asleep for
- * longer than FOCUS_ALIVE_GRACE_MS, the session counts as paused at the last heartbeat. Logout
- * pauses it too. A paused session can be resumed within FOCUS_RESUME_WINDOW_MS of its pause;
- * after that it is closed at the pause moment: saved with its points from 25 active minutes,
- * dropped below that. Running sessions have no time limit.
+ * A running session runs on wall time, like a normal timer app (Zakria 2026-11-04): it keeps
+ * running while the app is in the background, the screen is locked, the tab is closed or the
+ * device sleeps. When it is opened again after the planned end, it ends at the planned end.
+ * Only a pause stops the time: a manual pause or logout. A paused session can be resumed within
+ * FOCUS_RESUME_WINDOW_MS of its pause; after that it is closed at the pause moment: saved with its
+ * points from 25 active minutes, dropped below that.
  */
 /** Before 2026-11-04 the one key for every account (logout removed it). Read once to adopt it. */
 export const FOCUS_STORAGE_KEY = 'ascend_active_focus_session';
 export const focusStorageKey = (userId: string): string => `${FOCUS_STORAGE_KEY}:${userId}`;
-/** Last moment a tab of this account saw the running session (trusted ms). */
-export const focusAliveKey = (userId: string): string => `ascend_focus_alive:${userId}`;
 /** Device-local "Focus session alerts" switch (Settings). */
 export const FOCUS_NOTIFS_PREF_KEY = 'ascend_focus_notifs_enabled';
 /** Path the completion notification opens. */
@@ -27,13 +25,6 @@ export const PFC_PATH = '/prefrontal-cortex';
 /** How long a paused session can still be resumed (Zakria 2026-11-04: 30 minutes). */
 export const FOCUS_RESUME_WINDOW_MINUTES = 30;
 export const FOCUS_RESUME_WINDOW_MS = FOCUS_RESUME_WINDOW_MINUTES * 60 * 1000;
-/** How often a running tab writes its heartbeat. */
-export const FOCUS_ALIVE_INTERVAL_MS = 15 * 1000;
-/**
- * A longer silence means the app was closed, killed or asleep. Hidden browser tabs may tick only
- * once a minute, so a shorter gap still counts as running.
- */
-export const FOCUS_ALIVE_GRACE_MS = 90 * 1000;
 
 export type FocusMode = 'focus' | 'break';
 
@@ -178,32 +169,10 @@ export function writeStoredSession(userId: string | null, session: FocusSession 
   if (!userId) return false;
   try {
     if (session) localStorage.setItem(focusStorageKey(userId), JSON.stringify({ ...session, userId }));
-    else {
-      localStorage.removeItem(focusStorageKey(userId));
-      localStorage.removeItem(focusAliveKey(userId));
-    }
+    else localStorage.removeItem(focusStorageKey(userId));
     return true;
   } catch {
     return false;
-  }
-}
-
-export function readAlive(userId: string | null): number | null {
-  if (!userId) return null;
-  try {
-    const value = Number(localStorage.getItem(focusAliveKey(userId)));
-    return Number.isFinite(value) && value > 0 ? value : null;
-  } catch {
-    return null;
-  }
-}
-
-export function writeAlive(userId: string | null, atMs: number): void {
-  if (!userId) return;
-  try {
-    localStorage.setItem(focusAliveKey(userId), String(Math.round(atMs)));
-  } catch {
-    /* storage unavailable: the gap check then has nothing to go on */
   }
 }
 
@@ -290,9 +259,7 @@ export function closeAt(session: FocusSession, endMs: number): FocusClose {
   };
 }
 
-export type FocusNotice =
-  | { kind: 'expired'; saved: boolean; minutes: number }
-  | { kind: 'gap'; minutes: number };
+export type FocusNotice = { kind: 'expired'; saved: boolean; minutes: number };
 
 export interface FocusSettle {
   /** The session to keep (null: none left). */
@@ -304,31 +271,15 @@ export interface FocusSettle {
 }
 
 /**
- * Applies the alive and resume-window rules to a stored focus session at `nowMs`:
- * - Running but the last heartbeat (`aliveMs`) is older than the grace: the app was gone, so it
- *   counts as paused at the heartbeat. Back within the resume window it runs on (the gap is not
- *   counted); later it is closed at the heartbeat. A session whose end came before the heartbeat
- *   is left alone, so it ends normally with its full time.
- * - Paused for longer than the resume window: closed at its pause moment.
- * Breaks and sessions with no heartbeat yet (aliveMs null) are left alone.
+ * Applies the resume-window rule to a stored focus session at `nowMs`: paused for longer than
+ * the window, it is closed at its pause moment. A running session is left alone: it runs on wall
+ * time, and the provider ends it at its planned end (also when that passed while the app was
+ * closed or asleep). Breaks are left alone.
  */
-export function settleSession(session: FocusSession | null, nowMs: number, aliveMs: number | null): FocusSettle {
+export function settleSession(session: FocusSession | null, nowMs: number): FocusSettle {
   const same: FocusSettle = { session, close: null, notice: null, changed: false };
-  if (!session || session.mode !== 'focus') return same;
-  let current = session;
-  let gapMinutes = 0;
-  if (!current.isPaused) {
-    if (aliveMs === null || nowMs - aliveMs <= FOCUS_ALIVE_GRACE_MS) return same;
-    const endMs = current.startTime + current.plannedDurationSeconds * 1000;
-    if (endMs <= aliveMs) return same;
-    current = pauseAt(current, aliveMs);
-    gapMinutes = Math.max(0, Math.round((nowMs - (current.pausedAt ?? nowMs)) / 60000));
-    if (canResume(current, nowMs)) {
-      return { session: resumeAt(current, nowMs), close: null, notice: { kind: 'gap', minutes: gapMinutes }, changed: true };
-    }
-  }
-  if (canResume(current, nowMs)) return current === session ? same : { ...same, session: current, changed: true };
-  const close = closeAt(current, current.pausedAt ?? nowMs);
+  if (!session || session.mode !== 'focus' || canResume(session, nowMs)) return same;
+  const close = closeAt(session, session.pausedAt ?? nowMs);
   return {
     session: null,
     close,
@@ -338,18 +289,17 @@ export function settleSession(session: FocusSession | null, nowMs: number, alive
 }
 
 /**
- * Logout on this device: a running focus session is paused (at the last heartbeat when the app
- * was already gone, else now) and kept for this account; a break is dropped. A session whose
- * time ran out before is left running, so the next sign-in ends and logs it as usual.
+ * Logout on this device: a running focus session is paused at the sign-out and kept for this
+ * account; a break is dropped. A session whose time ran out before is left running, so the next
+ * sign-in ends and logs it at its planned end as usual.
  */
-export function pauseForSignOut(session: FocusSession | null, nowMs: number, aliveMs: number | null): FocusSession | null {
+export function pauseForSignOut(session: FocusSession | null, nowMs: number): FocusSession | null {
   if (!session) return null;
   if (session.mode === 'break') return null;
   if (session.isPaused) return session;
-  const at = aliveMs !== null && nowMs - aliveMs > FOCUS_ALIVE_GRACE_MS ? aliveMs : nowMs;
   const endMs = session.startTime + session.plannedDurationSeconds * 1000;
-  if (endMs <= at) return session;
-  return pauseAt(session, at);
+  if (endMs <= nowMs) return session;
+  return pauseAt(session, nowMs);
 }
 
 /** Pauses every stored session on this device (only one account is ever signed in here). */
@@ -364,14 +314,14 @@ export function pauseStoredSessionsForSignOut(nowMs: number = trustedNowMs()): v
     }
     for (const key of keys) {
       const userId = key.slice(prefix.length);
-      const next = pauseForSignOut(parseSession(localStorage.getItem(key), nowMs), nowMs, readAlive(userId));
+      const next = pauseForSignOut(parseSession(localStorage.getItem(key), nowMs), nowMs);
       if (next) localStorage.setItem(key, JSON.stringify({ ...next, userId }));
       else localStorage.removeItem(key);
     }
     // A pre-2026-11-04 session under the shared key: pause it as well (adopted at the next sign-in).
     const legacy = parseSession(localStorage.getItem(FOCUS_STORAGE_KEY), nowMs);
     if (legacy) {
-      const next = pauseForSignOut(legacy, nowMs, null);
+      const next = pauseForSignOut(legacy, nowMs);
       if (next) localStorage.setItem(FOCUS_STORAGE_KEY, JSON.stringify(next));
       else localStorage.removeItem(FOCUS_STORAGE_KEY);
     }
