@@ -79,7 +79,7 @@ export function FocusPanel({ store, today }: { store: AppStore; today: string })
               </li>
               <li>From {FOCUS_MIN_MINUTES} min you can Complete early and keep your points. Before that, Discard saves nothing.</li>
               <li>Breaks, decisions and emotions earn no points.</li>
-              <li>Only today&apos;s sessions earn points. Deleting today&apos;s session recounts today; earlier days keep theirs.</li>
+              <li>Only today&apos;s sessions earn points, plus one that ended yesterday while the app was closed. Deleting today&apos;s session recounts today; earlier days keep theirs.</li>
             </ul>
           </Disclosure>
           <button type="button" onClick={() => setAboutOpen(true)} className="btn-ghost min-h-10 text-xs text-content-muted hover:text-content-primary">

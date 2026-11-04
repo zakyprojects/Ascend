@@ -89,7 +89,7 @@ import { computeWorkoutAwards, isRetiredAppWorkoutAward, isWorkoutDayEntry } fro
 import { computeSkillAwards, isRetiredAppSkillAward, isSkillDayEntry } from './skillAwards';
 import { computeRecoveryChanges, RECOVERY_MILESTONES, trackerStartMs } from './recoveryAwards';
 import { computeJournalAward, isJournalDayEntry, isRetiredAppJournalAward, journalEntryEarns } from './journalAwards';
-import { computeFocusAwards, isFocusDayEntry, isRetiredAppFocusAward } from './focusAwards';
+import { computeFocusAwards, focusFloorDay, isFocusDayEntry, isRetiredAppFocusAward } from './focusAwards';
 import { pauseStoredSessionsForSignOut } from './focusSession';
 import { computeTimeTrackerAward, timeTrackerAwardId, timeTrackerGraceDay } from './timeTrackerAwards';
 import {
@@ -5510,8 +5510,9 @@ export function useAppState() {
    * same id, or one for a deleted log, changes nothing); `endedAtMs` dates it on the local day it
    * ended. `durationMinutes` is the active time; the timer also passes the plan, the first start
    * and the milestone crossings, which make the server use the partial-points rule (focusPoints.ts).
-   * The server awards only its own today (and raises the day before for a session across
-   * midnight), so only those get a preview. The log reaches the server through the outbox, which
+   * The server awards only its own today, and raises the day before for a session with points on
+   * it (one across midnight, or one that ended yesterday and arrives today), so only those get a
+   * preview. The log reaches the server through the outbox, which
    * keeps it on this device until the upload succeeds.
    */
   const logFocusSession = useCallback(
@@ -5545,14 +5546,25 @@ export function useAppState() {
               }
             : {}),
         };
-        if (date !== todayKey()) return { ...prev, focusLogs: [focusLog, ...prev.focusLogs] };
+        const today = todayKey();
+        const floorDay = focusFloorDay(focusLog, today);
+        if (date !== today && !floorDay) return { ...prev, focusLogs: [focusLog, ...prev.focusLogs] };
         // The server writes the day's award (applyFocusAwardsInternal shows the same row now).
-        const logs = [focusLog, ...prev.focusLogs];
-        const awards = applyFocusAwardsInternal(prev, logs, date);
-        let next: AppState = { ...prev, focusLogs: awards.focusLogs, ...awards.points };
-        if (focusLog.startedAt && todayKey(new Date(focusLog.startedAt)) < date) {
-          const before = applyFocusAwardsInternal(next, awards.focusLogs, addDays(date, -1), { floor: true });
+        let next: AppState = { ...prev, focusLogs: [focusLog, ...prev.focusLogs] };
+        if (date === today) {
+          const awards = applyFocusAwardsInternal(prev, next.focusLogs, date);
+          next = { ...next, focusLogs: awards.focusLogs, ...awards.points };
+        }
+        if (floorDay) {
+          const amountOn = (s: AppState) => (s.pointsHistory || []).find((e) => isFocusDayEntry(e, floorDay))?.amount ?? 0;
+          const kept = amountOn(next);
+          const before = applyFocusAwardsInternal(next, next.focusLogs, floorDay, { floor: true });
           next = { ...next, ...before.points };
+          // A session of yesterday that arrives today shows what it added to yesterday.
+          const gained = amountOn(next) - kept;
+          if (date === floorDay && gained > 0) {
+            next = { ...next, focusLogs: next.focusLogs.map((l) => (l.id === id ? { ...l, pointsAwarded: gained } : l)) };
+          }
         }
         return next;
       });

@@ -1,5 +1,6 @@
 // Focus timer partial points (rule R1, Zakria 2026-11-04) and the session rules around it:
-// the R1 value table, the server mirror (cap, midnight split, wall-clock clamp, old rows),
+// the R1 value table, the server mirror (cap, midnight split, late arrival of yesterday's session,
+// wall-clock clamp, old rows),
 // paused time never counting, the 30-minute resume window, a running session counting wall time
 // while the app is closed or the phone locked, and logout pausing it for the same account only.
 import type { FocusSessionLog, PointsEntry } from '@/types';
@@ -19,7 +20,7 @@ const store = new Map<string, string>();
 } as Storage;
 
 const { focusR1Points, nextFocusReward, FOCUS_DAILY_CAP } = await import('../focusPoints');
-const { computeFocusAwards, creditedFocusMinutes } = await import('../focusAwards');
+const { computeFocusAwards, creditedFocusMinutes, focusFloorDay } = await import('../focusAwards');
 const S = await import('../focusSession');
 const { PFC_POINTS } = await import('../pointsConfig');
 
@@ -124,6 +125,27 @@ eq(amount([legacy('o1', 75, 8)]), 5, 'old row of 75 min still earns its tier (5)
   const bad = r1Log('b', at(PREV, 23, 20), 90, 90, { milestonesAt: [iso(at(PREV, 23, 21)), iso(at(PREV, 23, 22))] });
   eq(amount([bad], PREV, null, true), 0, 'too-early crossings do not move points to yesterday');
   eq(amount([bad], DAY), 10, 'they count on the end day');
+}
+// Late arrival (20261104160000): a session that ended yesterday and reaches the server today is
+// dated yesterday and raises yesterday in floor mode; older days never move.
+{
+  const PREV2 = '2026-11-02';
+  const late = r1Log('l', at(PREV, 21), 90, 90); // 21:00 → 22:30 yesterday
+  eq(late.date, PREV, 'dated the day it ended');
+  eq(focusFloorDay(late, DAY), PREV, 'raises yesterday');
+  eq(amount([late], PREV, null, true), 10, 'yesterday gets all 10 (floor)');
+  eq(amount([late], DAY), 0, 'today gets nothing');
+  const existing: PointsEntry = { id: `focus_award_${PREV}`, amount: 4, reason: 'x', source: 'focus', timestamp: iso(at(PREV, 10)) };
+  eq(amount([late, r1Log('y', at(PREV, 9), 45, 45)], PREV, existing, true), 10, 'adds to the live rows of yesterday, cap 10');
+  eq(focusFloorDay(r1Log('old', at(PREV2, 21), 90, 90), DAY), null, 'two days old: never raised');
+  const intoPrev = r1Log('x', at(PREV2, 23, 20), 90, 90); // ended yesterday 00:50
+  eq(focusFloorDay(intoPrev, DAY), PREV, 'crossed into yesterday: raises yesterday');
+  eq(amount([intoPrev], PREV, null, true), 7, 'only the part on yesterday: 45..85 (5) + bonus (2)');
+  eq(focusFloorDay(r1Log('t', at(DAY, 9), 90, 90), DAY), null, 'a session of today alone: no floor');
+  eq(focusFloorDay(r1Log('m', at(PREV, 23, 20), 90, 90), DAY), PREV, 'across midnight into today: raises yesterday');
+  eq(focusFloorDay(r1Log('m3', at(PREV, 23, 40), 90, 90), DAY), null, 'started yesterday but nothing crossed before midnight: no floor');
+  eq(focusFloorDay(legacy('o', 90, 22, PREV), DAY), null, 'old-rule rows are never raised');
+  eq(focusFloorDay(r1Log('u', at(PREV, 21), 20, 30), DAY), null, 'under 25: nothing to raise');
 }
 
 // --- 3. Session: paused time never counts; milestones skip the pause ---

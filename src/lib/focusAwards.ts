@@ -14,8 +14,9 @@ import { FOCUS_MILESTONES, finishBonus, milestonePoints } from './focusPoints';
  *   crossing time that does not fit (missing, too early, after the end, out of order) counts at
  *   the end, and one older than the day before the end day counts on the end day.
  * Only today is recomputed, so an earlier day's points stay when its session is deleted; the one
- * exception is the day before, which a session that ended today and crossed midnight can only
- * raise (never lower). The app computes the same rows only to show them before the server's copy
+ * exception is the day before, which a session can only raise (never lower) when some of its
+ * points count on it: one that ended today and crossed midnight, or one that ended yesterday and
+ * reached the server today (20261104160000_focus_late_day_points.sql). Days before that never move. The app computes the same rows only to show them before the server's copy
  * arrives; it never uploads them, and the server skips any app write to them. Change both sides together.
  */
 
@@ -101,6 +102,17 @@ export function focusLogItems(log: FocusSessionLog): FocusAwardItem[] {
   const bonus = credited >= FOCUS_MILESTONES[0] && credited >= log.plannedMinutes! ? finishBonus(log.plannedMinutes!) : 0;
   if (bonus > 0) items.push({ logId: log.id, points: bonus, atMs: endMs, day: dayOf(endMs), order: 8 });
   return items;
+}
+
+/**
+ * The day before `today` when the server raises it for this session (focus_logs_award_points): a
+ * planned session dated today or yesterday with at least one point that counts on yesterday.
+ * null otherwise (older days are never raised).
+ */
+export function focusFloorDay(log: FocusSessionLog, today: string): string | null {
+  const yesterday = addDays(today, -1);
+  if (!log || !hasPlan(log) || (log.date !== today && log.date !== yesterday)) return null;
+  return focusLogItems(log).some((item) => item.day === yesterday) ? yesterday : null;
 }
 
 /**

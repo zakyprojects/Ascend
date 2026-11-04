@@ -183,7 +183,7 @@ export const brainLessons: FeatureContent = {
             { what: `${FOCUS_MIN_MINUTES} minutes of focus in one session`, amount: pts(FOCUS_FIRST_MILESTONE_POINTS), note: 'Paused time does not count.' },
             { what: `Every ${FOCUS_STEP_MINUTES} minutes after that (up to 85)`, amount: `+${FOCUS_STEP_POINTS}` },
             ...bonuses.map((b) => ({ what: `Finishing a planned session of ${b.minPlanned} minutes or more`, amount: `+${b.points}` })),
-            { what: 'All focus sessions in one day', amount: `up to ${focusCap} a day`, note: 'Only today’s sessions earn. Deleting one recounts today; earlier days keep their points.' },
+            { what: 'All focus sessions in one day', amount: `up to ${focusCap} a day`, note: 'Only today’s sessions earn, plus one that ended yesterday while the app was closed. Deleting one recounts today; earlier days keep their points.' },
             ...lessonPoints.map((p) => ({ what: `Reading one of the ${lessonsWorth(p)} lessons worth ${pts(p)}`, amount: pts(p), note: 'Once per lesson per season.' })),
             { what: 'Breaks, decisions and emotions', amount: 'no points', tone: 'none' as const },
           ]}
