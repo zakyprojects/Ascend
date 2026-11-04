@@ -1,4 +1,6 @@
-import { PFC_POINTS, WEEKLY_GOALS_POINTS } from '@/lib/pointsConfig';
+import { WEEKLY_GOALS_POINTS } from '@/lib/pointsConfig';
+import { FOCUS_PRESETS, focusFinishedPoints } from '@/lib/focusSession';
+import { FOCUS_MIN_MINUTES } from '@/lib/focusPoints';
 import { LINK_CLASS } from '../../components/MarketingLayout';
 import { featurePath } from '../catalog';
 import { Block, Cards, Note, Steps, type FeatureContent } from '../blocks';
@@ -9,7 +11,8 @@ import { pts } from '../format';
    components/views/ProjectsGoalsView.tsx (task views, filters, tab order), components/projects/TaskRow.tsx
    (focus button), types.ts Goal/Project/Task. This feature writes no points (no award in lib/ or SQL). */
 
-const focusTop = PFC_POINTS.focus.tiers[0];
+const focusTopMinutes = FOCUS_PRESETS[FOCUS_PRESETS.length - 1].focus;
+const focusTop = { minMinutes: focusTopMinutes, points: focusFinishedPoints(focusTopMinutes) };
 
 export const projectsGoals: FeatureContent = {
   intro: (
@@ -124,7 +127,7 @@ export const projectsGoals: FeatureContent = {
               <a href={featurePath('brain-lessons')} className={LINK_CLASS}>
                 focus timer
               </a>{' '}
-              with that task, and the session earns focus points (up to {pts(focusTop.points)} for a {focusTop.minMinutes}-minute session). Put this week’s
+              with that task, and the session earns focus points from {FOCUS_MIN_MINUTES} minutes (up to {pts(focusTop.points)} for a finished {focusTop.minMinutes}-minute session). Put this week’s
               part of a project into{' '}
               <a href={featurePath('weekly-goals')} className={LINK_CLASS}>
                 Weekly Goals

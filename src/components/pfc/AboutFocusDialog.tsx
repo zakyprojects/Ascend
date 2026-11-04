@@ -1,4 +1,5 @@
 import { Dialog } from '@/components/ui/primitives';
+import { FOCUS_RESUME_WINDOW_MINUTES } from './focusSession';
 
 export function AboutFocusDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   return (
@@ -28,10 +29,16 @@ export function AboutFocusDialog({ open, onClose }: { open: boolean; onClose: ()
           </div>
           <div className="py-2.5">
             <span className="item-name !text-content-secondary block mb-0.5">2. Pick the right length</span>
-            25 min if you are starting out, 50 min for core tasks, 90 min or more for complex work.
+            25 min if you are starting out, 50 min for core tasks, 90 min or more for complex work. Points
+            build up from 25 min, and finishing what you planned adds a bonus.
           </div>
           <div className="py-2.5">
-            <span className="item-name !text-content-secondary block mb-0.5">3. Real breaks</span>
+            <span className="item-name !text-content-secondary block mb-0.5">3. Stay with it</span>
+            Paused time does not count, and closing the app or logging out pauses the session. Come back within {FOCUS_RESUME_WINDOW_MINUTES} min
+            to carry on; after that it ends where you stopped.
+          </div>
+          <div className="py-2.5">
+            <span className="item-name !text-content-secondary block mb-0.5">4. Real breaks</span>
             Step away from screens: stretch, walk, drink water. Scrolling is not a break.
           </div>
         </div>

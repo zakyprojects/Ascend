@@ -1,4 +1,5 @@
 import { CapId } from '@/lib/capStatus';
+import { FOCUS_RULE_SHORT } from '@/lib/focusPoints';
 import {
   WORKOUT_POINTS,
   READING_POINTS,
@@ -63,12 +64,7 @@ export function capNote(capId: CapId | 'timeTracker'): string {
   }
 
   if (capId === 'pfc') {
-    const tiersStr = PFC_POINTS.focus.tiers
-      .slice()
-      .reverse()
-      .map((t) => `${t.minMinutes} min = ${t.points} pts`)
-      .join(', ');
-    return `${tiersStr}. Cap ${PFC_POINTS.focus.dailyCap} pts per day. Resets at midnight.`;
+    return `${FOCUS_RULE_SHORT}. Paused time does not count. Cap ${PFC_POINTS.focus.dailyCap} pts per day. Resets at midnight.`;
   }
 
   if (capId === 'presetHabits') {

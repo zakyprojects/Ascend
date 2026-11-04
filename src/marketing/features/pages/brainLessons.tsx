@@ -1,4 +1,5 @@
-import { FOCUS_PRESETS } from '@/components/pfc/focusSession';
+import { FOCUS_PRESETS, FOCUS_RESUME_WINDOW_MINUTES, focusFinishedPoints } from '@/components/pfc/focusSession';
+import { FOCUS_FINISH_BONUS, FOCUS_FIRST_MILESTONE_POINTS, FOCUS_MIN_MINUTES, FOCUS_STEP_MINUTES, FOCUS_STEP_POINTS, focusR1Points } from '@/lib/focusPoints';
 import { COMMON_EMOTIONS } from '@/components/pfc/pfcLists';
 import { LESSONS, LESSON_CATEGORIES } from '@/lib/lessons';
 import { PFC_POINTS } from '@/lib/pointsConfig';
@@ -9,9 +10,10 @@ import { Block, Cards, Note, Rules, Steps, type FeatureContent } from '../blocks
 import { pts, range } from '../format';
 
 /* /features/brain-lessons (Prefrontal Cortex page + Neuroplasticity guide + Lessons in one page).
-   Sources: lib/pointsConfig.ts PFC_POINTS (focus tiers, daily cap), components/pfc/focusSession.ts
-   FOCUS_PRESETS, components/pfc/FocusPanel.tsx "How points work" (a session counts when its timer
-   runs out, breaks/decisions/emotions earn nothing, only today earns, delete recounts today only),
+   Sources: lib/focusPoints.ts (partial points: 2 at 25 min, +1 every 10 min, finish bonus),
+   lib/pointsConfig.ts PFC_POINTS (daily cap), lib/focusSession.ts FOCUS_PRESETS and the 30-minute
+   resume window, components/pfc/FocusPanel.tsx "How points work" (paused time does not count,
+   Complete from 25 min, breaks/decisions/emotions earn nothing, only today earns, delete recounts today only),
    FocusTimerCard/FocusReflectionDialog/SchedulePanel, DecisionJournal + DecisionFormDialog,
    EmotionLabeler + pfcLists COMMON_EMOTIONS, components/views/Neuroplasticity.tsx (its sections),
    lib/lessons.ts LESSONS (titles, categories, read times, points), lib/lessonAwards.ts (once per
@@ -19,9 +21,11 @@ import { pts, range } from '../format';
    page (https://my.clevelandclinic.org/health/body/prefrontal-cortex, opened 2026-10-21); the
    app's own study figures are deliberately not repeated here. */
 
-const tiers = [...PFC_POINTS.focus.tiers].sort((a, b) => a.minMinutes - b.minMinutes);
-const shortest = tiers[0];
-const longest = tiers[tiers.length - 1];
+const presets = FOCUS_PRESETS.map((p) => ({ minutes: p.focus, points: focusFinishedPoints(p.focus) }));
+const shortest = presets[0];
+const longest = presets[presets.length - 1];
+const bonuses = FOCUS_FINISH_BONUS.slice().reverse();
+const focusRule = `${pts(FOCUS_FIRST_MILESTONE_POINTS)} at ${FOCUS_MIN_MINUTES} minutes of focus, then +${FOCUS_STEP_POINTS} every ${FOCUS_STEP_MINUTES} minutes`;
 const focusCap = PFC_POINTS.focus.dailyCap;
 const lessonPoints = [...new Set(LESSONS.map((l) => l.points))].sort((a, b) => a - b);
 const lessonsWorth = (p: number) => LESSONS.filter((l) => l.points === p).length;
@@ -79,15 +83,15 @@ export const brainLessons: FeatureContent = {
           items={[
             {
               title: 'Pick a length',
-              text: `Choose ${list(FOCUS_PRESETS.map((p) => `${p.focus} minutes with a ${p.break}-minute break`))}, or set a custom length. The app suggests ${shortest.minMinutes} minutes if you are starting out and ${longest.minMinutes} or more for complex work.`,
+              text: `Choose ${list(FOCUS_PRESETS.map((p) => `${p.focus} minutes with a ${p.break}-minute break`))}, or set a custom length. The app suggests ${shortest.minutes} minutes if you are starting out and ${longest.minutes} or more for complex work.`,
             },
             {
               title: 'Name the task',
-              text: 'Write what you are working on and, if you like, tag one of your skills. The timer keeps running when you switch pages, and you can pause it.',
+              text: `Write what you are working on and, if you like, tag one of your skills. The timer keeps running when you switch pages, and you can pause it. Closing the app or logging out pauses it too; come back within ${FOCUS_RESUME_WINDOW_MINUTES} minutes to carry on.`,
             },
             {
-              title: 'Work until the timer ends',
-              text: 'A session counts when its time runs out. Discarding it saves nothing. Allow notifications and AscendDay tells you when the session and the break are over.',
+              title: 'Stay with it',
+              text: `Points build up while you focus: ${focusRule}. Finishing the length you planned adds a bonus. From ${FOCUS_MIN_MINUTES} minutes you can complete early and keep what you earned; before that a stop saves nothing. Allow notifications and AscendDay tells you when the session and the break are over.`,
             },
             {
               title: 'Note how it went',
@@ -175,15 +179,17 @@ export const brainLessons: FeatureContent = {
         <Rules
           caption="What earns points"
           rows={[
-            ...tiers.map((t) => ({ what: `A focus session of ${t.minMinutes} minutes or more`, amount: pts(t.points) })),
+            { what: `${FOCUS_MIN_MINUTES} minutes of focus in one session`, amount: pts(FOCUS_FIRST_MILESTONE_POINTS), note: 'Paused time does not count.' },
+            { what: `Every ${FOCUS_STEP_MINUTES} minutes after that (up to 85)`, amount: `+${FOCUS_STEP_POINTS}` },
+            ...bonuses.map((b) => ({ what: `Finishing a planned session of ${b.minPlanned} minutes or more`, amount: `+${b.points}` })),
             { what: 'All focus sessions in one day', amount: `up to ${focusCap} a day`, note: 'Only today’s sessions earn. Deleting one recounts today; earlier days keep their points.' },
             ...lessonPoints.map((p) => ({ what: `Reading one of the ${lessonsWorth(p)} lessons worth ${pts(p)}`, amount: pts(p), note: 'Once per lesson per season.' })),
             { what: 'Breaks, decisions and emotions', amount: 'no points', tone: 'none' as const },
           ]}
         />
         <Note title="The numbers in one line.">
-          {shortest.minMinutes} minutes earns {pts(shortest.points)}, {longest.minMinutes} minutes earns{' '}
-          {pts(longest.points)}, and reading every lesson is worth {pts(lessonTotal)} each season.
+          A finished {list(presets.map((p) => `${p.minutes}-minute session earns ${pts(p.points)}`))}, stopping a{' '}
+          {longest.minutes}-minute session at 75 minutes still earns {pts(focusR1Points(75, longest.minutes))}, and reading every lesson is worth {pts(lessonTotal)} each season.
         </Note>
       </Block>
 
@@ -261,7 +267,7 @@ export const brainLessons: FeatureContent = {
     caption: 'The Lessons page on a computer, with the demo user Ali’s season.',
   },
   facts: [
-    ['Focus points', tiers.map((t) => `${t.minMinutes} min = ${t.points}`).join(', ')],
+    ['Focus points', `${FOCUS_FIRST_MILESTONE_POINTS} at ${FOCUS_MIN_MINUTES} min, +${FOCUS_STEP_POINTS} every ${FOCUS_STEP_MINUTES} min, finish bonus`],
     ['Focus limit', `${focusCap} points a day`],
     ['Lessons', `${LESSONS.length}, ${lessonPoints.map((p) => `${lessonsWorth(p)} × ${pts(p)}`).join(' + ')}`],
     ['Lesson points', `${lessonTotal} a season, once per lesson`],
@@ -286,7 +292,7 @@ export const brainLessons: FeatureContent = {
     },
     {
       q: 'Why do longer focus sessions earn more?',
-      a: `Because deep work takes time to get into. ${list(tiers.map((t) => `${t.minMinutes} minutes earn ${pts(t.points)}`))}, and a session counts only when its timer runs out, so the points reward staying on one task, not starting many.`,
+      a: `Because deep work takes time to get into. Points start at ${FOCUS_MIN_MINUTES} minutes (${pts(FOCUS_FIRST_MILESTONE_POINTS)}), grow by ${FOCUS_STEP_POINTS} every ${FOCUS_STEP_MINUTES} minutes, and finishing a long plan adds a bonus, so a finished ${list(presets.map((p) => `${p.minutes}-minute session earns ${pts(p.points)}`))}. Four ${shortest.minutes}-minute sessions earn less than one ${longest.minutes}-minute one, so the points reward staying on one task, not starting many.`,
     },
     {
       q: 'Is the focus timer a Pomodoro timer?',
@@ -294,7 +300,7 @@ export const brainLessons: FeatureContent = {
     },
     {
       q: 'What if I stop a session early?',
-      a: 'A session counts only when its timer runs out. If you discard it, nothing is saved and nothing is earned.',
+      a: `From ${FOCUS_MIN_MINUTES} minutes of focus you can complete it early and keep the points you reached; only the finish bonus needs the full length. Before ${FOCUS_MIN_MINUTES} minutes a discarded session saves nothing. A paused session can be resumed within ${FOCUS_RESUME_WINDOW_MINUTES} minutes; after that it ends where you paused.`,
     },
     {
       q: 'Can I earn lesson points more than once?',
@@ -310,5 +316,5 @@ export const brainLessons: FeatureContent = {
     },
   ],
   related: ['time-blocking', 'skills', 'journal', 'recovery'],
-  cta: { title: 'Start your first focus session', text: `${shortest.minMinutes} minutes is enough to earn ${pts(shortest.points)}.` },
+  cta: { title: 'Start your first focus session', text: `${shortest.minutes} minutes is enough to earn ${pts(shortest.points)}.` },
 };

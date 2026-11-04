@@ -18,6 +18,8 @@ import {
 } from '@/lib/pointsConfig';
 import { PRESET_BAD_HABITS, PRESET_CATEGORIES } from '@/lib/presets';
 import { TIERS } from '@/lib/tiers';
+import { FOCUS_FIRST_MILESTONE_POINTS, FOCUS_MIN_MINUTES, FOCUS_STEP_MINUTES, FOCUS_STEP_POINTS } from '@/lib/focusPoints';
+import { FOCUS_PRESETS, focusFinishedPoints } from '@/lib/focusSession';
 import { LINK_CLASS, MarketingLayout } from '../components/MarketingLayout';
 import { HeroShot, Screenshot } from '../components/Screenshot';
 import { CtaBand, FaqList, Section, SectionHeading } from '../components/Sections';
@@ -38,7 +40,6 @@ const enter = (i: number) => ({ '--i': i }) as CSSProperties;
 const presetHabitPoints = range(PRESET_CATEGORIES.flatMap((c) => c.habits.map((h) => h.points)));
 const resistPoints = range(PRESET_BAD_HABITS.map((h) => h.points));
 const lessonPoints = range(LESSONS.map((l) => l.points));
-const focusTiers = [...PFC_POINTS.focus.tiers].reverse();
 const timeHigh = TIME_TRACKER_POINTS.tiers.high;
 const timeMid = TIME_TRACKER_POINTS.tiers.medium;
 const topRank = TIERS[TIERS.length - 1];
@@ -72,7 +73,7 @@ const EARNS: { what: string; rule: string; href: string }[] = [
   },
   {
     what: 'Focus timer',
-    rule: `${focusTiers.map((t) => `${t.minMinutes} min = ${t.points}`).join(', ')}, up to ${PFC_POINTS.focus.dailyCap} a day`,
+    rule: `${FOCUS_FIRST_MILESTONE_POINTS} at ${FOCUS_MIN_MINUTES} min, then +${FOCUS_STEP_POINTS} every ${FOCUS_STEP_MINUTES} min, plus a bonus for finishing (${FOCUS_PRESETS.map((p) => `${p.focus} min = ${focusFinishedPoints(p.focus)}`).join(', ')}), up to ${PFC_POINTS.focus.dailyCap} a day`,
     href: featurePath('brain-lessons'),
   },
   {
