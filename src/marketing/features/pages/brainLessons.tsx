@@ -13,7 +13,7 @@ import { pts, range } from '../format';
    Sources: lib/focusPoints.ts (partial points: 2 at 25 min, +1 every 10 min, finish bonus),
    lib/pointsConfig.ts PFC_POINTS (daily cap), lib/focusSession.ts FOCUS_PRESETS and the 30-minute
    resume window (running sessions keep running when closed or locked; logout pauses),
-   components/pfc/FocusPanel.tsx "How points work" (paused time does not count,
+   components/howItWorks/prefrontalCortex.tsx, the page's How it works (paused time does not count,
    Complete from 25 min, breaks/decisions/emotions earn nothing, only today earns, delete recounts today only),
    FocusTimerCard/FocusReflectionDialog/SchedulePanel, DecisionJournal + DecisionFormDialog,
    EmotionLabeler + pfcLists COMMON_EMOTIONS, components/views/Neuroplasticity.tsx (its sections),

@@ -10,6 +10,8 @@ import { TabPanel, Tabs } from '@/components/ui/primitives';
 import { CountUp, Reveal } from '@/components/ui/Motion';
 import { PageHero } from '@/components/ui/PageHero';
 import { CapMeterConnected } from '@/components/ui/CapMeterConnected';
+import { HowItWorksButton, HowItWorksDialog, useHowItWorks } from '@/components/ui/HowItWorks';
+import { prefrontalCortexGuide } from '@/components/howItWorks/prefrontalCortex';
 import { FocusPanel } from '@/components/pfc/FocusPanel';
 import { SchedulePanel } from '@/components/pfc/SchedulePanel';
 import { FocusReflectionDialog } from '@/components/pfc/FocusReflectionDialog';
@@ -54,6 +56,7 @@ function clearHandOffs(): void {
 
 /** Prefrontal Cortex page: deep focus timer, decision journal, emotion labeling (components/pfc). */
 export function PrefrontalCortex({ store, onNavigate }: { store: AppStore; onNavigate?: (view: View) => void }) {
+  const guide = useHowItWorks();
   const [tab, setTab] = useState<PFCTab>(initialTab);
   const changeTab = (id: string) => setTab(id as PFCTab);
   useEffect(clearHandOffs, []);
@@ -91,6 +94,7 @@ export function PrefrontalCortex({ store, onNavigate }: { store: AppStore; onNav
       <div>
         <h1 className="page-title">Prefrontal Cortex</h1>
         <p className="page-subtitle">Deep focus, a decision journal and emotion labeling.</p>
+        <HowItWorksButton onClick={guide.show} />
       </div>
 
       <Reveal index={0}>
@@ -119,7 +123,7 @@ export function PrefrontalCortex({ store, onNavigate }: { store: AppStore; onNav
             { label: 'To revisit', value: <CountUp value={dueCount} />, hint: 'decisions', valueClassName: 'text-brand-text' },
             { label: 'Emotions', value: <CountUp value={emotionsWeek} />, hint: 'last 7 days', valueClassName: 'text-brand-text' },
           ]}
-          side={<CapMeterConnected state={store.state} capId="pfc" bare />}
+          side={<CapMeterConnected state={store.state} capId="pfc" bare onExplain={guide.showPoints} />}
         />
       </Reveal>
 
@@ -145,6 +149,7 @@ export function PrefrontalCortex({ store, onNavigate }: { store: AppStore; onNav
       </TabPanel>
 
       <FocusReflectionDialog store={store} />
+      <HowItWorksDialog open={guide.open} onClose={guide.close} guide={prefrontalCortexGuide} focus={guide.focus} />
     </div>
   );
 }
