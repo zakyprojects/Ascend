@@ -8,8 +8,8 @@ import { pts } from '../format';
 /* /features/skills. Sources: lib/pointsConfig.ts SKILLS_POINTS + calculateSkillPoints (floor per
    session, daily cap shared by all skills), lib/skillAwards.ts (server-written day award),
    lib/skillLevels.ts SKILL_LEVELS, components/views/SkillTracker.tsx (log form, quick lengths,
-   streak, categories, the page's "How points work", clear older logs), lib/skillDrills.ts (drills:
-   counts per drill on a timed session, no points, weekly goal on a drill). */
+   streak, categories, the page's "How points work", clear older logs), lib/skillDrills.ts (counts, "drills" in code:
+   numbers per count on a timed session, no points, weekly goal on a count). */
 
 const S = SKILLS_POINTS;
 const minutesForCap = S.dailyCap * S.minutesPerPoint;
@@ -60,8 +60,8 @@ export const skills: FeatureContent = {
               text: 'Pick the skill, the minutes you practised (quick picks for 45 minutes, 1, 2 or 3 hours) and an optional note on what you worked on. The form shows the points it will earn before you save.',
             },
             {
-              title: 'Count drills, if you like',
-              text: 'When you log a session, add the parts you count, not time, like Scales in reps or Serves in times: pick a drill or name a new one, then say how many, for one drill or several. Minutes stay required: they earn the points, the counts earn none. Each drill shows its count this week and in total on the skill card, and can be a weekly goal.',
+              title: 'Add counts, if you like',
+              text: 'When you log a session, add the parts you count, not time, like Scales in reps or Serves in times: pick a count or name a new one, then say how many, for one count or several. Minutes stay required: they earn the points, the counts earn none. Each count shows its number this week and in total on the skill card, and can be a weekly goal.',
             },
             {
               title: 'Keep the streak',
@@ -101,7 +101,7 @@ export const skills: FeatureContent = {
         </ol>
         <Note title="Hours are never lost.">
           “Clear older logs” tidies the list by removing logs from before this week, but their minutes stay in the
-          skill’s total, so its level doesn’t drop. Drill totals stay the same way.
+          skill’s total, so its level doesn’t drop. Count totals stay the same way.
         </Note>
       </Block>
 
@@ -127,7 +127,7 @@ export const skills: FeatureContent = {
               note: `Reached after about ${minutesForCap / 60} hours. Practice after that still adds hours and keeps the streak.`,
             },
             {
-              what: 'Drill counts (reps, times…)',
+              what: 'Counts (reps, times…)',
               amount: '0',
               tone: 'none',
               note: 'Counts track how much you did. Only the minutes of the session earn points.',
@@ -210,7 +210,7 @@ export const skills: FeatureContent = {
     ['Daily cap', `${pts(S.dailyCap)}, shared by all skills`],
     ['Levels', `${levels.length}, from ${levelText}`],
     ['Streak', 'Days in a row, per skill'],
-    ['Drills', 'Count reps of one part of a skill (counts earn no points)'],
+    ['Counts', 'Reps of one part of a skill (counts earn no points)'],
     ['Logging', 'Today’s practice, with an optional note'],
     ['Skills', 'As many as you want, with categories'],
     ['Price', 'Free while in beta'],
@@ -248,7 +248,7 @@ export const skills: FeatureContent = {
     },
     {
       q: 'Can I count reps instead of minutes?',
-      a: 'Yes, next to them. When you log a session, name a drill, like Scales in reps, and add how many you did, for one drill or several. Next time, pick it from the list. Minutes are still required and are the only thing that earns points, because reps differ too much in difficulty to score fairly. A weekly goal can count one drill, like “Scales 50 reps”, and earns the usual weekly goal points when you reach it.',
+      a: 'Yes, next to them. When you log a session, name a count, like Scales in reps, and add how many you did, for one count or several. Next time, pick it from the list. Minutes are still required and are the only thing that earns points, because reps differ too much in difficulty to score fairly. A weekly goal can track one count, like “Scales 50 reps”, and earns the usual weekly goal points when you reach it.',
     },
     {
       q: 'Can I set my own level for a skill I already know well?',

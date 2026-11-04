@@ -22,10 +22,10 @@ export function weekLabelInline(targetWeekKey: string, currentWeekKey: string): 
 /** "habit", "book", "skill": what a goal's linked item is called when it was deleted. */
 export const DELETED_ITEM: Record<string, string> = { habit: 'habit', reading: 'book', skill: 'skill' };
 
-/** What a goal's deleted link is called: its item ("skill"), or "drill" when only the drill of a drill goal was deleted. */
+/** What a goal's deleted link is called: its item ("skill"), or "count" when only the count of a drill goal was deleted. */
 export function deletedLinkNoun(item: WeeklyGoalItem, state: Pick<AppState, 'skills'>): string {
   if (item.linkedModule === 'skill' && parseDrillMetricKey(item.linkedMetricKey) !== null && (state.skills || []).some((s) => s.id === item.linkedItemId)) {
-    return 'drill';
+    return 'count';
   }
   return DELETED_ITEM[item.linkedModule || ''] ?? 'item';
 }

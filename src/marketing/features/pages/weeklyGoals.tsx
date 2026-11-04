@@ -96,7 +96,7 @@ export const weeklyGoals: FeatureContent = {
               title: 'Skill',
               text: (
                 <>
-                  Practice minutes or sessions, for all skills or one, or the count of one drill (like 50 scales), from{' '}
+                  Practice minutes or sessions, for all skills or one, or one count of a skill (like 50 scales), from{' '}
                   <a href={featurePath('skills')} className={LINK_CLASS}>
                     Skills
                   </a>

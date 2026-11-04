@@ -273,10 +273,10 @@ export function SkillTracker({ store, onNavigate }: { store: AppStore; onNavigat
     }
     try {
       store.updateSkillDrill(drillSkill.id, drillDialog.drill.id, drillName, drillUnit);
-      showSuccessToast('Drill saved', drillName.trim());
+      showSuccessToast('Count saved', drillName.trim());
       setDrillDialog(null);
     } catch (err) {
-      drillIssues.showError(toUserMessage(err, "Couldn't save the drill. Try again."));
+      drillIssues.showError(toUserMessage(err, "Couldn't save the count. Try again."));
     }
   };
 
@@ -471,7 +471,7 @@ export function SkillTracker({ store, onNavigate }: { store: AppStore; onNavigat
                   <span className="figure text-success-text">1 pt</span>, up to <span className="figure">{SKILLS_POINTS.dailyCap}</span> pts a day.
                 </li>
                 <li>Levels: 10 hrs Intermediate, 25 hrs Advanced, 50 hrs Expert.</li>
-                <li>Drills count one part of a skill, like scales, in reps or your own unit. Add one when you log practice. Counts don't earn points; minutes do. A drill can be a weekly goal.</li>
+                <li>Counts track one part of a skill, like scales, in reps or your own unit. Add one when you log practice. Counts don't earn points; minutes do. A count can be a weekly goal.</li>
                 <li>You can only log today's practice.</li>
                 <li>Deleting today's practice takes its points back. Earlier days keep their points and hours.</li>
                 <li>Deleting old logs can break a skill's streak.</li>
@@ -561,7 +561,7 @@ export function SkillTracker({ store, onNavigate }: { store: AppStore; onNavigat
                       </div>
 
                       {drills.length > 0 && (
-                        <ul className="space-y-1 border-t border-overlay-subtle pt-2" aria-label={`${skill.name} drills`}>
+                        <ul className="space-y-1 border-t border-overlay-subtle pt-2" aria-label={`${skill.name} counts`}>
                           {drills.map((drill) => {
                             const week = drillCountInLogs(weekLogs, skill.id, drill.id);
                             const goal = drillGoal(skill.id, drill.id);
@@ -595,7 +595,7 @@ export function SkillTracker({ store, onNavigate }: { store: AppStore; onNavigat
                                   type="button"
                                   onClick={() => openDrillDialog(skill.id, drill)}
                                   aria-label={`Edit ${drill.name}`}
-                                  title="Edit drill"
+                                  title="Edit count"
                                   className={cx(DRILL_ICON_BUTTON, 'text-content-muted hover:text-content-secondary')}
                                 >
                                   <Pencil size={16} />
@@ -800,7 +800,7 @@ export function SkillTracker({ store, onNavigate }: { store: AppStore; onNavigat
                   <Input
                     id={`skill-count-count-${row.key}`}
                     label={labelled ? 'How many?' : undefined}
-                    aria-label={labelled ? undefined : `How many ${unit}, drill ${index + 1}`}
+                    aria-label={labelled ? undefined : `How many ${unit}, count ${index + 1}`}
                     type="number"
                     inputMode="numeric"
                     min={1}
@@ -827,8 +827,8 @@ export function SkillTracker({ store, onNavigate }: { store: AppStore; onNavigat
                 const nameInput = (labelled: boolean) => (
                   <Input
                     id={`skill-count-name-${row.key}`}
-                    label={labelled ? (showPicker ? 'Drill name' : 'Drill') : undefined}
-                    aria-label={labelled ? undefined : `Drill ${index + 1} name`}
+                    label={labelled ? (showPicker ? 'Name' : 'Count') : undefined}
+                    aria-label={labelled ? undefined : `Count ${index + 1} name`}
                     optional={labelled && !showPicker}
                     value={row.name}
                     onChange={(e) => setRow(row.key, { name: e.target.value })}
@@ -844,8 +844,8 @@ export function SkillTracker({ store, onNavigate }: { store: AppStore; onNavigat
                         {showPicker ? (
                           <Select
                             id={`skill-count-drill-${row.key}`}
-                            label={index === 0 ? 'Drill' : undefined}
-                            aria-label={index === 0 ? undefined : `Drill ${index + 1}`}
+                            label={index === 0 ? 'Count' : undefined}
+                            aria-label={index === 0 ? undefined : `Count ${index + 1}`}
                             optional={index === 0}
                             value={row.drillId}
                             onChange={(e) => setRow(row.key, { drillId: e.target.value })}
@@ -855,7 +855,7 @@ export function SkillTracker({ store, onNavigate }: { store: AppStore; onNavigat
                                 {d.name}
                               </option>
                             ))}
-                            <option value={NEW_DRILL}>New drill…</option>
+                            <option value={NEW_DRILL}>New count…</option>
                           </Select>
                         ) : (
                           nameInput(index === 0)
@@ -866,7 +866,7 @@ export function SkillTracker({ store, onNavigate }: { store: AppStore; onNavigat
                         <button
                           type="button"
                           onClick={() => setCountRows((rows) => rows.filter((r) => r.key !== row.key))}
-                          aria-label={`Remove drill ${index + 1}`}
+                          aria-label={`Remove count ${index + 1}`}
                           title="Remove"
                           className={`mt-2 p-1.5 rounded-lg text-content-muted hover:text-rose-theme hover:bg-rose-500/10 transition-colors ${TAP_TARGET}`}
                         >
@@ -891,7 +891,7 @@ export function SkillTracker({ store, onNavigate }: { store: AppStore; onNavigat
                     onClick={addRow}
                     className="btn-ghost text-xs text-content-muted hover:text-content-secondary flex items-center gap-1.5 max-sm:px-2 max-sm:py-1"
                   >
-                    <Plus size={14} /> Add drill
+                    <Plus size={14} /> Add count
                   </button>
                 )}
               </div>
@@ -927,7 +927,7 @@ export function SkillTracker({ store, onNavigate }: { store: AppStore; onNavigat
         open={Boolean(drillDialog)}
         onClose={() => setDrillDialog(null)}
         dirty={drillForm.dirty}
-        title="Edit drill"
+        title="Edit count"
         description={drillSkill ? `Something in ${drillSkill.name} you count, not time. Counts don't earn points.` : undefined}
         footer={
           <>
@@ -949,7 +949,7 @@ export function SkillTracker({ store, onNavigate }: { store: AppStore; onNavigat
               Cancel
             </button>
             <button type="submit" form="skill-drill-form" className="btn-primary">
-              Save drill
+              Save count
             </button>
           </>
         }
@@ -958,7 +958,7 @@ export function SkillTracker({ store, onNavigate }: { store: AppStore; onNavigat
           <FieldRow>
             <Input
               id="drill-name-input"
-              label="Drill"
+              label="Count"
               value={drillName}
               onChange={(e) => setDrillName(e.target.value)}
               placeholder="e.g. Scales, Chords"
@@ -1006,10 +1006,10 @@ export function SkillTracker({ store, onNavigate }: { store: AppStore; onNavigat
           await executeDelete(async () => {
             await store.deleteSkillDrill(skill.id, drill.id);
             setDeleteDrillTarget(null);
-            showSuccessToast('Drill deleted', `${drill.name} removed.`, `skill_drill_${drill.id}`);
+            showSuccessToast('Count deleted', `${drill.name} removed.`, `skill_drill_${drill.id}`);
           });
         }}
-        title="Delete drill?"
+        title="Delete count?"
         itemName={deleteDrillTarget?.drill.name}
         description={[
           'It leaves the skill card. Practice logs keep their minutes, points and counts.',
@@ -1038,7 +1038,7 @@ export function SkillTracker({ store, onNavigate }: { store: AppStore; onNavigat
         itemName={deleteModalSkill?.name}
         description={[
           liveDrills(deleteModalSkill).length > 0
-            ? 'This removes the skill, its drills and all its practice logs.'
+            ? 'This removes the skill, its counts and all its practice logs.'
             : 'This removes the skill and all its practice logs.',
           skillHasToday
             ? "Points from today's practice come off today's total. Earlier days keep their points."
@@ -1068,8 +1068,8 @@ export function SkillTracker({ store, onNavigate }: { store: AppStore; onNavigat
         itemName={deleteModalLog ? `${nameOf(deleteModalLog.skillId)} (${minutesOf(deleteModalLog)} min)` : ''}
         description={
           deletingTodayLog
-            ? `Its points and minutes${deleteModalLog?.counts?.length ? ' and drill counts' : ''} come off today's total. The skill's streak may go down.`
-            : `The points and practice hours you earned that day stay${deleteModalLog?.counts?.length ? ', and so do drill totals' : ''}. The skill's streak may go down.`
+            ? `Its points and minutes${deleteModalLog?.counts?.length ? ' and counts' : ''} come off today's total. The skill's streak may go down.`
+            : `The points and practice hours you earned that day stay${deleteModalLog?.counts?.length ? ', and so do count totals' : ''}. The skill's streak may go down.`
         }
       />
 
@@ -1084,8 +1084,8 @@ export function SkillTracker({ store, onNavigate }: { store: AppStore; onNavigat
             showSuccessToast(
               'Older logs cleared',
               olderLogCount > CLEAR_SKILL_LOGS_MAX
-                ? `${CLEAR_SKILL_LOGS_MAX} cleared. Tap Clear older logs again for the rest. Points, hours, levels and drill totals stay.`
-                : 'Your points, hours, levels and drill totals stay as they were.',
+                ? `${CLEAR_SKILL_LOGS_MAX} cleared. Tap Clear older logs again for the rest. Points, hours, levels and count totals stay.`
+                : 'Your points, hours, levels and count totals stay as they were.',
               'skill_logs_cleared'
             );
           });
@@ -1096,7 +1096,7 @@ export function SkillTracker({ store, onNavigate }: { store: AppStore; onNavigat
             ? `${CLEAR_SKILL_LOGS_MAX} of the ${olderLogCount} practice logs before this week`
             : `${olderLogCount} practice ${olderLogCount === 1 ? 'log' : 'logs'} before this week`
         }
-        description={`The points you earned stay, and each skill keeps its hours, level and drill totals. Skill streaks can break, and your session count goes down. This week's logs are kept.${
+        description={`The points you earned stay, and each skill keeps its hours, level and count totals. Skill streaks can break, and your session count goes down. This week's logs are kept.${
           olderLogCount > CLEAR_SKILL_LOGS_MAX ? ` Up to ${CLEAR_SKILL_LOGS_MAX} go at a time: tap again for the rest.` : ''
         }`}
         confirmText="Clear logs"

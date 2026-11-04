@@ -5298,7 +5298,7 @@ export function useAppState() {
               : prev.deletedEntityIds,
           };
         },
-        { immediate: true, actionLabel: 'Drill deletion', entityId: drillId }
+        { immediate: true, actionLabel: 'Count deletion', entityId: drillId }
       )
     );
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)

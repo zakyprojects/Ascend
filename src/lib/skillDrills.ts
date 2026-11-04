@@ -62,8 +62,8 @@ export function drillNameProblem(name: string, skill: Pick<Skill, 'drills'>, edi
   if (!clean) return 'Fill in this field.';
   const live = liveDrills(skill);
   const editing = editingId ? live.find((d) => d.id === editingId) ?? null : null;
-  if (nameTaken(clean, live, { editing })) return 'You already have a drill with this name.';
-  if (!editing && live.length >= DRILLS_PER_SKILL_MAX) return `A skill can have up to ${DRILLS_PER_SKILL_MAX} drills.`;
+  if (nameTaken(clean, live, { editing })) return 'You already have a count with this name.';
+  if (!editing && live.length >= DRILLS_PER_SKILL_MAX) return `A skill can have up to ${DRILLS_PER_SKILL_MAX} counts.`;
   return null;
 }
 
@@ -90,7 +90,7 @@ export function cleanDrillCounts(
   for (let index = 0; index < rows.length; index++) {
     const row = rows[index];
     if (!row.drillId || !liveIds.has(row.drillId)) return { problem: { index, field: 'drill', message: 'Choose an option.' } };
-    if (seen.has(row.drillId)) return { problem: { index, field: 'drill', message: 'This drill is already in the list.' } };
+    if (seen.has(row.drillId)) return { problem: { index, field: 'drill', message: 'This count is already in the list.' } };
     if (row.count === null || row.count === undefined || !isValidDrillCount(row.count)) {
       return { problem: { index, field: 'count', message: `Enter a whole number from 1 to ${DRILL_COUNT_MAX.toLocaleString('en-US')}.` } };
     }
@@ -207,7 +207,7 @@ export function prepareLogDrills(
     if (row.drillId !== null) {
       if (!hasCount) continue;
       if (!row.drillId || !liveIds.has(row.drillId)) return { problem: { index, field: 'drill', message: 'Choose an option.' } };
-      if (seen.has(row.drillId)) return { problem: { index, field: 'drill', message: 'This drill is already in the list.' } };
+      if (seen.has(row.drillId)) return { problem: { index, field: 'drill', message: 'This count is already in the list.' } };
       if (!isValidDrillCount(row.count)) return countProblem(index);
       seen.add(row.drillId);
       counts.push({ drillId: row.drillId, count: row.count });
@@ -216,7 +216,7 @@ export function prepareLogDrills(
     const name = normalizeDrillName(row.name);
     if (!name && !hasCount) continue;
     if (!name) return { problem: { index, field: 'name', message: 'Fill in this field.' } };
-    if (newDrills.some((d) => sameName(d.name, name))) return { problem: { index, field: 'name', message: 'This drill is already in the list.' } };
+    if (newDrills.some((d) => sameName(d.name, name))) return { problem: { index, field: 'name', message: 'This count is already in the list.' } };
     const problem = drillNameProblem(name, grown);
     if (problem) return { problem: { index, field: 'name', message: problem } };
     if (!hasCount) return { problem: { index, field: 'count', message: 'Enter 1 or more.' } };

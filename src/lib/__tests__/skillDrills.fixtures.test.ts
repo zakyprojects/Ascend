@@ -124,7 +124,7 @@ const state = (overrides: Partial<AppState>): AppState => ({ ...DEFAULT_STATE, .
 {
   const skill = guitar();
   assert(drillNameProblem('   ', skill) === 'Fill in this field.', 'empty name');
-  assert(drillNameProblem('  scales ', skill) === 'You already have a drill with this name.', 'duplicate (case, spaces)');
+  assert(drillNameProblem('  scales ', skill) === 'You already have a count with this name.', 'duplicate (case, spaces)');
   assert(drillNameProblem('Scales', skill, 'scales') === null, 'a drill keeps its own name');
   assert(drillNameProblem('Chords', skill, 'scales') !== null, 'rename onto another drill refused');
   assert(drillNameProblem('Arpeggios', skill) === null, "deleted drill's name is free again");
@@ -292,7 +292,7 @@ const state = (overrides: Partial<AppState>): AppState => ({ ...DEFAULT_STATE, .
 
   // Names: unique among live drills (case/spaces ignored) and among the new rows; deleted names free.
   const dupLive = prepareLogDrills([{ drillId: null, name: ' scales ', unit: 'reps', count: 5 }], skill);
-  assert(dupLive.problem?.field === 'name' && dupLive.problem.message === 'You already have a drill with this name.', 'new name of a live drill refused');
+  assert(dupLive.problem?.field === 'name' && dupLive.problem.message === 'You already have a count with this name.', 'new name of a live drill refused');
   const dupNew = prepareLogDrills(
     [
       { drillId: null, name: 'Riffs', unit: 'reps', count: 5 },
@@ -343,7 +343,7 @@ const state = (overrides: Partial<AppState>): AppState => ({ ...DEFAULT_STATE, .
   assert(drillTotal(grown.skill!, [logged], 'riffs') === 12 && logDrillCount(logged, 'scales') === 50, 'totals read the new drill');
   // A name another write took in between: the store refuses it instead of making a duplicate.
   const raced = addLogDrills(guitar({ drills: [...(skill.drills || []), { id: 'other', name: 'riffs', unit: 'reps', createdAt: T0 }] }), made, nowIso);
-  assert(raced.problem === 'You already have a drill with this name.', 'raced duplicate refused');
+  assert(raced.problem === 'You already have a count with this name.', 'raced duplicate refused');
   assert(addLogDrills(skill, [], nowIso).skill === skill, 'no new drills = same skill object');
   // Points stay minutes only: the new drill's count changes nothing.
   const dayStart = new Date(`${WED}T00:00:00`).getTime();
