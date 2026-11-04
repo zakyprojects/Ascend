@@ -15,7 +15,7 @@ import { SKILLS_POINTS, calculateSkillPoints } from '@/lib/pointsConfig';
 import { CapMeterConnected } from '@/components/ui/CapMeterConnected';
 import { PageHero } from '@/components/ui/PageHero';
 import { Dialog, Disclosure, EmptyState, FieldRow, Form, Input, NumberField, PageColumns, ProgressBar, Select, Textarea, useFormController } from '@/components/ui/primitives';
-import { TAP_TARGET, cx } from '@/components/ui/primitives/shared';
+import { TAP_TARGET, TAP_TARGET_Y, cx } from '@/components/ui/primitives/shared';
 import { BarChart } from '@/components/ui/charts';
 import { AscendLoadingIndicator } from '@/components/ui/AscendLoadingIndicator';
 import { CountUp, Reveal } from '@/components/ui/Motion';
@@ -57,6 +57,12 @@ const minutesOf = (l: SkillSessionLog): number =>
   typeof l.durationMinutes === 'number' && Number.isFinite(l.durationMinutes) ? l.durationMinutes : 0;
 
 const formatHours = (minutes: number): string => `${(Math.round(minutes / 6) / 10).toFixed(1)} hrs`;
+
+/** A drill row's icon buttons sit side by side, so their tap areas grow in height only. */
+const DRILL_ICON_BUTTON = cx(
+  'inline-flex h-8 w-8 [@media(pointer:coarse)]:h-10 [@media(pointer:coarse)]:w-10 shrink-0 items-center justify-center rounded-lg transition-colors hover:bg-overlay-subtle',
+  TAP_TARGET_Y
+);
 
 /** One drill row of the Log practice form; an empty count is not logged. */
 type CountRow = { key: string; drillId: string; count: string };
@@ -563,9 +569,8 @@ export function SkillTracker({ store, onNavigate }: { store: AppStore; onNavigat
                                   aria-label={goal ? `Edit the weekly goal for ${drill.name}` : `Make ${drill.name} a weekly goal`}
                                   title={goal ? 'Edit weekly goal' : 'Make it a weekly goal'}
                                   className={cx(
-                                    'p-1.5 rounded-lg transition-colors hover:bg-overlay-subtle',
-                                    goal ? 'text-brand-text' : 'text-content-muted hover:text-content-secondary',
-                                    TAP_TARGET
+                                    DRILL_ICON_BUTTON,
+                                    goal ? 'text-brand-text' : 'text-content-muted hover:text-content-secondary'
                                   )}
                                 >
                                   <Target size={16} />
@@ -575,7 +580,7 @@ export function SkillTracker({ store, onNavigate }: { store: AppStore; onNavigat
                                   onClick={() => openDrillDialog(skill.id, drill)}
                                   aria-label={`Edit ${drill.name}`}
                                   title="Edit drill"
-                                  className={`p-1.5 rounded-lg text-content-muted hover:text-content-secondary hover:bg-overlay-subtle transition-colors ${TAP_TARGET}`}
+                                  className={cx(DRILL_ICON_BUTTON, 'text-content-muted hover:text-content-secondary')}
                                 >
                                   <Pencil size={16} />
                                 </button>
@@ -778,7 +783,7 @@ export function SkillTracker({ store, onNavigate }: { store: AppStore; onNavigat
           {logDrills.length > 0 && (
             <div className="space-y-2">
               {countRows.map((row, index) => (
-                <div key={row.key} className="flex items-end gap-2">
+                <div key={row.key} className="flex items-start gap-2">
                   <div className="min-w-0 flex-1">
                     <Select
                       id={`skill-count-drill-${row.key}`}
@@ -798,7 +803,6 @@ export function SkillTracker({ store, onNavigate }: { store: AppStore; onNavigat
                     <Input
                       id={`skill-count-count-${row.key}`}
                       label={index === 0 ? 'How many?' : undefined}
-                      optional={index === 0}
                       aria-label={index === 0 ? undefined : `How many ${logDrills.find((d) => d.id === row.drillId)?.unit ?? DRILL_UNIT_DEFAULT}, drill ${index + 1}`}
                       type="number"
                       inputMode="numeric"
@@ -817,7 +821,7 @@ export function SkillTracker({ store, onNavigate }: { store: AppStore; onNavigat
                       onClick={() => setCountRows((rows) => rows.filter((r) => r.key !== row.key))}
                       aria-label={`Remove drill ${index + 1}`}
                       title="Remove"
-                      className={`mb-1 p-1.5 rounded-lg text-content-muted hover:text-rose-theme hover:bg-rose-500/10 transition-colors ${TAP_TARGET}`}
+                      className={`mt-2 p-1.5 rounded-lg text-content-muted hover:text-rose-theme hover:bg-rose-500/10 transition-colors ${TAP_TARGET}`}
                     >
                       <X size={16} />
                     </button>
@@ -825,7 +829,7 @@ export function SkillTracker({ store, onNavigate }: { store: AppStore; onNavigat
                 </div>
               ))}
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <p className="text-xs text-content-muted">Counts don't earn points. Minutes do.</p>
+                <p className="text-xs text-content-muted">Optional. Counts don't earn points; minutes do.</p>
                 {countRows.length < logDrills.length && (
                   <button
                     type="button"
