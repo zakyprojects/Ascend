@@ -89,7 +89,7 @@ import { sameName } from './uniqueNames';
 import { computeHabitAwards, isHabitAwardEntry, isRetiredAppHabitAward, presetHabitPoints } from './habitAwards';
 import { computeWorkoutAwards, isRetiredAppWorkoutAward, isWorkoutDayEntry } from './workoutAwards';
 import { computeSkillAwards, isRetiredAppSkillAward, isSkillDayEntry } from './skillAwards';
-import { drillNameProblem, foldClearedCounts, isDrillGoal, keepValidDrillCounts, normalizeDrillName, normalizeDrillUnit } from './skillDrills';
+import { addLogDrills, drillNameProblem, foldClearedCounts, isDrillGoal, keepValidDrillCounts, normalizeDrillName, normalizeDrillUnit, type NewLogDrill } from './skillDrills';
 import { computeRecoveryChanges, RECOVERY_MILESTONES, trackerStartMs } from './recoveryAwards';
 import { computeJournalAward, isJournalDayEntry, isRetiredAppJournalAward, journalEntryEarns } from './journalAwards';
 import { computeFocusAwards, focusFloorDay, isFocusDayEntry, isRetiredAppFocusAward } from './focusAwards';
@@ -5067,14 +5067,35 @@ export function useAppState() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  /** Minutes are required and earn the points; drill counts ride along and earn nothing. */
-  const logSkillPractice = useCallback((skillId: string, durationMinutes: number, note: string, counts?: SkillDrillCount[]) => {
+  /**
+   * Minutes are required and earn the points; drill counts ride along and earn nothing. `newDrills`
+   * are drills the Log practice form creates in the same save (name rules as the drill dialog):
+   * they join the skill and their counts go on this log. Throws with the form's message when a
+   * new name can't be used.
+   */
+  const logSkillPractice = useCallback((skillId: string, durationMinutes: number, note: string, counts?: SkillDrillCount[], newDrills?: readonly NewLogDrill[]) => {
     const date = todayKey();
+    const nowIso = trustedNow().toISOString();
+    // Ids made once, so a repeated state update adds the same drills.
+    const made = (newDrills || []).map((d) => ({
+      drill: { id: uid(), name: normalizeDrillName(d.name), unit: normalizeDrillUnit(d.unit), createdAt: nowIso } as SkillDrill,
+      count: d.count,
+    }));
+    if (made.length > 0) {
+      const skill = get().skills.find((s) => s.id === skillId);
+      if (!skill) throw new Error('This skill was deleted.');
+      const check = addLogDrills(skill, made, nowIso);
+      if (check.problem) throw new Error(check.problem);
+    }
     setState((prev) => {
-      const targetSkill = prev.skills.find((s) => s.id === skillId);
-      if (!targetSkill) return prev;
+      const currentSkill = prev.skills.find((s) => s.id === skillId);
+      if (!currentSkill) return prev;
+      // Checked just above; a name another write took in between leaves those new drills out.
+      const grown = addLogDrills(currentSkill, made, nowIso);
+      const targetSkill = grown.skill ?? currentSkill;
+      const skills = targetSkill === currentSkill ? prev.skills : prev.skills.map((s) => (s.id === skillId ? targetSkill : s));
 
-      const drillCounts = keepValidDrillCounts(counts, targetSkill);
+      const drillCounts = keepValidDrillCounts([...(counts || []), ...(grown.counts || [])], targetSkill);
       const session: SkillSessionLog = {
         id: uid(),
         skillId,
@@ -5087,9 +5108,10 @@ export function useAppState() {
       };
 
       // The server writes the day's award (applySkillAwardsInternal shows the same row now).
-      const awards = applySkillAwardsInternal(prev, [session, ...prev.skillLogs], prev.skills, date);
+      const awards = applySkillAwardsInternal(prev, [session, ...prev.skillLogs], skills, date);
       return reconcileLinkedWeeklyGoals({
         ...prev,
+        skills,
         skillLogs: awards.skillLogs,
         ...awards.points,
       });
@@ -5222,23 +5244,6 @@ export function useAppState() {
         { immediate: true, actionLabel: 'Clearing old practice logs' }
       )
     );
-    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  /** Adds a drill to a skill. Throws with the form's message when the name can't be used. */
-  const addSkillDrill = useCallback((skillId: string, name: string, unit: string) => {
-    const skill = get().skills.find((s) => s.id === skillId);
-    if (!skill) throw new Error('This skill was deleted.');
-    const problem = drillNameProblem(name, skill);
-    if (problem) throw new Error(problem);
-    const nowIso = trustedNow().toISOString();
-    const drill: SkillDrill = { id: uid(), name: normalizeDrillName(name), unit: normalizeDrillUnit(unit), createdAt: nowIso };
-    setState((prev) => ({
-      ...prev,
-      skills: prev.skills.map((s) => (s.id === skillId ? { ...s, drills: [...(s.drills || []), drill], updatedAt: nowIso } : s)),
-    }));
-    return drill;
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -9792,7 +9797,6 @@ export function useAppState() {
     deleteSkill,
     deleteSkillLog,
     clearSkillLogsBefore,
-    addSkillDrill,
     updateSkillDrill,
     deleteSkillDrill,
     addBadHabit,

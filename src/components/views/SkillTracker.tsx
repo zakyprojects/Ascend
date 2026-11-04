@@ -28,7 +28,7 @@ import {
   DRILL_NAME_MAX_LENGTH,
   DRILL_UNIT_DEFAULT,
   DRILL_UNIT_MAX_LENGTH,
-  cleanDrillCounts,
+  DRILLS_PER_SKILL_MAX,
   drillCountInLogs,
   drillMetricKey,
   drillNameProblem,
@@ -37,6 +37,7 @@ import {
   formatDrillCount,
   isDrillGoal,
   liveDrills,
+  prepareLogDrills,
 } from '@/lib/skillDrills';
 import { GoalFormDialog, type GoalPayload } from '@/components/weekly/GoalFormDialog';
 import { toUserMessage } from '@/lib/userMessage';
@@ -64,14 +65,21 @@ const DRILL_ICON_BUTTON = cx(
   TAP_TARGET_Y
 );
 
-/** One drill row of the Log practice form; an empty count is not logged. */
-type CountRow = { key: string; drillId: string; count: string };
+/** The Log practice drill picker's value for a drill this save creates. */
+const NEW_DRILL = 'new';
+/** Most drill rows one log form shows. */
+const DRILL_ROWS_MAX = 10;
 
-/** The rows a log of this skill starts with: its first drill, no count yet (none for a skill without drills). */
-const startRows = (skill: Skill | undefined): CountRow[] => {
-  const first = liveDrills(skill)[0];
-  return first ? [{ key: uid(), drillId: first.id, count: '' }] : [];
-};
+/**
+ * One drill row of the Log practice form: an existing drill, or a new one (drillId NEW_DRILL) with
+ * its name and unit. A row left empty is not logged.
+ */
+type CountRow = { key: string; drillId: string; name: string; unit: string; count: string };
+
+const newRow = (drillId: string): CountRow => ({ key: uid(), drillId, name: '', unit: DRILL_UNIT_DEFAULT, count: '' });
+
+/** The row a log of this skill starts with: its first drill, or a new drill when it has none. */
+const startRows = (skill: Skill | undefined): CountRow[] => [newRow(liveDrills(skill)[0]?.id ?? NEW_DRILL)];
 
 /** "Scales 50 reps · Chords 20 reps": a log's drill counts (a drill this device doesn't know is left out). */
 const countsText = (log: SkillSessionLog, skill: Skill | undefined): string =>
@@ -124,8 +132,8 @@ export function SkillTracker({ store, onNavigate }: { store: AppStore; onNavigat
   const addIssues = useFormController();
   const logIssues = useFormController();
 
-  // Add / edit drill dialog (drill null = a new one).
-  const [drillDialog, setDrillDialog] = useState<{ skillId: string; drill: SkillDrill | null } | null>(null);
+  // Edit drill dialog (drills are added while logging practice).
+  const [drillDialog, setDrillDialog] = useState<{ skillId: string; drill: SkillDrill } | null>(null);
   const [drillName, setDrillName] = useState('');
   const [drillUnit, setDrillUnit] = useState(DRILL_UNIT_DEFAULT);
   const drillForm = useUnsavedChanges(Boolean(drillDialog), [drillName, drillUnit]);
@@ -241,14 +249,17 @@ export function SkillTracker({ store, onNavigate }: { store: AppStore; onNavigat
   const logSkill = skills.find((s) => s.id === logSkillId);
   const logDrills = liveDrills(logSkill);
   const setRow = (key: string, patch: Partial<CountRow>) => setCountRows((rows) => rows.map((r) => (r.key === key ? { ...r, ...patch } : r)));
+  // A new row picks a drill no row uses yet, else starts a new drill (while the skill has room).
+  const freeDrill = logDrills.find((d) => !countRows.some((r) => r.drillId === d.id));
+  const newRowsCount = countRows.filter((r) => r.drillId === NEW_DRILL).length;
+  const canAddRow = countRows.length < DRILL_ROWS_MAX && (Boolean(freeDrill) || logDrills.length + newRowsCount < DRILLS_PER_SKILL_MAX);
   const addRow = () => {
-    const free = logDrills.find((d) => !countRows.some((r) => r.drillId === d.id));
-    if (free) setCountRows((rows) => [...rows, { key: uid(), drillId: free.id, count: '' }]);
+    if (canAddRow) setCountRows((rows) => [...rows, newRow(freeDrill?.id ?? NEW_DRILL)]);
   };
 
-  const openDrillDialog = (skillId: string, drill: SkillDrill | null) => {
-    setDrillName(drill?.name ?? '');
-    setDrillUnit(drill?.unit ?? DRILL_UNIT_DEFAULT);
+  const openDrillDialog = (skillId: string, drill: SkillDrill) => {
+    setDrillName(drill.name);
+    setDrillUnit(drill.unit);
     setDrillDialog({ skillId, drill });
   };
   const drillSkill = drillDialog ? skills.find((s) => s.id === drillDialog.skillId) : undefined;
@@ -261,13 +272,8 @@ export function SkillTracker({ store, onNavigate }: { store: AppStore; onNavigat
       return;
     }
     try {
-      if (drillDialog.drill) {
-        store.updateSkillDrill(drillSkill.id, drillDialog.drill.id, drillName, drillUnit);
-        showSuccessToast('Drill saved', drillName.trim());
-      } else {
-        store.addSkillDrill(drillSkill.id, drillName, drillUnit);
-        showSuccessToast('Drill added', drillName.trim());
-      }
+      store.updateSkillDrill(drillSkill.id, drillDialog.drill.id, drillName, drillUnit);
+      showSuccessToast('Drill saved', drillName.trim());
       setDrillDialog(null);
     } catch (err) {
       drillIssues.showError(toUserMessage(err, "Couldn't save the drill. Try again."));
@@ -324,22 +330,32 @@ export function SkillTracker({ store, onNavigate }: { store: AppStore; onNavigat
       logIssues.showError('Enter 1 or more.', 'skill-duration-input');
       return;
     }
-    // Counts are optional: a row left empty is not logged. Minutes stay required.
-    const filled = countRows.filter((r) => r.count.trim() !== '');
-    const cleaned = cleanDrillCounts(
-      filled.map((r) => ({ drillId: r.drillId, count: Number(r.count) })),
+    // Drills are optional: a row left empty is not logged. Minutes stay required. A new drill's
+    // name and count save together: the drill joins the skill and its count goes on this log.
+    const cleaned = prepareLogDrills(
+      countRows.map((r) => ({
+        drillId: r.drillId === NEW_DRILL ? null : r.drillId,
+        name: r.name,
+        unit: r.unit,
+        count: r.count.trim() === '' ? null : Number(r.count),
+      })),
       logSkill ?? {}
     );
     if (cleaned.problem) {
-      const row = filled[cleaned.problem.index];
+      const row = countRows[cleaned.problem.index];
       logIssues.showError(cleaned.problem.message, `skill-count-${cleaned.problem.field}-${row.key}`);
       return;
     }
-    await executeLog(async () => {
-      await store.logSkillPractice(logSkillId, Number(duration), note.trim(), cleaned.counts);
+    try {
+      // Throws only when another write took a new name since the check above.
+      await executeLog(async () => {
+        await store.logSkillPractice(logSkillId, Number(duration), note.trim(), cleaned.counts, cleaned.newDrills);
       setLogModalOpen(false);
-      showSuccessToast('Practice logged', previewPoints > 0 && !timezoneWait ? ptsText(previewPoints, true) : `${nameOf(logSkillId)} saved.`);
-    });
+        showSuccessToast('Practice logged', previewPoints > 0 && !timezoneWait ? ptsText(previewPoints, true) : `${nameOf(logSkillId)} saved.`);
+      });
+    } catch (err) {
+      logIssues.showError(toUserMessage(err, "Couldn't save the practice. Try again."));
+    }
   };
 
   const renderRow = (log: SkillSessionLog) => {
@@ -455,7 +471,7 @@ export function SkillTracker({ store, onNavigate }: { store: AppStore; onNavigat
                   <span className="figure text-success-text">1 pt</span>, up to <span className="figure">{SKILLS_POINTS.dailyCap}</span> pts a day.
                 </li>
                 <li>Levels: 10 hrs Intermediate, 25 hrs Advanced, 50 hrs Expert.</li>
-                <li>Drills count one part of a skill, like scales, in reps or your own unit. Counts don't earn points; minutes do. A drill can be a weekly goal.</li>
+                <li>Drills count one part of a skill, like scales, in reps or your own unit. Add one when you log practice. Counts don't earn points; minutes do. A drill can be a weekly goal.</li>
                 <li>You can only log today's practice.</li>
                 <li>Deleting today's practice takes its points back. Earlier days keep their points and hours.</li>
                 <li>Deleting old logs can break a skill's streak.</li>
@@ -589,14 +605,6 @@ export function SkillTracker({ store, onNavigate }: { store: AppStore; onNavigat
                           })}
                         </ul>
                       )}
-
-                      <button
-                        type="button"
-                        onClick={() => openDrillDialog(skill.id, null)}
-                        className="btn-ghost self-start text-xs text-content-muted hover:text-content-secondary flex items-center gap-1.5 max-sm:px-2 max-sm:py-1"
-                      >
-                        <Plus size={14} /> Add drill
-                      </button>
 
                       <button
                         onClick={() => openLogModal(skill.id)}
@@ -780,57 +788,104 @@ export function SkillTracker({ store, onNavigate }: { store: AppStore; onNavigat
             </div>
           </div>
 
-          {logDrills.length > 0 && (
-            <div className="space-y-2">
-              {countRows.map((row, index) => (
-                <div key={row.key} className="flex items-start gap-2">
-                  <div className="min-w-0 flex-1">
-                    <Select
-                      id={`skill-count-drill-${row.key}`}
-                      label={index === 0 ? 'Drill' : undefined}
-                      aria-label={index === 0 ? undefined : `Drill ${index + 1}`}
-                      value={row.drillId}
-                      onChange={(e) => setRow(row.key, { drillId: e.target.value })}
-                    >
-                      {logDrills.map((d) => (
-                        <option key={d.id} value={d.id} disabled={d.id !== row.drillId && countRows.some((r) => r.drillId === d.id)}>
-                          {d.name}
-                        </option>
-                      ))}
-                    </Select>
+          {logSkill && (
+            <div className="space-y-3">
+              {countRows.map((row, index) => {
+                const isNew = row.drillId === NEW_DRILL;
+                const unit = isNew ? row.unit.trim() || DRILL_UNIT_DEFAULT : logDrills.find((d) => d.id === row.drillId)?.unit ?? DRILL_UNIT_DEFAULT;
+                // A skill without drills has nothing to pick: its rows start as a new drill,
+                // name on the first line, count and unit under it.
+                const showPicker = logDrills.length > 0;
+                const countInput = (labelled: boolean) => (
+                  <Input
+                    id={`skill-count-count-${row.key}`}
+                    label={labelled ? 'How many?' : undefined}
+                    aria-label={labelled ? undefined : `How many ${unit}, drill ${index + 1}`}
+                    type="number"
+                    inputMode="numeric"
+                    min={1}
+                    max={DRILL_COUNT_MAX}
+                    step={1}
+                    value={row.count}
+                    onChange={(e) => setRow(row.key, { count: e.target.value })}
+                    placeholder={unit}
+                    enterKeyHint="done"
+                  />
+                );
+                const unitInput = (
+                  <Input
+                    id={`skill-count-unit-${row.key}`}
+                    label="Unit"
+                    value={row.unit}
+                    onChange={(e) => setRow(row.key, { unit: e.target.value })}
+                    placeholder={DRILL_UNIT_DEFAULT}
+                    maxLength={DRILL_UNIT_MAX_LENGTH}
+                    autoComplete="off"
+                    enterKeyHint="done"
+                  />
+                );
+                const nameInput = (labelled: boolean) => (
+                  <Input
+                    id={`skill-count-name-${row.key}`}
+                    label={labelled ? (showPicker ? 'Drill name' : 'Drill') : undefined}
+                    aria-label={labelled ? undefined : `Drill ${index + 1} name`}
+                    optional={labelled && !showPicker}
+                    value={row.name}
+                    onChange={(e) => setRow(row.key, { name: e.target.value })}
+                    placeholder="e.g. Scales"
+                    maxLength={DRILL_NAME_MAX_LENGTH}
+                    autoComplete="off"
+                  />
+                );
+                return (
+                  <div key={row.key} className="space-y-2">
+                    <div className="flex items-start gap-2">
+                      <div className="min-w-0 flex-1">
+                        {showPicker ? (
+                          <Select
+                            id={`skill-count-drill-${row.key}`}
+                            label={index === 0 ? 'Drill' : undefined}
+                            aria-label={index === 0 ? undefined : `Drill ${index + 1}`}
+                            optional={index === 0}
+                            value={row.drillId}
+                            onChange={(e) => setRow(row.key, { drillId: e.target.value })}
+                          >
+                            {logDrills.map((d) => (
+                              <option key={d.id} value={d.id} disabled={d.id !== row.drillId && countRows.some((r) => r.drillId === d.id)}>
+                                {d.name}
+                              </option>
+                            ))}
+                            <option value={NEW_DRILL}>New drill…</option>
+                          </Select>
+                        ) : (
+                          nameInput(index === 0)
+                        )}
+                      </div>
+                      {showPicker && <div className="w-28 shrink-0">{countInput(index === 0)}</div>}
+                      {index > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => setCountRows((rows) => rows.filter((r) => r.key !== row.key))}
+                          aria-label={`Remove drill ${index + 1}`}
+                          title="Remove"
+                          className={`mt-2 p-1.5 rounded-lg text-content-muted hover:text-rose-theme hover:bg-rose-500/10 transition-colors ${TAP_TARGET}`}
+                        >
+                          <X size={16} />
+                        </button>
+                      )}
+                    </div>
+                    {isNew && (
+                      <div className={cx('flex items-start gap-2', index > 0 && 'pr-9')}>
+                        <div className="min-w-0 flex-1">{showPicker ? nameInput(true) : countInput(true)}</div>
+                        <div className={showPicker ? 'w-28 shrink-0' : 'min-w-0 flex-1'}>{unitInput}</div>
+                      </div>
+                    )}
                   </div>
-                  <div className="w-28 shrink-0">
-                    <Input
-                      id={`skill-count-count-${row.key}`}
-                      label={index === 0 ? 'How many?' : undefined}
-                      aria-label={index === 0 ? undefined : `How many ${logDrills.find((d) => d.id === row.drillId)?.unit ?? DRILL_UNIT_DEFAULT}, drill ${index + 1}`}
-                      type="number"
-                      inputMode="numeric"
-                      min={1}
-                      max={DRILL_COUNT_MAX}
-                      step={1}
-                      value={row.count}
-                      onChange={(e) => setRow(row.key, { count: e.target.value })}
-                      placeholder={logDrills.find((d) => d.id === row.drillId)?.unit ?? DRILL_UNIT_DEFAULT}
-                      enterKeyHint="done"
-                    />
-                  </div>
-                  {index > 0 && (
-                    <button
-                      type="button"
-                      onClick={() => setCountRows((rows) => rows.filter((r) => r.key !== row.key))}
-                      aria-label={`Remove drill ${index + 1}`}
-                      title="Remove"
-                      className={`mt-2 p-1.5 rounded-lg text-content-muted hover:text-rose-theme hover:bg-rose-500/10 transition-colors ${TAP_TARGET}`}
-                    >
-                      <X size={16} />
-                    </button>
-                  )}
-                </div>
-              ))}
+                );
+              })}
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <p className="text-xs text-content-muted">Optional. Counts don't earn points; minutes do.</p>
-                {countRows.length < logDrills.length && (
+                <p className="text-xs text-content-muted">Something you count, like scales. Counts don't earn points; minutes do.</p>
+                {canAddRow && (
                   <button
                     type="button"
                     onClick={addRow}
@@ -872,15 +927,15 @@ export function SkillTracker({ store, onNavigate }: { store: AppStore; onNavigat
         open={Boolean(drillDialog)}
         onClose={() => setDrillDialog(null)}
         dirty={drillForm.dirty}
-        title={drillDialog?.drill ? 'Edit drill' : 'Add drill'}
+        title="Edit drill"
         description={drillSkill ? `Something in ${drillSkill.name} you count, not time. Counts don't earn points.` : undefined}
         footer={
           <>
-            {drillDialog?.drill && drillSkill && (
+            {drillDialog && drillSkill && (
               <button
                 type="button"
                 onClick={() => {
-                  const target = { skill: drillSkill, drill: drillDialog.drill! };
+                  const target = { skill: drillSkill, drill: drillDialog.drill };
                   setDrillDialog(null);
                   setDeleteDrillTarget(target);
                 }}
@@ -894,7 +949,7 @@ export function SkillTracker({ store, onNavigate }: { store: AppStore; onNavigat
               Cancel
             </button>
             <button type="submit" form="skill-drill-form" className="btn-primary">
-              {drillDialog?.drill ? 'Save drill' : 'Add drill'}
+              Save drill
             </button>
           </>
         }
