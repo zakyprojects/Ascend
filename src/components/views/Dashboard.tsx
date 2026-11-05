@@ -118,7 +118,8 @@ function ModuleLink({ tone, icon: Icon, title, view, navigate, value, unit, sub 
 
 function SectionHeader({ id, title, link }: { id: string; title: string; link?: React.ReactNode }) {
   return (
-    <div className="mb-3 flex items-center justify-between gap-3">
+    // min-h-10: the same height with or without a header link or tabs, so cards side by side start on one line
+    <div className="mb-3 flex min-h-10 items-center justify-between gap-3">
       <h2 id={id} className="section-title">{title}</h2>
       {link}
     </div>
@@ -297,7 +298,7 @@ export function Dashboard({ store, onViewChange, onOpenAuth }: DashboardProps) {
 
       <PageColumns
         lead={
-          <div className="grid gap-6 lg:grid-cols-2 lg:items-start">
+          <div className="grid gap-6 lg:grid-cols-2">
             {/* Today's habits: the thing checked every day comes first */}
             <Reveal index={1}>
               <section aria-labelledby="dash-today">

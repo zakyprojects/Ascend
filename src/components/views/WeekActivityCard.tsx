@@ -34,9 +34,10 @@ export function WeekActivityCard({ points, habits }: WeekActivityCardProps) {
   const habitRate = habitsTotal > 0 ? Math.round((habitsDone / habitsTotal) * 100) : 0;
 
   return (
-    <div className="card p-4 space-y-4">
-      <div className="flex items-center justify-between gap-3">
-        <h2 className="section-title">Last 7 days</h2>
+    <section aria-labelledby="dash-week" className="lg:flex lg:h-full lg:flex-col">
+      {/* Same header as the Today and Leagues blocks, so the three cards start on one line */}
+      <div className="mb-3 flex min-h-10 items-center justify-between gap-3">
+        <h2 id="dash-week" className="section-title">Last 7 days</h2>
         <Tabs
           idBase="week-activity"
           items={METRIC_TABS}
@@ -47,45 +48,47 @@ export function WeekActivityCard({ points, habits }: WeekActivityCardProps) {
         />
       </div>
 
-      <StaticTabPanel idBase="week-activity" value={metric} className="space-y-4">
-        {metric === 'points' ? (
-          <>
-            <div className="flex items-baseline gap-1.5">
-              <CountUp value={earned} className="text-4xl font-medium leading-none text-content-primary tabular-nums" />
-              <span className="text-sm text-content-muted">{earned === 1 ? 'pt' : 'pts'} earned</span>
-              {lost > 0 && (
-                <span className="figure ml-auto text-xs text-warning-text">{ptsText(-lost)} in penalties</span>
-              )}
-            </div>
-            <BarChart
-              data={points.map((d) => ({ label: weekday(d.day), value: d.earned }))}
-              label={`Points earned per day, last 7 days: ${earned} total`}
-              highlightIndex={todayIndex}
-              formatTooltip={(datum, i) => {
-                const penalty = points[i].lost > 0 ? ` · ${ptsText(-points[i].lost)} in penalties` : '';
-                return `${fullDay(points[i].day)}: ${ptsText(datum.value, true)}${penalty}`;
-              }}
-            />
-          </>
-        ) : habitsTotal === 0 ? (
-          <p className="py-8 text-center text-sm text-content-muted">Add a daily habit to see your week here.</p>
-        ) : (
-          <>
-            <div className="flex items-baseline gap-1.5">
-              <CountUp value={habitRate} className="text-4xl font-medium leading-none text-content-primary tabular-nums" />
-              <span className="text-sm text-content-muted">% of daily habits done</span>
-            </div>
-            <BarChart
-              data={habits.map((d) => ({ label: weekday(d.day), value: d.done }))}
-              label={`Daily habits done per day, last 7 days: ${habitRate}% overall`}
-              tone="success"
-              highlightIndex={todayIndex}
-              max={Math.max(...habits.map((d) => d.total))}
-              formatTooltip={(_, i) => `${fullDay(habits[i].day)}: ${habits[i].done}/${habits[i].total} habits`}
-            />
-          </>
-        )}
-      </StaticTabPanel>
-    </div>
+      <div className="card p-4 lg:flex lg:flex-1 lg:flex-col">
+        <StaticTabPanel idBase="week-activity" value={metric} className="space-y-4 lg:flex lg:flex-1 lg:flex-col lg:justify-between">
+          {metric === 'points' ? (
+            <>
+              <div className="flex items-baseline gap-1.5">
+                <CountUp value={earned} className="text-4xl font-medium leading-none text-content-primary tabular-nums" />
+                <span className="text-sm text-content-muted">{earned === 1 ? 'pt' : 'pts'} earned</span>
+                {lost > 0 && (
+                  <span className="figure ml-auto text-xs text-warning-text">{ptsText(-lost)} in penalties</span>
+                )}
+              </div>
+              <BarChart
+                data={points.map((d) => ({ label: weekday(d.day), value: d.earned }))}
+                label={`Points earned per day, last 7 days: ${earned} total`}
+                highlightIndex={todayIndex}
+                formatTooltip={(datum, i) => {
+                  const penalty = points[i].lost > 0 ? ` · ${ptsText(-points[i].lost)} in penalties` : '';
+                  return `${fullDay(points[i].day)}: ${ptsText(datum.value, true)}${penalty}`;
+                }}
+              />
+            </>
+          ) : habitsTotal === 0 ? (
+            <p className="py-8 text-center text-sm text-content-muted lg:my-auto">Add a daily habit to see your week here.</p>
+          ) : (
+            <>
+              <div className="flex items-baseline gap-1.5">
+                <CountUp value={habitRate} className="text-4xl font-medium leading-none text-content-primary tabular-nums" />
+                <span className="text-sm text-content-muted">% of daily habits done</span>
+              </div>
+              <BarChart
+                data={habits.map((d) => ({ label: weekday(d.day), value: d.done }))}
+                label={`Daily habits done per day, last 7 days: ${habitRate}% overall`}
+                tone="success"
+                highlightIndex={todayIndex}
+                max={Math.max(...habits.map((d) => d.total))}
+                formatTooltip={(_, i) => `${fullDay(habits[i].day)}: ${habits[i].done}/${habits[i].total} habits`}
+              />
+            </>
+          )}
+        </StaticTabPanel>
+      </div>
+    </section>
   );
 }
