@@ -10,6 +10,7 @@ import {
   tickLinkedPacts,
   type LinkedPactReconcileInput,
 } from '../pactLifecycle';
+import { getNow } from '../dates';
 
 function assert(condition: boolean, msg: string) {
   if (!condition) {
@@ -167,8 +168,10 @@ runFixtures();
 // ── tickLinkedPacts: a habit's today change ticks its running linked pacts (viewer side only) ──
 {
   const reading = habit('r', 'Reading (Books)', { linkedModule: 'reading', isSystemLinked: true, points: 0 });
-  const linkedMine = pact('t1', 'Reading (Books)', 'Run');
-  const linkedTheirs = pact('t2', 'Run', 'reading (books)');
+  // Created now: tickLinkedPacts reads the real clock, and a pact past its last day takes no ticks.
+  const startedNow = { createdAt: getNow().toISOString() };
+  const linkedMine = pact('t1', 'Reading (Books)', 'Run', startedNow);
+  const linkedTheirs = pact('t2', 'Run', 'reading (books)', startedNow);
   const unlinked = pact('t3', 'Run', 'Walk');
   const finished = pact('t4', 'Reading (Books)', 'Run', { status: 'completed' });
   const unknown = pact('t5', 'Reading (Books)', 'Run', { partnershipId: 'other' });
