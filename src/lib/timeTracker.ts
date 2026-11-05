@@ -176,6 +176,20 @@ export function formatTime12h(timeStr: string): string {
   return `${hours12}:${String(minutes).padStart(2, '0')} ${period}`;
 }
 
+/** Time left as the Time Tracker shows it: "1h 12m left", "42m left", seconds only in the last minute. */
+export function formatTimeLeft(seconds: number): string {
+  if (seconds <= 0) return 'ending now';
+  if (seconds < 60) return `${seconds}s left`;
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  return hours > 0 ? `${hours}h ${minutes}m left` : `${minutes}m left`;
+}
+
+/** The block's name: its label, else its category, else a deleted category. */
+export function blockName(block: Pick<TimeTrackerBlock, 'customTitle'>, activity: Pick<TimeTrackerActivity, 'name'> | undefined): string {
+  return block.customTitle || activity?.name || 'Deleted category';
+}
+
 /** Length of a block in minutes (an end before the start runs past midnight). */
 export function calculateBlockDurationMinutes(startTime: string, endTime: string): number {
   const startMins = timeStringToMinutes(startTime);

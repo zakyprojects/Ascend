@@ -5,10 +5,7 @@ import { calculateTimeTrackerDailyPoints, TIME_TRACKER_POINTS } from '@/lib/poin
 import { timeTrackerAwardId } from '@/lib/timeTrackerAwards';
 import { formatTime12h } from '@/lib/timeTracker';
 
-/** The block's name: its label, else its category, else a deleted category. */
-export function blockName(block: TimeTrackerBlock, activity: TimeTrackerActivity | undefined): string {
-  return block.customTitle || activity?.name || 'Deleted category';
-}
+export { blockName } from '@/lib/timeTracker';
 
 export function blockRange(block: Pick<TimeTrackerBlock, 'startTime' | 'endTime'>): string {
   return `${formatTime12h(block.startTime)}–${formatTime12h(block.endTime)}`;

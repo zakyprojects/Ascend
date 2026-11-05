@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { trustedNowMs } from '@/lib/clock';
+import { formatTimeLeft } from '@/lib/timeTracker';
 
 interface LiveCountdownProps {
   /** Real end instant of the block (computeLiveSchedule's activeBlockEndMs): a block ending at
@@ -23,10 +24,5 @@ export function LiveCountdown({ endMs, className = '' }: LiveCountdownProps) {
     return () => clearInterval(interval);
   }, [endMs]);
 
-  const hours = Math.floor(seconds / 3600);
-  const minutes = Math.floor((seconds % 3600) / 60);
-  const text =
-    seconds <= 0 ? 'ending now' : seconds < 60 ? `${seconds}s left` : hours > 0 ? `${hours}h ${minutes}m left` : `${minutes}m left`;
-
-  return <span className={className}>{text}</span>;
+  return <span className={className}>{formatTimeLeft(seconds)}</span>;
 }
