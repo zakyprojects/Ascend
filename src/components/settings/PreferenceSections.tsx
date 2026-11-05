@@ -7,6 +7,7 @@ import { useAsyncActionKey } from '@/lib/useAsyncAction';
 import { pageLinkProps } from '@/lib/pageLink';
 import { pathForLegalRoute } from '@/lib/routes';
 import { toggleThemeWithReveal } from '@/lib/themeTransition';
+import { pillLayout, setBlockPillEnabled, setBlockPillPosition, useBlockPillPrefs } from '@/lib/blockPill';
 import { SettingRow, SettingsCard } from './SettingRow';
 
 export function PrivacySection({ store }: { store: AppStore }) {
@@ -66,37 +67,65 @@ export function AppearanceSection({ store }: { store: AppStore }) {
   const theme = store.state.themePreference === 'light' ? 'light' : 'dark';
   return (
     <SettingsCard title="Appearance">
-      <SettingRow
-        className="py-0"
-        title="Theme"
-        description="Dark is the default."
-        control={
-          <div role="group" aria-label="Theme" className="inline-flex rounded-xl border border-overlay-default bg-bg-700 p-1">
-            {THEME_OPTIONS.map(({ id, label, icon: Icon }) => {
-              const active = theme === id;
-              return (
-                <button
-                  key={id}
-                  type="button"
-                  aria-pressed={active}
-                  onClick={(event) => {
-                    if (!active) toggleThemeWithReveal(event.currentTarget, store.toggleThemePreference);
-                  }}
-                  className={cx(
-                    'inline-flex min-h-9 items-center gap-1.5 rounded-lg px-3 text-xs font-medium transition-colors',
-                    active ? 'bg-bg-500 text-content-primary shadow-sm' : 'text-content-muted hover:text-content-secondary',
-                    FOCUS_RING
-                  )}
-                >
-                  <Icon size={14} aria-hidden="true" />
-                  {label}
-                </button>
-              );
-            })}
-          </div>
-        }
-      />
+      <div className="-my-1 divide-y divide-overlay-subtle">
+        <SettingRow
+          title="Theme"
+          description="Dark is the default."
+          control={
+            <div role="group" aria-label="Theme" className="inline-flex rounded-xl border border-overlay-default bg-bg-700 p-1">
+              {THEME_OPTIONS.map(({ id, label, icon: Icon }) => {
+                const active = theme === id;
+                return (
+                  <button
+                    key={id}
+                    type="button"
+                    aria-pressed={active}
+                    onClick={(event) => {
+                      if (!active) toggleThemeWithReveal(event.currentTarget, store.toggleThemePreference);
+                    }}
+                    className={cx(
+                      'inline-flex min-h-9 items-center gap-1.5 rounded-lg px-3 text-xs font-medium transition-colors',
+                      active ? 'bg-bg-500 text-content-primary shadow-sm' : 'text-content-muted hover:text-content-secondary',
+                      FOCUS_RING
+                    )}
+                  >
+                    <Icon size={14} aria-hidden="true" />
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+          }
+        />
+        <BlockPillRow />
+      </div>
     </SettingsCard>
+  );
+}
+
+/** The current block pill (nav/BlockPill): on this device only, like Sound & vibration. */
+function BlockPillRow() {
+  const prefs = useBlockPillPrefs();
+  const layout = pillLayout();
+  return (
+    <SettingRow
+      title="Current block pill"
+      description={
+        <>
+          <p>Shows the time block happening now at the bottom of every page. Tap it to open Time Tracker.</p>
+          {prefs.pos[layout] && (
+            <button
+              type="button"
+              onClick={() => setBlockPillPosition(layout, null)}
+              className={cx('mt-1 inline-flex min-h-9 items-center rounded-lg text-xs font-medium text-content-secondary hover:text-content-primary', FOCUS_RING)}
+            >
+              Reset position
+            </button>
+          )}
+        </>
+      }
+      control={<Switch checked={prefs.enabled} onChange={() => setBlockPillEnabled(!prefs.enabled)} label="Show current block pill" />}
+    />
   );
 }
 
