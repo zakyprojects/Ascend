@@ -1,12 +1,17 @@
 import type { PointsEntry, ReadingLog, UserBook } from '@/types';
 import { READING_POINTS } from './pointsConfig';
-import { todayKey } from './dates';
+import { addDays as addDayKeys, todayKey } from './dates';
 
 /**
  * Reading points are written by the server (supabase/migrations/20261015160000_server_reading_awards.sql):
  * one row per local day for the day's pages (up to the daily cap) and one finish bonus per book.
  * The app computes the same rows only to show them before the server's copies arrive; it never
  * uploads them, and the server skips any app write to them. Change both sides together.
+ * The server stores a log only when it is dated today, or when it is a new log dated yesterday
+ * that first arrives today (made offline before midnight): that one raises yesterday's award, never
+ * lowers it, within the daily cap (readingLateDay, computeReadingDayAward floor;
+ * 20261105160000_reading_skill_late_day_logs.sql). Older days never move, and a log already on the
+ * server can only be edited on its own day.
  */
 
 /** First local day whose reading points come from the server; older app-written rows stay. */
@@ -72,6 +77,19 @@ export const isBookUnitLocked = (book: Pick<UserBook, 'id' | 'linkedBookId'>, lo
 const PAGES_PER_CHAPTER = READING_POINTS.pointsPerChapter * READING_POINTS.pagesPerPoint;
 
 /**
+ * The day before `today` when the server raises it for this log (reading_award_points): a live log
+ * dated yesterday, which the server only stores as a new log arriving today
+ * (reading_logs_guard_today). null otherwise: today's logs earn on today, older ones never earn.
+ */
+export function readingLateDay(log: Pick<ReadingLog, 'date'> | null | undefined, today: string): string | null {
+  const yesterday = addDayKeys(today, -1);
+  return log && log.date === yesterday ? yesterday : null;
+}
+
+/** Last millisecond of a local day (a new award row is never stamped after it). */
+const dayLastMs = (day: string): number => new Date(`${addDayKeys(day, 1)}T00:00:00`).getTime() - 1;
+
+/**
  * Mirror of ascend_recompute_reading_awards: the page award entry of one local day (null when the
  * day earns nothing), and each counted log's share in log order (shown on the log). Only logs of
  * books still in the library count, and not the pages Finish adds (finish: true); a chapter
@@ -79,7 +97,9 @@ const PAGES_PER_CHAPTER = READING_POINTS.pointsPerChapter * READING_POINTS.pages
  * capped across all books.
  * The row's time follows the server: a day whose row already exists (existing, the live ledger row)
  * keeps that row's time and only the amount changes; a new row is stamped at the day's first
- * earning log, clamped to [dayStartMs, nowMs].
+ * earning log, clamped to [dayStartMs, nowMs] and never after the day's last millisecond.
+ * `floor` (yesterday, for a late log): the amount can only go up, and an existing row is kept as it
+ * is when the recomputed amount is not above it.
  */
 export function computeReadingDayAward(
   logs: ReadingLog[],
@@ -87,7 +107,8 @@ export function computeReadingDayAward(
   day: string,
   dayStartMs: number,
   nowMs: number,
-  existing?: PointsEntry | null
+  existing?: PointsEntry | null,
+  opts: { floor?: boolean } = {}
 ): { entry: PointsEntry | null; logPoints: Map<string, number> } {
   const chapterBookIds = new Set(books.filter((b) => b && isChapterBook(b)).map((b) => b.id));
   const bookIds = new Set(books.filter(Boolean).map((b) => b.id));
@@ -106,10 +127,12 @@ export function computeReadingDayAward(
     used = earned;
     if (firstMs === null && used > 0) firstMs = timeOf(l.createdAt);
   }
+  const id = readingAwardId(day);
+  const kept = existing && existing.id === id ? existing : null;
+  if (opts.floor && used <= (kept?.amount ?? 0)) return { entry: kept, logPoints };
   if (used <= 0) return { entry: null, logPoints };
 
-  const at = Math.min(Math.max(firstMs !== null && Number.isFinite(firstMs) ? firstMs : nowMs, dayStartMs), nowMs);
-  const id = readingAwardId(day);
+  const at = Math.min(Math.max(firstMs !== null && Number.isFinite(firstMs) ? firstMs : nowMs, dayStartMs), nowMs, dayLastMs(day));
   return {
     entry: {
       id,

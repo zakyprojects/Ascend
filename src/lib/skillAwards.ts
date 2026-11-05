@@ -1,12 +1,17 @@
 import type { PointsEntry, Skill, SkillSessionLog } from '@/types';
 import { SKILLS_POINTS, calculateSkillPoints } from './pointsConfig';
-import { todayKey } from './dates';
+import { addDays, todayKey } from './dates';
 
 /**
  * Skill practice points are written by the server (supabase/migrations/20261015150000_server_skill_awards.sql):
  * one row per local day, the day's sessions' points up to the daily cap. The app computes the same
  * row only to show it before the server's copy arrives; it never uploads it, and the server skips
  * any app write to it. Change both sides together.
+ * The server stores a session only when it is dated today, or when it is a new session dated
+ * yesterday that first arrives today (made offline before midnight): that one raises yesterday's
+ * award, never lowers it, within the daily cap (skillLateDay, computeSkillAwards floor;
+ * 20261105160000_reading_skill_late_day_logs.sql). Older days never move, and a session already on
+ * the server can only be edited on its own day.
  */
 
 /** First local day whose skill points come from the server; older app-written rows stay. */
@@ -45,12 +50,27 @@ const sessionMinutes = (log: SkillSessionLog): number =>
   typeof log.durationMinutes === 'number' && Number.isFinite(log.durationMinutes) ? log.durationMinutes : 0;
 
 /**
+ * The day before `today` when the server raises it for this session (skill_logs_award_points): a
+ * live session dated yesterday, which the server only stores as a new session arriving today
+ * (skill_logs_guard_today). null otherwise: today's sessions earn on today, older ones never earn.
+ */
+export function skillLateDay(log: Pick<SkillSessionLog, 'date'> | null | undefined, today: string): string | null {
+  const yesterday = addDays(today, -1);
+  return log && log.date === yesterday ? yesterday : null;
+}
+
+/** Last millisecond of a local day (a new award row is never stamped after it). */
+const dayLastMs = (day: string): number => new Date(`${addDays(day, 1)}T00:00:00`).getTime() - 1;
+
+/**
  * Mirror of ascend_recompute_skill_awards: the award entry of one local day (null when the day
  * earns nothing), and each counted session's share of the cap in log order (shown on the session).
  * Sessions of a skill that no longer exists count for nothing.
  * The row's time follows the server: a day whose row already exists (existing, the live ledger row)
  * keeps that row's time and only the amount changes; a new row is stamped at the day's first
- * earning log, clamped to [dayStartMs, nowMs].
+ * earning log, clamped to [dayStartMs, nowMs] and never after the day's last millisecond.
+ * `floor` (yesterday, for a late session): the amount can only go up, and an existing row is kept
+ * as it is when the recomputed amount is not above it.
  */
 export function computeSkillAwards(
   logs: SkillSessionLog[],
@@ -58,7 +78,8 @@ export function computeSkillAwards(
   day: string,
   dayStartMs: number,
   nowMs: number,
-  existing?: PointsEntry | null
+  existing?: PointsEntry | null,
+  opts: { floor?: boolean } = {}
 ): { entry: PointsEntry | null; sessionPoints: Map<string, number> } {
   const skillIds = new Set(skills.filter(Boolean).map((s) => s.id));
   const daySessions = logs
@@ -74,10 +95,12 @@ export function computeSkillAwards(
     used += pointsToAward;
     if (firstMs === null && used > 0) firstMs = timeOf(l.createdAt);
   }
+  const id = skillAwardId(day);
+  const kept = existing && existing.id === id ? existing : null;
+  if (opts.floor && used <= (kept?.amount ?? 0)) return { entry: kept, sessionPoints };
   if (used <= 0) return { entry: null, sessionPoints };
 
-  const at = Math.min(Math.max(firstMs !== null && Number.isFinite(firstMs) ? firstMs : nowMs, dayStartMs), nowMs);
-  const id = skillAwardId(day);
+  const at = Math.min(Math.max(firstMs !== null && Number.isFinite(firstMs) ? firstMs : nowMs, dayStartMs), nowMs, dayLastMs(day));
   return {
     entry: {
       id,
