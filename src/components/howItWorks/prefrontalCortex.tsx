@@ -24,7 +24,7 @@ export const prefrontalCortexGuide: HowItWorksGuide = {
   steps: [
     {
       title: 'Focus',
-      text: 'Run a timed focus session. Closing the app or locking your phone keeps it running; logging out pauses it.',
+      text: 'Run a timed focus session. It shows on all your devices: start on one, pause, resume or complete on another. Closing the app or locking your phone keeps it running; logging out pauses it everywhere. Tag a skill and its minutes are logged as practice too.',
     },
     {
       title: 'Schedule',

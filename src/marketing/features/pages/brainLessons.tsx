@@ -88,7 +88,7 @@ export const brainLessons: FeatureContent = {
             },
             {
               title: 'Name the task',
-              text: `Write what you are working on and, if you like, tag one of your skills. The timer keeps running when you switch pages, close the app or lock your phone. You can pause it, and logging out pauses it too; resume within ${FOCUS_RESUME_WINDOW_MINUTES} minutes to carry on.`,
+              text: `Write what you are working on and, if you like, tag one of your skills. The timer keeps running when you switch pages, close the app or lock your phone, and the same session shows on all your devices, so you can start on your computer and complete it on your phone. You can pause it, and logging out pauses it too; resume within ${FOCUS_RESUME_WINDOW_MINUTES} minutes to carry on. A tagged skill also gets the minutes as practice.`,
             },
             {
               title: 'Stay with it',

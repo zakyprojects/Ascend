@@ -5,7 +5,8 @@ import { SKILL_LEVELS } from '@/lib/skillLevels';
 /**
  * Skills. Rules from lib/pointsConfig.ts SKILLS_POINTS (minutes only), lib/skillLevels.ts, lib/skillDrills.ts
  * (counts, "drills" in code: minutes stay required, counts earn nothing on their own, a weekly goal
- * can count one), SkillTracker.tsx (Log practice: today only, "How many minutes?" required).
+ * can count one), SkillTracker.tsx (Log practice: today only, "How many minutes?" required; edit: minutes on the
+ * log's own day only), lib/focusSkillLog.ts (a focus session with a skill adds a normal practice log).
  */
 const levels = SKILL_LEVELS.filter((l) => l.next && l.below != null)
   .map((l) => `${l.below} hrs ${l.next}`)
@@ -16,7 +17,7 @@ export const skillsGuide: HowItWorksGuide = {
   intro: 'Log the minutes you practise. Hours build each skill’s level.',
   steps: [
     { title: 'Add a skill', text: 'Anything you’re building, like Programming, Public speaking or Spanish.' },
-    { title: 'Log practice', text: 'How many minutes you practised today. Minutes are required, and only today can be logged.' },
+    { title: 'Log practice', text: 'How many minutes you practised today. Minutes are required, and only today can be logged. A Deep Focus session tagged with a skill logs its minutes here too.' },
     { title: 'Levels', text: <>All your hours on a skill build its level: {levels}.</> },
     {
       title: 'Counts',
@@ -28,6 +29,7 @@ export const skillsGuide: HowItWorksGuide = {
     },
   ],
   notes: [
+    'Edit a log’s note and counts any time. Its minutes can only change on the day you logged them.',
     'Deleting today’s practice takes its points back. Earlier days keep their points and hours.',
     'Deleting old logs can break a skill’s streak.',
   ],
