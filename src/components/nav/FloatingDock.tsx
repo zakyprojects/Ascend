@@ -220,6 +220,8 @@ export function FloatingDock({ children }: { children: ReactNode }) {
   return (
     <div
       ref={ref}
+      // Names its own view-transition layer during page changes, above the page (index.css).
+      data-floating-dock=""
       data-no-swipe=""
       data-no-press=""
       onPointerDown={onPointerDown}

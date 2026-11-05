@@ -1474,6 +1474,20 @@ html.vt-page::view-transition-group(nav-pill) {
   animation-duration: 360ms;
   animation-timing-function: var(--ease-emphasized);
 }
+/* The floating pills (nav/FloatingDock) get their own layer during a page change. Otherwise they
+   are part of the root snapshot, which the page layer paints over, so for the length of the fade
+   the incoming page's text and cards sat on top of them before they popped back up. Their layer
+   comes after the page layer (they follow it in paint order), and swaps at once like the sidebar. */
+html.vt-page [data-floating-dock] {
+  view-transition-name: floating-dock;
+}
+html.vt-page::view-transition-group(floating-dock),
+html.vt-page::view-transition-new(floating-dock) {
+  animation: none;
+}
+html.vt-page::view-transition-old(floating-dock) {
+  display: none;
+}
 @keyframes vt-fade-in {
   from {
     opacity: 0;
