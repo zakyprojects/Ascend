@@ -13,6 +13,7 @@ import {
   refusedRowIds,
 } from './outbox';
 import { setTabSyncedHashes, tabSyncedHashes, type Baseline } from './tabVersions';
+import { raiseBooksForConcurrentLogs } from './concurrentReadingLogs';
 import { SYNCED_COLLECTIONS, itemsOf, rowIdOf, syncKeyOf, withItems, type SyncedCollection } from './syncedCollections';
 
 /**
@@ -227,6 +228,9 @@ export function applyRemoteChanges(prev: AppState, changes: RemoteChange[], user
   if (revived.size > 0) {
     next = { ...next, deletedEntityIds: (next.deletedEntityIds || []).filter((id) => !revived.has(id)) };
   }
+  // Another device's reading log made while this device also moved that book: its pages back on the
+  // book (an edit here, uploaded by the next save).
+  next = raiseBooksForConcurrentLogs(prev, next, trustedNowMs(), trustedNow().toISOString());
   if (userId) noteHeldRows(userId, next, changes);
   return next;
 }
