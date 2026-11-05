@@ -178,7 +178,7 @@ import {
 } from './badHabitAwards';
 export { recomputeTodayPresetPoints, calculateWeeklyGoalsPoints, WEEKLY_GOALS_POINTS };
 export type { PresetHabitCapItem };
-import { calculateUnifiedStreak } from './streakLogic';
+import { buildMemberStats } from './memberStats';
 import { hasStateData, isGuardedKey } from './dataWeight';
 import {
   supabase,
@@ -8689,32 +8689,9 @@ export function useAppState() {
         userPoints = calculatePeriodPoints(state.pointsHistory, start, now, state.totalPoints);
       }
 
-      const unified = calculateUnifiedStreak(state);
-
-      const habitsCompletedCount = state.habits.reduce(
-        (acc, h) =>
-          acc +
-          (Array.isArray(h.completions)
-            ? h.completions.length
-            : Object.values(h.completions || {}).filter((c) => c && c.done).length),
-        0
-      );
-      const exerciseMinutes = state.workouts.reduce((sum, w) => sum + w.durationMinutes, 0);
-      const booksRead = (state.libraryBooks || []).filter((b) => b.status === 'completed' || b.isFinished).length;
-      const skillsPracticedCount = state.skillLogs.length;
-
+      // The same builder writes the profile other members read, so the own card never drifts from it.
       const userStats = {
-        streakDays: unified.currentStreakDays,
-        streakSource: unified.currentStreakDays > 0 ? unified.currentStreakCategory : undefined,
-        currentStreakDays: unified.currentStreakDays,
-        currentStreakCategory: unified.currentStreakCategory,
-        currentStreakIsActive: unified.currentStreakIsActive,
-        lastActiveDate: unified.lastActiveDate,
-        habitsCompletedCount,
-        journalEntriesCount: state.journalEntries.length,
-        exerciseMinutes,
-        booksRead,
-        skillsPracticedCount,
+        ...buildMemberStats(state, { today: todayKey(), seasonStartMs: getSeasonStart(now).getTime() }),
         // Own trophy cabinet: the same closed-season scores other members read from the profile.
         season_history: toSeasonHistory(state.leagueArchives),
       };

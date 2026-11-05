@@ -53,6 +53,42 @@ export interface UserStats {
   booksRead: number;
   skillsPracticedCount: number;
   season_history?: SeasonHistoryEntry[];
+  /** Last-30-days figures for the member card (lib/memberStats.ts). Missing from apps older than 2026-11-05. */
+  card?: MemberCard;
+}
+
+/** One of the member's most-done exercises in the card window, in its own unit (never added across units). */
+export interface MemberCardExercise {
+  /** The newest spelling the member used, at most 40 characters. */
+  name: string;
+  unit: 'mins' | 'reps' | 'sets' | 'km';
+  total: number;
+  /** Days it was logged on. */
+  days: number;
+  /** The largest one-day total. */
+  best: number;
+}
+
+/**
+ * What another member's profile card shows, written by the member's own app into profiles.stats.card
+ * (lib/memberStats.ts). Every figure covers the window `days` long ending on `asOf` (30 days, fewer for a
+ * newer account). A module the member never used is left out; a used one with nothing in the window is
+ * there with zeros. Aggregates only: no skill, habit or book names, no journal content, no bad habits.
+ */
+export interface MemberCard {
+  v: 1;
+  /** The member's local day the figures were built on. */
+  asOf: string;
+  days: number;
+  /** Days with anything logged (habits, exercise, skills, reading, focus, journal). */
+  active: number;
+  habits?: { done: number; due: number };
+  exercise?: MemberCardExercise[];
+  skills?: { minutes: number; days: number };
+  /** pages only when every page log in the window was for a book counted in pages. */
+  reading?: { days: number; booksThisSeason: number; pages?: number };
+  focus?: { minutes: number; sessions: number };
+  journal?: { days: number };
 }
 
 export interface Habit {

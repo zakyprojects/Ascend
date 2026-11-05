@@ -18,6 +18,7 @@ import { dropStoredSession, pauseStoredSessionsForSignOut } from './focusSession
 import { FunctionRegion, FunctionsHttpError } from '@supabase/supabase-js';
 import { CaptchaRejectedError, isCaptchaRejection } from './captcha';
 import { TERMS_VERSION } from './legal';
+import { toMemberCard } from './memberStats';
 
 let cachedProfiles: any[] = [];
 
@@ -830,6 +831,7 @@ export function toCompetitorStats(raw: any): LeagueCompetitor['stats'] {
     exerciseMinutes: raw.exerciseMinutes || 0,
     booksRead: raw.booksRead || 0,
     skillsPracticedCount: raw.skillsPracticedCount || 0,
+    card: toMemberCard(raw.card),
   };
 }
 

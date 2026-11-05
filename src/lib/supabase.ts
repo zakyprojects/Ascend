@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { ImprovementPlan, PartnerInvite, Partnership, AppState, SharedChallenge, UserPlanFollow, AppNotification, PlanReflectionNote } from '@/types';
-import { calculateUnifiedStreak } from './streakLogic';
+import { buildMemberStats } from './memberStats';
+import { getSeasonStart, leagueNow } from './leagueTime';
 import { mergeAppState } from './stateMerger';
 import { reconcileSharedChallengeLifecycle } from './pactLifecycle';
 import { todayKey } from './dates';
@@ -309,40 +310,11 @@ export async function fetchUserDataFromSupabase(userId: string): Promise<AppStat
 async function writeProfileFromState(userId: string, st: AppState): Promise<null> {
   if (!st.currentUser) return null;
 
-  const habitsCompletedCount = (st.habits || []).reduce(
-    (acc, h) =>
-      acc +
-      (Array.isArray(h.completions)
-        ? h.completions.length
-        : Object.values(h.completions || {}).filter((c) => c.done).length),
-    0
-  );
-  const habitsCompletedTodayCount = (st.habits || []).reduce((acc, h) => {
-    const todayStr = todayKey();
-    const isDone = Array.isArray(h.completions)
-      ? h.completions.includes(todayStr)
-      : h.completions?.[todayStr]?.done === true;
-    return acc + (isDone ? 1 : 0);
-  }, 0);
-  const unified = calculateUnifiedStreak(st);
-  const exerciseMinutes = (st.workouts || []).reduce((sum, w) => sum + w.durationMinutes, 0);
-  const booksRead = (st.libraryBooks || []).filter((b) => b.status === 'completed' || b.isFinished).length;
-  const skillsPracticedCount = (st.skillLogs || []).length;
-
-  const userStats = {
-    streakDays: unified.currentStreakDays,
-    streakSource: unified.currentStreakDays > 0 ? unified.currentStreakCategory : undefined,
-    currentStreakDays: unified.currentStreakDays,
-    currentStreakCategory: unified.currentStreakCategory,
-    currentStreakIsActive: unified.currentStreakIsActive,
-    lastActiveDate: unified.lastActiveDate,
-    habitsCompletedCount,
-    habitsCompletedTodayCount,
-    journalEntriesCount: (st.journalEntries || []).length,
-    exerciseMinutes,
-    booksRead,
-    skillsPracticedCount,
-  };
+  // Personal day and league season come from their own clocks (never one shared value).
+  const userStats = buildMemberStats(st, {
+    today: todayKey(),
+    seasonStartMs: getSeasonStart(leagueNow()).getTime(),
+  });
 
   const profilePayload: Record<string, any> = {
     id: userId,

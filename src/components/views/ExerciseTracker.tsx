@@ -10,7 +10,7 @@ import { WORKOUT_POINTS, calculateWorkoutPoints } from '@/lib/pointsConfig';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { WorkoutLog } from '@/types';
 import { todayKey, formatDateLong, startOfWeek, formatWeekdayDate, calculateStreak, parseDate, weekKey } from '@/lib/dates';
-import { DEFAULT_WORKOUT_TYPES, workoutMeasureOf, workoutTypeKey, type WorkoutMeasure } from '@/lib/workoutTypes';
+import { DEFAULT_WORKOUT_TYPES, workoutAmountOf, workoutMeasureOf, workoutTypeKey, type WorkoutMeasure } from '@/lib/workoutTypes';
 import { EXERCISE_METRIC_BY_MEASURE } from '@/lib/linkedGoalMetrics';
 import { useAsyncAction } from '@/lib/useAsyncAction';
 import { AscendLoadingIndicator } from '@/components/ui/AscendLoadingIndicator';
@@ -35,8 +35,7 @@ const MEASURES: { id: Measure; label: string; start: number }[] = [
 const DAYS_PAGE = 7;
 
 const measureOf = workoutMeasureOf;
-const amountOf = (w: WorkoutLog): number =>
-  measureOf(w) === 'mins' ? (w.amount && w.amount > 0 ? w.amount : w.durationMinutes || 0) : w.amount ?? 0;
+const amountOf = workoutAmountOf;
 const formatAmount = (value: number, measure: Measure): string => {
   const n = Number.isInteger(value) ? value : Math.round(value * 100) / 100;
   return measure === 'mins' ? `${n} min` : `${n} ${measure}`;

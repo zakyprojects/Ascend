@@ -11,6 +11,10 @@ export const workoutMeasureOf = (w: Pick<WorkoutLog, 'unit'>): WorkoutMeasure =>
   return u === 'reps' || u === 'sets' || u === 'km' ? u : 'mins';
 };
 
+/** A log's amount in its own measure; minutes logs saved before amounts existed hold it in durationMinutes. */
+export const workoutAmountOf = (w: Pick<WorkoutLog, 'unit' | 'amount' | 'durationMinutes'>): number =>
+  workoutMeasureOf(w) === 'mins' ? (w.amount && w.amount > 0 ? w.amount : w.durationMinutes || 0) : w.amount ?? 0;
+
 /** The same workout whatever its spelling: case, spaces and punctuation are ignored ("Push ups" = "Push-ups" = "pushups"). */
 export const workoutTypeKey = (name: string | undefined): string => (name || '').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '');
 
