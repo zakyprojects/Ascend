@@ -40,10 +40,13 @@ import { NotificationCenter } from './ui/NotificationCenter';
 import { AppLogo } from './ui/AppLogo';
 import { ThemeToggle } from './ui/ThemeToggle';
 import type { View } from '@/lib/views';
+import { DEFAULT_TIME_TRACKER_STATE } from '@/types';
 import type { NavigationKind } from '@/lib/useViewRoute';
 import { useLocalDayKey } from '@/lib/useLocalDayKey';
 import { useMinuteTick } from '@/lib/useMinuteTick';
 import { FocusTimerChip } from './pfc/FocusTimerChip';
+import { FloatingDock } from './nav/FloatingDock';
+import { BlockPill } from './nav/BlockPill';
 import { PageSwipeContext, usePageSwipe } from '@/lib/pageSwipe';
 
 // Below lg the window scrolls; from lg up the shell is viewport-high and <main> scrolls.
@@ -193,6 +196,7 @@ export function AppShell({ currentView, navigationKind, pendingView = null, onVi
     [onViewChange]
   );
   const goDashboard = useCallback(() => goTo(NAV_DASHBOARD.id), [goTo]);
+  const goTimeTracker = useCallback(() => goTo('time-tracker'), [goTo]);
   const pageAreaRef = useRef<HTMLDivElement>(null);
   const pageSwipe = usePageSwipe(pageAreaRef, { chain: PAGE_SWIPE_CHAIN, current: currentView, isPhoneLayout, listenRef: mainRef, go: goTo });
   const openZone = useCallback(
@@ -346,8 +350,9 @@ export function AppShell({ currentView, navigationKind, pendingView = null, onVi
         </header>
 
         {/* Main content. Below lg the window scrolls, so main must not be a scroll container there
-            (the scroll-rise timeline would bind to it and never move); it only clips sideways. */}
-        <main ref={mainRef} id="main-content" tabIndex={-1} data-page-area data-tab-swipe="" className="relative flex-1 outline-none max-lg:overflow-x-clip lg:overflow-y-auto pb-[calc(6rem_+_env(safe-area-inset-bottom))] lg:pb-0">
+            (the scroll-rise timeline would bind to it and never move); it only clips sideways.
+            Its bottom padding grows with the floating pills (--dock-clear, nav/FloatingDock). */}
+        <main ref={mainRef} id="main-content" tabIndex={-1} data-page-area data-tab-swipe="" className="relative flex-1 outline-none max-lg:overflow-x-clip lg:overflow-y-auto pb-[max(calc(6rem_+_env(safe-area-inset-bottom)),var(--dock-clear,0px))] lg:pb-[var(--dock-clear,0px)]">
           {activeGroup && (
             <div id={PAGE_STRIP_ID} className="lg:hidden px-4 pt-3">
               <Tabs
@@ -380,7 +385,17 @@ export function AppShell({ currentView, navigationKind, pendingView = null, onVi
           </div>
         </main>
 
-        <FocusTimerChip hidden={currentView === 'prefrontal'} onOpen={() => goTo('prefrontal')} />
+        {/* Floating pills: a running focus timer above the current Time Tracker block. */}
+        <FloatingDock>
+          <FocusTimerChip hidden={currentView === 'prefrontal'} onOpen={() => goTo('prefrontal')} />
+          <BlockPill
+            timeTracker={store.state.timeTracker ?? DEFAULT_TIME_TRACKER_STATE}
+            theme={isDarkTheme ? 'dark' : 'light'}
+            account={currentUser?.id ?? 'local'}
+            onTimeTrackerPage={currentView === 'time-tracker'}
+            onOpen={goTimeTracker}
+          />
+        </FloatingDock>
 
         {/* Mobile navigation: floating zone bar; the zone on screen opens its sheet. */}
         <MobileZoneBar
