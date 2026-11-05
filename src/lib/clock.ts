@@ -6,7 +6,8 @@
  * (public.server_now) and is carried forward with performance.now(), a monotonic timer that
  * changing the device clock does not touch. It is re-read from the server on start, when the
  * page comes back online, every 10 minutes, and when the page comes back into view after the
- * device slept (performance.now() paused, so it fell behind the device clock).
+ * device slept (performance.now() paused, so it fell behind the device clock). A sleep noticed on
+ * any read moves the time forward at once by the elapsed device time until that server read lands.
  *
  * Before the first server read (offline start) the device clock is used, but never earlier
  * than the last trusted time this device saw. The database rejects writes dated in the
@@ -25,7 +26,8 @@ const MAX_ROUND_TRIP_MS = 10_000;
 const SLEEP_DRIFT_MS = 2000;
 
 // deviceMs: the device clock at the read, used only to notice that performance.now() paused.
-let anchor: { serverMs: number; perfMs: number; deviceMs: number } | null = null;
+type Anchor = { serverMs: number; perfMs: number; deviceMs: number };
+let anchor: Anchor | null = null;
 let syncing: Promise<void> | null = null;
 let readyPromise: Promise<void> | null = null;
 
@@ -40,9 +42,36 @@ function readLastTrusted(): number {
 
 const lastTrustedAtStart = readLastTrusted();
 
+/**
+ * performance.now() paused while the device slept and the server read that follows has not landed
+ * (a laptop can sleep and wake with the page visible, so no visibilitychange starts one): the time
+ * would be hours old, and an edit made now would be stamped then and lose to older edits elsewhere.
+ * Returns the anchor moved forward by the time the device clock says passed (only the elapsed time is
+ * taken from it, never its value), or null when performance.now() kept up. A device clock moved back
+ * is never followed: performance.now() keeps the time then.
+ */
+export function caughtUpAnchor(current: Anchor, perfNow: number, deviceNow: number): Anchor | null {
+  const deviceElapsed = deviceNow - current.deviceMs;
+  if (deviceElapsed - (perfNow - current.perfMs) <= SLEEP_DRIFT_MS) return null;
+  return { serverMs: current.serverMs + deviceElapsed, perfMs: perfNow, deviceMs: deviceNow };
+}
+
+/** Moves a slept anchor forward at once and asks the server for the real time. */
+function catchUpAfterSleep(): void {
+  if (!anchor) return;
+  // eslint-disable-next-line no-restricted-syntax -- elapsed time only, compared with performance.now()
+  const next = caughtUpAnchor(anchor, performance.now(), Date.now());
+  if (!next) return;
+  anchor = next;
+  if (!isDeviceOffline()) void syncClock();
+}
+
 /** Current time in epoch milliseconds. */
 export function trustedNowMs(): number {
-  if (anchor) return anchor.serverMs + (performance.now() - anchor.perfMs);
+  if (anchor) {
+    catchUpAfterSleep();
+    return anchor.serverMs + (performance.now() - anchor.perfMs);
+  }
   // eslint-disable-next-line no-restricted-syntax -- the one fallback to the device clock
   return Math.max(Date.now(), lastTrustedAtStart);
 }
