@@ -52,6 +52,13 @@ export interface FocusSession {
   pausedAt: number | null;
   /** Milestones crossed in earlier running stretches (trusted ms, in order). */
   marksAt: number[];
+  /**
+   * The server revision of focus_active_sessions this copy follows (focusServerSession.ts);
+   * undefined while the server has not confirmed it (started offline, or before 2026-11-05).
+   */
+  revision?: number;
+  /** The server refused to take this session (older than 24 h): it stays on this device only. */
+  localOnly?: boolean;
 }
 
 export interface FocusPreset {
@@ -137,6 +144,8 @@ export function parseSession(raw: string | null, nowMs: number = trustedNowMs())
       startedAt: isNum(p.startedAt) ? p.startedAt : Math.min(guessedStart, p.startTime),
       pausedAt: isPaused ? (isNum(p.pausedAt) ? p.pausedAt : nowMs) : null,
       marksAt: Array.isArray(p.marksAt) ? p.marksAt.filter(isNum) : [],
+      ...(isNum(p.revision) ? { revision: p.revision } : {}),
+      ...(p.localOnly ? { localOnly: true } : {}),
     };
   } catch {
     return null;
@@ -174,6 +183,44 @@ export function writeStoredSession(userId: string | null, session: FocusSession 
   } catch {
     return false;
   }
+}
+
+// --- Actions waiting for the server (focusServerSession.ts replays them in order) ---
+
+/** An action taken on this device that the server has not taken yet (offline, or in flight). */
+export type FocusOp =
+  | { kind: 'start'; sessionId: string; session: FocusSession }
+  | { kind: 'pause' | 'resume'; sessionId: string; atMs: number; baseRevision?: number }
+  | { kind: 'end'; sessionId: string; reason: 'completed' | 'discarded' | 'break_skipped'; atMs: number; baseRevision?: number };
+
+const FOCUS_OPS_KEY = 'ascend_focus_ops';
+export const focusOpsKey = (userId: string): string => `${FOCUS_OPS_KEY}:${userId}`;
+/** Older actions are dropped beyond this (a device offline for a very long time). */
+const FOCUS_OPS_MAX = 20;
+
+export function readFocusOps(userId: string | null): FocusOp[] {
+  if (!userId) return [];
+  try {
+    const raw = JSON.parse(localStorage.getItem(focusOpsKey(userId)) || '[]');
+    return Array.isArray(raw) ? raw.filter((op) => op && typeof op === 'object' && typeof op.sessionId === 'string') : [];
+  } catch {
+    return [];
+  }
+}
+
+export function writeFocusOps(userId: string | null, ops: FocusOp[]): void {
+  if (!userId) return;
+  try {
+    if (ops.length === 0) localStorage.removeItem(focusOpsKey(userId));
+    else localStorage.setItem(focusOpsKey(userId), JSON.stringify(ops.slice(-FOCUS_OPS_MAX)));
+  } catch {
+    /* storage unavailable: the action stays on this device only */
+  }
+}
+
+export function enqueueFocusOp(userId: string | null, op: FocusOp): void {
+  if (!userId) return;
+  writeFocusOps(userId, [...readFocusOps(userId), op]);
 }
 
 // --- Session time, milestones and the pause / close rules (pure; tested in __tests__) ---
@@ -259,7 +306,12 @@ export function closeAt(session: FocusSession, endMs: number): FocusClose {
   };
 }
 
-export type FocusNotice = { kind: 'expired'; saved: boolean; minutes: number };
+export type FocusNotice =
+  | { kind: 'expired'; saved: boolean; minutes: number }
+  /** Another device completed or discarded the session this device was showing. */
+  | { kind: 'elsewhere'; reason: 'completed' | 'discarded' }
+  /** This device started a session while another device's session was already running: not saved. */
+  | { kind: 'replaced' };
 
 export interface FocusSettle {
   /** The session to keep (null: none left). */
@@ -314,9 +366,15 @@ export function pauseStoredSessionsForSignOut(nowMs: number = trustedNowMs()): v
     }
     for (const key of keys) {
       const userId = key.slice(prefix.length);
-      const next = pauseForSignOut(parseSession(localStorage.getItem(key), nowMs), nowMs);
+      const before = parseSession(localStorage.getItem(key), nowMs);
+      const next = pauseForSignOut(before, nowMs);
       if (next) localStorage.setItem(key, JSON.stringify({ ...next, userId }));
       else localStorage.removeItem(key);
+      // Paused on every device of the account (the server takes it now, or at the next sign-in
+      // when this device is offline and no other device changed the session meanwhile).
+      if (before && next && !before.isPaused && next.isPaused) {
+        enqueueFocusOp(userId, { kind: 'pause', sessionId: next.id, atMs: next.pausedAt ?? nowMs });
+      }
     }
     // A pre-2026-11-04 session under the shared key: pause it as well (adopted at the next sign-in).
     const legacy = parseSession(localStorage.getItem(FOCUS_STORAGE_KEY), nowMs);
@@ -333,6 +391,7 @@ export function pauseStoredSessionsForSignOut(nowMs: number = trustedNowMs()): v
 /** Account deletion: this account's stored session goes with it. */
 export function dropStoredSession(userId: string): void {
   writeStoredSession(userId, null);
+  writeFocusOps(userId, []);
 }
 
 export function focusAlertsEnabled(): boolean {

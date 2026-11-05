@@ -93,9 +93,16 @@ function FocusProgressLine({ session, earnedToday }: { session: FocusSession; ea
 
 /** What the timer did on its own while the user was away. */
 function FocusNoticeLine({ notice, onClose }: { notice: FocusNotice; onClose: () => void }) {
-  const text = notice.saved
-    ? `Your session ended after a ${FOCUS_RESUME_WINDOW_MINUTES}-minute break. Saved ${notice.minutes} min.`
-    : `Your session ended after a ${FOCUS_RESUME_WINDOW_MINUTES}-minute break. Not enough time to save (under ${FOCUS_MIN_MINUTES_TO_SAVE} min).`;
+  const text =
+    notice.kind === 'elsewhere'
+      ? notice.reason === 'completed'
+        ? 'Your session was completed on another device.'
+        : 'Your session was discarded on another device.'
+      : notice.kind === 'replaced'
+        ? 'A session from another device was already running, so this one was not saved.'
+        : notice.saved
+          ? `Your session ended after a ${FOCUS_RESUME_WINDOW_MINUTES}-minute break. Saved ${notice.minutes} min.`
+          : `Your session ended after a ${FOCUS_RESUME_WINDOW_MINUTES}-minute break. Not enough time to save (under ${FOCUS_MIN_MINUTES_TO_SAVE} min).`;
   return (
     <div className="flex items-start justify-between gap-2 rounded-xl bg-overlay-subtle px-3 py-2 text-xs text-content-secondary" role="status">
       <span>{text}</span>

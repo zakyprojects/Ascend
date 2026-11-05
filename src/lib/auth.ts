@@ -14,7 +14,8 @@ import { trustedNow, trustedNowMs } from './clock';
 import { ilikeExact, isUsernameTakenError, looksLikeUsername, sameUsername, USERNAME_TAKEN, usernameFormatProblem } from './usernameRules';
 import { NETWORK_MESSAGE } from './userMessage';
 import { clearDrafts } from './unsavedChanges';
-import { dropStoredSession, pauseStoredSessionsForSignOut } from './focusSession';
+import { dropStoredSession, pauseStoredSessionsForSignOut, readStoredSession } from './focusSession';
+import { flushOps, supabaseFocusTransport } from './focusServerSession';
 import { FunctionRegion, FunctionsHttpError } from '@supabase/supabase-js';
 import { CaptchaRejectedError, isCaptchaRejection } from './captcha';
 import { TERMS_VERSION } from './legal';
@@ -517,6 +518,21 @@ export function consumeSignOutByUser(): boolean {
 /** Realtime channels scoped to the signed-in account (named in store.ts). */
 const ACCOUNT_CHANNEL_TOPIC = /^realtime:(synced_tables|social_realtime)_/;
 
+/** Sends the queued focus actions (the sign-out pause) of the signed-in account; never throws. */
+async function pauseFocusOnServer(): Promise<void> {
+  try {
+    const { data } = await supabase.auth.getSession();
+    const uid = data.session?.user?.id;
+    if (!uid) return;
+    await Promise.race([
+      flushOps(supabaseFocusTransport, uid, readStoredSession(uid)?.revision),
+      new Promise((resolve) => setTimeout(resolve, 3000)),
+    ]);
+  } catch {
+    /* kept in the queue for the next sign-in */
+  }
+}
+
 /**
  * Logout current user session from Supabase.
  * `scope: 'local'` only clears this device's session: the app's normal logout (Zakria
@@ -535,6 +551,9 @@ export async function logoutUser({
     pauseStoredSessionsForSignOut();
   }
   if (isSupabaseConfigured) {
+    // The pause reaches the account's other devices before the session ends (at most 3 s; when
+    // offline it is sent at the next sign-in on this device).
+    if (typeof window !== 'undefined' && !dropFocusFor) await pauseFocusOnServer();
     // Close this account's live channels first. Left open, they rejoin without a user once the
     // session ends and the server refuses their user filters (a harmless but noisy Realtime error).
     // The app's cleanup removes them again afterwards, which is a no-op.
