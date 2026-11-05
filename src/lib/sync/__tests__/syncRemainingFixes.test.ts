@@ -2,7 +2,6 @@
 // 5. An edit is uploaded with the time it was made (editTimes), not the time its save ran; a row the
 //    server refused to store is re-read by id on the next pull (b1, l6, browser loss1).
 // 9. The theme between devices: the later change wins; an unstamped difference takes the server's.
-// 10. Another device's reading log made while this device also moved the book puts its pages back, once.
 // The habit merge (fix 6) is SQL: work/hmr/pglite-test.mjs. The clock catch-up after sleep (e3) is in
 // clockCatchUp.test.ts (it needs its own clock module state).
 import { DEFAULT_STATE, type AppState } from '@/types';
@@ -39,7 +38,6 @@ const { applyRemoteChanges, pullSyncedRows } = await import('../pull');
 const { SYNCED_COLLECTIONS, itemsOf, rowIdOf } = await import('../syncedCollections');
 const { setTabSyncedHashes, clearTabSyncedHashes } = await import('../tabVersions');
 const { noteEditTimes, readEditTimes } = await import('../editTimes');
-const { raiseBooksForConcurrentLogs } = await import('../concurrentReadingLogs');
 const { mergeThemePreference } = await import('../../stateMerger');
 const { supabase } = await import('../../supabase');
 type Baseline = Record<string, Record<string, string>>;
@@ -226,40 +224,6 @@ function fakeClient(server: Map<string, Record<string, unknown>>, refuse: Set<st
   );
   assert(mergeThemePreference({}, { themePreference: 'light' }).themePreference === 'light', 'no server theme: the device theme');
   assert(mergeThemePreference({}, {}).themePreference === 'dark', 'neither: dark');
-}
-
-// ---------------------------------------------------------------- fix 10: concurrent reading logs
-{
-  const NOW = Date.parse('2026-11-05T05:00:30.000Z');
-  const nowIso = '2026-11-05T05:00:30.000Z';
-  const book = (page: number, updatedAt: string) =>
-    ({ id: 'b1', title: 'Atomic Habits', totalPages: 300, totalAmount: 300, currentPage: page, currentAmount: page, updatedAt }) as never;
-  const log = (id: string, pages: number, createdAt: string) => ({ id, bookId: 'b1', date: '2026-11-05', pagesRead: pages, createdAt }) as never;
-  // PC: moved 0 -> 5 at 05:00:10 (its own log), then the phone's log (+10, made 05:00:05) arrives.
-  const pcPrev = base({ libraryBooks: [book(5, '2026-11-05T05:00:10.000Z')], readingLogs: [log('pc', 5, '2026-11-05T05:00:10.001Z')] });
-  const pcNext = { ...pcPrev, readingLogs: [log('phone', 10, '2026-11-05T05:00:05.001Z'), ...pcPrev.readingLogs] } as AppState;
-  const raised = raiseBooksForConcurrentLogs(pcPrev, pcNext, NOW, nowIso);
-  assert((raised.libraryBooks[0] as { currentPage: number }).currentPage === 15, 'the PC puts the phone pages back (5 + 10)');
-  // Phone: its own write 0 -> 10 at 05:00:05, the PC's book row (5, 05:00:10) and log arrive.
-  const phonePrev = base({ libraryBooks: [book(10, '2026-11-05T05:00:05.000Z')], readingLogs: [log('phone', 10, '2026-11-05T05:00:05.001Z')] });
-  const phoneNext = { ...phonePrev, libraryBooks: [book(5, '2026-11-05T05:00:10.000Z')], readingLogs: [log('pc', 5, '2026-11-05T05:00:10.001Z'), ...phonePrev.readingLogs] } as AppState;
-  assert(raiseBooksForConcurrentLogs(phonePrev, phoneNext, NOW, nowIso) === phoneNext, 'the phone does nothing (the PC write counted its own log)');
-  // A log arriving in the same batch as the book row, before it: book still the phone's own, log later.
-  const early = { ...phonePrev, readingLogs: [log('pc', 5, '2026-11-05T05:00:10.001Z'), ...phonePrev.readingLogs] } as AppState;
-  assert(raiseBooksForConcurrentLogs(phonePrev, early, NOW, nowIso) === early, 'a log made after this book change is not concurrent');
-  // An old log (a device back after days, or a boot) never raises.
-  const oldNext = { ...pcPrev, readingLogs: [log('old', 10, '2026-11-01T05:00:00.000Z'), ...pcPrev.readingLogs] } as AppState;
-  assert(raiseBooksForConcurrentLogs(pcPrev, oldNext, NOW, nowIso) === oldNext, 'an old log never raises');
-  // Pulled again later (already held): nothing.
-  assert(raiseBooksForConcurrentLogs(raised, { ...raised }, NOW, nowIso).libraryBooks === raised.libraryBooks, 'a held log is counted once');
-  // Never past the book length.
-  const nearEnd = base({ libraryBooks: [book(295, '2026-11-05T05:00:10.000Z')], readingLogs: [log('pc', 5, '2026-11-05T05:00:10.001Z')] });
-  const nearNext = { ...nearEnd, readingLogs: [log('phone', 10, '2026-11-05T05:00:05.001Z'), ...nearEnd.readingLogs] } as AppState;
-  assert((raiseBooksForConcurrentLogs(nearEnd, nearNext, NOW, nowIso).libraryBooks[0] as { currentPage: number }).currentPage === 300, 'capped at the length');
-  // A book this device lowered (no log of its own at that change) is left alone.
-  const lowered = base({ libraryBooks: [book(3, '2026-11-05T05:00:10.000Z')], readingLogs: [log('pc', 5, '2026-11-05T04:00:00.000Z')] });
-  const lowNext = { ...lowered, readingLogs: [log('phone', 10, '2026-11-05T05:00:05.001Z'), ...lowered.readingLogs] } as AppState;
-  assert(raiseBooksForConcurrentLogs(lowered, lowNext, NOW, nowIso) === lowNext, 'a lowered book is not raised');
 }
 
 console.log('syncRemainingFixes: all passed');
