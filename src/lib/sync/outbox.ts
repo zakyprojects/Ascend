@@ -4,6 +4,8 @@ import { supabase } from '../supabase';
 import { SYNCED_COLLECTIONS, itemsOf, rowIdOf, syncKeyOf } from './syncedCollections';
 import { trustedNow } from '../clock';
 import { clearTabSyncedHashes, setTabSyncedHashes, tabSyncedHashes, type Baseline } from './tabVersions';
+import { hashRow } from './rowHash';
+import { clearEditTimes, editTimeOf, pruneEditTimes, readEditTimes, type EditTimes } from './editTimes';
 
 /**
  * Relational sync outbox (DB normalization, S2 dual-write).
@@ -50,8 +52,13 @@ const opKey = (table: string, id: string) => `${table}:${id}`;
 export const cursorKey = (userId: string, table: string) => `ascend_sync_cursor_${userId}_${table}`;
 /** When this device last read every synced table in full (see pull.ts, PURGE_AFTER_DAYS). */
 export const lastFullPullKey = (userId: string) => `ascend_sync_last_full_pull_${userId}`;
+/** Rows the server did not store from an upsert (keep-newer, a deleted row, a day guard): table -> ids, re-read by the next pull. */
+const refetchKey = (userId: string) => `ascend_sync_refetch_${userId}`;
 const DELETE_CHUNK = 100;
-/** Fired (window event, detail { userId }) when a save held old copies back: this tab should pull. */
+/**
+ * Fired (window event, detail { userId, refused? }) when a save held old copies back, or (refused:
+ * true) when the server did not store some rows sent: this tab should pull.
+ */
 export const SYNC_BEHIND_EVENT = 'ascend-sync-behind';
 /**
  * Fired (window event, detail { userId, hashes }) when a save moved this tab's row versions: the
@@ -73,16 +80,7 @@ function writeJson(key: string, value: unknown): void {
   localStorage.setItem(key, JSON.stringify(value));
 }
 
-/** FNV-1a over the row JSON; toRow fixes the key order. */
-export function hashRow(row: Record<string, unknown>): string {
-  const text = JSON.stringify(row);
-  let hash = 0x811c9dc5;
-  for (let i = 0; i < text.length; i++) {
-    hash ^= text.charCodeAt(i);
-    hash = Math.imul(hash, 0x01000193);
-  }
-  return (hash >>> 0).toString(36);
-}
+export { hashRow } from './rowHash';
 
 /**
  * Pure diff: the next baseline, the ops it adds to the outbox, and this tab's next row versions
@@ -96,7 +94,9 @@ export function diffSyncedCollections(
   nowIso: string,
   tabHashes: Baseline = {},
   /** Versions this tab also held for the state (recordSyncedChanges: the ones current when the diff runs). */
-  alsoHeld: Baseline = {}
+  alsoHeld: Baseline = {},
+  /** When each unsent edit was made (editTimes.ts); an edited row is stamped with it, not with nowIso. */
+  editTimes: EditTimes = {}
 ): { baseline: Baseline; outbox: Outbox; changed: boolean; tabHashes: Baseline; behind: number } {
   const tombstones = new Set(state.deletedEntityIds || []);
   const nextOutbox: Outbox = { ...outbox };
@@ -151,11 +151,13 @@ export function diffSyncedCollections(
         table: collection.table,
         id,
         row,
-        // A known row that changed is a local edit; a row new to this device keeps its own time,
-        // so re-uploading old data never beats a newer server edit. Time tracker days carry their
-        // real edit time (editTimestamp), so an offline edit doesn't take the reconnect time.
+        // A known row that changed is a local edit, stamped with the time it was made (time tracker
+        // days carry it in the row, other rows in editTimes), so an edit made offline or in a tab
+        // closed before its save doesn't take the upload time and beat a newer edit from another
+        // device. A row new to this device keeps its own time, so re-uploading old data never
+        // beats a newer server edit.
         updatedAt: id in prev
-          ? collection.editTimestamp?.(item as never) ?? nowIso
+          ? collection.editTimestamp?.(item as never) ?? notLater(editTimeOf(editTimes, syncKeyOf(collection), id, hash), nowIso)
           : collection.ownTimestamp(item as never),
       };
       changed = true;
@@ -195,6 +197,11 @@ export function diffSyncedCollections(
   }
 
   return { baseline: nextBaseline, outbox: nextOutbox, changed, tabHashes: nextTabHashes, behind };
+}
+
+/** The edit time, never later than now (a device clock that ran ahead at the edit). */
+function notLater(editIso: string | undefined, nowIso: string): string {
+  return editIso && editIso < nowIso ? editIso : nowIso;
 }
 
 /**
@@ -238,8 +245,10 @@ export function recordSyncedChanges(state: AppState, versionsAtStart?: Baseline)
     readJson<Outbox>(outboxKey(userId)) || {},
     trustedNow().toISOString(),
     atStart,
-    atStart === current ? {} : current
+    atStart === current ? {} : current,
+    readEditTimes(userId)
   );
+  pruneEditTimes(userId, state);
   const nextVersions = atStart === current ? result.tabHashes : keepMovedVersions(result.tabHashes, atStart, current);
   const versionsMoved = JSON.stringify(nextVersions) !== JSON.stringify(current);
   setTabSyncedHashes(userId, nextVersions);
@@ -299,7 +308,9 @@ export function clearSyncStorage(userId: string): void {
     localStorage.removeItem(baselineKey(userId));
     for (const { table } of SYNCED_COLLECTIONS) localStorage.removeItem(cursorKey(userId, table));
     localStorage.removeItem(lastFullPullKey(userId));
+    localStorage.removeItem(refetchKey(userId));
     clearTabSyncedHashes(userId);
+    clearEditTimes(userId);
   } catch {
     /* ignore */
   }
@@ -320,12 +331,55 @@ function settle(userId: string, sent: OutboxOp[]): void {
   writeJson(outboxKey(userId), stored);
 }
 
+/**
+ * Records the sent rows the server did not store (missing from the returned rows) for the next pull
+ * to re-read by id, and asks this tab to pull. The diff already set this tab's version to the copy
+ * sent, so the server's row then replaces it. A row that does not exist on the server (a day guard
+ * refused an insert) is read as nothing and forgotten: nothing loops.
+ */
+function noteRefused(userId: string, table: string, ops: UpsertOp[], stored: unknown): void {
+  if (!Array.isArray(stored)) return;
+  const kept = new Set(stored.map((row) => String((row as { id?: unknown }).id)));
+  const refused = ops.filter((op) => !kept.has(op.id)).map((op) => op.id);
+  if (refused.length === 0) return;
+  const all = readJson<Record<string, string[]>>(refetchKey(userId)) || {};
+  all[table] = Array.from(new Set([...(all[table] || []), ...refused]));
+  writeJson(refetchKey(userId), all);
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent(SYNC_BEHIND_EVENT, { detail: { userId, refused: true } }));
+  }
+}
+
+/** Ids of this table the server refused to store; the next pull re-reads them by id. */
+export function refusedRowIds(userId: string, table: string): string[] {
+  return (readJson<Record<string, string[]>>(refetchKey(userId)) || {})[table] || [];
+}
+
+/** The pull read these refused rows: forget them (ids refused again meanwhile stay only if not read). */
+export function clearRefusedRows(userId: string, table: string, ids: string[]): void {
+  if (ids.length === 0) return;
+  const all = readJson<Record<string, string[]>>(refetchKey(userId)) || {};
+  const read = new Set(ids);
+  const left = (all[table] || []).filter((id) => !read.has(id));
+  if (left.length > 0) all[table] = left;
+  else delete all[table];
+  try {
+    if (Object.keys(all).length > 0) writeJson(refetchKey(userId), all);
+    else localStorage.removeItem(refetchKey(userId));
+  } catch {
+    /* ignore */
+  }
+}
+
 async function sendUpserts(userId: string, table: string, ops: UpsertOp[]): Promise<boolean> {
   // deleted_at null: a points entry re-awarded after a delete comes back (point_entries
   // allows newer revivals); the other tables ignore writes to deleted rows.
   const toRow = (op: UpsertOp) => ({ ...op.row, user_id: userId, updated_at: op.updatedAt, deleted_at: null });
-  const { error } = await supabase.from(table).upsert(ops.map(toRow), { onConflict: 'user_id,id' });
+  // Returns the rows stored: a row a trigger refused (keep-newer: a newer edit is there; a deleted
+  // row; a day guard) is missing and answers no error, so it is re-read instead of left diverged.
+  const { data, error } = await supabase.from(table).upsert(ops.map(toRow), { onConflict: 'user_id,id' }).select('id');
   if (!error) {
+    noteRefused(userId, table, ops, data);
     settle(userId, ops);
     return true;
   }
@@ -333,9 +387,10 @@ async function sendUpserts(userId: string, table: string, ops: UpsertOp[]): Prom
 
   // One bad row must not block the rest: retry singly and drop only the rows that fail.
   for (const op of ops) {
-    const single = await supabase.from(table).upsert(toRow(op), { onConflict: 'user_id,id' });
+    const single = await supabase.from(table).upsert(toRow(op), { onConflict: 'user_id,id' }).select('id');
     if (single.error && !isPermanent(single.error)) return false;
     if (single.error) console.error(`[SYNC OUTBOX] Dropped ${table}:${op.id}:`, single.error.message);
+    else noteRefused(userId, table, [op], single.data);
     settle(userId, [op]);
   }
   return true;

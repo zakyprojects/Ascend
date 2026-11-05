@@ -1,7 +1,17 @@
 import type { AppState } from '../../types';
 import { trustedNow, trustedNowMs } from '../clock';
 import { supabase } from '../supabase';
-import { DELETED, acceptServerRows, cursorKey, hashRow, knownHashes, lastFullPullKey, pendingOpIds } from './outbox';
+import {
+  DELETED,
+  acceptServerRows,
+  clearRefusedRows,
+  cursorKey,
+  hashRow,
+  knownHashes,
+  lastFullPullKey,
+  pendingOpIds,
+  refusedRowIds,
+} from './outbox';
 import { setTabSyncedHashes, tabSyncedHashes, type Baseline } from './tabVersions';
 import { SYNCED_COLLECTIONS, itemsOf, rowIdOf, syncKeyOf, withItems, type SyncedCollection } from './syncedCollections';
 
@@ -436,23 +446,29 @@ export async function pullSyncedRows(userId: string, full: boolean): Promise<Pul
     SYNCED_COLLECTIONS.map(async (collection) => {
       const cursor = localStorage.getItem(cursorKey(userId, collection.table));
       const since = cursor && !full ? new Date(Date.parse(cursor) - CURSOR_OVERLAP_MS).toISOString() : null;
+      // Rows the server refused to store from this device's upserts: their server copy did not
+      // change, so it can sit behind the cursor. Read by id below (a full pull reads them anyway).
+      const refused = refusedRowIds(userId, collection.table);
       const rows = await fetchRows(collection.table, userId, since);
       if (!rows) {
         everyTableRead = false;
         return [];
       }
+      let refusedRead = true;
       // Rows another tab already pulled past this tab's version sit behind the shared cursor:
       // read them by id, so this tab catches up too.
       if (since) {
         const fetched = new Set(rows.map((row) => String(row.id)));
-        const behind = behindIds(userId, collection).filter((id) => !fetched.has(id));
+        const behind = Array.from(new Set([...behindIds(userId, collection), ...refused])).filter((id) => !fetched.has(id));
         const extra = behind.length > 0 ? await fetchRowsById(collection.table, userId, behind) : [];
         if (!extra) {
           everyTableRead = false;
+          refusedRead = false;
         } else {
           rows.push(...extra);
         }
       }
+      if (refusedRead) clearRefusedRows(userId, collection.table, refused);
 
       // Read before prepareRemoteRows, which skips the rows these ops are waiting to replace.
       const waiting = collection.mergeConflict ? new Set<string>() : pendingOpIds(userId, collection.table);

@@ -221,6 +221,7 @@ import {
 import { GuardBlockedError, SessionLostError } from './errors';
 import { SYNC_BEHIND_EVENT, SYNC_VERSIONS_EVENT, flushOutbox, hasPendingSyncOps, readBaseline, recordSyncedChanges } from './sync/outbox';
 import { setTabSyncedHashes, storeTabSyncedHashes, tabSyncedHashes, type Baseline } from './sync/tabVersions';
+import { noteEditTimes } from './sync/editTimes';
 import { adoptTabState, applyRemoteChanges, prepareRemoteRows, pullSyncedRows, takePeerVersions, type RemoteChange } from './sync/pull';
 import { SYNCED_COLLECTIONS, cacheWithHydratedCollections, itemsOf, rowIdOf, syncKeyOf } from './sync/syncedCollections';
 import { mergeAppState, deduplicatePresetHabits, mergeAppStateWithGuardResult, isLegitimateTombstoneId, signInMergeBase } from './stateMerger';
@@ -1998,6 +1999,8 @@ export function useAppState() {
   // fails in that window stays silent (the account is going away).
   const isClosingAccountRef = useRef(false);
   const lastPersistedStateRef = useRef<AppState>(state);
+  /** The state the edit-time scan last saw (noteEditTimes compares item objects with it). */
+  const editScanStateRef = useRef<AppState | null>(null);
   const lastKnownGoodStateRef = useRef<AppState>(state);
 
   // Other members' standings live in module caches (auth.ts); this version re-renders league views
@@ -2243,13 +2246,16 @@ export function useAppState() {
 
   // A save held back old copies (another tab of this browser synced newer rows first): pull, so
   // this tab shows the newer rows. At most once per 15 s, so a copy that cannot be replaced never loops.
+  // The server refused rows this device sent (a newer edit is there): pull at once to show it.
   useEffect(() => {
     if (typeof window === 'undefined') return;
     let lastPull = 0;
     const onBehind = (event: Event) => {
-      const userId = (event as CustomEvent<{ userId?: string }>).detail?.userId;
+      const detail = (event as CustomEvent<{ userId?: string; refused?: boolean }>).detail;
+      const userId = detail?.userId;
       if (!userId || userId !== currentUserRef.current?.id || !isHydrated.current || isDeviceOffline()) return;
-      if (trustedNowMs() - lastPull < 15_000) return;
+      // Rows the server refused are re-read once and then forgotten, so that pull never loops.
+      if (!detail?.refused && trustedNowMs() - lastPull < 15_000) return;
       lastPull = trustedNowMs();
       void syncTables(userId, false);
     };
@@ -2455,6 +2461,18 @@ export function useAppState() {
   }, []);
 
   useEffect(() => {
+    // Every state this tab shows, before it is cached: an edit gets its time now, so it is uploaded
+    // with it even if the save only runs after a reconnect or a reopen (sync/editTimes.ts).
+    const scanUserId = state.currentUser?.id;
+    if (scanUserId && typeof window !== 'undefined') {
+      try {
+        noteEditTimes(scanUserId, editScanStateRef.current, state, trustedNow().toISOString());
+      } catch {
+        /* storage unavailable: the save stamps the upload time, as before */
+      }
+    }
+    editScanStateRef.current = state;
+
     if (isRemoteBroadcastUpdate.current) {
       // This state update was synced from another tab via BroadcastChannel.
       // Skip duplicate persistence and re-broadcast.
