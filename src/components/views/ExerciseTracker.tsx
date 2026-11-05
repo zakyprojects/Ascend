@@ -484,8 +484,8 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
         itemName={deleteModalWorkout ? `${deleteModalWorkout.type} (${formatAmount(amountOf(deleteModalWorkout), measureOf(deleteModalWorkout))})` : ''}
         description={
           deletingToday
-            ? "Its points come off today's total. Your exercise streak and exercise minutes may go down."
-            : 'The points you earned that day stay. Your exercise streak and exercise minutes may go down.'
+            ? "Its points come off today's total. Your exercise streak and the exercise stats on your profile may go down."
+            : 'The points you earned that day stay. Your exercise streak and the exercise stats on your profile may go down.'
         }
       />
 
@@ -512,7 +512,7 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
             ? `${CLEAR_WORKOUTS_MAX} of the ${olderLogCount} workouts before this week`
             : `${olderLogCount} ${olderLogCount === 1 ? 'workout' : 'workouts'} before this week`
         }
-        description={`The points you earned stay. Your exercise streak can break, and the exercise minutes on your profile go down. This week's logs are kept.${
+        description={`The points you earned stay. Your exercise streak can break, and the exercise stats on your profile may go down. This week's logs are kept.${
           olderLogCount > CLEAR_WORKOUTS_MAX ? ` Up to ${CLEAR_WORKOUTS_MAX} go at a time: tap again for the rest.` : ''
         }`}
         confirmText="Clear logs"

@@ -140,8 +140,12 @@ function PrivacyPolicy({ onNavigate }: { onNavigate: (path: string) => void }) {
             whether your profile is public, and whether you accept partner invites.
           </li>
           <li>
-            <Term>Other members:</Term> if your profile is public, a summary of your stats (such as streaks, the last day
-            you were active, and how many habits, journal entries, books, exercise minutes and skills you have). League
+            <Term>Other members:</Term> if your profile is public, a summary of your stats: your streak, the last day you
+            were active, all-time counts (habits done, journal entries, books, exercise minutes and skill sessions), and
+            your last 30 days (days active, the share of habit check-ins done, skill practice hours and days, reading
+            days, pages read and books finished this season, focus minutes and sessions, how many days you journaled,
+            and the names and amounts of your three most-done exercises). It never includes the names of your skills,
+            habits or books, what you write in your journal, your moods, or your bad habits. League
             results show your username, avatar and points to the others in that league. Plans you make public show
             your username and avatar.
           </li>

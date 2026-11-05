@@ -165,7 +165,7 @@ export const exercise: FeatureContent = {
                   <a href={featurePath('accountability-partners')} className={LINK_CLASS}>
                     partners
                   </a>{' '}
-                  see your stats, such as exercise minutes, and the points count toward your{' '}
+                  see your stats, such as your most-done exercises, and the points count toward your{' '}
                   <a href={featurePath('ranks')} className={LINK_CLASS}>
                     rank
                   </a>
@@ -231,7 +231,7 @@ export const exercise: FeatureContent = {
     },
     {
       q: 'Can my friends see my workouts?',
-      a: 'Your partners, and other members if your profile is public, see stat summaries such as your exercise minutes. The list of workouts itself stays in your own log.',
+      a: 'Your partners, and other members if your profile is public, see stat summaries: the names of your three most-done exercises in the last 30 days, with how much and on how many days, and your exercise minutes. The list of workouts itself stays in your own log.',
     },
   ],
   related: ['habits', 'weekly-goals', 'accountability-partners', 'leagues'],

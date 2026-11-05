@@ -313,7 +313,7 @@ export const brainLessons: FeatureContent = {
     },
     {
       q: 'Who can see my decisions and emotions?',
-      a: 'Only you. They are not in the stats partners or other members see. Focus and lesson points add to your season total, which league tables show as a number.',
+      a: 'Only you. They are not in the stats partners or other members see. Your focus minutes and number of focus sessions are, like your other stats. Focus and lesson points add to your season total, which league tables show as a number.',
     },
   ],
   related: ['time-blocking', 'skills', 'journal', 'recovery'],
