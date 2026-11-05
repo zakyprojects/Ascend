@@ -2335,6 +2335,14 @@ export function useAppState() {
 
       if (!data.state) return;
 
+      // A tab still running an app version from before row versions (no syncHashes): its state can
+      // hold old copies, and taken as is, this tab would upload them as edits. Not taken; its saves
+      // reach this tab through the server instead.
+      if (!data.syncHashes) {
+        window.dispatchEvent(new CustomEvent(SYNC_BEHIND_EVENT, { detail: { userId: currentUserId } }));
+        return;
+      }
+
       // Pacts this tab is still saving a tick to: the other tab's copy may predate it, so ours stays
       // on screen and the refresh after our write settles brings in the rest (as for realtime rows).
       const pledgesInFlight = new Set<string>();
