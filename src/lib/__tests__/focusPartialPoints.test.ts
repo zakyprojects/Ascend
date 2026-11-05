@@ -297,4 +297,14 @@ eq(S.FOCUS_RESUME_WINDOW_MINUTES, 30, 'resume window is 30 minutes');
   assert(S.readStoredSession('user-a', T0 + MIN) === null, 'account deletion drops the session');
 }
 
+// The timer shows only what today's focus cap has left (Complete popup, points so far).
+{
+  const { focusPointsWithinCap } = await import('../focusPoints');
+  eq(focusPointsWithinCap(4, 0), 4, 'empty day: full session points');
+  eq(focusPointsWithinCap(4, 6), 4, '4 left: 4');
+  eq(focusPointsWithinCap(4, 8), 2, '2 left: 2');
+  eq(focusPointsWithinCap(4, 10), 0, 'cap reached: 0');
+  eq(focusPointsWithinCap(10, 12), 0, 'over cap: 0');
+}
+
 console.log('focusPartialPoints: all assertions passed');

@@ -54,6 +54,12 @@ export function focusR1Points(activeMinutes: number, plannedMinutes: number): nu
   return milestonePointsFor(active) + (active >= planned ? finishBonus(planned) : 0);
 }
 
+/** Points a session adds today: its own points, at most what today's focus cap has left. */
+export function focusPointsWithinCap(sessionPoints: number, earnedToday: number): number {
+  const room = Math.max(0, FOCUS_DAILY_CAP - Math.max(0, earnedToday));
+  return Math.min(Math.max(0, sessionPoints), room);
+}
+
 /** The next thing a running session can earn: a milestone, or the finish bonus. */
 export function nextFocusReward(
   activeMinutes: number,

@@ -4,7 +4,10 @@ import type { AppStore } from '@/lib/store';
 import { Dialog, FieldErrorBubble, Input, NumberField, ProgressBar, Select } from '@/components/ui/primitives';
 import { cx } from '@/components/ui/primitives/shared';
 import { trustedNowMs } from '@/lib/clock';
-import { FOCUS_RULE_SHORT, focusR1Points, nextFocusReward } from '@/lib/focusPoints';
+import { FOCUS_DAILY_CAP, FOCUS_RULE_SHORT, focusPointsWithinCap, focusR1Points, nextFocusReward } from '@/lib/focusPoints';
+import { computeFocusAwards } from '@/lib/focusAwards';
+import { localDayStartMs, todayKey } from '@/lib/dates';
+import type { FocusSessionLog } from '@/types';
 import {
   FOCUS_MIN_MINUTES_TO_SAVE,
   FOCUS_PRESETS,
@@ -33,6 +36,14 @@ function pendingTask(): string | null {
 
 const pts = (n: number) => `${n} ${n === 1 ? 'pt' : 'pts'}`;
 
+/** Focus points already earned today from saved sessions (same rule as the server). */
+function focusPointsToday(logs: FocusSessionLog[], nowMs: number): number {
+  const today = todayKey();
+  return computeFocusAwards(logs, today, localDayStartMs(today), nowMs).entry?.amount ?? 0;
+}
+
+const CAP_REACHED = `Today's focus cap of ${FOCUS_DAILY_CAP} pts is reached`;
+
 /** Re-renders the caller once a second while `on` (pause countdown, points so far). */
 function useSecondTick(on: boolean): number {
   const [, tick] = useReducer((n: number) => n + 1, 0);
@@ -45,11 +56,14 @@ function useSecondTick(on: boolean): number {
 }
 
 /** Points so far and the next one on a focus session; while paused, the time left to resume. */
-function FocusProgressLine({ session }: { session: FocusSession }) {
+function FocusProgressLine({ session, earnedToday }: { session: FocusSession; earnedToday: number }) {
   const nowMs = useSecondTick(true);
   const active = activeMinutesAt(session, nowMs);
-  const earned = focusR1Points(active, session.focusMinutes);
-  const next = nextFocusReward(active, session.focusMinutes);
+  const raw = focusR1Points(active, session.focusMinutes);
+  const earned = focusPointsWithinCap(raw, earnedToday);
+  const capFull = earnedToday >= FOCUS_DAILY_CAP;
+  const nextRaw = nextFocusReward(active, session.focusMinutes);
+  const next = nextRaw && { ...nextRaw, points: focusPointsWithinCap(raw + nextRaw.points, earnedToday) - earned };
   const deadline = resumeDeadlineMs(session);
   return (
     <p className="text-center text-xs text-content-muted" aria-live="off">
@@ -59,8 +73,14 @@ function FocusProgressLine({ session }: { session: FocusSession }) {
           {' · '}
         </>
       )}
-      <span className="figure text-success-text">{pts(earned)}</span> so far
-      {next && (
+      {capFull ? (
+        <>{CAP_REACHED}</>
+      ) : (
+        <>
+          <span className="figure text-success-text">{pts(earned)}</span> so far
+        </>
+      )}
+      {next && next.points > 0 && (
         <>
           {' · '}
           {next.kind === 'finish' ? 'finish' : 'next'} <span className="figure">+{next.points}</span> at{' '}
@@ -174,6 +194,10 @@ function ManualTimer({ store }: { store: AppStore }) {
   const nowMs = useSecondTick(Boolean(session && session.mode === 'focus'));
   const activeNow = session && session.mode === 'focus' ? activeMinutesAt(session, nowMs) : 0;
   const canComplete = activeNow >= FOCUS_MIN_MINUTES_TO_SAVE;
+  const earnedToday = focusPointsToday(store.state.focusLogs, nowMs);
+  const completePoints =
+    session && session.mode === 'focus' ? focusPointsWithinCap(focusR1Points(activeNow, session.focusMinutes), earnedToday) : 0;
+  const completeCapFull = earnedToday >= FOCUS_DAILY_CAP;
   const [permission, setPermission] = useState(notificationPermission);
 
   const focusMinutes = preset.custom ? customFocus : preset.focus;
@@ -275,7 +299,7 @@ function ManualTimer({ store }: { store: AppStore }) {
 
       <TimerDisplay session={session} readySeconds={Math.max(0, focusMinutes) * 60} />
 
-      {session && !isBreak && <FocusProgressLine session={session} />}
+      {session && !isBreak && <FocusProgressLine session={session} earnedToday={earnedToday} />}
 
       {session ? (
         <p className="text-center text-xs text-content-muted break-words [overflow-wrap:anywhere]">
@@ -396,7 +420,11 @@ function ManualTimer({ store }: { store: AppStore }) {
         open={confirmComplete && Boolean(session) && !isBreak}
         onClose={() => setConfirmComplete(false)}
         title="Complete focus session?"
-        description={`You focused ${activeNow} min. It is saved with ${pts(session && !isBreak ? focusR1Points(activeNow, session.focusMinutes) : 0)}.`}
+        description={
+          completeCapFull
+            ? `You focused ${activeNow} min. It is saved. ${CAP_REACHED}, so it adds no points.`
+            : `You focused ${activeNow} min. It is saved with ${pts(completePoints)}.`
+        }
         footer={
           <>
             <button type="button" onClick={() => setConfirmComplete(false)} className="btn-secondary">
