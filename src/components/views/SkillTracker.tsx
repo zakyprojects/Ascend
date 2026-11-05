@@ -124,8 +124,10 @@ export function SkillTracker({ store, onNavigate }: { store: AppStore; onNavigat
   const [duration, setDuration] = useState(QUICK_MINUTES[0]);
   const [note, setNote] = useState('');
   const [countRows, setCountRows] = useState<CountRow[]>([]);
+  /** The log the Log practice dialog edits (null: a new log). */
+  const [editLog, setEditLog] = useState<SkillSessionLog | null>(null);
   const addForm = useUnsavedChanges(addModalOpen, [skillName, category]);
-  const logForm = useUnsavedChanges(logModalOpen, [logSkillId, duration, note, JSON.stringify(countRows)] as const, {
+  const logForm = useUnsavedChanges(logModalOpen && editLog ? `edit-${editLog.id}` : logModalOpen, [logSkillId, duration, note, JSON.stringify(countRows)] as const, {
     key: 'skill-log',
     restore: ([s, d, n, rows]) => {
       setLogSkillId(s);
@@ -245,8 +247,23 @@ export function SkillTracker({ store, onNavigate }: { store: AppStore; onNavigat
     setDuration(QUICK_MINUTES[0]);
     setNote('');
     setCountRows(startRows(skills.find((s) => s.id === id)));
+    setEditLog(null);
     setLogModalOpen(true);
   };
+  /** Edit a practice log: minutes only on its own day, note and counts any day. */
+  const openEditLog = (log: SkillSessionLog) => {
+    const skill = skills.find((s) => s.id === log.skillId);
+    const rows = (Array.isArray(log.counts) ? log.counts : [])
+      .filter((c) => c && c.count > 0 && liveDrills(skill).some((d) => d.id === c.drillId))
+      .map((c) => ({ ...newRow(c.drillId), count: String(c.count) }));
+    setLogSkillId(log.skillId);
+    setDuration(minutesOf(log));
+    setNote(log.note || '');
+    setCountRows(rows.length > 0 ? rows : startRows(skill));
+    setEditLog(log);
+    setLogModalOpen(true);
+  };
+  const minutesLocked = Boolean(editLog && editLog.date !== today);
   const chooseLogSkill = (id: string) => {
     setLogSkillId(id);
     setCountRows(startRows(skills.find((s) => s.id === id)));
@@ -352,6 +369,16 @@ export function SkillTracker({ store, onNavigate }: { store: AppStore; onNavigat
       logIssues.showError(cleaned.problem.message, `skill-count-${cleaned.problem.field}-${row.key}`);
       return;
     }
+    if (editLog) {
+      try {
+        store.updateSkillLog(editLog.id, { durationMinutes: Number(duration), note: note.trim(), counts: cleaned.counts, newDrills: cleaned.newDrills });
+        setLogModalOpen(false);
+        showSuccessToast('Practice updated', `${nameOf(editLog.skillId)} saved.`);
+      } catch (err) {
+        logIssues.showError(toUserMessage(err, "Couldn't save the practice. Try again."));
+      }
+      return;
+    }
     try {
       // Throws only when another write took a new name since the check above.
       await executeLog(async () => {
@@ -384,6 +411,14 @@ export function SkillTracker({ store, onNavigate }: { store: AppStore; onNavigat
           {(log.pointsAwarded || 0) > 0 && (
             <span className="figure text-xs text-brand-text whitespace-nowrap">{ptsText(log.pointsAwarded, true)}</span>
           )}
+          <button
+            onClick={() => openEditLog(log)}
+            aria-label="Edit practice log"
+            title="Edit practice log"
+            className={`p-1.5 rounded-lg text-content-muted hover:text-content-secondary hover:bg-overlay-subtle transition-colors ${TAP_TARGET}`}
+          >
+            <Pencil size={16} />
+          </button>
           <button
             onClick={() => setDeleteModalLog(log)}
             aria-label="Delete practice log"
@@ -723,8 +758,8 @@ export function SkillTracker({ store, onNavigate }: { store: AppStore; onNavigat
         open={logModalOpen}
         onClose={() => setLogModalOpen(false)}
         dirty={logForm.dirty}
-        title="Log practice"
-        initialFocus={logSkillId ? 'skill-duration-input' : undefined}
+        title={editLog ? 'Edit practice' : 'Log practice'}
+        initialFocus={editLog ? (minutesLocked ? 'skill-note-input' : 'skill-duration-input') : logSkillId ? 'skill-duration-input' : undefined}
         preventClose={isLogging}
         footer={
           <>
@@ -733,13 +768,13 @@ export function SkillTracker({ store, onNavigate }: { store: AppStore; onNavigat
             </button>
             <button type="submit" form="skill-log-form" disabled={isLogging} className="btn-primary">
               {isLogging ? <AscendLoadingIndicator size="sm" /> : null}
-              <span>{isLogging ? 'Saving…' : 'Save practice'}</span>
+              <span>{isLogging ? 'Saving…' : editLog ? 'Save changes' : 'Save practice'}</span>
             </button>
           </>
         }
       >
         <Form id="skill-log-form" onSubmit={handleLogSubmit} controller={logIssues} className="space-y-5">
-          <Select id="skill-log-skill" label="Skill" value={logSkillId} onChange={(e) => chooseLogSkill(e.target.value)}>
+          <Select id="skill-log-skill" label="Skill" value={logSkillId} disabled={Boolean(editLog)} onChange={(e) => chooseLogSkill(e.target.value)}>
             <option value="" disabled>
               Choose a skill
             </option>
@@ -759,25 +794,29 @@ export function SkillTracker({ store, onNavigate }: { store: AppStore; onNavigat
               value={duration}
               onValueChange={setDuration}
               enterKeyHint="done"
+              disabled={minutesLocked}
+              hint={minutesLocked ? 'Minutes can only change on the day you logged them, so points stay as earned.' : undefined}
             />
-            <div className="grid grid-cols-4 gap-2">
-              {QUICK_MINUTES.map((m) => (
-                <button
-                  key={m}
-                  type="button"
-                  onClick={() => setDuration(m)}
-                  aria-pressed={duration === m}
-                  className={cx(
-                    'min-h-10 rounded-xl border text-sm font-medium transition-colors figure',
-                    duration === m
-                      ? 'bg-primary-500/15 border-primary-500/50 text-brand-text'
-                      : 'border-overlay-subtle text-content-muted hover:bg-overlay-subtle'
-                  )}
-                >
-                  {quickLabel(m)}
-                </button>
-              ))}
-            </div>
+            {!minutesLocked && (
+              <div className="grid grid-cols-4 gap-2">
+                {QUICK_MINUTES.map((m) => (
+                  <button
+                    key={m}
+                    type="button"
+                    onClick={() => setDuration(m)}
+                    aria-pressed={duration === m}
+                    className={cx(
+                      'min-h-10 rounded-xl border text-sm font-medium transition-colors figure',
+                      duration === m
+                        ? 'bg-primary-500/15 border-primary-500/50 text-brand-text'
+                        : 'border-overlay-subtle text-content-muted hover:bg-overlay-subtle'
+                    )}
+                  >
+                    {quickLabel(m)}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           {logSkill && (
@@ -903,18 +942,20 @@ export function SkillTracker({ store, onNavigate }: { store: AppStore; onNavigat
             maxLength={1000}
           />
 
-          <div className="rounded-xl p-3 text-xs text-content-muted flex items-center justify-between gap-3 border border-overlay-default">
-            <span>
-              {timezoneWait
-                ? `${pointsResumeText(timezoneWait)} It still saves.`
-                : remainingCap === 0
-                  ? `${SKILLS_POINTS.dailyCap} pts reached today. It still saves.`
-                  : previewRaw > previewPoints
-                    ? `Only ${ptsText(remainingCap)} left today.`
-                    : 'Points to earn'}
-            </span>
-            {!timezoneWait && <span className="figure text-brand-text shrink-0">{ptsText(previewPoints, true)}</span>}
-          </div>
+          {!editLog && (
+            <div className="rounded-xl p-3 text-xs text-content-muted flex items-center justify-between gap-3 border border-overlay-default">
+              <span>
+                {timezoneWait
+                  ? `${pointsResumeText(timezoneWait)} It still saves.`
+                  : remainingCap === 0
+                    ? `${SKILLS_POINTS.dailyCap} pts reached today. It still saves.`
+                    : previewRaw > previewPoints
+                      ? `Only ${ptsText(remainingCap)} left today.`
+                      : 'Points to earn'}
+              </span>
+              {!timezoneWait && <span className="figure text-brand-text shrink-0">{ptsText(previewPoints, true)}</span>}
+            </div>
+          )}
         </Form>
       </Dialog>
 

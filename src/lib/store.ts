@@ -88,11 +88,12 @@ import { PresetHabit } from './presets';
 import { sameName } from './uniqueNames';
 import { computeHabitAwards, isHabitAwardEntry, isRetiredAppHabitAward, presetHabitPoints } from './habitAwards';
 import { computeWorkoutAwards, isRetiredAppWorkoutAward, isWorkoutDayEntry } from './workoutAwards';
-import { computeSkillAwards, isRetiredAppSkillAward, isSkillDayEntry } from './skillAwards';
+import { computeSkillAwards, isRetiredAppSkillAward, isSkillDayEntry, skillLateDay } from './skillAwards';
 import { addLogDrills, drillNameProblem, foldClearedCounts, isDrillGoal, keepValidDrillCounts, normalizeDrillName, normalizeDrillUnit, type NewLogDrill } from './skillDrills';
 import { computeRecoveryChanges, RECOVERY_MILESTONES, trackerStartMs } from './recoveryAwards';
 import { computeJournalAward, isJournalDayEntry, isRetiredAppJournalAward, journalEntryEarns } from './journalAwards';
 import { computeFocusAwards, focusFloorDay, isFocusDayEntry, isRetiredAppFocusAward } from './focusAwards';
+import { focusSkillLogFor, withReflectionNote } from './focusSkillLog';
 import { pauseStoredSessionsForSignOut } from './focusSession';
 import { computeTimeTrackerAward, timeTrackerAwardId, timeTrackerGraceDay } from './timeTrackerAwards';
 import {
@@ -1261,7 +1262,8 @@ function applySkillAwardsInternal(
   state: AppState,
   skillLogs: SkillSessionLog[],
   skills: Skill[],
-  day: string
+  day: string,
+  opts: { floor?: boolean } = {}
 ): { points: Pick<AppState, 'seasonPoints' | 'totalPoints' | 'seasonId' | 'pointsHistory' | 'leagueArchives'>; skillLogs: SkillSessionLog[] } {
   const { entry, sessionPoints } = computeSkillAwards(
     skillLogs,
@@ -1269,7 +1271,8 @@ function applySkillAwardsInternal(
     day,
     new Date(`${day}T00:00:00`).getTime(),
     trustedNow().getTime(),
-    (state.pointsHistory || []).find((e) => isSkillDayEntry(e, day))
+    (state.pointsHistory || []).find((e) => isSkillDayEntry(e, day)),
+    opts
   );
 
   const { excisedEntryIds: _excised, ...excised } = excisePointsEntriesInternal(state, (e) => isSkillDayEntry(e, day));
@@ -5322,6 +5325,58 @@ export function useAppState() {
   }, []);
 
   /**
+   * Edits a practice log (Zakria 2026-11-05): minutes only on the log's own local day (today's award
+   * is then recomputed, as the server does); after that day its minutes are locked, so an earlier
+   * day's points never change. Note and counts can be edited any day (counts never earn points).
+   * The server takes an earlier day's edit only when date, skill, minutes and createdAt are unchanged
+   * (skill_logs_guard_today, 20261105180000_skill_log_edit_keeps_minutes.sql).
+   */
+  const updateSkillLog = useCallback(
+    (logId: string, changes: { durationMinutes: number; note: string; counts?: SkillDrillCount[]; newDrills?: readonly NewLogDrill[] }) => {
+      const target = get().skillLogs.find((l) => l.id === logId);
+      if (!target) throw new Error('This practice log was deleted.');
+      const nowIso = trustedNow().toISOString();
+      const made = (changes.newDrills || []).map((d) => ({
+        drill: { id: uid(), name: normalizeDrillName(d.name), unit: normalizeDrillUnit(d.unit), createdAt: nowIso } as SkillDrill,
+        count: d.count,
+      }));
+      if (made.length > 0) {
+        const skill = get().skills.find((s) => s.id === target.skillId);
+        if (!skill) throw new Error('This skill was deleted.');
+        const check = addLogDrills(skill, made, nowIso);
+        if (check.problem) throw new Error(check.problem);
+      }
+      setState((prev) => {
+        const current = prev.skillLogs.find((l) => l.id === logId);
+        const currentSkill = current ? prev.skills.find((s) => s.id === current.skillId) : undefined;
+        if (!current || !currentSkill) return prev;
+        const grown = addLogDrills(currentSkill, made, nowIso);
+        const targetSkill = grown.skill ?? currentSkill;
+        const skills = targetSkill === currentSkill ? prev.skills : prev.skills.map((s) => (s.id === targetSkill.id ? targetSkill : s));
+        const today = todayKey();
+        const minutesEditable = current.date === today;
+        const drillCounts = keepValidDrillCounts([...(changes.counts || []), ...(grown.counts || [])], targetSkill);
+        const { counts: _oldCounts, ...rest } = current;
+        const updated: SkillSessionLog = {
+          ...rest,
+          durationMinutes: minutesEditable && changes.durationMinutes > 0 ? changes.durationMinutes : current.durationMinutes,
+          note: changes.note.trim(),
+          ...(drillCounts.length > 0 ? { counts: drillCounts } : {}),
+        };
+        const skillLogs = prev.skillLogs.map((l) => (l.id === logId ? updated : l));
+        if (!minutesEditable || updated.durationMinutes === current.durationMinutes) {
+          return reconcileLinkedWeeklyGoals({ ...prev, skills, skillLogs });
+        }
+        const awards = applySkillAwardsInternal(prev, skillLogs, skills, today);
+        return reconcileLinkedWeeklyGoals({ ...prev, skills, skillLogs: awards.skillLogs, ...awards.points });
+      });
+    },
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    []
+  );
+
+  /**
    * Removes practice logs dated before `beforeDate` (a local day key). Points already earned stay
    * (no earlier day is recomputed), and each skill keeps the cleared minutes in clearedMinutes so
    * its hours and level do not drop. Capped per call like clearWorkoutsBefore.
@@ -5761,7 +5816,19 @@ export function useAppState() {
         };
         const today = todayKey();
         const floorDay = focusFloorDay(focusLog, today);
-        if (date !== today && !floorDay) return { ...prev, focusLogs: [focusLog, ...prev.focusLogs] };
+        // A session with a skill chosen also adds a normal skill practice log (focusSkillLog.ts).
+        const withSkillLog = (state: AppState): AppState => {
+          const skillLog = focusSkillLogFor(focusLog, state.skills, state.skillLogs, state.deletedEntityIds || []);
+          if (!skillLog) return state;
+          const skillLogs = [skillLog, ...state.skillLogs];
+          // Today's skill award, exactly as Log practice shows it; a session of yesterday raises
+          // yesterday only (skillLateDay, floor), as the server does. The server writes the real rows.
+          const lateDay = skillLateDay(skillLog, today);
+          if (skillLog.date !== today && !lateDay) return reconcileLinkedWeeklyGoals({ ...state, skillLogs });
+          const awards = applySkillAwardsInternal(state, skillLogs, state.skills, lateDay ?? today, { floor: Boolean(lateDay) });
+          return reconcileLinkedWeeklyGoals({ ...state, skillLogs: awards.skillLogs, ...awards.points });
+        };
+        if (date !== today && !floorDay) return withSkillLog({ ...prev, focusLogs: [focusLog, ...prev.focusLogs] });
         // The server writes the day's award (applyFocusAwardsInternal shows the same row now).
         let next: AppState = { ...prev, focusLogs: [focusLog, ...prev.focusLogs] };
         if (date === today) {
@@ -5779,7 +5846,7 @@ export function useAppState() {
             next = { ...next, focusLogs: next.focusLogs.map((l) => (l.id === id ? { ...l, pointsAwarded: gained } : l)) };
           }
         }
-        return next;
+        return withSkillLog(next);
       });
       return id;
     },
@@ -5801,9 +5868,12 @@ export function useAppState() {
       const updatedLogs = [...prev.focusLogs];
       updatedLogs[idx] = updated;
 
+      // The session's skill log (if any) gets the reflection as its note.
+      const skillLogs = withReflectionNote(prev.skillLogs, logId, prev.focusLogs[idx].reflection, reflection);
       return {
         ...prev,
         focusLogs: updatedLogs,
+        ...(skillLogs !== prev.skillLogs ? { skillLogs } : {}),
       };
     });
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
@@ -9884,6 +9954,7 @@ export function useAppState() {
     updateSkillLevel,
     deleteSkill,
     deleteSkillLog,
+    updateSkillLog,
     clearSkillLogsBefore,
     updateSkillDrill,
     deleteSkillDrill,
