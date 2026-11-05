@@ -222,7 +222,7 @@ import { GuardBlockedError, SessionLostError } from './errors';
 import { SYNC_BEHIND_EVENT, flushOutbox, hasPendingSyncOps, readBaseline, recordSyncedChanges } from './sync/outbox';
 import { setTabSyncedHashes, storeTabSyncedHashes, tabSyncedHashes, type Baseline } from './sync/tabVersions';
 import { adoptTabState, applyRemoteChanges, prepareRemoteRows, pullSyncedRows, type RemoteChange } from './sync/pull';
-import { SYNCED_COLLECTIONS, itemsOf, rowIdOf, syncKeyOf } from './sync/syncedCollections';
+import { SYNCED_COLLECTIONS, cacheWithHydratedCollections, itemsOf, rowIdOf, syncKeyOf } from './sync/syncedCollections';
 import { mergeAppState, deduplicatePresetHabits, mergeAppStateWithGuardResult, isLegitimateTombstoneId, signInMergeBase } from './stateMerger';
 import { toUserMessage } from './userMessage';
 import { ilikeExact } from './usernameRules';
@@ -2816,7 +2816,14 @@ export function useAppState() {
                     if (cachedRaw) {
                       const parsed = JSON.parse(cachedRaw);
                       if (parsed && typeof parsed === 'object') {
-                        baseCurrentState = sanitizeLoadedState(parsed, user);
+                        // Settings and device-local keys from the cache; synced lists as hydration
+                        // already merged them (offline edits included), so an older cached copy
+                        // never goes back over another device's newer row or a delete.
+                        baseCurrentState = cacheWithHydratedCollections(
+                          sanitizeLoadedState(parsed, user),
+                          sanitizedState,
+                          readBaseline(userId)
+                        );
                       } else {
                         localStorage.removeItem(`ascend_dirty_${userId}`);
                       }

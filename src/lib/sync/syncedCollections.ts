@@ -18,6 +18,7 @@ import { DEFAULT_TIME_TRACKER_STATE } from '../../types';
 import { isServerOwnedBadHabitLogId } from '../badHabitAwards';
 import { mergeTimeTrackerDays, type TimeTrackerDayDoc } from '../timeTracker';
 import { canonical } from '../stateEquality';
+import type { Baseline } from './tabVersions';
 
 /**
  * Blob collections that also live in a relational table (DB normalization,
@@ -641,4 +642,28 @@ export function cachedSyncedCollections(userId: string): Partial<AppState> {
   } catch {
     return {};
   }
+}
+
+/**
+ * The device cache a boot merges over the hydrated state when the last save never finished (dirty
+ * flag), with each synced collection taken from the hydrated state. Hydration already merged the
+ * cached rows with the server's (an unsent edit is kept by its tab version, a server edit or delete
+ * replaces an unchanged copy), so the raw cache adds nothing there but older copies: merged again
+ * they undid newer rows from other devices and brought deleted rows back, and the next save sent
+ * them as edits. Only cached items the server never had (no baseline entry) are added back. The
+ * rest of the cache (settings, tombstones, table-owned keys) is used as before.
+ */
+export function cacheWithHydratedCollections(cache: AppState, hydrated: AppState, baseline: Baseline): AppState {
+  let base = cache;
+  for (const collection of SYNCED_COLLECTIONS) {
+    const known = baseline[syncKeyOf(collection)] || {};
+    const held = itemsOf(collection, hydrated);
+    const heldIds = new Set(held.map((item) => rowIdOf(collection, item)));
+    const unsynced = itemsOf(collection, cache).filter((item) => {
+      const id = item ? rowIdOf(collection, item) : '';
+      return Boolean(id) && !heldIds.has(id) && known[id] === undefined;
+    });
+    base = withItems(collection, base, [...unsynced, ...held]);
+  }
+  return base;
 }
