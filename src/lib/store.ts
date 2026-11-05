@@ -219,9 +219,9 @@ import {
   hasSessionFor,
 } from './supabase';
 import { GuardBlockedError, SessionLostError } from './errors';
-import { SYNC_BEHIND_EVENT, flushOutbox, hasPendingSyncOps, readBaseline, recordSyncedChanges } from './sync/outbox';
+import { SYNC_BEHIND_EVENT, SYNC_VERSIONS_EVENT, flushOutbox, hasPendingSyncOps, readBaseline, recordSyncedChanges } from './sync/outbox';
 import { setTabSyncedHashes, storeTabSyncedHashes, tabSyncedHashes, type Baseline } from './sync/tabVersions';
-import { adoptTabState, applyRemoteChanges, prepareRemoteRows, pullSyncedRows, type RemoteChange } from './sync/pull';
+import { adoptTabState, applyRemoteChanges, prepareRemoteRows, pullSyncedRows, takePeerVersions, type RemoteChange } from './sync/pull';
 import { SYNCED_COLLECTIONS, cacheWithHydratedCollections, itemsOf, rowIdOf, syncKeyOf } from './sync/syncedCollections';
 import { mergeAppState, deduplicatePresetHabits, mergeAppStateWithGuardResult, isLegitimateTombstoneId, signInMergeBase } from './stateMerger';
 import { toUserMessage } from './userMessage';
@@ -272,6 +272,14 @@ export interface StateSyncMessage {
   /** The sender's row versions for this state (tabSyncedHashes); absent from older app versions. */
   syncHashes?: Baseline;
   timestamp: number;
+}
+
+/** A tab's row versions after its save (SYNC_VERSIONS_EVENT); the other tabs take the ones they hold. */
+export interface SyncVersionsMessage {
+  type: 'ASCEND_SYNC_VERSIONS';
+  senderTabId: string;
+  userId: string;
+  syncHashes: Baseline;
 }
 
 export function broadcastStateToTabs(state: AppState, senderTabId: string) {
@@ -2054,6 +2062,11 @@ export function useAppState() {
         callReject = reject;
       });
 
+      // This tab's row versions as they stand with this state: the diff compares with these even if
+      // a pull or a broadcast moves them before the save gets there.
+      const persistUserId = stateToPersist.currentUser?.id;
+      const versionsAtStart = persistUserId ? tabSyncedHashes(persistUserId) : undefined;
+
       writeQueueRef.current = writeQueueRef.current
         .catch(() => {
           // Isolate queue failures: prior failure does not prevent subsequent writes
@@ -2063,7 +2076,7 @@ export function useAppState() {
             await persistState(stateToPersist, options);
             lastKnownGoodStateRef.current = stateToPersist;
             // Mirror what the blob accepted into the relational tables (DB normalization S2).
-            recordSyncedChanges(stateToPersist);
+            recordSyncedChanges(stateToPersist, versionsAtStart);
             callResolve();
           } catch (err) {
             callReject(err);
@@ -2278,8 +2291,30 @@ export function useAppState() {
 
     const channel = new BroadcastChannel(STATE_SYNC_CHANNEL_NAME);
 
-    channel.onmessage = (event: MessageEvent<StateSyncMessage>) => {
+    // This tab's versions after a save go to the other tabs (older app versions ignore the message).
+    const onVersions = (event: Event) => {
+      const detail = (event as CustomEvent<{ userId?: string; hashes?: Baseline }>).detail;
+      if (!detail?.userId || !detail.hashes) return;
+      const msg: SyncVersionsMessage = { type: 'ASCEND_SYNC_VERSIONS', senderTabId: tabId, userId: detail.userId, syncHashes: detail.hashes };
+      try {
+        channel.postMessage(msg);
+      } catch {
+        /* ignore BroadcastChannel errors */
+      }
+    };
+    window.addEventListener(SYNC_VERSIONS_EVENT, onVersions);
+
+    channel.onmessage = (event: MessageEvent<StateSyncMessage | SyncVersionsMessage>) => {
       const data = event.data;
+      if (data?.type === 'ASCEND_SYNC_VERSIONS') {
+        const userId = currentUserRef.current?.id;
+        if (data.senderTabId === tabId || !userId || data.userId !== userId || !data.syncHashes) return;
+        // Versions only, never state: a row held with exactly the sender's synced content is in step.
+        const mine = tabSyncedHashes(userId);
+        const next = takePeerVersions(stateRef.current, mine, data.syncHashes);
+        if (next !== mine) setTabSyncedHashes(userId, next);
+        return;
+      }
       if (!data || data.type !== 'ASCEND_STATE_SYNC') return;
       if (data.senderTabId === tabId) return; // Ignore own broadcast
 
@@ -2333,6 +2368,7 @@ export function useAppState() {
     };
 
     return () => {
+      window.removeEventListener(SYNC_VERSIONS_EVENT, onVersions);
       channel.close();
     };
   }, [tabId]);
@@ -2551,10 +2587,15 @@ export function useAppState() {
         // is being deleted.
         if (debounceTimer.current) clearTimeout(debounceTimer.current);
         debounceTimer.current = setTimeout(async () => {
+          // The latest state, not the one this timer was set for: a broadcast taken in meanwhile
+          // (it sets no timer of its own) holds newer rows, and saving the older copy over them
+          // would send it as an edit. Another account's state never stands in.
+          const latest = stateRef.current;
+          const toSave = latest.currentUser?.id === state.currentUser?.id ? latest : state;
           try {
-            await enqueuePersist(state);
-            if (typeof window !== 'undefined' && state.currentUser?.id) {
-              localStorage.removeItem(`ascend_dirty_${state.currentUser.id}`);
+            await enqueuePersist(toSave);
+            if (typeof window !== 'undefined' && toSave.currentUser?.id) {
+              localStorage.removeItem(`ascend_dirty_${toSave.currentUser.id}`);
             }
           } catch (err) {
             if (err instanceof SessionLostError) {
@@ -2579,7 +2620,7 @@ export function useAppState() {
                   description: isZeroOut
                     ? 'This removes all remaining tracked items from your account. Save this change?'
                     : 'This removes most of your tracked items. Save this change?',
-                  stateToRetry: state,
+                  stateToRetry: toSave,
                   stateBeforeAction: lastKnownGoodStateRef.current,
                 });
                 return;

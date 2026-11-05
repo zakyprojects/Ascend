@@ -53,6 +53,12 @@ export const lastFullPullKey = (userId: string) => `ascend_sync_last_full_pull_$
 const DELETE_CHUNK = 100;
 /** Fired (window event, detail { userId }) when a save held old copies back: this tab should pull. */
 export const SYNC_BEHIND_EVENT = 'ascend-sync-behind';
+/**
+ * Fired (window event, detail { userId, hashes }) when a save moved this tab's row versions: the
+ * store passes them to the other tabs, whose copies of the same rows took the versions this tab
+ * had before the save (a broadcast goes out before the save's diff).
+ */
+export const SYNC_VERSIONS_EVENT = 'ascend-sync-versions';
 
 function readJson<T>(key: string): T | null {
   try {
@@ -88,7 +94,9 @@ export function diffSyncedCollections(
   baseline: Baseline,
   outbox: Outbox,
   nowIso: string,
-  tabHashes: Baseline = {}
+  tabHashes: Baseline = {},
+  /** Versions this tab also held for the state (recordSyncedChanges: the ones current when the diff runs). */
+  alsoHeld: Baseline = {}
 ): { baseline: Baseline; outbox: Outbox; changed: boolean; tabHashes: Baseline; behind: number } {
   const tombstones = new Set(state.deletedEntityIds || []);
   const nextOutbox: Outbox = { ...outbox };
@@ -100,6 +108,7 @@ export function diffSyncedCollections(
   for (const collection of SYNCED_COLLECTIONS) {
     const prev = baseline[syncKeyOf(collection)] || {};
     const tabPrev = tabHashes[syncKeyOf(collection)] || {};
+    const heldPrev = alsoHeld[syncKeyOf(collection)] || {};
     const next: Record<string, string> = {};
     const tabNext: Record<string, string> = {};
     const items = itemsOf(collection, state);
@@ -125,7 +134,7 @@ export function diffSyncedCollections(
       // Unchanged in this tab since it last synced the row, while the baseline moved on (another
       // tab pulled a newer row or a delete): an old copy. Uploading it would stamp old content
       // with "now" and undo the newer row, so it is held back and the next pull replaces it.
-      if (id in prev && id in tabPrev && tabPrev[id] === hash) {
+      if (id in prev && ((id in tabPrev && tabPrev[id] === hash) || (id in heldPrev && heldPrev[id] === hash))) {
         next[id] = prev[id];
         tabNext[id] = hash;
         behind++;
@@ -188,19 +197,55 @@ export function diffSyncedCollections(
   return { baseline: nextBaseline, outbox: nextOutbox, changed, tabHashes: nextTabHashes, behind };
 }
 
-/** Call after the blob save for this state succeeded. */
-export function recordSyncedChanges(state: AppState): void {
+/**
+ * The diff's versions, except rows whose version moved while the save ran (a pull or another tab's
+ * state was taken in): the tab now shows a different copy of those, and keeps the version for it.
+ */
+function keepMovedVersions(result: Baseline, atStart: Baseline, current: Baseline): Baseline {
+  const next: Baseline = { ...result };
+  for (const key of new Set([...Object.keys(atStart), ...Object.keys(current)])) {
+    const before = atStart[key] || {};
+    const now = current[key] || {};
+    let forKey: Record<string, string> | null = null;
+    for (const id of new Set([...Object.keys(before), ...Object.keys(now)])) {
+      if (before[id] === now[id]) continue;
+      forKey = forKey || { ...(next[key] || {}) };
+      if (id in now) forKey[id] = now[id];
+      else delete forKey[id];
+    }
+    if (forKey) next[key] = forKey;
+  }
+  return next;
+}
+
+/**
+ * Call after the blob save for this state succeeded. versionsAtStart: this tab's versions when the
+ * save took the state (tabSyncedHashes then). A pull or a broadcast taken in during the save moves
+ * the versions to copies the saved state does not hold; compared with the moved ones only, an old
+ * copy in the saved state looked like an edit and was sent with "now". So a copy equal to either
+ * the versions at the start or the current ones (an earlier save's diff may have moved them) is
+ * not an edit.
+ */
+export function recordSyncedChanges(state: AppState, versionsAtStart?: Baseline): void {
   const userId = state.currentUser?.id;
   if (!userId || typeof window === 'undefined') return;
 
+  const current = tabSyncedHashes(userId);
+  const atStart = versionsAtStart ?? current;
   const result = diffSyncedCollections(
     state,
     readJson<Baseline>(baselineKey(userId)) || {},
     readJson<Outbox>(outboxKey(userId)) || {},
     trustedNow().toISOString(),
-    tabSyncedHashes(userId)
+    atStart,
+    atStart === current ? {} : current
   );
-  setTabSyncedHashes(userId, result.tabHashes);
+  const nextVersions = atStart === current ? result.tabHashes : keepMovedVersions(result.tabHashes, atStart, current);
+  const versionsMoved = JSON.stringify(nextVersions) !== JSON.stringify(current);
+  setTabSyncedHashes(userId, nextVersions);
+  if (versionsMoved) {
+    window.dispatchEvent(new CustomEvent(SYNC_VERSIONS_EVENT, { detail: { userId, hashes: nextVersions } }));
+  }
   if (result.behind > 0) window.dispatchEvent(new CustomEvent(SYNC_BEHIND_EVENT, { detail: { userId } }));
   if (!result.changed) return;
 

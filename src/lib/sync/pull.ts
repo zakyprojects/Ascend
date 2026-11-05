@@ -262,8 +262,10 @@ export function noteHeldRows(userId: string, state: AppState, changes: RemoteCha
  * A state another tab of this browser broadcast, made safe to show here. A row the sender still
  * held unchanged at an older version than the shared baseline (it saved before its pull caught up)
  * keeps this tab's copy (the baseline's row, or an edit made here); a synced row the sender never
- * had is kept from this tab; a row the sender holds that the baseline knows deleted is dropped when
- * this tab dropped it. Everything else is the sender's, as sent. Returns the state to show and this
+ * had is kept from this tab, and so is an item made here that never reached the server (the sender
+ * never had it and did not delete it); a row the sender holds that the baseline knows deleted is
+ * dropped when this tab dropped it. Everything else is the sender's, as sent, and a copy equal to the
+ * baseline takes the baseline's version (the sender's can lag its own last save). Returns the state to show and this
  * tab's versions for it. Without the sender's versions (an older app version) the state is taken
  * as sent and this tab's versions are cleared, so every difference counts as an edit, as before.
  */
@@ -309,18 +311,54 @@ export function adoptTabState(
         changed = true;
       } else {
         items.push(item);
+        // The sender's version can predate its own last save (it is updated by the next diff): a
+        // copy equal to the shared baseline is in step with it, whatever version came with it.
+        if (known[id] !== undefined && known[id] !== DELETED && hashOf(collection, item) === known[id]) tab[id] = known[id];
       }
     }
     for (const [id, item] of ours) {
-      if (seen.has(id) || id in sent || tombstones.has(id) || !fresh(id)) continue;
-      items.push(item);
-      tab[id] = known[id];
-      changed = true;
+      if (seen.has(id) || id in sent || tombstones.has(id)) continue;
+      if (fresh(id)) {
+        items.push(item);
+        tab[id] = known[id];
+        changed = true;
+      } else if (known[id] === undefined && !collection.serverOwnedId?.(id)) {
+        // An item made here that never reached the server (its save is still pending) and that the
+        // sender never had: kept, so the save uploads it and it does not vanish from this tab.
+        items.push(item);
+        changed = true;
+      }
     }
     if (changed) next = withItems(collection, next, items);
     tabHashes[key] = tab;
   }
   return { state: next, tabHashes };
+}
+
+/**
+ * Another tab's row versions after its save (SYNC_VERSIONS_EVENT), taken for the rows this tab holds
+ * with exactly that content: the copy is in step with what that tab synced, so it is never sent again
+ * as an edit here. Rows held with other content keep this tab's own version. Returns `mine` itself
+ * when nothing changes.
+ */
+export function takePeerVersions(current: AppState, mine: Baseline, peer: Baseline): Baseline {
+  let next: Baseline | null = null;
+  for (const collection of SYNCED_COLLECTIONS) {
+    const key = syncKeyOf(collection);
+    const theirs = peer[key];
+    if (!theirs) continue;
+    let tab: Record<string, string> | null = null;
+    for (const item of itemsOf(collection, current)) {
+      const id = rowIdOf(collection, item);
+      const hash = theirs[id];
+      if (!id || hash === undefined || hash === DELETED || mine[key]?.[id] === hash) continue;
+      if (hashOf(collection, item) !== hash) continue;
+      tab = tab || { ...(mine[key] || {}) };
+      tab[id] = hash;
+    }
+    if (tab) next = { ...(next || mine), [key]: tab };
+  }
+  return next || mine;
 }
 
 /** The API returns at most PAGE_SIZE rows per request, so larger tables are read page by page. */
