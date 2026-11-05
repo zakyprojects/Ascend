@@ -1337,8 +1337,30 @@ function mergeAppStateInternal(
     deletedEntityIds: postPointsDeletedEntityIds,
     restoredEntityIds: mergedRestoredEntityIds,
     timeTracker: mergedTimeTracker,
-    themePreference: incomingState.themePreference || baseState.themePreference || 'dark',
+    ...mergeThemePreference(baseState, incomingState),
     rankCelebrated: mergeRankCelebrated(baseState.rankCelebrated, incomingState.rankCelebrated),
+  };
+}
+
+/**
+ * The theme between two copies of the settings: the later change (themeUpdatedAt) wins. With equal
+ * stamps (or none) and different values, base wins: every merge passes the server's or the loaded
+ * copy as base and this device's as incoming, and a device that changed its theme stamped it, so an
+ * unstamped difference here is another device's change (also an older app version's, which does not
+ * stamp). Before this, incoming always won, so each device kept and re-saved its own theme.
+ */
+export function mergeThemePreference(
+  baseState: Pick<AppState, 'themePreference' | 'themeUpdatedAt'>,
+  incomingState: Pick<AppState, 'themePreference' | 'themeUpdatedAt'>
+): Pick<AppState, 'themePreference' | 'themeUpdatedAt'> {
+  const baseAt = timeMs(baseState.themeUpdatedAt);
+  const incomingAt = timeMs(incomingState.themeUpdatedAt);
+  const incomingWins = incomingState.themePreference !== undefined && (baseState.themePreference === undefined || incomingAt > baseAt);
+  const winner = incomingWins ? incomingState : baseState;
+  const themeUpdatedAt = incomingAt > baseAt ? incomingState.themeUpdatedAt : baseState.themeUpdatedAt ?? incomingState.themeUpdatedAt;
+  return {
+    themePreference: winner.themePreference || 'dark',
+    ...(themeUpdatedAt ? { themeUpdatedAt } : {}),
   };
 }
 

@@ -783,6 +783,8 @@ export interface AppState {
 
   // Theme Preference
   themePreference?: 'dark' | 'light';
+  /** When themePreference was last changed on any device; the later change wins between devices. */
+  themeUpdatedAt?: string;
 
   /** Highest rank already celebrated this season (lib/rankCelebration); null until first set. */
   rankCelebrated?: RankCelebrated | null;

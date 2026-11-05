@@ -4280,6 +4280,7 @@ export function useAppState() {
       (prev) => ({
         ...prev,
         themePreference: theme,
+        themeUpdatedAt: trustedNow().toISOString(),
       }),
       { immediate: true }
     );
@@ -4296,6 +4297,7 @@ export function useAppState() {
       (prev) => ({
         ...prev,
         themePreference: nextTheme,
+        themeUpdatedAt: trustedNow().toISOString(),
       }),
       { immediate: true }
     );
