@@ -454,11 +454,19 @@ export async function pullSyncedRows(userId: string, full: boolean): Promise<Pul
         }
       }
 
+      // Read before prepareRemoteRows, which skips the rows these ops are waiting to replace.
+      const waiting = collection.mergeConflict ? new Set<string>() : pendingOpIds(userId, collection.table);
       const changes = prepareRemoteRows(userId, collection, rows, full, stale);
-      const latest = rows.reduce<number>(
+      let latest = rows.reduce<number>(
         (max, row) => Math.max(max, Date.parse(String(row.server_updated_at)) || 0),
         cursor ? Date.parse(cursor) : 0
       );
+      // A skipped row stays ahead of the cursor: if the server then refuses the waiting op as older
+      // (keep-newer returns no error), the next pull still reads the row instead of passing it.
+      for (const row of rows) {
+        const at = Date.parse(String(row.server_updated_at));
+        if (at && waiting.has(String(row.id))) latest = Math.min(latest, at - 1);
+      }
       if (latest > 0) localStorage.setItem(cursorKey(userId, collection.table), new Date(latest).toISOString());
       return changes;
     })
