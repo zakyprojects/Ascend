@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
-import { byCreatedAsc } from '@/lib/listOrder';
+import { applyListOrder, byCreatedAsc, LIST_ORDER_KEYS, reorderInSlots, savedOrderIds } from '@/lib/listOrder';
+import { LazyReorderList, ReorderButton } from '@/components/ui/Reorder';
 import { Clock, Flame, Pencil, Plus, Target, Trash2, X } from 'lucide-react';
 import { AppStore, CLEAR_SKILL_LOGS_MAX } from '@/lib/store';
 import { ledgerPointsByDay } from '@/lib/ledgerDayPoints';
@@ -157,8 +158,12 @@ export function SkillTracker({ store, onNavigate }: { store: AppStore; onNavigat
   const { isLoading: isLogging, executeFn: executeLog } = useAsyncAction();
   const { isLoading: isDeleting, executeFn: executeDelete } = useAsyncAction();
 
-  // Oldest first on every device (the state array's order depends on the device).
-  const skills = useMemo(() => [...store.state.skills].sort(byCreatedAsc), [store.state.skills]);
+  // The user's order (Reorder), else oldest first on every device; new skills join the end.
+  const skills = useMemo(
+    () => applyListOrder(store.state.skills, savedOrderIds(store.state.listOrders, LIST_ORDER_KEYS.skills), byCreatedAsc, 'end'),
+    [store.state.skills, store.state.listOrders]
+  );
+  const [reordering, setReordering] = useState(false);
   const skillLogs = store.state.skillLogs;
   // Day points come from the ledger, so deleting or clearing an earlier day's practice never
   // shows that day's points going down (they stay on the server).
@@ -549,8 +554,11 @@ export function SkillTracker({ store, onNavigate }: { store: AppStore; onNavigat
           <div className="space-y-6">
             <div>
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
-                <h2 className="section-title">Your skills</h2>
-                {categories.length > 2 && (
+                <div className="flex items-center justify-between gap-2">
+                  <h2 className="section-title">Your skills</h2>
+                  {!reordering && filteredSkills.length >= 2 && <ReorderButton label="skills" onClick={() => setReordering(true)} />}
+                </div>
+                {!reordering && categories.length > 2 && (
                   <div className="flex items-center gap-1.5 flex-wrap">
                     {categories.map((cat) => (
                       <button
@@ -571,6 +579,18 @@ export function SkillTracker({ store, onNavigate }: { store: AppStore; onNavigat
                   </div>
                 )}
               </div>
+              {reordering ? (
+                // A category's skills move only among their own slots in the full list.
+                <LazyReorderList
+                  label="skills"
+                  items={filteredSkills.map((s) => ({ id: s.id, title: s.name }))}
+                  onCancel={() => setReordering(false)}
+                  onDone={(ids) => {
+                    store.saveListOrder(LIST_ORDER_KEYS.skills, reorderInSlots(skills.map((s) => s.id), ids));
+                    setReordering(false);
+                  }}
+                />
+              ) : (
               <div className="grid-cards-lg gap-3">
                 {filteredSkills.map((skill) => {
                   const minutes = minutesBySkill.get(skill.id) || 0;
@@ -682,6 +702,7 @@ export function SkillTracker({ store, onNavigate }: { store: AppStore; onNavigat
                   );
                 })}
               </div>
+              )}
             </div>
 
             <div>

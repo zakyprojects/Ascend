@@ -2,6 +2,8 @@ import { useMemo, useState } from 'react';
 import { BookOpen, CheckCircle2, ListTodo, Pause, Pencil, PlayCircle, Plus, RotateCcw, Search, Trash2 } from 'lucide-react';
 import { AppStore, runningPactsLinkedTo } from '@/lib/store';
 import { pactUnlinkNote } from '@/lib/pactLifecycle';
+import { applyListOrder, LIST_ORDER_KEYS, reorderInSlots, savedOrderIds } from '@/lib/listOrder';
+import { LazyReorderList, ReorderButton } from '@/components/ui/Reorder';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { Badge, Dialog, EmptyState, PageColumns, ProgressBar, Switch, TabPanel, Tabs, ToolbarInput, ToolbarSelect } from '@/components/ui/primitives';
 import { TAP_TARGET, cx } from '@/components/ui/primitives/shared';
@@ -146,10 +148,19 @@ export function ReadingHub({ store }: { store: AppStore }) {
     () => libraryBooks.filter((b) => b.status === 'reading').sort(byNewest('updatedAt', 'startedAt', 'addedAt')),
     [libraryBooks]
   );
+  // The To read queue: the user's order (Reorder), else newest first; new books join the top.
+  const listOrders = store.state.listOrders;
   const libraryList = useMemo(
-    () => libraryBooks.filter((b) => b.status === 'to-read' || b.status === 'to_read').sort(byNewest('updatedAt', 'addedAt')),
-    [libraryBooks]
+    () =>
+      applyListOrder(
+        libraryBooks.filter((b) => b.status === 'to-read' || b.status === 'to_read'),
+        savedOrderIds(listOrders, LIST_ORDER_KEYS.toRead),
+        byNewest('updatedAt', 'addedAt'),
+        'start'
+      ),
+    [libraryBooks, listOrders]
   );
+  const [reordering, setReordering] = useState(false);
   const finishedBooks = useMemo(
     () => libraryBooks.filter((b) => b.status === 'completed').sort(byNewest('dateCompleted', 'completedAt', 'updatedAt')),
     [libraryBooks]
@@ -468,7 +479,24 @@ export function ReadingHub({ store }: { store: AppStore }) {
               ) : (
                 <EmptyState size="sm" title="No books match" description="Try another search or category." />
               )
+            ) : reordering ? (
+              // A search or category shows part of the queue; those books move only among their slots.
+              <LazyReorderList
+                label="books to read"
+                items={shownLibrary.map((b) => ({ id: b.id, title: b.title }))}
+                onCancel={() => setReordering(false)}
+                onDone={(ids) => {
+                  store.saveListOrder(LIST_ORDER_KEYS.toRead, reorderInSlots(libraryList.map((b) => b.id), ids));
+                  setReordering(false);
+                }}
+              />
             ) : (
+              <div className="space-y-3">
+              {shownLibrary.length >= 2 && !searchQuery.trim() && (
+                <div className="flex justify-end">
+                  <ReorderButton label="books to read" onClick={() => setReordering(true)} />
+                </div>
+              )}
               <div className="grid-cards gap-4">
                 {shownLibrary.map((book) => {
                   const p = bookProgress(book);
@@ -510,6 +538,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
                     </BookCard>
                   );
                 })}
+              </div>
               </div>
             ))}
 

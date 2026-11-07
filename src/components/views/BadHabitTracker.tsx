@@ -12,6 +12,8 @@ import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { PageHero } from '@/components/ui/PageHero';
 import { EmptyState, PageColumns } from '@/components/ui/primitives';
 import { getActiveBadHabitsOrdered } from '@/lib/badHabitEligibility';
+import { applyListOrder, LIST_ORDER_KEYS, savedOrderIds } from '@/lib/listOrder';
+import { LazyReorderList, ReorderButton } from '@/components/ui/Reorder';
 import { getCapStatus } from '@/lib/capStatus';
 import { getEffectiveSeasonPoints } from '@/lib/leagues';
 import { leagueNow } from '@/lib/leagueTime';
@@ -35,7 +37,17 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
   const [popIds, setPopIds] = useState<ReadonlySet<string>>(() => new Set());
   // Re-renders at local midnight, so the page never shows yesterday's logs or taps dead rows (B4).
   const today = useLocalDayKey();
-  const habits = getActiveBadHabitsOrdered(store.state.badHabits || []);
+  // Display only: the user's order (Reorder), else oldest first; new ones join the end. The
+  // penalty order (getActiveBadHabitsOrdered, the server's created_at order) is unchanged.
+  const ordered = getActiveBadHabitsOrdered(store.state.badHabits || []);
+  const oldest = new Map(ordered.map((h, i) => [h.id, i]));
+  const habits = applyListOrder(
+    ordered,
+    savedOrderIds(store.state.listOrders, LIST_ORDER_KEYS.badHabits),
+    (a, b) => oldest.get(a.id)! - oldest.get(b.id)!,
+    'end'
+  );
+  const [reordering, setReordering] = useState(false);
   const logs = store.state.badHabitLogs || [];
   const todayLogOf = (id: string) => logs.find((l) => l.badHabitId === id && l.date === today && l.status !== 'no_report');
   const toLog = habits.filter((h) => !todayLogOf(h.id));
@@ -151,8 +163,23 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
               </button>
             }
           />
+        ) : reordering ? (
+          <LazyReorderList
+            label="bad habits"
+            items={habits.map((h) => ({ id: h.id, title: h.name }))}
+            onCancel={() => setReordering(false)}
+            onDone={(ids) => {
+              store.saveListOrder(LIST_ORDER_KEYS.badHabits, ids);
+              setReordering(false);
+            }}
+          />
         ) : (
           <div className="space-y-6">
+            {habits.length >= 2 && (
+              <div className="-mb-3 flex justify-end">
+                <ReorderButton label="bad habits" onClick={() => setReordering(true)} />
+              </div>
+            )}
             {toLog.length > 0 && (
               <section aria-labelledby="bad-habits-to-log">
                 <h2 id="bad-habits-to-log" className="section-title mb-3">

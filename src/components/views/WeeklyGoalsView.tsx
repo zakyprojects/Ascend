@@ -9,6 +9,9 @@ import { weeklyGoalsGuide } from '@/components/howItWorks/weeklyGoals';
 import { EmptyState, PageColumns } from '@/components/ui/primitives';
 import { useToast } from '@/components/ui/Toast';
 import { useAsyncActionKey } from '@/lib/useAsyncAction';
+import { applyListOrder, LIST_ORDER_KEYS, reorderInSlots, savedOrderIds } from '@/lib/listOrder';
+import { confirmLeave } from '@/lib/unsavedChanges';
+import { LazyReorderList, ReorderButton } from '@/components/ui/Reorder';
 import { weekKey, getWeekDates, offsetWeekKey, formatWeekRange, getNow, parseDate, localDayStartMs } from '@/lib/dates';
 import { useLocalDayKey } from '@/lib/useLocalDayKey';
 import { isReflectionWindowOpen, weeklyScoringGoals } from '@/lib/weeklyAwards';
@@ -68,10 +71,22 @@ export function WeeklyGoalsView({ store, onNavigate }: { store: AppStore; onNavi
     [store.state, currentWeekKey]
   );
 
-  const weekGoals = useMemo(
-    () => (weeklyGoals.find((w) => w.weekKey === selectedWeekKey)?.goals ?? []).filter((g) => !g.archived),
-    [weeklyGoals, selectedWeekKey]
-  );
+  // The week's own order (Reorder, saved apart from the week's row so no award recompute runs),
+  // else the order the goals were added in; new ones join the end.
+  const listOrders = store.state.listOrders;
+  const weekGoals = useMemo(() => {
+    const goals = (weeklyGoals.find((w) => w.weekKey === selectedWeekKey)?.goals ?? []).filter((g) => !g.archived);
+    const added = new Map(goals.map((g, i) => [g.id, i]));
+    const saved = savedOrderIds(listOrders, LIST_ORDER_KEYS.weeklyGoals(selectedWeekKey));
+    return applyListOrder(goals, saved, (a, b) => added.get(a.id)! - added.get(b.id)!, 'end');
+  }, [weeklyGoals, selectedWeekKey, listOrders]);
+  // Reorder mode belongs to one week; changing week with moves asks to discard them.
+  const [reorderWeek, setReorderWeek] = useState<string | null>(null);
+  const goToWeek = (key: string) =>
+    confirmLeave(() => {
+      setReorderWeek(null);
+      setSelectedWeekKey(key);
+    });
   const allWeekGoals = useMemo(() => weeklyGoals.find((w) => w.weekKey === selectedWeekKey)?.goals ?? [], [weeklyGoals, selectedWeekKey]);
 
   const rows = useMemo(
@@ -221,7 +236,7 @@ export function WeeklyGoalsView({ store, onNavigate }: { store: AppStore; onNavi
       <nav className="flex items-center gap-2" aria-label="Choose week">
         <button
           type="button"
-          onClick={() => setSelectedWeekKey(offsetWeekKey(selectedWeekKey, -1))}
+          onClick={() => goToWeek(offsetWeekKey(selectedWeekKey, -1))}
           className={`rounded-xl border border-overlay-subtle p-2 text-content-muted transition-colors hover:bg-bg-800 hover:text-content-primary ${TAP_TARGET}`}
           aria-label="Previous week"
         >
@@ -235,14 +250,14 @@ export function WeeklyGoalsView({ store, onNavigate }: { store: AppStore; onNavi
         </div>
         <button
           type="button"
-          onClick={() => setSelectedWeekKey(offsetWeekKey(selectedWeekKey, 1))}
+          onClick={() => goToWeek(offsetWeekKey(selectedWeekKey, 1))}
           className={`rounded-xl border border-overlay-subtle p-2 text-content-muted transition-colors hover:bg-bg-800 hover:text-content-primary ${TAP_TARGET}`}
           aria-label="Next week"
         >
           <ChevronRight size={16} />
         </button>
         {!isCurrentWeek && (
-          <button type="button" onClick={() => setSelectedWeekKey(currentWeekKey)} className="btn-secondary px-3 py-1.5 text-xs">
+          <button type="button" onClick={() => goToWeek(currentWeekKey)} className="btn-secondary px-3 py-1.5 text-xs">
             This week
           </button>
         )}
@@ -309,11 +324,16 @@ export function WeeklyGoalsView({ store, onNavigate }: { store: AppStore; onNavi
             <section className="card space-y-4 p-5" aria-label="Goals">
               <div className="flex items-baseline justify-between gap-3">
                 <h2 className="section-title">Goals</h2>
-                {rows.length > 0 && (
-                  <span className="figure text-xs text-content-muted">
-                    {stats.achieved} of {rows.length} achieved
-                  </span>
-                )}
+                <div className="flex items-center gap-3">
+                  {rows.length > 0 && (
+                    <span className="figure text-xs text-content-muted">
+                      {stats.achieved} of {rows.length} achieved
+                    </span>
+                  )}
+                  {!isPastWeek && rows.length >= 2 && reorderWeek !== selectedWeekKey && (
+                    <ReorderButton label="weekly goals" onClick={() => setReorderWeek(selectedWeekKey)} />
+                  )}
+                </div>
               </div>
 
               {isPastWeek && <p className="text-xs text-content-muted">Past weeks are read-only.</p>}
@@ -333,6 +353,16 @@ export function WeeklyGoalsView({ store, onNavigate }: { store: AppStore; onNavi
                       </button>
                     )
                   }
+                />
+              ) : reorderWeek === selectedWeekKey ? (
+                <LazyReorderList
+                  label="weekly goals"
+                  items={rows.map(({ goal }) => ({ id: goal.id, title: goal.title }))}
+                  onCancel={() => setReorderWeek(null)}
+                  onDone={(ids) => {
+                    store.saveListOrder(LIST_ORDER_KEYS.weeklyGoals(selectedWeekKey), reorderInSlots(weekGoals.map((g) => g.id), ids));
+                    setReorderWeek(null);
+                  }}
                 />
               ) : (
                 <div className="divide-y divide-overlay-subtle">
@@ -364,7 +394,7 @@ export function WeeklyGoalsView({ store, onNavigate }: { store: AppStore; onNavi
               weekKey={selectedWeekKey}
               weekText={selectedText}
               lastWeekWindowOpen={isCurrentWeek && isReflectionWindowOpen(previousWeekKey, getNow())}
-              onOpenLastWeek={() => setSelectedWeekKey(previousWeekKey)}
+              onOpenLastWeek={() => goToWeek(previousWeekKey)}
             />
 
             {/* Needs at least two planned weeks to say anything. */}
