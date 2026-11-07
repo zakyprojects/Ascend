@@ -32,6 +32,7 @@ export const skillsGuide: HowItWorksGuide = {
     'Edit a log’s note and counts any time. Its minutes can only change on the day you logged them.',
     'Deleting today’s practice takes its points back. Earlier days keep their points and hours.',
     'Deleting old logs can break a skill’s streak.',
+    'Tap Reorder to put your skills, or a skill’s counts, in your own order. With a category picked, only its skills move.',
   ],
   points: [
     <>

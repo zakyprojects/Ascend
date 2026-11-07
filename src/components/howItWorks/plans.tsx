@@ -25,6 +25,7 @@ export const plansGuide: HowItWorksGuide = {
   notes: [
     'A vision checks in every week or every month. Plans with a check-in due are counted at the top of the page.',
     'A new plan is only yours. Set it to Everyone, in Discover to let others copy it, and back to Only me any time.',
+    'Tap Reorder to put your plans in your own order. A plan’s steps move with the arrows when you edit it.',
   ],
   points: ['Plans earn no points and can’t cost any. The work they point to, like habits or reading, earns on its own page.'],
 };

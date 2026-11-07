@@ -26,7 +26,10 @@ export const badHabitsGuide: HowItWorksGuide = {
       text: 'Link a bad habit to a resist challenge on Partners. Logging it here or on the challenge card counts in both places.',
     },
   ],
-  notes: ['Deleting a bad habit removes only today’s points from it. Earlier points and penalties stay.'],
+  notes: [
+    'Tap Reorder to list your bad habits in your own order. It changes only the list, never points or penalties.',
+    'Deleting a bad habit removes only today’s points from it. Earlier points and penalties stay.',
+  ],
   points: [
     <>
       Resisted: library bad habits earn their own points (shown when you add them), custom ones{' '}

@@ -37,6 +37,7 @@ export const timeTrackerGuide: HowItWorksGuide = {
     'Other past days are read-only.',
     'Deleting a done block today works today’s points out again. Earlier days keep theirs.',
     'A small pill at the bottom of every page shows the block happening now. Drag it to either side, or turn it off in Settings › Appearance.',
+    'Tap Reorder to put your categories or templates in your own order. The block picker uses the category order.',
   ],
   points: [
     <>

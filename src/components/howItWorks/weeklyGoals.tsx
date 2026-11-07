@@ -34,6 +34,7 @@ export const weeklyGoalsGuide: HowItWorksGuide = {
     'A linked goal counts the whole week’s logs, including ones from before you added it.',
     'A weekly habit counts once a week, so its target is 1.',
     'Unfinished goals from recent weeks show up at the top. Carry one into this week or dismiss it.',
+    'Tap Reorder to put a week’s goals in your own order. Past weeks keep theirs.',
   ],
   points: [
     <>
