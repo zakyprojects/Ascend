@@ -2,6 +2,7 @@ import React from 'react';
 import { createPortal } from 'react-dom';
 import { Check, ChevronDown } from 'lucide-react';
 import { cx } from './shared';
+import { useHoverGlide } from '@/lib/useHoverGlide';
 import { FieldShell, fieldBorder, controlBase, useFieldLinking, type BaseFieldProps } from './Field';
 import {
   anchorOutOfView,
@@ -73,6 +74,11 @@ function visibleArea(): Box {
   return { top: box.top + t, left: box.left + l, width: Math.max(0, box.width - l - r), height: Math.max(0, box.height - t - b) };
 }
 
+/** Mouse/trackpad: the active option is marked by the trailing hover glide. Touch: a plain fill. */
+function hoverCapable(): boolean {
+  return typeof window !== 'undefined' && window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+}
+
 function rectBox(el: Element): Box {
   const r = el.getBoundingClientRect();
   return { top: r.top, left: r.left, width: r.width, height: r.height };
@@ -122,6 +128,16 @@ export const Select = React.forwardRef<HTMLButtonElement, SelectProps>(function 
   const listRef = React.useRef<HTMLUListElement | null>(null);
   const typed = React.useRef({ text: '', at: 0 });
   const centerOnOpen = React.useRef(false);
+  const glideRef = React.useRef<HTMLSpanElement | null>(null);
+  // Read on each open (a tablet can gain or lose a mouse between opens).
+  const glides = React.useMemo(hoverCapable, [open]);
+  // The glide marks the active option, for the mouse (onMouseMove sets it) and the keyboard alike;
+  // options never take focus. Rows carry no [data-glide-item], so the hook's own pointer tracking
+  // stays out: a row sliding under a resting pointer while arrows scroll the list never pulls the
+  // glide off the option Enter would pick. It stays put when the pointer leaves; offsets keep it
+  // right while the list grows in (scale animation) and while it scrolls.
+  const glide = useHoverGlide(listRef, glideRef, { enabled: open && glides, keepOnLeave: true, measure: 'offset' });
+  const glidePlaced = React.useRef(false);
 
   const listId = `${id}-list`;
   const optionId = (i: number) => `${id}-opt-${i}`;
@@ -235,13 +251,30 @@ export const Select = React.forwardRef<HTMLButtonElement, SelectProps>(function 
     if (centerOnOpen.current) {
       centerOnOpen.current = false;
       list.scrollTop = el.offsetTop - (list.clientHeight - el.offsetHeight) / 2;
-      return;
-    }
-    if (el.offsetTop < list.scrollTop) list.scrollTop = el.offsetTop - 6;
+    } else if (el.offsetTop < list.scrollTop) list.scrollTop = el.offsetTop - 6;
     else if (el.offsetTop + el.offsetHeight > list.scrollTop + list.clientHeight)
       list.scrollTop = el.offsetTop + el.offsetHeight - list.clientHeight + 6;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, place, active]);
+
+  // The glide follows the active option (arrows, typeahead, Home/End, the mouse): placed on it at
+  // once when the list opens, then it trails. A disabled option is never marked.
+  React.useLayoutEffect(() => {
+    if (!open) {
+      glidePlaced.current = false;
+      return;
+    }
+    const list = listRef.current;
+    if (!glides || !place || !list) return;
+    const el = active >= 0 ? list.querySelector<HTMLElement>(`#${CSS.escape(optionId(active))}`) : null;
+    if (!el || options[active]?.disabled) {
+      glide.hide();
+      return;
+    }
+    glide.moveTo(el, { instant: !glidePlaced.current });
+    glidePlaced.current = true;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, place, active, glides, options]);
 
   const typeTo = (key: string): number => {
     const now = performance.now();
@@ -466,7 +499,7 @@ export const Select = React.forwardRef<HTMLButtonElement, SelectProps>(function 
               : { top: 0, left: 0, visibility: 'hidden', maxHeight: 320 }
           }
           className={cx(
-            'fixed z-popover overflow-y-auto overscroll-contain rounded-2xl border border-overlay-default bg-bg-800 p-1.5 shadow-2xl [touch-action:pan-y]',
+            'fixed isolate z-popover overflow-y-auto overscroll-contain rounded-2xl border border-overlay-default bg-bg-800 p-1.5 shadow-2xl [touch-action:pan-y]',
             place && 'select-menu'
           )}
         >
@@ -494,7 +527,7 @@ export const Select = React.forwardRef<HTMLButtonElement, SelectProps>(function 
                 className={cx(
                   'flex min-h-11 items-start gap-2 rounded-xl px-3 py-2.5 text-base sm:min-h-9 sm:py-2 sm:text-sm',
                   o.disabled ? 'cursor-not-allowed text-content-disabled' : 'cursor-pointer text-content-primary',
-                  i === active && !o.disabled && 'bg-bg-700',
+                  i === active && !o.disabled && !glides && 'bg-bg-700',
                   isSelected && 'font-medium'
                 )}
               >
@@ -507,6 +540,7 @@ export const Select = React.forwardRef<HTMLButtonElement, SelectProps>(function 
               </li>
             );
           })}
+          {glides && <span ref={glideRef} aria-hidden="true" className="hover-glide rounded-xl" />}
         </ul>
       </>,
       document.body
