@@ -170,7 +170,7 @@ export function NotificationCenter({
     if (!isPlainClick(event)) return; // new tab / window keeps the browser's own behaviour
     event.preventDefault();
     close(false);
-    onNavigate(view.link);
+    onNavigate(view.link, view.search);
   };
 
   const openSettings = (event: React.MouseEvent) => {
@@ -285,7 +285,7 @@ export function NotificationCenter({
     return (
       <li key={notif.id} className={cx(rowClass(unread), nested && 'pl-8')}>
         {view.link && onNavigate ? (
-          <a href={pathForView(view.link)} onClick={(e) => openNotification(notif, view, e)} className={mainClass}>
+          <a href={pathForView(view.link) + (view.search ?? '')} onClick={(e) => openNotification(notif, view, e)} className={mainClass}>
             {unread && <span className="sr-only">Unread: </span>}
             {content}
           </a>

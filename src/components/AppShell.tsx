@@ -186,7 +186,8 @@ export function AppShell({ currentView, navigationKind, pendingView = null, onVi
   currentViewRef.current = currentView;
   const goTo = useCallback(
     (view: View, search?: string) => {
-      if (view !== currentViewRef.current) return onViewChange(view, search);
+      // The page on show with a query (`?week=`): handed on, the page reads it in place.
+      if (view !== currentViewRef.current || search) return onViewChange(view, search);
       const main = mainRef.current;
       if (!main) return;
       const behavior: ScrollBehavior = prefersReducedMotion() ? 'instant' : 'smooth';

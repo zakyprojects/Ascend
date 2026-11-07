@@ -254,15 +254,23 @@ function App() {
   }, [quickLogLaunch, search, view, goToPath]);
 
   // A notification tapped while Ascend is open: public/sw.js focuses this window and posts the
-  // notification's url (a push's page, the focus timer's PFC page); open that page here. With no
-  // window open, the service worker opens the url itself.
+  // notification's url (a push's page, the focus timer's PFC page); open that page here, query
+  // included (`/weekly-goals?week=2026-W46`; on the page already on show it is handed over in
+  // place). With no window open, the service worker opens the url itself.
   useEffect(() => {
     if (!showApp || typeof navigator === 'undefined' || !('serviceWorker' in navigator)) return;
     const onMessage = (event: MessageEvent) => {
       const data = event.data as { type?: unknown; url?: unknown } | null;
       if (data?.type !== 'ascend:navigate' || typeof data.url !== 'string') return;
-      const target = viewFromPath(new URL(data.url, window.location.origin).pathname);
-      if (target) setView(target);
+      let url: URL;
+      try {
+        url = new URL(data.url, window.location.origin);
+      } catch {
+        return;
+      }
+      if (url.origin !== window.location.origin) return;
+      const target = viewFromPath(url.pathname);
+      if (target) setView(target, url.search);
     };
     navigator.serviceWorker.addEventListener('message', onMessage);
     return () => navigator.serviceWorker.removeEventListener('message', onMessage);

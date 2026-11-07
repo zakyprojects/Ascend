@@ -243,10 +243,18 @@ export function useViewRoute(prepare?: (view: View) => Promise<unknown>) {
       // A new path drops the query: `?tab=live` belongs to the visit that came with it, unless the
       // caller names one (`?section=notifications`). The URL changes when the page does, so a
       // superseded click (or "Keep editing") never leaves a history entry or a stale request.
-      if (view === targetRef.current) return;
+      if (view === targetRef.current) {
+        // The page on show, asked for with a query (a notification naming a week): the page gets
+        // the new query in place (no new history entry) and decides itself what to do with it.
+        if (search && view === viewRef.current && !authRef.current && !legalRef.current) {
+          window.history.replaceState(null, '', pathForView(view) + search);
+          syncToLocation('push');
+        }
+        return;
+      }
       confirmLeave(() => show(view, 'push', () => window.history.pushState(null, '', pathForView(view) + search)));
     },
-    [show]
+    [show, syncToLocation]
   );
 
   /**
