@@ -350,6 +350,7 @@ const tasks: SyncedCollection<'tasks'> = {
       completed: Boolean(st.completed),
     })),
     createdAt: isoTime(r.created_at),
+    ...optional('updatedAt', r.updated_at, isoTime),
   }),
   ownTimestamp: (t) => t.createdAt,
 };

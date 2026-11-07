@@ -80,6 +80,28 @@ function mergeEntityArrays<T extends { id?: string; createdAt?: string | number;
   return Array.from(map.values());
 }
 
+/**
+ * Two copies of one task: the newer copy (updatedAt, else createdAt; the incoming copy on a tie)
+ * gives the task's fields, its subtasks and their order, so a reorder, rename or tick made on the
+ * newer copy wins. Subtasks only the older copy has (added there, never deleted) join the end in
+ * their own order; deleted ones stay out.
+ */
+export function mergeTaskCopies(baseT: Task, incT: Task, tombstoneSet: ReadonlySet<string>): Task {
+  const incNewer = timeMs(incT.updatedAt || incT.createdAt) >= timeMs(baseT.updatedAt || baseT.createdAt);
+  const [newer, older] = incNewer ? [incT, baseT] : [baseT, incT];
+  const subtaskMap = new Map<string, TaskSubtask>();
+  for (const st of newer.subtasks || []) {
+    if (st.id && !tombstoneSet.has(st.id) && !subtaskMap.has(st.id)) subtaskMap.set(st.id, st);
+  }
+  for (const st of older.subtasks || []) {
+    if (st.id && !tombstoneSet.has(st.id) && !subtaskMap.has(st.id)) subtaskMap.set(st.id, st);
+  }
+  return {
+    ...newer,
+    subtasks: Array.from(subtaskMap.values()),
+  };
+}
+
 function normalizeHabitCompletions(
   completions: Habit['completions'] | string[] | undefined,
   fallbackTime: string
@@ -777,22 +799,7 @@ function mergeAppStateInternal(
     baseState.tasks || [],
     incomingState.tasks || [],
     tombstoneSet,
-    (baseT: Task, incT: Task) => {
-      const subtaskMap = new Map<string, TaskSubtask>();
-      for (const st of baseT.subtasks || []) {
-        if (st.id && !tombstoneSet.has(st.id)) subtaskMap.set(st.id, st);
-      }
-      for (const st of incT.subtasks || []) {
-        if (st.id && !tombstoneSet.has(st.id)) subtaskMap.set(st.id, st);
-      }
-      const baseTime = baseT.createdAt || '';
-      const incTime = incT.createdAt || '';
-      const primary = incTime >= baseTime ? incT : baseT;
-      return {
-        ...primary,
-        subtasks: Array.from(subtaskMap.values()),
-      };
-    }
+    (baseT: Task, incT: Task) => mergeTaskCopies(baseT, incT, tombstoneSet)
   );
 
   // 12. Library Books

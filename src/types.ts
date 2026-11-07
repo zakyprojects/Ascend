@@ -740,6 +740,8 @@ export interface Task {
   completed: boolean;
   subtasks: TaskSubtask[];
   createdAt: string;
+  /** Last edit of the task or its subtasks (the row's updated_at once synced); the newer copy wins a merge. */
+  updatedAt?: string;
 }
 
 export interface Project {

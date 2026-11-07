@@ -6963,7 +6963,7 @@ export function useAppState() {
               : updates.completed !== undefined
               ? updates.completed
               : t.completed;
-            return { ...t, ...updates, completed: updatedCompleted };
+            return { ...t, ...updates, completed: updatedCompleted, updatedAt: trustedNow().toISOString() };
           }),
         };
       });
@@ -6981,7 +6981,7 @@ export function useAppState() {
         ...prev,
         tasks: prev.tasks.map((t) => {
           if (t.id !== id) return t;
-          return { ...t, completed: !t.completed };
+          return { ...t, completed: !t.completed, updatedAt: trustedNow().toISOString() };
         }),
       };
     });
@@ -7019,7 +7019,7 @@ export function useAppState() {
             st.id === subtaskId ? { ...st, completed: !st.completed } : st
           );
           const allCompleted = updatedSubtasks.length > 0 && updatedSubtasks.every((st) => st.completed);
-          return { ...t, subtasks: updatedSubtasks, completed: allCompleted };
+          return { ...t, subtasks: updatedSubtasks, completed: allCompleted, updatedAt: trustedNow().toISOString() };
         }),
       };
     });
@@ -7041,7 +7041,7 @@ export function useAppState() {
           if (t.id !== taskId) return t;
           const updatedSubtasks = [...(t.subtasks || []), newSubtask];
           const allCompleted = updatedSubtasks.length > 0 && updatedSubtasks.every((st) => st.completed);
-          return { ...t, subtasks: updatedSubtasks, completed: allCompleted };
+          return { ...t, subtasks: updatedSubtasks, completed: allCompleted, updatedAt: trustedNow().toISOString() };
         }),
       };
     });
@@ -7064,6 +7064,7 @@ export function useAppState() {
                 ...t,
                 subtasks: updatedSubtasks,
                 completed: allCompleted,
+                updatedAt: trustedNow().toISOString(),
               };
             }),
             deletedEntityIds: updatedDeletedEntityIds,
@@ -7083,7 +7084,9 @@ export function useAppState() {
       (prev) => {
         try {
           const tasks = renameSubtaskIn(prev.tasks, taskId, subtaskId, title);
-          return tasks === prev.tasks ? prev : { ...prev, tasks };
+          if (tasks === prev.tasks) return prev;
+          const stamp = trustedNow().toISOString();
+          return { ...prev, tasks: tasks.map((t) => (t.id === taskId ? { ...t, updatedAt: stamp } : t)) };
         } catch {
           return prev;
         }
