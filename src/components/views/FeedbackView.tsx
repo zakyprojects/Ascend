@@ -4,24 +4,29 @@ import type { AppStore } from '@/lib/store';
 import type { View } from '@/lib/views';
 import { Button, Card, FieldErrorBubble, Form, FormAlert, Input, Select, Textarea, cx, useFocusOnRender, useFormController } from '@/components/ui/primitives';
 import { FOCUS_RING, TAP_TARGET } from '@/components/ui/primitives/shared';
-import { NAV_DASHBOARD, NAV_GROUPS, NAV_SETTINGS, getViewLabel } from '@/components/nav/navConfig';
+import { NAV_DASHBOARD, NAV_GROUPS, NAV_SETTINGS, getViewLabel, isFeedbackView } from '@/components/nav/navConfig';
 import { useUnsavedChanges } from '@/lib/unsavedChanges';
 import { pageLinkProps } from '@/lib/pageLink';
 import {
+  FEEDBACK_KINDS,
   FeedbackKind,
   IMPACT_OPTIONS,
   MAX_SCREENSHOTS,
+  RATING_VALUES,
   SEVERITY_OPTIONS,
   Screenshot,
+  clearPendingFeedbackStart,
   feedbackContext,
   newFeedbackRef,
+  pendingFeedbackStart,
   prepareScreenshot,
   submitFeedback,
 } from '@/lib/feedback';
 import { trustedNowMs } from '@/lib/clock';
 
 interface FeedbackViewProps {
-  kind: FeedbackKind;
+  /** The choice the form opens on: none on /feedback, bug on /report-bug, idea on /suggest-idea. */
+  initialKind: FeedbackKind | null;
   store: AppStore;
   /** The page the user was on before opening this one. */
   fromView: View;
@@ -37,21 +42,12 @@ const AREAS = [
 ];
 
 const COPY = {
-  bug: {
-    title: 'Report a bug',
-    subtitle: 'Tell us what broke. Every report is read.',
-    other: { view: 'suggest-idea' as View, label: 'Have an idea instead?' },
-    titlePlaceholder: 'e.g. Habit streak resets after midnight',
-    send: 'Send report',
-  },
-  idea: {
-    title: 'Suggest an idea',
-    subtitle: 'What would make AscendDay better for you?',
-    other: { view: 'report-bug' as View, label: 'Found a bug instead?' },
-    titlePlaceholder: 'e.g. Weekly summary email',
-    send: 'Send idea',
-  },
+  bug: { titlePlaceholder: 'e.g. Habit streak resets after midnight', send: 'Send report' },
+  idea: { titlePlaceholder: 'e.g. Weekly summary email', send: 'Send idea' },
+  other: { titlePlaceholder: '', send: 'Send' },
 } as const;
+
+const RATING_WORDS: Record<number, string> = { 1: 'Not well', 2: 'Not great', 3: 'Okay', 4: 'Well', 5: 'Very well' };
 
 interface ChoiceGroupProps {
   legend: string;
@@ -95,13 +91,68 @@ function ChoiceGroup({ legend, name, options, value, onChange }: ChoiceGroupProp
   );
 }
 
-export function FeedbackView({ kind, store, fromView, onNavigate }: FeedbackViewProps) {
-  const copy = COPY[kind];
+/** Five small buttons (native radios) for the optional private rating. */
+function RatingGroup({ value, onChange }: { value: number | null; onChange: (value: number | null) => void }) {
+  return (
+    <fieldset>
+      <legend className="label block mb-1.5">How is AscendDay working for you? (optional)</legend>
+      <div className="flex flex-wrap items-center gap-2">
+        {RATING_VALUES.map((n) => (
+          <label key={n} className="relative cursor-pointer">
+            <input
+              type="radio"
+              name="rating"
+              value={n}
+              checked={value === n}
+              onChange={() => onChange(n)}
+              // A second tap on the chosen number clears it: the rating stays optional.
+              onClick={() => value === n && onChange(null)}
+              aria-label={`${n} of 5, ${RATING_WORDS[n]}`}
+              className="peer sr-only"
+            />
+            <span
+              className={cx(
+                'figure flex h-11 w-11 items-center justify-center rounded-xl border text-sm font-medium transition-colors',
+                'border-overlay-default bg-bg-700 text-content-secondary hover:border-overlay-strong',
+                'peer-checked:border-primary-500 peer-checked:bg-primary-500/10 peer-checked:text-content-primary',
+                'peer-focus-visible:ring-2 peer-focus-visible:ring-primary-500/60'
+              )}
+            >
+              {n}
+            </span>
+          </label>
+        ))}
+      </div>
+      <p className="mt-1.5 text-xs text-content-muted">
+        1 = not well, 5 = very well. {value ? `${RATING_WORDS[value]}. ` : ''}Private: only used to improve AscendDay,
+        never shown publicly.
+      </p>
+    </fieldset>
+  );
+}
+
+export function FeedbackView({ initialKind, store, fromView, onNavigate }: FeedbackViewProps) {
   const currentUser = store.state.currentUser;
-  const startArea = fromView === 'report-bug' || fromView === 'suggest-idea' ? OTHER_AREA : getViewLabel(fromView);
+  const startArea = isFeedbackView(fromView) ? OTHER_AREA : getViewLabel(fromView);
+  // Opened from an error card ("Report this": the bug form with the error's words) or a Settings
+  // choice; an old address (/report-bug, /suggest-idea) keeps its own choice.
+  const [start] = useState(() => {
+    const pending = pendingFeedbackStart();
+    return pending && (initialKind === null || pending.kind === initialKind) ? pending : null;
+  });
+  useEffect(() => clearPendingFeedbackStart(), []);
+  const startNote = start?.kind === 'bug' ? start.note : undefined;
+
+  const [kind, setKind] = useState<FeedbackKind | null>(start?.kind ?? initialKind);
+  const copy = COPY[kind ?? 'other'];
+  // Only a signed-in account has an email to reply to (a guest has none).
+  const accountEmail = currentUser && !currentUser.isAnonymous ? (currentUser.email ?? '') : '';
 
   const [title, setTitle] = useState('');
-  const [whatHappened, setWhatHappened] = useState('');
+  const [message, setMessage] = useState('');
+  const [rating, setRating] = useState<number | null>(null);
+  const [replyOk, setReplyOk] = useState(false);
+  const [whatHappened, setWhatHappened] = useState(startNote ? `The app showed an error:\n${startNote}\n\n` : '');
   const [steps, setSteps] = useState('');
   const [expected, setExpected] = useState('');
   const [severity, setSeverity] = useState('');
@@ -131,27 +182,29 @@ export function FeedbackView({ kind, store, fromView, onNavigate }: FeedbackView
     [currentUser]
   );
 
-  const fields: Record<string, string> =
+  // Every choice's typing, so switching between them loses nothing.
+  const fields: Record<string, string> = { whatHappened, steps, expected, severity, problem, idea, impact, message, area };
+  const isValid =
     kind === 'bug'
-      ? { whatHappened, steps, expected, severity, area }
-      : { problem, idea, impact, area };
-  const isValid = title.trim() !== '' && (kind === 'bug' ? whatHappened.trim() !== '' : idea.trim() !== '');
+      ? title.trim() !== '' && whatHappened.trim() !== ''
+      : kind === 'idea'
+        ? title.trim() !== '' && idea.trim() !== ''
+        : kind === 'other' && message.trim() !== '';
 
-  // The typing is kept as a draft; screenshots are not (they are files, not text).
+  // The typing is kept as a draft (one for the whole form); screenshots are not (they are files,
+  // not text). Picking a choice alone is not a change.
   useUnsavedChanges(sentRef === null, [title, fields, screenshots.map((s) => s.id)] as const, {
-    key: `feedback:${kind}`,
+    key: 'feedback',
     restore: ([draftTitle, draftFields]) => {
       setTitle(draftTitle);
-      if (kind === 'bug') {
-        setWhatHappened(draftFields.whatHappened ?? '');
-        setSteps(draftFields.steps ?? '');
-        setExpected(draftFields.expected ?? '');
-        setSeverity(draftFields.severity ?? '');
-      } else {
-        setProblem(draftFields.problem ?? '');
-        setIdea(draftFields.idea ?? '');
-        setImpact(draftFields.impact ?? '');
-      }
+      setWhatHappened(draftFields.whatHappened ?? '');
+      setSteps(draftFields.steps ?? '');
+      setExpected(draftFields.expected ?? '');
+      setSeverity(draftFields.severity ?? '');
+      setProblem(draftFields.problem ?? '');
+      setIdea(draftFields.idea ?? '');
+      setImpact(draftFields.impact ?? '');
+      setMessage(draftFields.message ?? '');
       if (AREAS.includes(draftFields.area)) setArea(draftFields.area);
     },
   });
@@ -190,7 +243,7 @@ export function FeedbackView({ kind, store, fromView, onNavigate }: FeedbackView
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (!isValid || isSending) return; // the required fields say why
+    if (!kind || !isValid || isSending) return; // the required fields say why
     setIsSending(true);
     try {
       const ref = await submitFeedback({
@@ -198,6 +251,8 @@ export function FeedbackView({ kind, store, fromView, onNavigate }: FeedbackView
         ref: reportRef,
         title: title.trim(),
         fields: { ...fields, area: area === OTHER_AREA ? '' : area },
+        rating,
+        replyOk: replyOk && accountEmail !== '',
         context,
         screenshots,
         startedAt,
@@ -225,31 +280,26 @@ export function FeedbackView({ kind, store, fromView, onNavigate }: FeedbackView
     setProblem('');
     setIdea('');
     setImpact('');
+    setMessage('');
+    setRating(null);
+    setReplyOk(false);
     setScreenshots([]);
     setScreenshotError(null);
     sendIssues.clear();
     setStartedAt(trustedNowMs());
     setReportRef(newFeedbackRef());
     setSentRef(null);
-    focusNext('feedback-title');
+    focusNext(kind === 'other' ? 'feedback-message' : 'feedback-title');
   };
 
-  const backView: View = fromView === 'report-bug' || fromView === 'suggest-idea' ? 'dashboard' : fromView;
+  const backView: View = isFeedbackView(fromView) ? 'dashboard' : fromView;
 
   return (
     <div className="max-w-3xl mx-auto space-y-5 pb-12">
       <div className="page-header">
         <div>
-          <h1 className="page-title">{copy.title}</h1>
-          <p className="page-subtitle">{copy.subtitle}</p>
-        </div>
-        <div className="page-header-actions">
-          <a
-            {...pageLinkProps(copy.other.view, onNavigate)}
-            className={cx('inline-flex min-h-11 items-center text-sm font-medium text-brand-text hover:underline rounded-lg', FOCUS_RING)}
-          >
-            {copy.other.label}
-          </a>
+          <h1 className="page-title">Send feedback</h1>
+          <p className="page-subtitle">A bug, an idea, or anything else. Every message is read.</p>
         </div>
       </div>
 
@@ -266,6 +316,7 @@ export function FeedbackView({ kind, store, fromView, onNavigate }: FeedbackView
               Your reference is <span className="figure font-semibold text-content-primary">{sentRef}</span>. Mention it
               if you write to us about this.
             </p>
+            {replyOk && accountEmail && <p className="text-sm text-content-secondary max-w-sm">We may reply to {accountEmail}.</p>}
             <div className="flex flex-wrap justify-center gap-2 pt-2">
               <Button variant="secondary" size="sm" onClick={resetForm}>
                 Send another
@@ -279,17 +330,41 @@ export function FeedbackView({ kind, store, fromView, onNavigate }: FeedbackView
       ) : (
         <Form onSubmit={handleSubmit} controller={sendIssues} alert="manual">
           <Card padding="lg" className="relative space-y-5">
-            <Input
-              id="feedback-title"
-              label="Title"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder={copy.titlePlaceholder}
-              maxLength={120}
-              required
+            <ChoiceGroup
+              legend="What’s it about?"
+              name="feedback-kind"
+              options={FEEDBACK_KINDS}
+              value={kind ?? ''}
+              onChange={(value) => setKind(value as FeedbackKind)}
             />
 
-            {kind === 'bug' ? (
+            {kind === null ? null : kind !== 'other' && (
+              <Input
+                id="feedback-title"
+                label="Title"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder={copy.titlePlaceholder}
+                maxLength={120}
+                required
+              />
+            )}
+
+            {kind === null ? null : kind === 'other' ? (
+              <>
+                <Textarea
+                  id="feedback-message"
+                  label="Your message"
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
+                  placeholder="What’s on your mind? How is it going, what do you like, what’s missing?"
+                  rows={5}
+                  maxLength={4000}
+                  required
+                />
+                <RatingGroup value={rating} onChange={setRating} />
+              </>
+            ) : kind === 'bug' ? (
               <>
                 <Textarea
                   label="What happened?"
@@ -340,6 +415,8 @@ export function FeedbackView({ kind, store, fromView, onNavigate }: FeedbackView
               </>
             )}
 
+            {kind !== null && (
+            <>
             <Select label="Which page?" value={area} onChange={(e) => setArea(e.target.value)}>
               {AREAS.map((label) => (
                 <option key={label} value={label}>
@@ -348,6 +425,7 @@ export function FeedbackView({ kind, store, fromView, onNavigate }: FeedbackView
               ))}
             </Select>
 
+            {kind !== 'other' && (
             <div>
               <span className="label block mb-1.5">Screenshots (optional)</span>
               <div className="flex flex-wrap gap-2">
@@ -400,6 +478,23 @@ export function FeedbackView({ kind, store, fromView, onNavigate }: FeedbackView
                 <p className="mt-1.5 text-xs text-content-muted">Up to {MAX_SCREENSHOTS}. They’re resized before sending.</p>
               )}
             </div>
+            )}
+
+            {accountEmail && (
+              <label htmlFor="feedback-reply" className="flex items-start gap-2.5 py-1 text-sm text-content-secondary cursor-pointer">
+                <input
+                  id="feedback-reply"
+                  type="checkbox"
+                  checked={replyOk}
+                  onChange={(e) => setReplyOk(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 shrink-0 cursor-pointer rounded accent-primary-600"
+                />
+                <span>
+                  Can I reply to you?{' '}
+                  <span className="text-content-muted">Sends your account email ({accountEmail}) with this.</span>
+                </span>
+              </label>
+            )}
 
             {/* Honeypot: off-screen and skipped by keyboard and screen readers; bots fill it. */}
             <div aria-hidden="true" className="absolute -left-[9999px] h-0 w-0 overflow-hidden">
@@ -415,6 +510,7 @@ export function FeedbackView({ kind, store, fromView, onNavigate }: FeedbackView
                 {Object.entries(context)
                   .map(([key, value]) => `${key}: ${value}`)
                   .join(' · ')}
+                {replyOk && accountEmail ? ` · Email: ${accountEmail}` : ''}
               </p>
               <p className="mt-1 text-xs text-content-muted">None of your habits, journal or points.</p>
             </div>
@@ -426,6 +522,8 @@ export function FeedbackView({ kind, store, fromView, onNavigate }: FeedbackView
                 {copy.send}
               </Button>
             </div>
+            </>
+            )}
           </Card>
         </Form>
       )}

@@ -1,11 +1,19 @@
 import { trustedNowMs } from './clock';
 import { supabase } from './supabase';
+import {
+  FEEDBACK_ERROR_MESSAGES,
+  FEEDBACK_FALLBACK_ERROR,
+  buildFeedbackPayload,
+  newFeedbackRefAt,
+  type FeedbackKind,
+} from './feedbackPayload';
 /**
- * Bug reports and ideas: the browser side of POST /api/feedback (api/feedback.ts), which files
- * them as issues in the private feedback repo. No token lives here.
+ * Send feedback (bug reports, ideas, anything else): the browser side of POST /api/feedback
+ * (api/feedback.ts), which files them as issues in the private feedback repo. No token lives here.
  */
 
-export type FeedbackKind = 'bug' | 'idea';
+export type { FeedbackKind } from './feedbackPayload';
+export { FEEDBACK_KINDS, RATING_VALUES } from './feedbackPayload';
 
 export const SEVERITY_OPTIONS = [
   { value: 'cosmetic', label: 'Looks off', hint: 'Visual glitch, typo' },
@@ -36,8 +44,27 @@ export interface Screenshot {
   data: string;
 }
 
-export const newFeedbackRef = () =>
-  `ASC-${trustedNowMs().toString(36).slice(-4).toUpperCase()}${Math.random().toString(36).slice(2, 4).toUpperCase()}`;
+export const newFeedbackRef = () => newFeedbackRefAt(trustedNowMs());
+
+/** How the next feedback form opens: on a choice, and (from an error card) with the error's words. */
+export interface FeedbackStart {
+  kind: FeedbackKind;
+  note?: string;
+}
+
+let pendingStart: FeedbackStart | null = null;
+
+/** Called just before opening the form ("Report this" on an error card, Settings > Send feedback). */
+export function setPendingFeedbackStart(start: FeedbackStart): void {
+  pendingStart = { kind: start.kind, note: start.note?.slice(0, 500) };
+}
+
+/** Read when the form opens; cleared once it has opened. */
+export const pendingFeedbackStart = (): FeedbackStart | null => pendingStart;
+
+export function clearPendingFeedbackStart(): void {
+  pendingStart = null;
+}
 
 function browserName(): string {
   const ua = navigator.userAgent;
@@ -106,6 +133,10 @@ export interface FeedbackSubmission {
   ref: string;
   title: string;
   fields: Record<string, string>;
+  /** Optional private 1–5 ("Something else" only). */
+  rating: number | null;
+  /** "Can I reply to you?": the server then adds the account's email. */
+  replyOk: boolean;
   context: Record<string, string>;
   screenshots: Screenshot[];
   /** When the form was opened (spam brake on the server). */
@@ -113,16 +144,6 @@ export interface FeedbackSubmission {
   /** Honeypot: hidden from people, filled by bots. */
   website: string;
 }
-
-const ERROR_MESSAGES: Record<string, string> = {
-  not_configured: "Feedback isn't set up yet. Please try again later.",
-  rate_limited: 'Too many reports in a short time. Please wait a few minutes.',
-  daily_limit: 'Too many reports today. Please try again tomorrow.',
-  unauthorized: 'Your sign-in has ended. Sign in again, then send it.',
-  too_large: 'The screenshots are too large. Remove one and try again.',
-  token_invalid: "Feedback can't be delivered right now. Please try again later.",
-  token_no_access: "Feedback can't be delivered right now. Please try again later.",
-};
 
 export async function submitFeedback(submission: FeedbackSubmission): Promise<string> {
   const { screenshots, ...rest } = submission;
@@ -137,12 +158,12 @@ export async function submitFeedback(submission: FeedbackSubmission): Promise<st
         'Content-Type': 'application/json',
         ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
       },
-      body: JSON.stringify({ ...rest, images: screenshots.map(({ name, data }) => ({ name, data })) }),
+      body: JSON.stringify(buildFeedbackPayload({ ...rest, images: screenshots.map(({ name, data }) => ({ name, data })) })),
     });
   } catch {
     throw new Error("Couldn't reach AscendDay. Check your connection and try again.");
   }
   const body = (await res.json().catch(() => null)) as { ok?: boolean; ref?: string; error?: string } | null;
   if (res.ok && body?.ok) return body.ref || submission.ref;
-  throw new Error(ERROR_MESSAGES[body?.error ?? ''] ?? 'Something went wrong sending it. Please try again.');
+  throw new Error(FEEDBACK_ERROR_MESSAGES[body?.error ?? ''] ?? FEEDBACK_FALLBACK_ERROR);
 }

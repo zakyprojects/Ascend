@@ -1,5 +1,5 @@
 import { Component, ErrorInfo, ReactNode } from 'react';
-import { AlertTriangle, RefreshCw, Wrench } from 'lucide-react';
+import { AlertTriangle, Bug, RefreshCw, Wrench } from 'lucide-react';
 import { isBuildFileError, repairBuildFiles } from '@/lib/assetRecovery';
 import { reportError } from '@/lib/errorReporting';
 
@@ -8,6 +8,10 @@ interface Props {
   fallbackTitle?: string;
   /** 'page' = the whole app failed: a full-screen card with only Reload (nothing to retry into). */
   variant?: 'section' | 'page';
+  /** Adds "Report this" to the section card: opens the bug form with the error's words. */
+  onReport?: (note: string) => void;
+  /** The page on screen: after "Report this", the card clears once it changes (the form opened). */
+  resetKey?: string;
 }
 
 interface State {
@@ -25,6 +29,16 @@ export class ErrorBoundary extends Component<Props, State> {
     return { hasError: true, error };
   }
 
+  /** resetKey when "Report this" was pressed; the card clears when the page moves on from it. */
+  private reportedAt: string | undefined = undefined;
+
+  public componentDidUpdate(prevProps: Props) {
+    if (this.reportedAt !== undefined && prevProps.resetKey !== this.props.resetKey) {
+      this.reportedAt = undefined;
+      if (this.state.hasError) this.setState({ hasError: false, error: null });
+    }
+  }
+
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error('Uncaught error caught by ErrorBoundary:', error, errorInfo);
     // A build file that failed to load (an update landed): repair and reload on its own.
@@ -36,11 +50,14 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   /** The error's own words, short, so a screenshot of the card shows what failed. */
-  private detail() {
+  private errorText() {
     const { error } = this.state;
-    if (!error) return null;
-    const text = `${error.name}: ${error.message}`.slice(0, 200);
-    return <p className="text-xs text-content-muted break-words">{text}</p>;
+    return error ? `${error.name}: ${error.message}`.slice(0, 200) : '';
+  }
+
+  private detail() {
+    const text = this.errorText();
+    return text ? <p className="text-xs text-content-muted break-words">{text}</p> : null;
   }
 
   private repairButton(className: string) {
@@ -92,6 +109,18 @@ export class ErrorBoundary extends Component<Props, State> {
               <RefreshCw size={14} aria-hidden="true" /> Try again
             </button>
             {this.repairButton('btn-ghost min-h-11 text-xs')}
+            {this.props.onReport && (
+              <button
+                type="button"
+                onClick={() => {
+                  this.reportedAt = this.props.resetKey ?? '';
+                  this.props.onReport?.(this.errorText());
+                }}
+                className="btn-ghost min-h-11 text-xs"
+              >
+                <Bug size={14} aria-hidden="true" /> Report this
+              </button>
+            )}
           </div>
         </div>
       );

@@ -23,6 +23,7 @@ import {
   Users,
   Bug,
   Lightbulb,
+  MessageSquare,
 } from 'lucide-react';
 import type { View } from '@/components/AppShell';
 
@@ -51,11 +52,23 @@ export const NAV_SETTINGS: NavEntry = {
   icon: Settings,
 };
 
-/** Help: reached from the account menu and the palette, not the page groups. */
-export const NAV_HELP: NavEntry[] = [
+/**
+ * Send feedback: one form with three choices (bug, idea, something else). Reached from the sidebar
+ * foot, the account menu and sheet, Settings and the palette, not the page groups.
+ */
+export const NAV_FEEDBACK: NavEntry = { id: 'feedback', label: 'Send feedback', icon: MessageSquare };
+
+/** Help in the account menu and sheet. */
+export const NAV_HELP: NavEntry[] = [NAV_FEEDBACK];
+
+/** The form opened straight on one choice (old links, the palette): `/report-bug`, `/suggest-idea`. */
+export const NAV_FEEDBACK_SHORTCUTS: NavEntry[] = [
   { id: 'report-bug', label: 'Report a bug', icon: Bug },
   { id: 'suggest-idea', label: 'Suggest an idea', icon: Lightbulb },
 ];
+
+/** The three addresses of the feedback form. */
+export const isFeedbackView = (view: View): boolean => view === 'feedback' || view === 'report-bug' || view === 'suggest-idea';
 
 export const NAV_GROUPS: NavGroup[] = [
   {
@@ -114,7 +127,7 @@ export const DEFAULT_GROUP_VIEWS: Record<NavGroup['id'], View> = NAV_GROUPS.redu
 );
 
 const NAV_LABELS = new Map<View, string>(
-  [NAV_DASHBOARD, NAV_SETTINGS, ...NAV_HELP, ...NAV_GROUPS.flatMap((group) => group.items)].map((entry) => [entry.id, entry.label])
+  [NAV_DASHBOARD, NAV_SETTINGS, ...NAV_HELP, ...NAV_FEEDBACK_SHORTCUTS, ...NAV_GROUPS.flatMap((group) => group.items)].map((entry) => [entry.id, entry.label])
 );
 
 /** The page's name as the navigation shows it (used for the document title). */

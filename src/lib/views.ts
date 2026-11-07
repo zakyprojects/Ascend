@@ -19,6 +19,8 @@ export const VIEWS = [
   'leagues',
   'tiers',
   'settings',
+  'feedback',
+  // Older addresses of the feedback form, still opened by old links: it starts on that choice.
   'report-bug',
   'suggest-idea',
 ] as const;

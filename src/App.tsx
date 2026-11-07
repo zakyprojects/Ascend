@@ -9,6 +9,8 @@ import { isSupabaseConfigured, storedAuthSession } from '@/lib/supabase';
 import { reloadOnceForStaleChunk } from '@/lib/chunkReload';
 import { syncPushSubscription } from '@/lib/push';
 import { WEEK_PARAM } from '@/lib/weekParam';
+import { setPendingFeedbackStart } from '@/lib/feedback';
+import { isFeedbackView } from '@/components/nav/navConfig';
 import { AppShell } from '@/components/AppShell';
 import { FocusSessionProvider } from '@/components/pfc/FocusSessionProvider';
 import {
@@ -26,10 +28,9 @@ import {
   PrefrontalCortex,
   ProjectsGoalsView,
   ReadingHub,
-  ReportBugView,
+  SendFeedbackView,
   SettingsView,
   SkillTracker,
-  SuggestIdeaView,
   TierView,
   TimeTrackerView,
   WeeklyGoalsView,
@@ -62,9 +63,9 @@ function App() {
   const { view, pendingView, auth, legal, search, navigationKind, startedOnUnknownPath, navigate: setView, goToPath } =
     useViewRoute(preloadView);
 
-  // The last ordinary page: a bug report or idea starts out about it ("Which page?").
+  // The last ordinary page: feedback starts out about it ("Which page?").
   const [feedbackFromView, setFeedbackFromView] = useState<View>(view);
-  if (view !== 'report-bug' && view !== 'suggest-idea' && view !== feedbackFromView) setFeedbackFromView(view);
+  if (!isFeedbackView(view) && view !== feedbackFromView) setFeedbackFromView(view);
 
   // ---- Sign-in pages (/login, /signup) ------------------------------------------------------
   // Signed out: every page goes to /login?next=<page>. A guest (anonymous account) on /login or
@@ -336,7 +337,13 @@ function App() {
               onOpenAuth={openAuth}
               openQuickLog={quickLogLaunch}
             >
-              <ErrorBoundary>
+              <ErrorBoundary
+                resetKey={view}
+                onReport={(note) => {
+                  setPendingFeedbackStart({ kind: 'bug', note });
+                  setView('report-bug');
+                }}
+              >
                 <Suspense fallback={<PageSkeleton />}>
                   {view === 'dashboard' && <Dashboard store={store} onViewChange={setView} onOpenAuth={openAuth} />}
                   {view === 'habits' && <HabitTracker store={store} />}
@@ -367,11 +374,15 @@ function App() {
                   {view === 'lessons' && <Lessons store={store} />}
                   {view === 'neuroplasticity' && <Neuroplasticity store={store} onViewChange={setView} />}
                   {view === 'settings' && <SettingsView store={store} onOpenAuth={openAuth} onNavigate={setView} />}
-                  {view === 'report-bug' && (
-                    <ReportBugView key="bug" kind="bug" store={store} fromView={feedbackFromView} onNavigate={setView} />
-                  )}
-                  {view === 'suggest-idea' && (
-                    <SuggestIdeaView key="idea" kind="idea" store={store} fromView={feedbackFromView} onNavigate={setView} />
+                  {/* One form, three addresses: /report-bug and /suggest-idea open it on that choice. */}
+                  {isFeedbackView(view) && (
+                    <SendFeedbackView
+                      key={view}
+                      initialKind={view === 'report-bug' ? 'bug' : view === 'suggest-idea' ? 'idea' : null}
+                      store={store}
+                      fromView={feedbackFromView}
+                      onNavigate={setView}
+                    />
                   )}
                 </Suspense>
               </ErrorBoundary>
