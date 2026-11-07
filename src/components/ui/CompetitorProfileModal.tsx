@@ -5,9 +5,9 @@ import { Dialog, Skeleton } from '@/components/ui/primitives';
 import { CalendarCheck, CheckSquare, BookOpen, Book, Target, Timer, Lock, EyeOff, WifiOff, type LucideIcon } from 'lucide-react';
 import { getProfileStreakStats } from '@/lib/streakLogic';
 import { getCurrentTier } from '@/lib/tiers';
-import { addDays, formatDateShort, todayKey } from '@/lib/dates';
-import { ptsText } from '@/lib/leagues';
-import { MEMBER_CARD_DAYS } from '@/lib/memberStats';
+import { formatDateShort } from '@/lib/dates';
+import { ptUnit } from '@/lib/leagues';
+import { compactNumber } from '@/lib/numberFormat';
 import type { MemberDetails } from '@/lib/useMemberDetails';
 
 interface CompetitorProfileModalProps {
@@ -19,7 +19,7 @@ interface CompetitorProfileModalProps {
   viewerIsPublic?: boolean;
   /** Partners always see each other's stats (the server sends them whatever the privacy setting). */
   isPartner?: boolean;
-  /** Another member's stats and past seasons, fetched on open; null for the viewer's own row (local). */
+  /** The season card from the server (every member, the viewer too) and another member's past seasons, fetched on open. */
   details: MemberDetails | null;
   open: boolean;
   onClose: () => void;
@@ -42,10 +42,19 @@ export function CompetitorProfileModal({
   const canViewDetailed = isSelf || isPartner || (viewerIsPublic && targetIsPublic);
 
   const ready = details?.status === 'ready' ? details : null;
+  const card = ready?.card;
   const stats = isSelf ? competitor.stats : ready?.stats;
   const seasonHistory = isSelf ? competitor.season_history : ready?.seasonHistory;
-  const streak = canViewDetailed && stats ? getProfileStreakStats(stats) : null;
-  const streakLoading = canViewDetailed && !isSelf && details?.status === 'loading';
+  // The streak comes from the server's card (right even while the member is away); the own local
+  // streak shows meanwhile, and published stats only if the card is missing.
+  const streak = !canViewDetailed
+    ? null
+    : card
+      ? { currentStreakDays: card.streak.days, currentStreakCategory: card.streak.category }
+      : stats && (isSelf || ready)
+        ? getProfileStreakStats(stats)
+        : null;
+  const streakLoading = !streak && canViewDetailed && details?.status === 'loading';
 
   return (
     <Dialog
@@ -104,9 +113,9 @@ export function CompetitorProfileModal({
         >
           <div className="min-w-0 bg-bg-800 px-3.5 py-3">
             <dt className="stat-label truncate">{periodLabel}</dt>
-            <dd className="figure mt-1 text-xl leading-tight text-brand-text truncate">{ptsText(competitor.points)}</dd>
+            <dd className="figure mt-1 text-xl leading-tight text-brand-text truncate">{ptsShort(competitor.points)}</dd>
             {periodLabel !== 'This season' && (
-              <dd className="mt-0.5 text-micro text-content-muted truncate">Season {ptsText(seasonPoints)}</dd>
+              <dd className="mt-0.5 text-micro text-content-muted truncate">Season {ptsShort(seasonPoints)}</dd>
             )}
           </div>
           {streak ? (
@@ -154,9 +163,9 @@ export function CompetitorProfileModal({
           </div>
         ) : (
           <>
-            {!isSelf && details?.status === 'loading' ? (
+            {details?.status === 'loading' ? (
               <ActivityStatsSkeleton />
-            ) : !isSelf && details?.status === 'failed' ? (
+            ) : details?.status === 'failed' ? (
               <div className="rounded-xl border border-overlay-subtle p-6 text-center space-y-1.5">
                 <div className="flex items-center justify-center text-content-muted">
                   <WifiOff size={18} aria-hidden="true" />
@@ -166,13 +175,8 @@ export function CompetitorProfileModal({
                   Check your connection and open the profile again. Their username, rank, and league points are still visible.
                 </p>
               </div>
-            ) : stats?.card ? (
-              <MemberCardStats card={stats.card} />
-            ) : stats ? (
-              // The member's app is older than the card: the streak above is all it publishes.
-              <p className="rounded-xl border border-overlay-subtle px-4 py-3 text-xs text-content-muted leading-relaxed">
-                More stats appear after this member next opens AscendDay.
-              </p>
+            ) : card ? (
+              <MemberCardStats card={card} />
             ) : isSelf ? null : (
               // Allowed by this device's view, but the server sent no stats (a partnership or privacy
               // switch changed elsewhere): neutral note, never zeros that look real (C4).
@@ -209,7 +213,7 @@ export function CompetitorProfileModal({
                           </div>
                         </div>
                         <div className="text-right shrink-0">
-                          <p className="figure text-sm text-brand-text">{ptsText(historyRecord.points)}</p>
+                          <p className="figure text-sm text-brand-text">{ptsShort(historyRecord.points)}</p>
                           {historyRecord.date && (
                             <p className="text-2xs text-content-muted">{formatDateShort(historyRecord.date, historyRecord.date)}</p>
                           )}
@@ -227,21 +231,27 @@ export function CompetitorProfileModal({
   );
 }
 
-/** "1 day", "3 days": counts on the card are pluralised in words, never "day(s)". */
+/** "1 day", "3 days": counts on the card are pluralised in words, never "day(s)"; 10,000 and up short (12.5k). */
 function plural(n: number, word: string): string {
-  return `${n.toLocaleString()} ${n === 1 ? word : `${word}s`}`;
+  return `${compactNumber(n)} ${n === 1 ? word : `${word}s`}`;
 }
 
-/** Big numbers stay short (12.4k), small ones keep up to 2 decimals. */
-function amountText(n: number): string {
-  return n >= 10_000
-    ? new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 1 }).format(n)
-    : n.toLocaleString('en-US', { maximumFractionDigits: 2 });
+/** Points on the card, short from 10,000 (12.5k pts). The rest of the app keeps ptsText. */
+function ptsShort(n: number): string {
+  return `${compactNumber(n)} ${ptUnit(n)}`;
+}
+
+const amountText = compactNumber;
+
+/** "1 Nov": a day key on the card's own calendar (no time zone shift). */
+function dayMonth(key: string): string {
+  const [y, m, d] = key.split('-').map(Number);
+  return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' });
 }
 
 /** Minutes as "45 min", or hours with one decimal from an hour up ("6.5 h"). */
 function minutesText(min: number): string {
-  if (min < 60) return `${min} min`;
+  if (min < 60) return `${compactNumber(min)} min`;
   return `${amountText(Math.round((min / 60) * 10) / 10)} h`;
 }
 
@@ -256,7 +266,7 @@ function exerciseText(n: number, unit: MemberCardExercise['unit']): string {
 function ActivityStatsSkeleton() {
   return (
     <section aria-busy="true">
-      <h4 className="text-sm font-semibold text-content-primary mb-2.5">Last {MEMBER_CARD_DAYS} days</h4>
+      <h4 className="text-sm font-semibold text-content-primary mb-2.5">This season</h4>
       <span className="sr-only">Loading stats…</span>
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-px overflow-hidden rounded-xl border border-overlay-subtle bg-overlay-subtle">
         {Array.from({ length: 6 }, (_, i) => (
@@ -274,7 +284,7 @@ interface Tile {
   icon: LucideIcon;
   color: string;
   label: string;
-  /** Undefined: the module was used, but not in the window ("None in 30 days"). */
+  /** Undefined: the module was used, but not this season ("None this season"). */
   value?: string;
   quiet?: string;
   hint?: string;
@@ -292,16 +302,16 @@ function lastTileSpan(index: number, count: number): string {
 }
 
 /**
- * The member's last 30 days (lib/memberStats.ts), as their app last published it: a hairline grid of
- * the modules they use, then their top exercises. Modules never used are not shown; used but quiet
- * ones say so instead of a zero that reads like a result.
+ * The member's current season (since its start, or since joining), computed by the server when the
+ * card opens (ascend_member_card): a hairline grid of the modules they use, then their top exercises.
+ * Modules never used are not shown; used but quiet ones say so instead of a zero that reads like a result.
  */
 function MemberCardStats({ card }: { card: MemberCard }) {
   const headingId = useId();
   const exerciseId = useId();
-  const none = `None in ${MEMBER_CARD_DAYS} days`;
-  // Older than yesterday on the viewer's calendar: the member hasn't opened the app since.
-  const stale = card.asOf < addDays(todayKey(), -1);
+  const none = 'None this season';
+  // Joined after the season began: the window starts on the join day.
+  const sinceJoining = card.from > card.seasonStart.slice(0, 10);
 
   const tiles: Tile[] = [
     {
@@ -309,7 +319,7 @@ function MemberCardStats({ card }: { card: MemberCard }) {
       color: 'var(--badge-orange-text)',
       label: 'Active days',
       value: plural(card.active, 'day'),
-      hint: card.days < MEMBER_CARD_DAYS ? `of ${card.days} since joining` : `of the last ${MEMBER_CARD_DAYS}`,
+      hint: sinceJoining ? `of ${compactNumber(card.days)} since joining` : `of ${compactNumber(card.days)} this season`,
     },
   ];
   if (card.habits) {
@@ -318,9 +328,9 @@ function MemberCardStats({ card }: { card: MemberCard }) {
       icon: CheckSquare,
       color: 'var(--badge-emerald-text)',
       label: 'Habits',
-      value: due === 0 ? undefined : due < 3 ? `${done} of ${due}` : `${Math.round((done / due) * 100)}%`,
+      value: due === 0 ? undefined : due < 3 ? `${compactNumber(done)} of ${compactNumber(due)}` : `${Math.round((done / due) * 100)}%`,
       quiet: 'None due yet',
-      hint: due === 0 ? undefined : due < 3 ? 'check-ins done' : `${done.toLocaleString()} of ${due.toLocaleString()} check-ins`,
+      hint: due === 0 ? undefined : due < 3 ? 'check-ins done' : `${compactNumber(done)} of ${compactNumber(due)} check-ins`,
     });
   }
   if (card.skills) {
@@ -373,13 +383,15 @@ function MemberCardStats({ card }: { card: MemberCard }) {
       <section aria-labelledby={headingId}>
         <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5 mb-2.5">
           <h4 id={headingId} className="text-sm font-semibold text-content-primary">
-            Last {MEMBER_CARD_DAYS} days
+            This season
           </h4>
-          {stale && <p className="text-micro text-content-muted">Updated {formatDateShort(card.asOf, card.asOf)}</p>}
+          <p className="text-micro text-content-muted">
+            Season {compactNumber(card.season)} · since {dayMonth(card.from)}
+          </p>
         </div>
         {nothingYet ? (
           <p className="rounded-xl border border-overlay-subtle px-4 py-3 text-xs text-content-muted">
-            Nothing logged in the last {MEMBER_CARD_DAYS} days.
+            Nothing logged this season yet.
           </p>
         ) : (
           <dl className="grid grid-cols-2 sm:grid-cols-3 gap-px overflow-hidden rounded-xl border border-overlay-subtle bg-overlay-subtle">
