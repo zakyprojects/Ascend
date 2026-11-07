@@ -79,6 +79,7 @@ import { findCuratedBook } from './books';
 import { uid, generateUUID, generateNumericUID, periodKey, todayKey, isPlanJourneyDoneThisPeriod, calculateActivePlanStreak, getWeekDates, parseDate, getNow, getNextDateKey, weekKey, addDays, formatWeekdayDate } from './dates';
 import { computeLinkedGoalProgress, linkedEntryPresent, linkedGoalCrossing, linkedItemExists, linkedGoalUnit } from './linkedGoalMetrics';
 import { autoStatusChanges } from './projectProgress';
+import { nextSequenceOrder, sortBySequence, topStandaloneOrder } from './listOrder';
 import { adoptServerInviteId } from './partnerInvites';
 import { singleFlight } from './singleFlight';
 import { timezoneWaitHoldsPreview } from './useTimezoneWait';
@@ -6639,11 +6640,10 @@ export function useAppState() {
       order?: number;
     }) => {
       const isCompleted = data.status === 'completed';
-      let projectOrder = data.order;
-      if (projectOrder === undefined && data.goalId) {
-        const existingCount = state.projects.filter((p) => p.goalId === data.goalId).length;
-        projectOrder = existingCount;
-      }
+      // A goal's new project joins the end of its sequence; a new standalone project the top.
+      // (max + 1, not the count: after a delete the count can repeat an order already taken.)
+      const projectOrder =
+        data.order ?? (data.goalId ? nextSequenceOrder(state.projects, data.goalId) : topStandaloneOrder(state.projects));
 
       const newProject: Project = {
         id: uid(),
@@ -6655,7 +6655,7 @@ export function useAppState() {
         status: data.status || 'not_started',
         completedAt: isCompleted ? trustedNow().toISOString() : undefined,
         manualProgress: data.manualProgress !== undefined ? data.manualProgress : 0,
-        order: projectOrder !== undefined ? projectOrder : 0,
+        order: projectOrder,
         createdAt: trustedNow().toISOString(),
       };
       setState(
@@ -6683,12 +6683,12 @@ export function useAppState() {
             projects: prev.projects.map((p) => {
               if (p.id !== id) return p;
               const completedAt = resolveProjectCompletedAt(p.status, updates.status, p.completedAt, updates.completedAt);
-              // Moved to another goal: join the end of that goal's sequence, so it can't take
+              // Moved to another goal (or out of one): join the end of that list, so it can't take
               // step 1 with its old order and lock the projects already there.
               const movedGoal = 'goalId' in updates && (updates.goalId || undefined) !== (p.goalId || undefined);
               const order =
-                movedGoal && updates.goalId && updates.order === undefined
-                  ? prev.projects.reduce((max, q) => (q.goalId === updates.goalId && q.id !== id ? Math.max(max, (q.order ?? 0) + 1) : max), 0)
+                movedGoal && updates.order === undefined
+                  ? nextSequenceOrder(prev.projects, updates.goalId || undefined, id)
                   : updates.order ?? p.order;
               return { ...p, ...updates, completedAt, order };
             }),
@@ -6722,9 +6722,8 @@ export function useAppState() {
 
         if (!targetGoalId) return prev;
 
-        const goalProjects = prev.projects
-          .filter((p) => p.goalId === targetGoalId)
-          .sort((a, b) => (a.order ?? 0) - (b.order ?? 0) || new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+        // The same order the page shows (and the lock follows).
+        const goalProjects = sortBySequence(prev.projects.filter((p) => p.goalId === targetGoalId));
 
         const currIdx = goalProjects.findIndex((p) => p.id === targetProjectId);
         if (currIdx === -1) return prev;

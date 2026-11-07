@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { byCreatedAsc } from '@/lib/listOrder';
 import { ListChecks, Plus } from 'lucide-react';
 import { AppStore, runningPactsLinkedTo } from '@/lib/store';
 import { pactUnlinkNote } from '@/lib/pactLifecycle';
@@ -34,7 +35,8 @@ export function HabitTracker({ store }: { store: AppStore }) {
   // Re-render at local midnight (and a new week), so rows never show yesterday's state.
   const today = useLocalDayKey();
 
-  const habits = store.state.habits;
+  // Oldest first on every device (the state array's order depends on the device).
+  const habits = useMemo(() => [...store.state.habits].sort(byCreatedAsc), [store.state.habits]);
   const isDone = (h: Habit) => store.isHabitDone(h);
   const toDo = habits.filter((h) => !isDone(h));
   const done = habits.filter(isDone);

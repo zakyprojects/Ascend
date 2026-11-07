@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { byCreatedAsc } from '@/lib/listOrder';
 import { AppStore } from '@/lib/store';
 import { TimeTrackerActivity, TimeTrackerBlock, TimeTrackerTemplate } from '@/types';
 import { ensureDefaultActivities, plannedBlocksForDate } from '@/lib/timeTracker';
@@ -65,8 +66,12 @@ export function TimeTrackerView({ store, onNavigate }: TimeTrackerViewProps) {
   const [editingActivity, setEditingActivity] = useState<TimeTrackerActivity | null>(null);
 
   const timeTracker = store.state.timeTracker;
-  const activities = useMemo(() => ensureDefaultActivities(timeTracker?.activities || []), [timeTracker?.activities]);
-  const templates = timeTracker?.templates || [];
+  // Oldest first on every device (the state array's order depends on the device).
+  const activities = useMemo(
+    () => [...ensureDefaultActivities(timeTracker?.activities || [])].sort(byCreatedAsc),
+    [timeTracker?.activities]
+  );
+  const templates = useMemo(() => [...(timeTracker?.templates || [])].sort(byCreatedAsc), [timeTracker?.templates]);
 
   const planned = useMemo(
     () => (timeTracker ? plannedBlocksForDate(timeTracker, selectedDateKey, today) : { blocks: [], source: 'none' as const }),

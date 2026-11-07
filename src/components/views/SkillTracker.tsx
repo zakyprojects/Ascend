@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { byCreatedAsc } from '@/lib/listOrder';
 import { Clock, Flame, Pencil, Plus, Target, Trash2, X } from 'lucide-react';
 import { AppStore, CLEAR_SKILL_LOGS_MAX } from '@/lib/store';
 import { ledgerPointsByDay } from '@/lib/ledgerDayPoints';
@@ -153,7 +154,8 @@ export function SkillTracker({ store, onNavigate }: { store: AppStore; onNavigat
   const { isLoading: isLogging, executeFn: executeLog } = useAsyncAction();
   const { isLoading: isDeleting, executeFn: executeDelete } = useAsyncAction();
 
-  const skills = store.state.skills;
+  // Oldest first on every device (the state array's order depends on the device).
+  const skills = useMemo(() => [...store.state.skills].sort(byCreatedAsc), [store.state.skills]);
   const skillLogs = store.state.skillLogs;
   // Day points come from the ledger, so deleting or clearing an earlier day's practice never
   // shows that day's points going down (they stay on the server).

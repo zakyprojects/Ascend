@@ -23,6 +23,7 @@ import { GoalFormDialog, ProjectFormDialog, TaskFormDialog, type GoalPayload, ty
 import { HowItWorksButton, HowItWorksDialog, useHowItWorks } from '@/components/ui/HowItWorks';
 import { projectsGoalsGuide } from '@/components/howItWorks/projectsGoals';
 import { DoneSection } from '@/components/projects/DoneSection';
+import { byCreatedDesc, projectsInDisplayOrder, sortStandalone } from '@/lib/listOrder';
 
 type SubViewTab = 'goals' | 'projects' | 'tasks';
 type TabOrder = 'taskFirst' | 'projectFirst' | 'goalFirst';
@@ -211,11 +212,15 @@ export function ProjectsGoalsView({
   // --------------------------------------------------------------------------
   // Lists
   // --------------------------------------------------------------------------
+  // Display order (the state array's order depends on the device): newest first.
+  const orderedGoals = useMemo(() => [...goals].sort(byCreatedDesc), [goals]);
+  const orderedTasks = useMemo(() => [...tasks].sort(byCreatedDesc), [tasks]);
+
   const goalSearchMatches = useMemo(() => {
     const q = goalSearch.trim().toLowerCase();
-    if (!q) return goals;
-    return goals.filter((g) => [g.title, g.description, g.category].some((s) => (s || '').toLowerCase().includes(q)));
-  }, [goals, goalSearch]);
+    if (!q) return orderedGoals;
+    return orderedGoals.filter((g) => [g.title, g.description, g.category].some((s) => (s || '').toLowerCase().includes(q)));
+  }, [orderedGoals, goalSearch]);
 
   const filteredGoals = useMemo(
     () => goalSearchMatches.filter((g) => goalStatusFilter === 'all' || g.status === goalStatusFilter),
@@ -270,11 +275,14 @@ export function ProjectsGoalsView({
     if (projectStatusFilter === 'completed') {
       return [...list].sort((a, b) => (b.completedAt || b.createdAt).localeCompare(a.completedAt || a.createdAt));
     }
-    if (scopedGoal?.sequentialMode) return sortBySequence(list);
-    return [...list].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    // A goal's projects in its sequence (every goal, sequential or not), standalone ones in their
+    // own order, and the whole list goal by goal in the goals' order, standalone last.
+    if (scopedGoal) return sortBySequence(list);
+    if (activeGoalFilter === 'standalone') return sortStandalone(list);
+    return projectsInDisplayOrder(list, orderedGoals.map((g) => g.id));
     // projectMatchesStatus reads only h, which is listed.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [projectSearchMatches, projectStatusFilter, scopedGoal, h]);
+  }, [projectSearchMatches, projectStatusFilter, scopedGoal, activeGoalFilter, orderedGoals, h]);
   // Completed projects fold into a closed Done section, except in their own view and in a
   // sequential goal's reorder view, where the order itself is the point.
   const splitProjects = projectStatusFilter !== 'completed' && !showReorder;
@@ -290,7 +298,7 @@ export function ProjectsGoalsView({
   const filteredTasks = useMemo(() => {
     const q = taskSearch.trim().toLowerCase();
     const next7Key = addDays(today, 7);
-    return tasks.filter((t) => {
+    return orderedTasks.filter((t) => {
       if (activeProjectFilter === 'standalone' ? t.projectId : activeProjectFilter && t.projectId !== activeProjectFilter) return false;
       if (taskPriorityFilter !== 'all' && t.priority !== taskPriorityFilter) return false;
       const locked = h.isLockedId(t.projectId);
@@ -303,7 +311,7 @@ export function ProjectsGoalsView({
       if (q && ![t.title, t.description].some((s) => (s || '').toLowerCase().includes(q))) return false;
       return true;
     });
-  }, [tasks, activeProjectFilter, taskPriorityFilter, taskView, taskSearch, today, h]);
+  }, [orderedTasks, activeProjectFilter, taskPriorityFilter, taskView, taskSearch, today, h]);
   // Done tasks fold into a closed Done section, except in the Done view itself.
   const splitTasks = taskView !== 'completed';
   const openTasksList = splitTasks ? filteredTasks.filter((t) => !t.completed) : filteredTasks;

@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { byCreatedAsc } from '@/lib/listOrder';
 import {
   BookOpen,
   Check,
@@ -151,7 +152,8 @@ export function Dashboard({ store, onViewChange, onOpenAuth }: DashboardProps) {
   // Greeting and days clean move with the clock.
   useMinuteTick();
 
-  const habits = store.state.habits;
+  // Same order as the Habits page (oldest first on every device).
+  const habits = useMemo(() => [...store.state.habits].sort(byCreatedAsc), [store.state.habits]);
   const { getLeagueData } = store;
   const periodKeyNow = leaguePeriodKey(leagueNow());
   // Each board rebuilds every member, so all three once per state change, never per row.

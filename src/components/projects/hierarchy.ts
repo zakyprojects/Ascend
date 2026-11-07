@@ -9,6 +9,7 @@ import {
   type GoalProgress,
   type ProjectProgress,
 } from '@/lib/projectProgress';
+import { sortBySequence } from '@/lib/listOrder';
 
 export type { GoalProgress, ProjectProgress };
 
@@ -28,11 +29,31 @@ export interface LockStatus {
 /** Where a manual item lands when its "done" status is taken back: just short of done. */
 export const REOPENED_PERCENT = 95;
 
-/** A goal's projects in sequence order (order, then oldest first). */
-export function sortBySequence(list: Project[]): Project[] {
-  return [...list].sort(
-    (a, b) => (a.order ?? 0) - (b.order ?? 0) || a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id)
-  );
+export { sortBySequence };
+
+/**
+ * The sequential lock: a project of an in-order goal is locked while a project before it is not
+ * done. A done project is never locked, wherever it sits (it can sit after an unfinished one when
+ * the order changes or an earlier project reopens).
+ */
+export function lockStatusOf(
+  project: Project,
+  goals: readonly Goal[],
+  projectsByGoal: ReadonlyMap<string, Project[]>,
+  isComplete: (p: Project) => boolean
+): LockStatus {
+  const goal = project.goalId ? goals.find((g) => g.id === project.goalId) : undefined;
+  if (!goal?.sequentialMode) return { isLocked: false, isSequentialGoal: false };
+  const linked = sortBySequence(projectsByGoal.get(goal.id) ?? []);
+  const index = linked.findIndex((p) => p.id === project.id);
+  const blockingProject = isComplete(project) ? undefined : linked.slice(0, Math.max(index, 0)).find((p) => !isComplete(p));
+  return {
+    isLocked: Boolean(blockingProject),
+    blockingProject,
+    stepIndex: index + 1,
+    totalSteps: linked.length,
+    isSequentialGoal: true,
+  };
 }
 
 export function useHierarchy(goals: Goal[], projects: Project[], tasks: Task[]) {
@@ -51,20 +72,7 @@ export function useHierarchy(goals: Goal[], projects: Project[], tasks: Task[]) 
   );
 
   const getLockStatus = useCallback(
-    (project: Project): LockStatus => {
-      const goal = project.goalId ? goals.find((g) => g.id === project.goalId) : undefined;
-      if (!goal?.sequentialMode) return { isLocked: false, isSequentialGoal: false };
-      const linked = sortBySequence(projectsByGoal.get(goal.id) ?? []);
-      const index = linked.findIndex((p) => p.id === project.id);
-      const blockingProject = linked.slice(0, Math.max(index, 0)).find((p) => !isProjectComplete(p));
-      return {
-        isLocked: Boolean(blockingProject),
-        blockingProject,
-        stepIndex: index + 1,
-        totalSteps: linked.length,
-        isSequentialGoal: true,
-      };
-    },
+    (project: Project): LockStatus => lockStatusOf(project, goals, projectsByGoal, isProjectComplete),
     [goals, projectsByGoal, isProjectComplete]
   );
 

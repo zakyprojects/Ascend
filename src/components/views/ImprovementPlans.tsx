@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { byCreatedDesc } from '@/lib/listOrder';
 import { Edit3, Globe, Lock, Plus, Trash2 } from 'lucide-react';
 import { AppStore } from '@/lib/store';
 import { useToast } from '@/components/ui/Toast';
@@ -49,8 +50,12 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
   const [noteToDelete, setNoteToDelete] = useState<{ owner: Owner; id: string; noteKey: string } | null>(null);
 
   const currentUserId = store.state.currentUser?.id;
-  const followedPlans = store.state.followedPlans;
-  const myPlans = ownPlans(store.state.improvementPlans, currentUserId);
+  // Newest first, own plans then copies (the loaded order depends on the device).
+  const followedPlans = useMemo(() => [...store.state.followedPlans].sort(byCreatedDesc), [store.state.followedPlans]);
+  const myPlans = useMemo(
+    () => [...ownPlans(store.state.improvementPlans, currentUserId)].sort(byCreatedDesc),
+    [store.state.improvementPlans, currentUserId]
+  );
 
   const discover = useDiscoverPlans(store, activeTab === 'discover');
   const remoteById = useMemo(() => new Map(discover.plans.map((p) => [p.id, p])), [discover.plans]);
