@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Activity, Calendar, Dumbbell, Flame, Plus, Trash2 } from 'lucide-react';
+import { Activity, Calendar, Dumbbell, Flame, Pencil, Plus, Trash2 } from 'lucide-react';
 import { AppStore, CLEAR_WORKOUTS_MAX } from '@/lib/store';
 import { ledgerPointsByDay } from '@/lib/ledgerDayPoints';
 import { isRetiredAppWorkoutAward } from '@/lib/workoutAwards';
@@ -21,6 +21,8 @@ import { exerciseGuide } from '@/components/howItWorks/exercise';
 import { PageHero } from '@/components/ui/PageHero';
 import { Dialog, EmptyState, Form, Input, NumberField, PageColumns, useFormController } from '@/components/ui/primitives';
 import { useUnsavedChanges } from '@/lib/unsavedChanges';
+import { WORKOUT_PAST_DAY_MESSAGE } from '@/lib/itemEdits';
+import { toUserMessage } from '@/lib/userMessage';
 import { TAP_TARGET, cx } from '@/components/ui/primitives/shared';
 import { BarChart } from '@/components/ui/charts';
 import { CountUp, Reveal } from '@/components/ui/Motion';
@@ -46,6 +48,8 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
   const { showSuccessToast } = useToast();
   const [logModalOpen, setLogModalOpen] = useState(false);
   const [deleteModalWorkout, setDeleteModalWorkout] = useState<WorkoutLog | null>(null);
+  /** Today's workout the Log workout dialog edits (null: a new log). */
+  const [editWorkout, setEditWorkout] = useState<WorkoutLog | null>(null);
   const [workoutName, setWorkoutName] = useState('');
   const [measure, setMeasure] = useState<Measure>('mins');
   const [amount, setAmount] = useState<number>(30);
@@ -122,7 +126,8 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
 
   // Points preview for the dialog (none while a timezone change waits: the server awards 0 today)
   const timezoneWait = useTimezoneWait();
-  const remainingCap = Math.max(0, WORKOUT_POINTS.dailyCap - pointsEarnedToday);
+  // While editing, the workout's own points are free again (its new amount replaces them).
+  const remainingCap = Math.max(0, WORKOUT_POINTS.dailyCap - pointsEarnedToday + (editWorkout?.pointsAwarded || 0));
   const { rawPoints: previewRaw, pointsToAward: previewPoints } = calculateWorkoutPoints(measure, amount, measure === 'mins' ? amount : 0, remainingCap);
 
   // A goal this week on this workout (or on any workout) that counts another measure: logs in
@@ -141,11 +146,12 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
     return null;
   }, [store.state.weeklyGoals, workoutName, measure, today]);
 
-  const logForm = useUnsavedChanges(logModalOpen, { workoutName, measure, amount });
+  const logForm = useUnsavedChanges(logModalOpen && editWorkout ? `edit-${editWorkout.id}` : logModalOpen, { workoutName, measure, amount });
   const logIssues = useFormController();
 
   // Every open starts clean (or from the workout being logged again).
-  const openLogModal = (from?: WorkoutLog) => {
+  const openLogModal = (from?: WorkoutLog, edit = false) => {
+    setEditWorkout(edit && from ? from : null);
     const m = from ? measureOf(from) : 'mins';
     setWorkoutName(from ? from.type.trim() : '');
     setMeasure(m);
@@ -173,6 +179,21 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
       logIssues.showError('Enter how much you did.', 'workout-amount-input');
       return;
     }
+    if (editWorkout) {
+      // Opened before midnight, saved after: the server would drop the edit without a word.
+      if (editWorkout.date !== todayKey()) {
+        logIssues.showError(WORKOUT_PAST_DAY_MESSAGE);
+        return;
+      }
+      try {
+        store.updateWorkout(editWorkout.id, name, measure === 'mins' ? amount : 0, amount, measure);
+        setLogModalOpen(false);
+        showSuccessToast('Workout saved', `${name} saved.`);
+      } catch (err) {
+        logIssues.showError(toUserMessage(err, "Couldn't save the workout. Try again."));
+      }
+      return;
+    }
     await executeLog(async () => {
       await store.logWorkout(name, measure === 'mins' ? amount : 0, amount, measure);
       setLogModalOpen(false);
@@ -194,6 +215,18 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
       <div className="flex shrink-0 items-center gap-2">
         {(w.pointsAwarded || 0) > 0 && (
           <span className="figure text-xs text-success-text whitespace-nowrap">{ptsText(w.pointsAwarded, true)}</span>
+        )}
+        {/* Only today's workouts can change (the server keeps earlier days as they were). */}
+        {w.date === today && (
+          <button
+            type="button"
+            onClick={() => openLogModal(w, true)}
+            aria-label={`Edit ${w.type}, ${formatAmount(amountOf(w), measureOf(w))}`}
+            title="Edit workout"
+            className={`p-1.5 rounded-lg text-content-muted hover:text-content-secondary hover:bg-overlay-subtle transition-colors ${TAP_TARGET}`}
+          >
+            <Pencil size={16} />
+          </button>
         )}
         <button
           onClick={() => setDeleteModalWorkout(w)}
@@ -368,7 +401,7 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
         open={logModalOpen}
         onClose={() => setLogModalOpen(false)}
         dirty={logForm.dirty}
-        title="Log workout"
+        title={editWorkout ? 'Edit workout' : 'Log workout'}
         preventClose={isLogging}
         footer={
           <>
