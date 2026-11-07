@@ -15,7 +15,7 @@ import { addDays } from '@/lib/dates';
 import { useLocalDayKey } from '@/lib/useLocalDayKey';
 import type { Goal, GoalStatus, Project, ProjectStatus, Task, TaskPriority, TaskSubtask } from '@/types';
 import { EmptyState } from '@/components/views/ProjectsGoalsEmptyState';
-import { goalStatusPatch, projectStatusPatch, sortBySequence, useHierarchy } from '@/components/projects/hierarchy';
+import { goalStatusPatch, lockStatusOf, projectStatusPatch, sortBySequence, useHierarchy } from '@/components/projects/hierarchy';
 import { GoalCard } from '@/components/projects/GoalCard';
 import { ProjectCard } from '@/components/projects/ProjectCard';
 import { TaskRow } from '@/components/projects/TaskRow';
@@ -23,7 +23,18 @@ import { GoalFormDialog, ProjectFormDialog, TaskFormDialog, type GoalPayload, ty
 import { HowItWorksButton, HowItWorksDialog, useHowItWorks } from '@/components/ui/HowItWorks';
 import { projectsGoalsGuide } from '@/components/howItWorks/projectsGoals';
 import { DoneSection } from '@/components/projects/DoneSection';
-import { byCreatedDesc, projectsInDisplayOrder, sortStandalone } from '@/lib/listOrder';
+import {
+  applyListOrder,
+  byCreatedDesc,
+  LIST_ORDER_KEYS,
+  projectsInDisplayOrder,
+  reorderInSlots,
+  savedOrderIds,
+  sortStandalone,
+} from '@/lib/listOrder';
+import { confirmLeave } from '@/lib/unsavedChanges';
+import { LazyReorderList, ReorderButton } from '@/components/ui/Reorder';
+import { Chip } from '@/components/projects/ItemCard';
 
 type SubViewTab = 'goals' | 'projects' | 'tasks';
 type TabOrder = 'taskFirst' | 'projectFirst' | 'goalFirst';
@@ -212,9 +223,20 @@ export function ProjectsGoalsView({
   // --------------------------------------------------------------------------
   // Lists
   // --------------------------------------------------------------------------
-  // Display order (the state array's order depends on the device): newest first.
-  const orderedGoals = useMemo(() => [...goals].sort(byCreatedDesc), [goals]);
-  const orderedTasks = useMemo(() => [...tasks].sort(byCreatedDesc), [tasks]);
+  // Display order: the user's order (Reorder), else newest first on every device (the state
+  // array's order depends on the device); new goals and tasks join the top.
+  const listOrders = store.state.listOrders;
+  const orderedGoals = useMemo(
+    () => applyListOrder(goals, savedOrderIds(listOrders, LIST_ORDER_KEYS.goals), byCreatedDesc, 'start'),
+    [goals, listOrders]
+  );
+  const orderedTasks = useMemo(
+    () => applyListOrder(tasks, savedOrderIds(listOrders, LIST_ORDER_KEYS.tasks), byCreatedDesc, 'start'),
+    [tasks, listOrders]
+  );
+  // Reorder mode: the list and the ids it showed when Reorder was tapped (filters changed while
+  // reordering do not change the draft).
+  const [reordering, setReordering] = useState<{ tab: SubViewTab; ids: string[] } | null>(null);
 
   const goalSearchMatches = useMemo(() => {
     const q = goalSearch.trim().toLowerCase();
@@ -230,7 +252,8 @@ export function ProjectsGoalsView({
   const isGoalFinished = (g: Goal) => g.status === 'achieved' || g.status === 'abandoned';
   const splitGoals = goalStatusFilter === 'all';
   const openGoals = splitGoals ? filteredGoals.filter((g) => !isGoalFinished(g)) : filteredGoals;
-  const finishedGoals = splitGoals ? filteredGoals.filter(isGoalFinished) : [];
+  // Done stays newest first: the user's order is for open goals.
+  const finishedGoals = splitGoals ? filteredGoals.filter(isGoalFinished).sort(byCreatedDesc) : [];
 
   const activeGoalFilter = filterGoalId || (projectGoalFilter !== 'all' ? projectGoalFilter : null);
   const projectsInScope = useMemo(() => {
@@ -267,8 +290,9 @@ export function ProjectsGoalsView({
   }, [projectSearchMatches, h]);
 
   const scopedGoal = activeGoalFilter && activeGoalFilter !== 'standalone' ? goals.find((g) => g.id === activeGoalFilter) : undefined;
-  // Up/down only make sense while the list shows one ordered goal's projects in their order.
-  const showReorder = Boolean(scopedGoal?.sequentialMode) && projectStatusFilter === 'all' && !projectSearch.trim();
+  // A sequential goal's unfiltered view shows every project in its order (Done included): the
+  // order is the point there.
+  const showSequence = Boolean(scopedGoal?.sequentialMode) && projectStatusFilter === 'all' && !projectSearch.trim();
 
   const filteredProjects = useMemo(() => {
     const list = projectSearchMatches.filter((p) => projectMatchesStatus(p, projectStatusFilter));
@@ -285,7 +309,7 @@ export function ProjectsGoalsView({
   }, [projectSearchMatches, projectStatusFilter, scopedGoal, activeGoalFilter, orderedGoals, h]);
   // Completed projects fold into a closed Done section, except in their own view and in a
   // sequential goal's reorder view, where the order itself is the point.
-  const splitProjects = projectStatusFilter !== 'completed' && !showReorder;
+  const splitProjects = projectStatusFilter !== 'completed' && !showSequence;
   const openProjects = splitProjects ? filteredProjects.filter((p) => p.status !== 'completed') : filteredProjects;
   const finishedProjects = splitProjects ? filteredProjects.filter((p) => p.status === 'completed') : [];
 
@@ -315,7 +339,8 @@ export function ProjectsGoalsView({
   // Done tasks fold into a closed Done section, except in the Done view itself.
   const splitTasks = taskView !== 'completed';
   const openTasksList = splitTasks ? filteredTasks.filter((t) => !t.completed) : filteredTasks;
-  const doneTasksList = splitTasks ? filteredTasks.filter((t) => t.completed) : [];
+  // Done stays newest first: the user's order is for open tasks.
+  const doneTasksList = splitTasks ? filteredTasks.filter((t) => t.completed).sort(byCreatedDesc) : [];
 
   const activeTaskFilterCount =
     Number(taskPriorityFilter !== 'all') + Number(!filterProjectId && taskProjectFilter !== 'all') + Number(taskView !== 'all');
@@ -512,7 +537,62 @@ export function ProjectsGoalsView({
   // Render
   // --------------------------------------------------------------------------
   const orderedTabs = TAB_ORDER[tabOrder];
-  const changeTab = (id: string) => setActiveTab(id as SubViewTab);
+  const changeTab = (id: string) =>
+    confirmLeave(() => {
+      setReordering(null);
+      setActiveTab(id as SubViewTab);
+    });
+
+  // ---- Reorder mode (one list at a time; saves once on Done) ----
+  // Projects reorder within one scope: a goal (its sequence, the unlock order when in order) or
+  // the projects without a goal.
+  const projectScopeIds = () =>
+    (scopedGoal
+      ? sortBySequence(projects.filter((p) => p.goalId === scopedGoal.id))
+      : sortStandalone(projects.filter((p) => !p.goalId))
+    ).map((p) => p.id);
+  const canReorderProjects = (Boolean(scopedGoal) || activeGoalFilter === 'standalone') && !projectSearch.trim();
+  const startReorder = (tab: SubViewTab, list: { id: string }[]) => setReordering({ tab, ids: list.map((x) => x.id) });
+  const titleOf = (id: string): string =>
+    reordering?.tab === 'goals'
+      ? goals.find((g) => g.id === id)?.title ?? ''
+      : reordering?.tab === 'projects'
+        ? projects.find((p) => p.id === id)?.title ?? ''
+        : tasks.find((t) => t.id === id)?.title ?? '';
+  const reorderItems = (reordering?.ids ?? []).filter((id) => titleOf(id)).map((id) => ({ id, title: titleOf(id) }));
+  // Visible items take back the slots they held, so hidden (filtered, done) items never move.
+  const saveReorder = (draft: string[]) => {
+    if (!reordering) return;
+    if (reordering.tab === 'goals') store.saveListOrder(LIST_ORDER_KEYS.goals, reorderInSlots(orderedGoals.map((g) => g.id), draft));
+    if (reordering.tab === 'tasks') store.saveListOrder(LIST_ORDER_KEYS.tasks, reorderInSlots(orderedTasks.map((t) => t.id), draft));
+    if (reordering.tab === 'projects') store.saveProjectOrder(reorderInSlots(projectScopeIds(), draft));
+    setReordering(null);
+  };
+  // Live lock chips while reordering a sequential goal: the lock as the draft order would set it.
+  const projectReorderMeta = (id: string, draft: readonly string[]) => {
+    const project = projects.find((p) => p.id === id);
+    if (!project || !scopedGoal?.sequentialMode) return null;
+    const order = new Map(reorderInSlots(projectScopeIds(), draft).map((pid, i) => [pid, i]));
+    const inDraft = projects.filter((p) => p.goalId === scopedGoal.id).map((p) => ({ ...p, order: order.get(p.id) ?? p.order }));
+    const lock = lockStatusOf(inDraft.find((p) => p.id === id)!, goals, new Map([[scopedGoal.id, inDraft]]), h.isProjectComplete);
+    return (
+      <>
+        <Chip>
+          Step {lock.stepIndex} of {lock.totalSteps}
+        </Chip>
+        {h.isProjectComplete(project) ? <Chip tone="success">Completed</Chip> : lock.isLocked && <Chip tone="warning">Locked</Chip>}
+      </>
+    );
+  };
+  const reorderList = (label: string, meta?: (id: string, draft: readonly string[]) => React.ReactNode) => (
+    <LazyReorderList label={label} items={reorderItems} onCancel={() => setReordering(null)} onDone={saveReorder} renderMeta={meta} />
+  );
+  const reorderBar = (tab: SubViewTab, label: string, list: { id: string }[]) =>
+    list.length >= 2 && (
+      <div className="-mb-3 flex justify-end">
+        <ReorderButton label={label} onClick={() => startReorder(tab, list)} />
+      </div>
+    );
   const tabCounts = { tasks: tasks.length, projects: projects.length, goals: goals.length };
   const primaryAction =
     activeTab === 'tasks'
@@ -551,7 +631,6 @@ export function ProjectsGoalsView({
   const renderProject = (project: Project) => {
     const lock = h.getLockStatus(project);
     const prog = h.getProjectProgress(project);
-    const index = showReorder ? filteredProjects.indexOf(project) : -1;
     return (
       <ProjectCard
         key={project.id}
@@ -560,15 +639,6 @@ export function ProjectsGoalsView({
         lock={lock}
         goalName={goalName(project.goalId)}
         today={today}
-        reorder={
-          showReorder
-            ? {
-                canUp: index > 0,
-                canDown: index < filteredProjects.length - 1,
-                onMove: (direction) => store.moveProjectOrder(project.id, direction),
-              }
-            : undefined
-        }
         onStatusChange={(s) => changeProjectStatus(project, s)}
         onOpenGoal={() => project.goalId && openGoalProjects(project.goalId)}
         onOpenTasks={() => openProjectTasks(project.id)}
@@ -718,8 +788,11 @@ export function ProjectsGoalsView({
                 onClearFilters={clearGoalFilters}
                 onCreate={() => setGoalForm({ key: nextKey(), editing: null })}
               />
+            ) : reordering?.tab === 'goals' ? (
+              reorderList('goals')
             ) : (
               <div className="space-y-6">
+                {!goalSearch.trim() && reorderBar('goals', 'goals', openGoals)}
                 {openGoals.length > 0 ? (
                   <div className="grid-cards-xl items-start gap-3">{openGoals.map(renderGoal)}</div>
                 ) : (
@@ -791,8 +864,11 @@ export function ProjectsGoalsView({
                 onClearFilters={clearProjectFilters}
                 onCreate={() => setProjectForm({ key: nextKey(), editing: null, goalId: scopedGoal?.id })}
               />
+            ) : reordering?.tab === 'projects' ? (
+              reorderList('projects', projectReorderMeta)
             ) : (
               <div className="space-y-6">
+                {canReorderProjects && reorderBar('projects', 'projects', openProjects)}
                 {openProjects.length > 0 ? (
                   <div className="grid-cards-xl items-start gap-3">{openProjects.map(renderProject)}</div>
                 ) : (
@@ -961,8 +1037,11 @@ export function ProjectsGoalsView({
               ) : (
                 <EmptyState tier="tasks" onCreate={() => setFocusQuickAdd(true)} />
               )
+            ) : reordering?.tab === 'tasks' ? (
+              reorderList('tasks')
             ) : (
               <div className="space-y-3">
+                {!taskSearch.trim() && reorderBar('tasks', 'tasks', openTasksList)}
                 {tasks.length <= 3 && taskView === 'all' && !taskSearch.trim() && !filterProjectId && (
                   <p className="px-1 text-xs text-content-muted">A few more small tasks will fill out your day.</p>
                 )}

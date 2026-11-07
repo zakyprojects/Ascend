@@ -42,6 +42,7 @@ import {
   AppNotification,
   Goal,
   Project,
+  ListOrder,
   Task,
   TaskSubtask,
   GoalStatus,
@@ -79,7 +80,7 @@ import { findCuratedBook } from './books';
 import { uid, generateUUID, generateNumericUID, periodKey, todayKey, isPlanJourneyDoneThisPeriod, calculateActivePlanStreak, getWeekDates, parseDate, getNow, getNextDateKey, weekKey, addDays, formatWeekdayDate } from './dates';
 import { computeLinkedGoalProgress, linkedEntryPresent, linkedGoalCrossing, linkedItemExists, linkedGoalUnit } from './linkedGoalMetrics';
 import { autoStatusChanges } from './projectProgress';
-import { nextSequenceOrder, sortBySequence, topStandaloneOrder } from './listOrder';
+import { nextSequenceOrder, sameOrder, topStandaloneOrder } from './listOrder';
 import { adoptServerInviteId } from './partnerInvites';
 import { singleFlight } from './singleFlight';
 import { timezoneWaitHoldsPreview } from './useTimezoneWait';
@@ -6824,57 +6825,47 @@ export function useAppState() {
     []
   );
 
-  const moveProjectOrder = useCallback((arg1: string, arg2: string | 'up' | 'down', arg3?: 'up' | 'down') => {
+  /**
+   * Saves the user's order of one list (`key`, lib/listOrder LIST_ORDER_KEYS): one list_orders
+   * row. Never touches the items themselves, so no module row (and no points) changes.
+   */
+  const saveListOrder = useCallback((key: string, ids: string[]) => {
     setState(
       (prev) => {
-        let targetGoalId: string | undefined;
-        let targetProjectId: string;
-        let direction: 'up' | 'down';
-
-        if (arg3 !== undefined) {
-          targetGoalId = arg1;
-          targetProjectId = arg2 as string;
-          direction = arg3;
-        } else {
-          targetProjectId = arg1;
-          direction = arg2 as 'up' | 'down';
-          const found = prev.projects.find((p) => p.id === targetProjectId);
-          targetGoalId = found?.goalId;
-        }
-
-        if (!targetGoalId) return prev;
-
-        // The same order the page shows (and the lock follows).
-        const goalProjects = sortBySequence(prev.projects.filter((p) => p.goalId === targetGoalId));
-
-        const currIdx = goalProjects.findIndex((p) => p.id === targetProjectId);
-        if (currIdx === -1) return prev;
-        const targetIdx = direction === 'up' ? currIdx - 1 : currIdx + 1;
-        if (targetIdx < 0 || targetIdx >= goalProjects.length) return prev;
-
-        const reordered = [...goalProjects];
-        const temp = reordered[currIdx];
-        reordered[currIdx] = reordered[targetIdx];
-        reordered[targetIdx] = temp;
-
-        const orderMap = new Map<string, number>();
-        reordered.forEach((p, idx) => {
-          orderMap.set(p.id, idx);
-        });
-
-        return {
-          ...prev,
-          projects: prev.projects.map((p) => {
-            if (p.goalId === targetGoalId && orderMap.has(p.id)) {
-              return { ...p, order: orderMap.get(p.id)! };
-            }
-            return p;
-          }),
-        };
+        const orders = prev.listOrders || [];
+        const existing = orders.find((o) => o.id === key);
+        if (existing && sameOrder(existing.ids, ids)) return prev;
+        const now = trustedNow().toISOString();
+        const next: ListOrder = { id: key, ids: [...ids], createdAt: existing?.createdAt ?? now, updatedAt: now };
+        return { ...prev, listOrders: existing ? orders.map((o) => (o.id === key ? next : o)) : [...orders, next] };
       },
       { immediate: true }
     );
-    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // False positive: setState is stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  /**
+   * Saves the order of one goal's projects (or of the standalone ones): `ids` in their new order
+   * get order 0..n-1. In a sequential goal this is the unlock order. Only rows whose order changes
+   * are rewritten.
+   */
+  const saveProjectOrder = useCallback((ids: string[]) => {
+    setState(
+      (prev) => {
+        const index = new Map(ids.map((id, i) => [id, i]));
+        let changed = false;
+        const projects = prev.projects.map((p) => {
+          const order = index.get(p.id);
+          if (order === undefined || p.order === order) return p;
+          changed = true;
+          return { ...p, order };
+        });
+        return changed ? { ...prev, projects } : prev;
+      },
+      { immediate: true }
+    );
+    // False positive: setState is stable (useCallback with empty deps array)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -10251,7 +10242,8 @@ export function useAppState() {
     deleteGoal,
     createProject,
     updateProject,
-    moveProjectOrder,
+    saveProjectOrder,
+    saveListOrder,
     moveProjectStatus,
     deleteProject,
     createTask,

@@ -831,6 +831,17 @@ export interface AppState {
 
   /** Highest rank already celebrated this season (lib/rankCelebration); null until first set. */
   rankCelebrated?: RankCelebrated | null;
+
+  /** The user's own order of lists (table list_orders, one row per list; lib/listOrder.ts). */
+  listOrders?: ListOrder[];
+}
+
+/** One list's saved order: the list key is the row id, `ids` the item ids in order. */
+export interface ListOrder {
+  id: string;
+  ids: string[];
+  createdAt: string;
+  updatedAt: string;
 }
 
 /** Rank-up memory: `tierIndex` into TIERS, celebrated in `season`. */
@@ -1071,6 +1082,7 @@ export const DEFAULT_STATE: AppState = {
   timeTracker: DEFAULT_TIME_TRACKER_STATE,
   themePreference: 'dark',
   rankCelebrated: null,
+  listOrders: [],
 };
 
 

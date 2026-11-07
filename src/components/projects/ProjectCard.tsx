@@ -1,7 +1,6 @@
-import { ArrowRight, Calendar, ChevronDown, ChevronUp, Target } from 'lucide-react';
+import { ArrowRight, Calendar, Target } from 'lucide-react';
 import type { Project, ProjectStatus } from '@/types';
 import { formatDateShort } from '@/lib/dates';
-import { TAP_TARGET_Y } from '@/components/ui/primitives/shared';
 import { Chip, ItemCard, Nudge, StatusSelect } from './ItemCard';
 import { PROJECT_STATUS_LABEL, type LockStatus, type ProjectProgress } from './hierarchy';
 
@@ -13,7 +12,6 @@ export function ProjectCard({
   lock,
   goalName,
   today,
-  reorder,
   onStatusChange,
   onOpenGoal,
   onOpenTasks,
@@ -27,8 +25,6 @@ export function ProjectCard({
   lock: LockStatus;
   goalName: string | null;
   today: string;
-  /** Up/down for a goal whose projects run in order, shown only while the list is in that order. */
-  reorder?: { canUp: boolean; canDown: boolean; onMove: (direction: 'up' | 'down') => void };
   onStatusChange: (status: ProjectStatus) => void;
   onOpenGoal: () => void;
   onOpenTasks: () => void;
@@ -112,30 +108,6 @@ export function ProjectCard({
               {hasTasks && !done ? 'Completed (when tasks are done)' : 'Completed'}
             </option>
           </StatusSelect>
-          {reorder && (
-            <div className="flex items-center rounded-xl border border-overlay-default bg-bg-900 p-0.5" role="group" aria-label="Order in goal">
-              <button
-                type="button"
-                onClick={() => reorder.onMove('up')}
-                disabled={!reorder.canUp}
-                className={`rounded-lg p-1 text-content-muted transition-colors hover:text-content-secondary disabled:opacity-40 ${TAP_TARGET_Y}`}
-                aria-label={`Move "${project.title}" earlier`}
-                title="Earlier"
-              >
-                <ChevronUp size={14} />
-              </button>
-              <button
-                type="button"
-                onClick={() => reorder.onMove('down')}
-                disabled={!reorder.canDown}
-                className={`rounded-lg p-1 text-content-muted transition-colors hover:text-content-secondary disabled:opacity-40 ${TAP_TARGET_Y}`}
-                aria-label={`Move "${project.title}" later`}
-                title="Later"
-              >
-                <ChevronDown size={14} />
-              </button>
-            </div>
-          )}
           <button type="button" onClick={onOpenTasks} className="btn-secondary ml-auto px-3 py-1.5 text-xs text-cyan-hierarchy">
             <span>{hasTasks ? `${prog.total} ${prog.total === 1 ? 'task' : 'tasks'}` : 'Tasks'}</span>
             <ArrowRight size={13} aria-hidden="true" />

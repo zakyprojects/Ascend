@@ -1339,6 +1339,8 @@ function mergeAppStateInternal(
     timeTracker: mergedTimeTracker,
     ...mergeThemePreference(baseState, incomingState),
     rankCelebrated: mergeRankCelebrated(baseState.rankCelebrated, incomingState.rankCelebrated),
+    // Per list, the later reorder wins (without this the final spread let incoming win whole).
+    listOrders: mergeEntityArrays(baseState.listOrders || [], incomingState.listOrders || [], tombstoneSet),
   };
 }
 

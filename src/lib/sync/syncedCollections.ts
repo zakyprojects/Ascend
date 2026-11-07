@@ -589,6 +589,8 @@ export const SYNCED_COLLECTIONS = [
   },
   addictionTracker as unknown as SyncedCollection,
   lessonReads as unknown as SyncedCollection,
+  // The user's order of each list (one row per list key): a reorder writes only this row.
+  documentCollection('listOrders', 'list_orders', byCreatedAt),
 ] as unknown as SyncedCollection[];
 
 /**

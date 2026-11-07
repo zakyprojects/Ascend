@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
-import { byCreatedAsc } from '@/lib/listOrder';
+import { applyListOrder, byCreatedAsc, LIST_ORDER_KEYS, savedOrderIds } from '@/lib/listOrder';
+import { LazyReorderList, ReorderButton } from '@/components/ui/Reorder';
 import { ListChecks, Plus } from 'lucide-react';
 import { AppStore, runningPactsLinkedTo } from '@/lib/store';
 import { pactUnlinkNote } from '@/lib/pactLifecycle';
@@ -40,8 +41,12 @@ export function HabitTracker({ store }: { store: AppStore }) {
   // Re-render at local midnight (and a new week), so rows never show yesterday's state.
   const today = useLocalDayKey();
 
-  // Oldest first on every device (the state array's order depends on the device).
-  const habits = useMemo(() => [...store.state.habits].sort(byCreatedAsc), [store.state.habits]);
+  // The user's order (Reorder), else oldest first on every device; new habits join the end.
+  const habits = useMemo(
+    () => applyListOrder(store.state.habits, savedOrderIds(store.state.listOrders, LIST_ORDER_KEYS.habits), byCreatedAsc, 'end'),
+    [store.state.habits, store.state.listOrders]
+  );
+  const [reordering, setReordering] = useState(false);
   const isDone = (h: Habit) => store.isHabitDone(h);
   const toDo = habits.filter((h) => !isDone(h));
   const done = habits.filter(isDone);
@@ -185,8 +190,24 @@ export function HabitTracker({ store }: { store: AppStore }) {
               </button>
             }
           />
+        ) : reordering ? (
+          // One list for To do and Done: they share the order.
+          <LazyReorderList
+            label="habits"
+            items={habits.map((h) => ({ id: h.id, title: h.name }))}
+            onCancel={() => setReordering(false)}
+            onDone={(ids) => {
+              store.saveListOrder(LIST_ORDER_KEYS.habits, ids);
+              setReordering(false);
+            }}
+          />
         ) : (
           <div className="space-y-6">
+            {habits.length >= 2 && (
+              <div className="-mb-3 flex justify-end">
+                <ReorderButton label="habits" onClick={() => setReordering(true)} />
+              </div>
+            )}
             {toDo.length > 0 && (
               <section aria-labelledby="habits-todo">
                 <h2 id="habits-todo" className="section-title mb-3">
