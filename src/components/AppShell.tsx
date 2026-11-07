@@ -14,6 +14,7 @@ import {
   DEFAULT_GROUP_VIEWS,
   getGroupForView,
   getViewLabel,
+  isFeedbackView,
 } from './nav/navConfig';
 import { Sidebar } from './nav/Sidebar';
 import { AccountMenu } from './nav/AccountMenu';
@@ -493,7 +494,7 @@ export function AppShell({ currentView, navigationKind, pendingView = null, onVi
               icon={entry.icon}
               label={entry.label}
               layout="row"
-              active={currentView === entry.id}
+              active={entry.id === 'feedback' ? isFeedbackView(currentView) : currentView === entry.id}
               {...pageLinkProps(entry.id, (view) => {
                 setAccountOpen(false);
                 onViewChange(view);

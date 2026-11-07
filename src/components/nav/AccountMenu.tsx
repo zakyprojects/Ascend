@@ -4,7 +4,7 @@ import { LogIn, LogOut, Moon, Settings, Sun, UserRound } from 'lucide-react';
 import { toggleThemeWithReveal } from '@/lib/themeTransition';
 import { cx, FOCUS_RING, TRANSITION } from '@/components/ui/primitives/shared';
 import type { View } from '@/lib/views';
-import { NAV_HELP } from './navConfig';
+import { NAV_HELP, isFeedbackView } from './navConfig';
 
 interface AccountMenuProps {
   /** null when nobody is signed in. */
@@ -174,7 +174,7 @@ export function AccountMenu({
               <MenuItem
                 key={id}
                 icon={<Icon size={16} />}
-                current={currentView === id}
+                current={id === 'feedback' ? isFeedbackView(currentView) : currentView === id}
                 onSelect={() => {
                   close(false);
                   onOpenView(id);

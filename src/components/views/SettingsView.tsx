@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Bell, Coffee, Eye, Info, KeyRound, Palette, User, UserRound, Vibrate, type LucideIcon } from 'lucide-react';
+import { Bell, Coffee, Eye, Info, KeyRound, MessageSquare, Palette, User, UserRound, Vibrate, type LucideIcon } from 'lucide-react';
 import { GuestSaveBanner } from '@/components/ui/GuestSaveBanner';
 import { AppStore } from '@/lib/store';
 import type { View } from '@/lib/views';
@@ -18,7 +18,7 @@ import { ProfileSection } from '@/components/settings/ProfileSection';
 import { AccountSection } from '@/components/settings/AccountSection';
 import { NotificationsSection } from '@/components/settings/NotificationsSection';
 import { AppInfoSection, AppearanceSection, PrivacySection } from '@/components/settings/PreferenceSections';
-import { AboutUsSection, SupportSection } from '@/components/settings/MakerSections';
+import { AboutUsSection, FeedbackSection, SupportSection } from '@/components/settings/MakerSections';
 import { SoundVibrationSection } from '@/components/settings/SoundVibrationSection';
 
 interface SettingsViewProps {
@@ -36,6 +36,7 @@ const SECTIONS: { id: SettingsSection; label: string; icon: LucideIcon }[] = [
   { id: 'notifications', label: 'Notifications', icon: Bell },
   { id: 'privacy', label: 'Privacy', icon: Eye },
   { id: 'account', label: 'Account', icon: KeyRound },
+  { id: 'feedback', label: 'Send feedback', icon: MessageSquare },
   { id: 'support', label: 'Support us', icon: Coffee },
   { id: 'about-us', label: 'About us', icon: UserRound },
   { id: 'app', label: 'App info', icon: Info },
@@ -151,6 +152,7 @@ export function SettingsView({ store, onOpenAuth, onNavigate }: SettingsViewProp
             {section === 'app' && <AppInfoSection onNavigate={onNavigate} />}
             {section === 'about-us' && <AboutUsSection onNavigate={onNavigate} />}
             {section === 'support' && <SupportSection onNavigate={onNavigate} />}
+            {section === 'feedback' && <FeedbackSection onNavigate={onNavigate} />}
           </Reveal>
         </TabPanel>
       </div>

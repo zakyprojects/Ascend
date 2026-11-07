@@ -1,5 +1,7 @@
 import type { ReactNode } from 'react';
+import { Bug, Lightbulb, MessageSquare } from 'lucide-react';
 import type { View } from '@/lib/views';
+import { FEEDBACK_KINDS, setPendingFeedbackStart, type FeedbackKind } from '@/lib/feedback';
 import { cx, FOCUS_RING } from '@/components/ui/primitives';
 import { LEGAL_CONTACT_EMAIL } from '@/lib/legal';
 import { pageLinkProps } from '@/lib/pageLink';
@@ -53,12 +55,50 @@ export function AboutUsSection({ onNavigate }: { onNavigate: (view: View) => voi
 
         <Part title="Help shape it">
           <p>
-            AscendDay grows from what the people using it tell me. If something breaks, use{' '}
-            <PageLink view="report-bug" label="Report a bug" onNavigate={onNavigate} />. If you wish it did something,
-            use <PageLink view="suggest-idea" label="Suggest an idea" onNavigate={onNavigate} />. For anything else,
-            email me at <Email />.
+            AscendDay grows from what the people using it tell me. If something breaks, you wish it did something, or
+            you just want to say how it’s going, use <PageLink view="feedback" label="Send feedback" onNavigate={onNavigate} />.
+            You can also email me at <Email />.
           </p>
         </Part>
+      </div>
+    </SettingsCard>
+  );
+}
+
+const KIND_VIEWS: Record<FeedbackKind, View> = { bug: 'report-bug', idea: 'suggest-idea', other: 'feedback' };
+const KIND_ICONS = { bug: Bug, idea: Lightbulb, other: MessageSquare } as const;
+
+/** Settings > Send feedback: the three choices of the feedback form, one tap each. */
+export function FeedbackSection({ onNavigate }: { onNavigate: (view: View) => void }) {
+  return (
+    <SettingsCard title="Send feedback">
+      <div className="space-y-5 text-sm leading-relaxed text-content-secondary">
+        <p>A bug, an idea, or anything else. Every message is read, and you can ask for a reply.</p>
+        <ul className="grid gap-3 sm:grid-cols-3">
+          {FEEDBACK_KINDS.map(({ value, label, hint }) => {
+            const Icon = KIND_ICONS[value];
+            return (
+              <li key={value}>
+                <a
+                  {...pageLinkProps(KIND_VIEWS[value], (view) => {
+                    setPendingFeedbackStart({ kind: value });
+                    onNavigate(view);
+                  })}
+                  className={cx(
+                    'flex h-full items-start gap-3 rounded-xl border border-overlay-default p-4 transition-colors hover:border-primary-500/40 hover:bg-overlay-subtle',
+                    FOCUS_RING
+                  )}
+                >
+                  <Icon size={18} aria-hidden="true" className="mt-0.5 shrink-0 text-brand-text" />
+                  <span className="space-y-0.5">
+                    <span className="block text-sm font-semibold text-content-primary">{label}</span>
+                    <span className="block text-xs text-content-muted">{hint}</span>
+                  </span>
+                </a>
+              </li>
+            );
+          })}
+        </ul>
       </div>
     </SettingsCard>
   );
