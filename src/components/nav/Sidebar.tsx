@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { ChevronLeft, ChevronRight, Plus, Search, type LucideIcon } from 'lucide-react';
-import { NAV_DASHBOARD, NAV_FEEDBACK, NAV_GROUPS, isFeedbackView, type NavGroup } from './navConfig';
+import { NAV_DASHBOARD, NAV_GROUPS, type NavGroup } from './navConfig';
 import { AppLogo } from '@/components/ui/AppLogo';
 import { NavItem, NavSection } from '@/components/ui/primitives';
 import { cx, FOCUS_RING, TRANSITION } from '@/components/ui/primitives/shared';
@@ -262,17 +262,7 @@ export function Sidebar({
           <span ref={glideRef} aria-hidden="true" className="hover-glide rounded-lg" />
         </nav>
 
-        {/* Send feedback sits in the foot, always one click away. */}
-        <div className="border-t border-overlay-subtle px-3 pt-2">
-          <NavItem
-            icon={NAV_FEEDBACK.icon}
-            label={NAV_FEEDBACK.label}
-            active={!collapsed && isFeedbackView(currentView)}
-            {...pageLinkProps(NAV_FEEDBACK.id, onNavigate)}
-            layout="trail"
-          />
-        </div>
-        <div className="px-4 pb-4 pt-2">{standing}</div>
+        <div className="border-t border-overlay-subtle p-4">{standing}</div>
       </div>
 
       {/* Collapsed rail: icons only, each with a tooltip; today's status as a small dot. */}
@@ -307,17 +297,7 @@ export function Sidebar({
             </div>
           ))}
         </nav>
-        <div className="flex w-full flex-col items-center gap-2 border-t border-overlay-subtle py-3">
-          <RailButton
-            icon={NAV_FEEDBACK.icon}
-            label={NAV_FEEDBACK.label}
-            active={isFeedbackView(currentView)}
-            named={collapsed}
-            {...pageLinkProps(NAV_FEEDBACK.id, onNavigate)}
-            {...tipProps(NAV_FEEDBACK.label)}
-          />
-          {renderAccount('side')}
-        </div>
+        <div className="flex w-full justify-center border-t border-overlay-subtle py-3">{renderAccount('side')}</div>
       </div>
       </div>
 
