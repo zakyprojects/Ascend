@@ -17,6 +17,8 @@ import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { useToast } from '@/components/ui/Toast';
 import { Dialog, Disclosure, EmptyState } from '@/components/ui/primitives';
 import { cx, TAP_TARGET } from '@/components/ui/primitives/shared';
+import { LIST_ORDER_KEYS } from '@/lib/listOrder';
+import { LazyReorderList, ReorderButton } from '@/components/ui/Reorder';
 
 interface TemplatesTabProps {
   store: AppStore;
@@ -35,6 +37,7 @@ export function TemplatesTab({ store, templates, activities, onCreateTemplate, o
   const theme = store.state.themePreference || 'dark';
   const [deleting, setDeleting] = useState<TimeTrackerTemplate | null>(null);
   const [moveDay, setMoveDay] = useState<{ day: string; template: TimeTrackerTemplate; from: string } | null>(null);
+  const [reordering, setReordering] = useState(false);
 
   const activityMap = useMemo(() => new Map(activities.map((a) => [a.id, a])), [activities]);
   const hasRecommended = templates.some((t) => templateSignature(t.blocks || []) === RECOMMENDED_SIGNATURE);
@@ -72,6 +75,7 @@ export function TemplatesTab({ store, templates, activities, onCreateTemplate, o
           <p className="text-xs text-content-muted">Build a day once. It fills empty days on the weekdays you pick.</p>
         </div>
         <div className="flex flex-wrap gap-2">
+          {!reordering && templates.length >= 2 && <ReorderButton label="templates" onClick={() => setReordering(true)} />}
           {!hasRecommended && (
             <button type="button" onClick={addRecommended} className="btn-secondary text-xs">
               <Sparkles size={14} /> Add AscendDay recommended day
@@ -122,6 +126,16 @@ export function TemplatesTab({ store, templates, activities, onCreateTemplate, o
               </button>
             </div>
           }
+        />
+      ) : reordering ? (
+        <LazyReorderList
+          label="templates"
+          items={templates.map((tpl) => ({ id: tpl.id, title: tpl.title }))}
+          onCancel={() => setReordering(false)}
+          onDone={(ids) => {
+            store.saveListOrder(LIST_ORDER_KEYS.ttTemplates, ids);
+            setReordering(false);
+          }}
         />
       ) : (
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">

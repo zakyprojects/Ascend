@@ -10,6 +10,8 @@ import { cx, FOCUS_RING, TAP_TARGET } from '@/components/ui/primitives/shared';
 import { toUserMessage } from '@/lib/userMessage';
 import { MODULE_LABELS } from './dayMeta';
 import { categoryDisplayNames } from './categoryNames';
+import { LIST_ORDER_KEYS } from '@/lib/listOrder';
+import { LazyReorderList, ReorderButton } from '@/components/ui/Reorder';
 
 interface ActivitiesTabProps {
   store: AppStore;
@@ -23,6 +25,7 @@ export function ActivitiesTab({ store, activities, today, onCreateCategory, onEd
   const theme = store.state.themePreference || 'dark';
   const [deleting, setDeleting] = useState<TimeTrackerActivity | null>(null);
   const names = useMemo(() => categoryDisplayNames(activities), [activities]);
+  const [reordering, setReordering] = useState(false);
 
   return (
     <div className="space-y-6">
@@ -31,11 +34,25 @@ export function ActivitiesTab({ store, activities, today, onCreateCategory, onEd
           <h2 className="section-title">Categories</h2>
           <p className="text-xs text-content-muted">Link a category to a section to open it from a block.</p>
         </div>
-        <button type="button" onClick={onCreateCategory} className="btn-primary self-start text-xs sm:self-auto">
-          <Plus size={14} /> New category
-        </button>
+        <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
+          {!reordering && activities.length >= 2 && <ReorderButton label="categories" onClick={() => setReordering(true)} />}
+          <button type="button" onClick={onCreateCategory} className="btn-primary text-xs">
+            <Plus size={14} /> New category
+          </button>
+        </div>
       </div>
 
+      {reordering ? (
+        <LazyReorderList
+          label="categories"
+          items={activities.map((act) => ({ id: act.id, title: names.get(act.id) ?? act.name }))}
+          onCancel={() => setReordering(false)}
+          onDone={(ids) => {
+            store.saveListOrder(LIST_ORDER_KEYS.ttActivities, ids);
+            setReordering(false);
+          }}
+        />
+      ) : (
       <ul className="card divide-y divide-overlay-subtle p-0">
         {activities.map((act) => {
           const color = getActivityDisplayColor(act, theme);
@@ -79,6 +96,7 @@ export function ActivitiesTab({ store, activities, today, onCreateCategory, onEd
           );
         })}
       </ul>
+      )}
 
       <DeleteCategoryDialog
         store={store}

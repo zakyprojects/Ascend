@@ -1,5 +1,7 @@
 import { useMemo, useState } from 'react';
-import { byCreatedDesc } from '@/lib/listOrder';
+import { applyListOrder, byCreatedDesc, LIST_ORDER_KEYS, reorderInSlots, savedOrderIds } from '@/lib/listOrder';
+import { LazyReorderList, ReorderButton } from '@/components/ui/Reorder';
+import { confirmLeave } from '@/lib/unsavedChanges';
 import { Edit3, Globe, Lock, Plus, Trash2 } from 'lucide-react';
 import { AppStore } from '@/lib/store';
 import { useToast } from '@/components/ui/Toast';
@@ -37,7 +39,13 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
   useLocalDayKey();
 
   const [activeTab, setActiveTab] = useState<PlansTab>('my_plans');
-  const changeTab = (id: string) => setActiveTab(id as PlansTab);
+  const [reorderingPlans, setReorderingPlans] = useState<Owner | null>(null);
+  // Leaving My plans while reordering asks to discard the moves.
+  const changeTab = (id: string) =>
+    confirmLeave(() => {
+      setReorderingPlans(null);
+      setActiveTab(id as PlansTab);
+    });
   // Bumped on every open so the create dialog always starts fresh.
   const [createKey, setCreateKey] = useState(0);
   const [createOpen, setCreateOpen] = useState(false);
@@ -50,12 +58,22 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
   const [noteToDelete, setNoteToDelete] = useState<{ owner: Owner; id: string; noteKey: string } | null>(null);
 
   const currentUserId = store.state.currentUser?.id;
-  // Newest first, own plans then copies (the loaded order depends on the device).
-  const followedPlans = useMemo(() => [...store.state.followedPlans].sort(byCreatedDesc), [store.state.followedPlans]);
-  const myPlans = useMemo(
-    () => [...ownPlans(store.state.improvementPlans, currentUserId)].sort(byCreatedDesc),
-    [store.state.improvementPlans, currentUserId]
+  // The user's order (Reorder; one saved order for own plans and copies), else newest first; new
+  // plans join the top. The loaded order depends on the device, so it is never used.
+  const savedPlanOrder = savedOrderIds(store.state.listOrders, LIST_ORDER_KEYS.plans);
+  const followedPlans = useMemo(
+    () => applyListOrder(store.state.followedPlans, savedPlanOrder, byCreatedDesc, 'start'),
+    [store.state.followedPlans, savedPlanOrder]
   );
+  const myPlans = useMemo(
+    () => applyListOrder(ownPlans(store.state.improvementPlans, currentUserId), savedPlanOrder, byCreatedDesc, 'start'),
+    [store.state.improvementPlans, currentUserId, savedPlanOrder]
+  );
+  const savePlanOrder = (ids: string[]) => {
+    const full = [...myPlans, ...followedPlans].map((p) => p.id);
+    store.saveListOrder(LIST_ORDER_KEYS.plans, reorderInSlots(full, ids));
+    setReorderingPlans(null);
+  };
 
   const discover = useDiscoverPlans(store, activeTab === 'discover');
   const remoteById = useMemo(() => new Map(discover.plans.map((p) => [p.id, p])), [discover.plans]);
@@ -209,9 +227,19 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
         {activeTab === 'my_plans' && (
           <div className="space-y-8">
             <section className="space-y-3">
-              <h2 className="section-title">Created by me</h2>
+              <div className="flex items-center justify-between gap-2">
+                <h2 className="section-title">Created by me</h2>
+                {myPlans.length >= 2 && !reorderingPlans && <ReorderButton label="your plans" onClick={() => setReorderingPlans('own')} />}
+              </div>
               {myPlans.length === 0 ? (
                 <EmptyState title="No plans yet" description="Start one from a template or from scratch with New plan." />
+              ) : reorderingPlans === 'own' ? (
+                <LazyReorderList
+                  label="your plans"
+                  items={myPlans.map((p) => ({ id: p.id, title: p.title }))}
+                  onCancel={() => setReorderingPlans(null)}
+                  onDone={savePlanOrder}
+                />
               ) : (
                 <MasonryGrid minColumnRem={20}>
                   {myPlans.map((plan) => (
@@ -240,9 +268,19 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
             </section>
 
             <section className="space-y-3">
-              <h2 className="section-title">Copied plans</h2>
+              <div className="flex items-center justify-between gap-2">
+                <h2 className="section-title">Copied plans</h2>
+                {followedPlans.length >= 2 && !reorderingPlans && <ReorderButton label="copied plans" onClick={() => setReorderingPlans('copy')} />}
+              </div>
               {followedPlans.length === 0 ? (
                 <EmptyState title="No copied plans" description="Copy a plan from Discover. The copy is yours: change it and track your own progress." />
+              ) : reorderingPlans === 'copy' ? (
+                <LazyReorderList
+                  label="copied plans"
+                  items={followedPlans.map((f) => ({ id: f.id, title: f.title }))}
+                  onCancel={() => setReorderingPlans(null)}
+                  onDone={savePlanOrder}
+                />
               ) : (
                 <MasonryGrid minColumnRem={20}>
                   {followedPlans.map((follow) => (

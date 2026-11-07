@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { byCreatedAsc } from '@/lib/listOrder';
+import { applyListOrder, byCreatedAsc, LIST_ORDER_KEYS, savedOrderIds } from '@/lib/listOrder';
+import { confirmLeave } from '@/lib/unsavedChanges';
 import { AppStore } from '@/lib/store';
 import { TimeTrackerActivity, TimeTrackerBlock, TimeTrackerTemplate } from '@/types';
 import { ensureDefaultActivities, plannedBlocksForDate } from '@/lib/timeTracker';
@@ -33,7 +34,8 @@ export function TimeTrackerView({ store, onNavigate }: TimeTrackerViewProps) {
   const today = useLocalDayKey();
 
   const [activeTab, setActiveTab] = useState<TabType>('day');
-  const changeTab = (id: string) => setActiveTab(id as TabType);
+  // A tab with unsaved moves (Reorder) asks to discard them before another tab opens.
+  const changeTab = (id: string) => confirmLeave(() => setActiveTab(id as TabType));
   const [selectedDateKey, setSelectedDateKey] = useState<string>(today);
 
   // Midnight with the page open: a page that was on "today" moves to the new today and fills it
@@ -66,12 +68,23 @@ export function TimeTrackerView({ store, onNavigate }: TimeTrackerViewProps) {
   const [editingActivity, setEditingActivity] = useState<TimeTrackerActivity | null>(null);
 
   const timeTracker = store.state.timeTracker;
-  // Oldest first on every device (the state array's order depends on the device).
+  // The user's order (Reorder), else oldest first on every device (the state array's order
+  // depends on the device); new ones join the end. The block picker uses the same order.
+  const listOrders = store.state.listOrders;
   const activities = useMemo(
-    () => [...ensureDefaultActivities(timeTracker?.activities || [])].sort(byCreatedAsc),
-    [timeTracker?.activities]
+    () =>
+      applyListOrder(
+        ensureDefaultActivities(timeTracker?.activities || []),
+        savedOrderIds(listOrders, LIST_ORDER_KEYS.ttActivities),
+        byCreatedAsc,
+        'end'
+      ),
+    [timeTracker?.activities, listOrders]
   );
-  const templates = useMemo(() => [...(timeTracker?.templates || [])].sort(byCreatedAsc), [timeTracker?.templates]);
+  const templates = useMemo(
+    () => applyListOrder(timeTracker?.templates || [], savedOrderIds(listOrders, LIST_ORDER_KEYS.ttTemplates), byCreatedAsc, 'end'),
+    [timeTracker?.templates, listOrders]
+  );
 
   const planned = useMemo(
     () => (timeTracker ? plannedBlocksForDate(timeTracker, selectedDateKey, today) : { blocks: [], source: 'none' as const }),

@@ -164,6 +164,15 @@ export function SkillTracker({ store, onNavigate }: { store: AppStore; onNavigat
     [store.state.skills, store.state.listOrders]
   );
   const [reordering, setReordering] = useState(false);
+  // A skill's counts: the user's order for that skill (Reorder on its card, also the Log practice
+  // picker's order), else the order they were added; new counts join the end.
+  const orderedDrills = (skill: Skill | undefined) => {
+    const live = liveDrills(skill);
+    if (!skill) return live;
+    const added = new Map(live.map((d, i) => [d.id, i]));
+    return applyListOrder(live, savedOrderIds(store.state.listOrders, LIST_ORDER_KEYS.drills(skill.id)), (a, b) => added.get(a.id)! - added.get(b.id)!, 'end');
+  };
+  const [reorderDrillsOf, setReorderDrillsOf] = useState<string | null>(null);
   const skillLogs = store.state.skillLogs;
   // Day points come from the ledger, so deleting or clearing an earlier day's practice never
   // shows that day's points going down (they stay on the server).
@@ -286,7 +295,7 @@ export function SkillTracker({ store, onNavigate }: { store: AppStore; onNavigat
     setCountRows(startRows(skills.find((s) => s.id === id)));
   };
   const logSkill = skills.find((s) => s.id === logSkillId);
-  const logDrills = liveDrills(logSkill);
+  const logDrills = orderedDrills(logSkill);
   const setRow = (key: string, patch: Partial<CountRow>) => setCountRows((rows) => rows.map((r) => (r.key === key ? { ...r, ...patch } : r)));
   // A new row picks a drill no row uses yet, else starts a new drill (while the skill has room).
   const freeDrill = logDrills.find((d) => !countRows.some((r) => r.drillId === d.id));
@@ -600,7 +609,7 @@ export function SkillTracker({ store, onNavigate }: { store: AppStore; onNavigat
                     'daily'
                   );
                   const practicedToday = todayLogs.some((l) => l.skillId === skill.id);
-                  const drills = liveDrills(skill);
+                  const drills = orderedDrills(skill);
                   return (
                     <div key={skill.id} className="card enter-item p-4 flex flex-col gap-3">
                       <div className="flex items-start justify-between gap-2">
@@ -645,8 +654,26 @@ export function SkillTracker({ store, onNavigate }: { store: AppStore; onNavigat
                         <ProgressBar value={progress} label={`${skill.name} level progress`} size="sm" />
                       </div>
 
-                      {drills.length > 0 && (
-                        <ul className="space-y-1 border-t border-overlay-subtle pt-2" aria-label={`${skill.name} counts`}>
+                      {drills.length > 0 && reorderDrillsOf === skill.id ? (
+                        <div className="border-t border-overlay-subtle pt-2">
+                          <LazyReorderList
+                            label={`${skill.name} counts`}
+                            items={drills.map((d) => ({ id: d.id, title: d.name }))}
+                            onCancel={() => setReorderDrillsOf(null)}
+                            onDone={(ids) => {
+                              store.saveListOrder(LIST_ORDER_KEYS.drills(skill.id), ids);
+                              setReorderDrillsOf(null);
+                            }}
+                          />
+                        </div>
+                      ) : drills.length > 0 && (
+                        <div className="border-t border-overlay-subtle pt-2">
+                        {drills.length >= 2 && !reorderDrillsOf && (
+                          <div className="flex justify-end">
+                            <ReorderButton label={`${skill.name} counts`} onClick={() => setReorderDrillsOf(skill.id)} />
+                          </div>
+                        )}
+                        <ul className="space-y-1" aria-label={`${skill.name} counts`}>
                           {drills.map((drill) => {
                             const week = drillCountInLogs(weekLogs, skill.id, drill.id);
                             const goal = drillGoal(skill.id, drill.id);
@@ -689,6 +716,7 @@ export function SkillTracker({ store, onNavigate }: { store: AppStore; onNavigat
                             );
                           })}
                         </ul>
+                        </div>
                       )}
 
                       <button
