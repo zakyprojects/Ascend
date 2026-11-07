@@ -78,7 +78,7 @@ export interface FinishedFocusSession {
   minutes: number;
 }
 
-interface FocusSessionContextValue {
+export interface FocusSessionContextValue {
   session: FocusSession | null;
   /** The session that just ended in this tab, waiting for its reflection. */
   finished: FinishedFocusSession | null;
@@ -95,7 +95,10 @@ interface FocusSessionContextValue {
   clearNotice: () => void;
 }
 
-const FocusSessionContext = createContext<FocusSessionContextValue | null>(null);
+// Exported only so the dev Gallery can wrap FocusTimerChip in a fake session (no timers, no writes).
+// Kept in this file so the prod bundle stays the same; the hooks below already share this pattern.
+// eslint-disable-next-line react-refresh/only-export-components -- context co-located with its provider
+export const FocusSessionContext = createContext<FocusSessionContextValue | null>(null);
 
 /** An end noticed later than this (app was closed or asleep) is logged without an alert. */
 const LIVE_ALERT_WINDOW_MS = 2 * 60 * 1000;
