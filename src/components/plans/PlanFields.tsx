@@ -1,4 +1,4 @@
-import { Plus, Trash2 } from 'lucide-react';
+import { ChevronDown, ChevronUp, Plus, Trash2 } from 'lucide-react';
 import { FieldRow, Input, NumberField, Select, Textarea } from '@/components/ui/primitives';
 import { TAP_TARGET } from '@/components/ui/primitives/shared';
 import { PLAN_CATEGORIES, type PlanType } from '@/types';
@@ -55,6 +55,14 @@ export function PlanFields({
   const id = (name: string) => `${idPrefix}-${name}`;
   const setStep = (index: number, title: string) =>
     onChange({ steps: values.steps.map((s, i) => (i === index ? { ...s, title } : s)) });
+  // A step moves with its id, so its done state goes with it.
+  const moveStep = (index: number, delta: number) => {
+    const to = index + delta;
+    if (to < 0 || to >= values.steps.length) return;
+    const steps = [...values.steps];
+    [steps[index], steps[to]] = [steps[to], steps[index]];
+    onChange({ steps });
+  };
 
   return (
     <div className="space-y-4">
@@ -93,6 +101,28 @@ export function PlanFields({
                 autoComplete="off"
                 required
               />
+              {values.steps.length > 1 && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => moveStep(idx, -1)}
+                    disabled={idx === 0}
+                    className={`mt-1 text-content-muted hover:text-content-primary disabled:pointer-events-none disabled:opacity-30 ${TAP_TARGET}`}
+                    aria-label={`Move step ${idx + 1} up`}
+                  >
+                    <ChevronUp size={15} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => moveStep(idx, 1)}
+                    disabled={idx === values.steps.length - 1}
+                    className={`mt-1 text-content-muted hover:text-content-primary disabled:pointer-events-none disabled:opacity-30 ${TAP_TARGET}`}
+                    aria-label={`Move step ${idx + 1} down`}
+                  >
+                    <ChevronDown size={15} />
+                  </button>
+                </>
+              )}
               {values.steps.length > 1 && (
                 <button
                   type="button"
