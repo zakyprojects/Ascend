@@ -25,6 +25,7 @@ import { CountUp, Reveal } from '@/components/ui/Motion';
 import { lastDayKeys, sumPerDay } from '@/lib/weeklyActivity';
 import { useUnsavedChanges } from '@/lib/unsavedChanges';
 import { nameTaken } from '@/lib/uniqueNames';
+import { skillNameProblem } from '@/lib/itemEdits';
 import { SKILL_LEVELS } from '@/lib/skillLevels';
 import {
   DRILL_COUNT_MAX,
@@ -121,13 +122,15 @@ export function SkillTracker({ store, onNavigate }: { store: AppStore; onNavigat
   // Form states
   const [skillName, setSkillName] = useState('');
   const [category, setCategory] = useState('');
+  /** The skill the Add skill dialog renames (null: a new skill). */
+  const [editSkill, setEditSkill] = useState<Skill | null>(null);
   const [logSkillId, setLogSkillId] = useState('');
   const [duration, setDuration] = useState(QUICK_MINUTES[0]);
   const [note, setNote] = useState('');
   const [countRows, setCountRows] = useState<CountRow[]>([]);
   /** The log the Log practice dialog edits (null: a new log). */
   const [editLog, setEditLog] = useState<SkillSessionLog | null>(null);
-  const addForm = useUnsavedChanges(addModalOpen, [skillName, category]);
+  const addForm = useUnsavedChanges(addModalOpen && editSkill ? `edit-${editSkill.id}` : addModalOpen, [skillName, category]);
   const logForm = useUnsavedChanges(logModalOpen && editLog ? `edit-${editLog.id}` : logModalOpen, [logSkillId, duration, note, JSON.stringify(countRows)] as const, {
     key: 'skill-log',
     restore: ([s, d, n, rows]) => {
@@ -239,8 +242,15 @@ export function SkillTracker({ store, onNavigate }: { store: AppStore; onNavigat
 
   // Every open starts clean.
   const openAddModal = () => {
+    setEditSkill(null);
     setSkillName('');
     setCategory('');
+    setAddModalOpen(true);
+  };
+  const openEditSkill = (skill: Skill) => {
+    setEditSkill(skill);
+    setSkillName(skill.name);
+    setCategory(skill.category ?? '');
     setAddModalOpen(true);
   };
   const openLogModal = (skillId?: string) => {
@@ -333,6 +343,21 @@ export function SkillTracker({ store, onNavigate }: { store: AppStore; onNavigat
     e.preventDefault();
     if (!skillName.trim()) {
       addIssues.showError('Fill in this field.', 'skill-name-input');
+      return;
+    }
+    if (editSkill) {
+      const problem = skillNameProblem(skillName, editSkill, skills);
+      if (problem) {
+        addIssues.showError(problem, 'skill-name-input');
+        return;
+      }
+      try {
+        store.updateSkill(editSkill.id, { name: skillName, category });
+        setAddModalOpen(false);
+        showSuccessToast('Skill saved', skillName.trim());
+      } catch (err) {
+        addIssues.showError(toUserMessage(err, "Couldn't save the skill. Try again."));
+      }
       return;
     }
     if (nameTaken(skillName, skills)) {
@@ -566,14 +591,25 @@ export function SkillTracker({ store, onNavigate }: { store: AppStore; onNavigat
                             {skill.category && <span className="truncate">{skill.category}</span>}
                           </div>
                         </div>
-                        <button
-                          onClick={() => setDeleteModalSkill(skill)}
-                          aria-label={`Delete ${skill.name}`}
-                          title="Delete skill"
-                          className={`p-1.5 rounded-lg text-content-muted hover:text-rose-theme hover:bg-rose-500/10 transition-colors ${TAP_TARGET}`}
-                        >
-                          <Trash2 size={16} />
-                        </button>
+                        <div className="flex shrink-0 items-center">
+                          <button
+                            type="button"
+                            onClick={() => openEditSkill(skill)}
+                            aria-label={`Edit ${skill.name}`}
+                            title="Edit skill"
+                            className={`p-1.5 rounded-lg text-content-muted hover:text-content-secondary hover:bg-overlay-subtle transition-colors ${TAP_TARGET}`}
+                          >
+                            <Pencil size={16} />
+                          </button>
+                          <button
+                            onClick={() => setDeleteModalSkill(skill)}
+                            aria-label={`Delete ${skill.name}`}
+                            title="Delete skill"
+                            className={`p-1.5 rounded-lg text-content-muted hover:text-rose-theme hover:bg-rose-500/10 transition-colors ${TAP_TARGET}`}
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
                       </div>
 
                       <div className="space-y-1">
@@ -698,14 +734,14 @@ export function SkillTracker({ store, onNavigate }: { store: AppStore; onNavigat
         open={addModalOpen}
         onClose={() => setAddModalOpen(false)}
         dirty={addForm.dirty}
-        title="Add skill"
+        title={editSkill ? 'Edit skill' : 'Add skill'}
         footer={
           <>
             <button type="button" onClick={() => addForm.confirmDiscard(() => setAddModalOpen(false))} className="btn-secondary">
               Cancel
             </button>
             <button type="submit" form="skill-add-form" className="btn-primary">
-              Add skill
+              {editSkill ? 'Save skill' : 'Add skill'}
             </button>
           </>
         }
