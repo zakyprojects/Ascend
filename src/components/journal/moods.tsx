@@ -1,5 +1,6 @@
 import { Smile, Meh, Frown, Zap } from 'lucide-react';
 import type { Mood } from '@/types';
+import { cx } from '@/components/ui/primitives/shared';
 
 export interface MoodMeta {
   value: Mood;
@@ -34,5 +35,33 @@ export function MoodBadge({ mood }: { mood: Mood }) {
       <Icon size={12} aria-hidden="true" />
       {meta.label}
     </span>
+  );
+}
+
+/** The four moods as toggle buttons (today's editor and the edit of a saved entry). */
+export function MoodPicker({ value, onChange }: { value: Mood; onChange: (mood: Mood) => void }) {
+  return (
+    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+      {MOODS.map((m) => {
+        const Icon = m.icon;
+        const selected = value === m.value;
+        return (
+          <button
+            key={m.value}
+            type="button"
+            onClick={() => onChange(m.value)}
+            aria-pressed={selected}
+            className={cx(
+              'flex items-center justify-center gap-2 min-h-11 px-2 rounded-xl border text-sm font-medium transition-colors',
+              !selected && 'border-overlay-subtle text-content-muted hover:bg-overlay-subtle'
+            )}
+            style={selected ? { borderColor: m.color, backgroundColor: `${m.color}15`, color: m.color } : undefined}
+          >
+            <Icon size={18} />
+            {m.label}
+          </button>
+        );
+      })}
+    </div>
   );
 }

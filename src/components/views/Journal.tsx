@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { Trash2, Edit3, CheckCircle2, Sparkles, RotateCcw, BookOpen, PenLine } from 'lucide-react';
+import { Trash2, Edit3, Check, CheckCircle2, Sparkles, RotateCcw, BookOpen, PenLine } from 'lucide-react';
 import { AppStore } from '@/lib/store';
 import { useLocalDayKey } from '@/lib/useLocalDayKey';
 import { Mood, JournalEntry } from '@/types';
@@ -23,7 +23,8 @@ import { lastDayKeys } from '@/lib/weeklyActivity';
 import { useUnsavedChanges } from '@/lib/unsavedChanges';
 import { toUserMessage } from '@/lib/userMessage';
 import { getDailyPrompt } from '@/data/journalPrompts';
-import { MOODS, MOOD_MAP, MoodBadge } from '@/components/journal/moods';
+import { MOODS, MOOD_MAP, MoodBadge, MoodPicker } from '@/components/journal/moods';
+import { journalEditNotesOk } from '@/lib/journalEdits';
 
 const PROMPT_PREF_STORAGE_KEY = 'ascend_journal_prompt_mode';
 const ENTRIES_PAGE = 10;
@@ -40,6 +41,10 @@ export function Journal({ store }: { store: AppStore }) {
   const [isEditingToday, setIsEditingToday] = useState(false);
   const [selectedEntry, setSelectedEntry] = useState<JournalEntry | null>(null);
   const [deleteModalEntry, setDeleteModalEntry] = useState<JournalEntry | null>(null);
+  // Editing a saved entry in its dialog: mood and notes only (its day never changes).
+  const [editingEntryId, setEditingEntryId] = useState<string | null>(null);
+  const [editMood, setEditMood] = useState<Mood>('happy');
+  const [editContent, setEditContent] = useState('');
   const [chartRange, setChartRange] = useState<ChartRange>('7d');
   const [entriesShown, setEntriesShown] = useState(ENTRIES_PAGE);
   const [promptOffset, setPromptOffset] = useState(0);
@@ -60,6 +65,14 @@ export function Journal({ store }: { store: AppStore }) {
     },
   });
   const entryIssues = useFormController();
+  const entryEditForm = useUnsavedChanges(editingEntryId, [editMood, editContent] as [Mood, string], {
+    key: 'journal-entry-edit',
+    restore: ([draftMood, draftContent]) => {
+      setEditMood(draftMood);
+      setEditContent(draftContent);
+    },
+  });
+  const entryEditIssues = useFormController();
   // Edit swaps the saved entry for the editor: the notes take focus, caret at the end (not on page load).
   // Cancel/Save swap it back and focus returns to Edit.
   const focusNext = useFocusOnRender();
@@ -139,6 +152,44 @@ export function Journal({ store }: { store: AppStore }) {
     [entries]
   );
   const earlier = sorted.filter((e) => e.date !== today);
+  // The dialog shows the live entry (an edit or a sync updates it); a deleted one closes it.
+  const shownEntry = selectedEntry ? entries.find((e) => e.id === selectedEntry.id) ?? null : null;
+  const editingEntry = shownEntry && editingEntryId === shownEntry.id ? shownEntry : null;
+
+  const closeEntryDialog = () => {
+    setSelectedEntry(null);
+    setEditingEntryId(null);
+  };
+
+  const startEntryEdit = (entry: JournalEntry) => {
+    // Today's entry is edited in the Today card, as before.
+    if (entry.date === today) {
+      closeEntryDialog();
+      setIsEditingToday(true);
+      focusNext('journal-notes');
+      return;
+    }
+    setEditMood(entry.mood);
+    setEditContent(entry.content || '');
+    setEditingEntryId(entry.id);
+    focusNext('journal-entry-edit-notes');
+  };
+
+  const cancelEntryEdit = () => entryEditForm.confirmDiscard(() => setEditingEntryId(null));
+
+  const handleEntryEditSave = async () => {
+    if (!editingEntry) return;
+    const target = editingEntry;
+    try {
+      await executeSave(async () => {
+        await store.editJournalEntry(target.id, editMood, editContent);
+      });
+      setEditingEntryId(null);
+      showSuccessToast('Entry updated', formatDateLong(target.date));
+    } catch (err: unknown) {
+      entryEditIssues.showError(toUserMessage(err, "Couldn't save your changes. Try again."));
+    }
+  };
   const byDate = useMemo(() => new Map(entries.map((e) => [e.date, e])), [entries]);
 
   // Hero numbers (live). Points come from the points ledger, so deleting an older entry never
@@ -359,28 +410,7 @@ export function Journal({ store }: { store: AppStore }) {
               >
                 <div>
                   <p className="label mb-2">How are you feeling?</p>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                    {MOODS.map((m) => {
-                      const Icon = m.icon;
-                      const selected = mood === m.value;
-                      return (
-                        <button
-                          key={m.value}
-                          type="button"
-                          onClick={() => setMood(m.value)}
-                          aria-pressed={selected}
-                          className={cx(
-                            'flex items-center justify-center gap-2 min-h-11 px-2 rounded-xl border text-sm font-medium transition-colors',
-                            !selected && 'border-overlay-subtle text-content-muted hover:bg-overlay-subtle'
-                          )}
-                          style={selected ? { borderColor: m.color, backgroundColor: `${m.color}15`, color: m.color } : undefined}
-                        >
-                          <Icon size={18} />
-                          {m.label}
-                        </button>
-                      );
-                    })}
-                  </div>
+                  <MoodPicker value={mood} onChange={setMood} />
                 </div>
 
                 <div className="space-y-2">
@@ -474,46 +504,92 @@ export function Journal({ store }: { store: AppStore }) {
       </PageColumns>
 
       <Dialog
-        open={!!selectedEntry}
-        onClose={() => setSelectedEntry(null)}
-        title={selectedEntry ? formatDateLong(selectedEntry.date) : ''}
+        open={!!shownEntry}
+        onClose={closeEntryDialog}
+        dirty={entryEditForm.dirty}
+        title={shownEntry ? formatDateLong(shownEntry.date) : ''}
         maxWidth="max-w-lg"
         footer={
-          <>
-            <button
-              type="button"
-              onClick={() => {
-                const target = selectedEntry;
-                setSelectedEntry(null);
-                setDeleteModalEntry(target);
-              }}
-              className="btn-danger sm:mr-auto"
-            >
-              <Trash2 size={16} />
-              <span>Delete</span>
-            </button>
-            <button type="button" onClick={() => setSelectedEntry(null)} className="btn-secondary">
-              Close
-            </button>
-          </>
+          editingEntry ? (
+            <>
+              <button type="button" onClick={cancelEntryEdit} disabled={isSaving} className="btn-secondary">
+                Cancel
+              </button>
+              <button type="submit" form="journal-entry-edit-form" disabled={isSaving} className="btn-primary">
+                {isSaving ? <AscendLoadingIndicator size="sm" /> : <Check size={16} />}
+                <span>{isSaving ? 'Saving…' : 'Save changes'}</span>
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                type="button"
+                onClick={() => {
+                  const target = shownEntry;
+                  closeEntryDialog();
+                  setDeleteModalEntry(target);
+                }}
+                className="btn-danger sm:mr-auto"
+              >
+                <Trash2 size={16} />
+                <span>Delete</span>
+              </button>
+              <button type="button" onClick={() => shownEntry && startEntryEdit(shownEntry)} className="btn-secondary">
+                <Edit3 size={16} />
+                <span>Edit</span>
+              </button>
+              <button type="button" onClick={closeEntryDialog} className="btn-secondary">
+                Close
+              </button>
+            </>
+          )
         }
       >
-        {selectedEntry && (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between gap-2 pb-3 border-b border-overlay-subtle">
-              <MoodBadge mood={selectedEntry.mood} />
-              <span className="figure text-xs text-content-muted">
-                {selectedEntry.pointsAwarded ? (
-                  <span className="text-brand-text">+{JOURNAL_POINTS.entryCompleted} pts</span>
-                ) : (
-                  'No points'
-                )}
-              </span>
+        {editingEntry ? (
+          <Form
+            id="journal-entry-edit-form"
+            onSubmit={handleEntryEditSave}
+            controller={entryEditIssues}
+            validate={() =>
+              journalEditNotesOk(editingEntry.content, editContent)
+                ? null
+                : { message: `Write at least ${MIN_JOURNAL_CONTENT_LENGTH} characters. One sentence is enough.`, field: 'journal-entry-edit-notes' }
+            }
+            className="space-y-5"
+          >
+            <div>
+              <p className="label mb-2">How were you feeling?</p>
+              <MoodPicker value={editMood} onChange={setEditMood} />
             </div>
-            <p className="text-sm text-content-secondary leading-relaxed whitespace-pre-wrap min-h-[100px]" dir="auto">
-              {selectedEntry.content?.trim() ? selectedEntry.content : <span className="text-content-muted">Mood only, no notes</span>}
-            </p>
-          </div>
+            <Textarea
+              id="journal-entry-edit-notes"
+              label="Notes"
+              dir="auto"
+              value={editContent}
+              // = journal_entries_content_size in SQL; a longer entry could never sync.
+              maxLength={100000}
+              onChange={(e) => setEditContent(e.target.value)}
+              className="min-h-[160px] resize-y leading-relaxed"
+            />
+          </Form>
+        ) : (
+          shownEntry && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between gap-2 pb-3 border-b border-overlay-subtle">
+                <MoodBadge mood={shownEntry.mood} />
+                <span className="figure text-xs text-content-muted">
+                  {shownEntry.pointsAwarded ? (
+                    <span className="text-brand-text">+{JOURNAL_POINTS.entryCompleted} pts</span>
+                  ) : (
+                    'No points'
+                  )}
+                </span>
+              </div>
+              <p className="text-sm text-content-secondary leading-relaxed whitespace-pre-wrap min-h-[100px]" dir="auto">
+                {shownEntry.content?.trim() ? shownEntry.content : <span className="text-content-muted">Mood only, no notes</span>}
+              </p>
+            </div>
+          )
         )}
       </Dialog>
 

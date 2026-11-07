@@ -93,6 +93,7 @@ import { computeSkillAwards, isRetiredAppSkillAward, isSkillDayEntry, skillLateD
 import { addLogDrills, drillNameProblem, foldClearedCounts, isDrillGoal, keepValidDrillCounts, normalizeDrillName, normalizeDrillUnit, type NewLogDrill } from './skillDrills';
 import { computeRecoveryChanges, RECOVERY_MILESTONES, trackerStartMs } from './recoveryAwards';
 import { computeJournalAward, isJournalDayEntry, isRetiredAppJournalAward, journalEntryEarns } from './journalAwards';
+import { applyJournalEntryEdit } from './journalEdits';
 import { computeFocusAwards, focusFloorDay, isFocusDayEntry, isRetiredAppFocusAward } from './focusAwards';
 import { focusSkillLogFor, withReflectionNote } from './focusSkillLog';
 import { editDecisionText, editEmotionNote, editFocusLogText } from './pfcLogEdits';
@@ -4210,6 +4211,23 @@ export function useAppState() {
         { immediate: true, actionLabel: 'Journal entry deletion', entityId: entryId }
       )
     );
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Edit a saved entry of any day: mood and notes only (never its date or createdAt, never creates one).
+  // An earlier day's points never change (the server recomputes only today); today's entry
+  // recomputes today's award, as saveJournalEntry does.
+  const editJournalEntry = useCallback((entryId: string, mood: JournalEntry['mood'], content: string) => {
+    setState((prev) => {
+      const today = todayKey();
+      const edit = applyJournalEntryEdit(prev.journalEntries, entryId, mood, content, today);
+      if (!edit) return prev;
+      const { journalEntries } = edit;
+      return edit.entry.date === today
+        ? { ...prev, journalEntries, ...applyJournalAwardInternal(prev, journalEntries, today) }
+        : { ...prev, journalEntries };
+    });
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -9985,6 +10003,7 @@ export function useAppState() {
     isHabitDone,
     saveJournalEntry,
     deleteJournalEntry,
+    editJournalEntry,
     getTodayJournalEntry,
     markLessonRead,
     setUsername,
