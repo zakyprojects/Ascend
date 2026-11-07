@@ -143,8 +143,9 @@ export interface TemplateEditReachDay {
 /**
  * The days a template edit reaches and what each becomes. `before` is the time tracker before the
  * edit, `after` the same with only the templates changed. Reached: today and every saved later day
- * that is not cleared, is still owned by the edited template after the edit, holds at least one
- * block linked to it, and whose upcoming part would actually change. Nothing is reached when the
+ * that is not cleared, holds at least one block linked to it (filled on its weekday or by a
+ * manual Apply), was not moved away from it by this edit (weekday removed or taken by another
+ * template in the same save), and whose upcoming part would actually change. Nothing is reached when the
  * template is gone or its blocks did not change (a name- or weekday-only edit).
  */
 export function planTemplateEditReach(
@@ -163,7 +164,9 @@ export function planTemplateEditReach(
   const plans: TemplateEditReachDay[] = [];
   for (const [dateKey, dayBlocks] of Object.entries(before.dailyLogs || {}).sort(([a], [b]) => (a < b ? -1 : 1))) {
     if (dateKey < today || dayBlocks === undefined || cleared.has(dateKey)) continue;
-    if (templateForDate(after, dateKey)?.id !== templateId) continue;
+    // Moved away in this save (its weekday removed or taken): left as it is. A day this template
+    // reached only by a manual Apply (not its weekday, or another template's) is still reached.
+    if (templateForDate(before, dateKey)?.id === templateId && templateForDate(after, dateKey)?.id !== templateId) continue;
     const blocks = dayBlocks || [];
     if (!blocks.some((b) => linkedTemplateBlockId(b.id, dateKey, templateId) !== null)) continue;
 

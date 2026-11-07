@@ -242,6 +242,35 @@ check(linkedTemplateBlockId('lmk3abc', TODAY, 'T') === null, 'a hand id is not l
   check(!!p && p.blocks.some((b) => b.id === `auto_${TODAY}_T_d~apd`), 'an unchanged applied block keeps its id');
 }
 
+// --- 16b. a manual Apply is reached even when the template doesn't own the weekday ---
+{
+  const applied = hydratedToday().map((b) => ({ ...b, id: `${b.id}~ap`, createdAt: 'Mon 2026-11-09 7:00 AM PKT (UTC+05:00)' }));
+  const edited = [...BASE.slice(0, 5), tb('f', '16:00', '18:00')];
+  // No weekdays at all (applied by hand to today).
+  const before = tt([tpl(BASE, { activeDays: [] })], { [TODAY]: applied });
+  const p = day(plan(before, tt([tpl(edited, { activeDays: [] })], { [TODAY]: applied })));
+  check(p?.kind === 'auto' && times(p.blocks).includes('16:00-18:00 act-f'), 'a template with no weekdays applied by hand reaches today', p && times(p.blocks));
+  // Another template owns today's weekday; T was applied by hand (Replace).
+  const other = tpl([tb('o', '08:00', '09:00')], { id: 'U', title: 'Other', activeDays: ['Monday'] });
+  const tNoMon = tpl(BASE, { activeDays: ALL.filter((d) => d !== 'Monday') });
+  const before2 = tt([other, tNoMon], { [TODAY]: applied });
+  const p2 = day(plan(before2, tt([other, { ...tNoMon, blocks: edited }], { [TODAY]: applied })));
+  check(p2?.kind === 'auto' && times(p2.blocks).includes('16:00-18:00 act-f'), 'applied on a weekday another template owns: reached', p2 && times(p2.blocks));
+  // The other template's edit does not reach a day that holds only T's blocks.
+  const p3 = planTemplateEditReach(before2, tt([{ ...other, blocks: [tb('o', '08:00', '09:30')] }, tNoMon], { [TODAY]: applied }), 'U', TODAY, at(7), salt);
+  check(p3.length === 0, 'the weekday owner’s edit leaves a day applied from another template');
+  // Weekday removed in the same save: still left as it is (even with applied ids).
+  const before4 = tt([tpl(BASE)], { [TODAY]: applied });
+  check(plan(before4, tt([tpl(edited, { activeDays: ALL.filter((d) => d !== 'Monday') })], { [TODAY]: applied })).length === 0, 'weekday removed in the same save: applied day left');
+  // Move day: another template takes Monday in the same save (T loses it): T's edit leaves today.
+  check(plan(before4, tt([other, tpl(edited, { activeDays: ALL.filter((d) => d !== 'Monday') })], { [TODAY]: applied })).length === 0, 'Monday moved to another template in the same save: applied day left');
+  // Move day the other way: T takes Monday from U; today holds U's blocks only, so nothing reaches.
+  const uDay = templateBlocksForDate(other, TODAY);
+  const beforeMove = tt([other, tNoMon], { [TODAY]: uDay });
+  const afterMove = tt([{ ...other, activeDays: [] }, { ...tNoMon, activeDays: ALL, blocks: edited }], { [TODAY]: uDay });
+  check(plan(beforeMove, afterMove).length === 0, 'T taking Monday from another template leaves a day filled by that template');
+}
+
 // --- 17. a deleted id is never reused (Update after a hand delete gives a salted id) ---
 {
   const deleted = hydratedToday().filter((b) => !b.id.endsWith('_f'));
