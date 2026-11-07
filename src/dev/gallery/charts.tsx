@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { BarChart, Heatmap, ProgressRing, Sparkline } from '@/components/ui/charts';
 import { IntroMotionContext } from '@/lib/motion';
 import { Button } from '@/components/ui/primitives';
+import { ChartTooltip } from '@/components/ui/charts/ChartTooltip';
 import { Caption, Section } from './shared';
 import { CHART_HEAT, CHART_TREND, CHART_WEEK } from './fixtures';
 
@@ -39,11 +40,35 @@ function ChartsDemo() {
   );
 }
 
+function ChartTooltipDemo() {
+  return (
+    <div>
+      <Caption>x = 5, 50 and 95: the edges clamp so the bubble never leaves the chart</Caption>
+      {/* The bubble sits above its anchor, so leave room under the caption. */}
+      <div aria-hidden="true" className="h-12" />
+      <div className="relative h-20 rounded-xl border border-dashed border-overlay-default">
+        {[5, 50, 95].map((x) => (
+          <div key={x}>
+            <ChartTooltip x={x}>
+              {x === 50 ? 'Thu · 6 habits' : x === 5 ? 'Mon · 3 pts' : 'Sun · 12 pts'}
+            </ChartTooltip>
+            <span aria-hidden="true" className="absolute top-0 h-full w-px bg-primary-500" style={{ left: `${x}%`, opacity: 0.5 }} />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function ChartsGroup() {
   return (
     <>
       <Section id="charts">
         <ChartsDemo />
+      </Section>
+
+      <Section id="chart-tooltip">
+        <ChartTooltipDemo />
       </Section>
     </>
   );

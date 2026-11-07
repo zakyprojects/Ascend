@@ -5,7 +5,9 @@ import { SwipeRow } from '@/components/ui/SwipeRow';
 import { useToast } from '@/components/ui/Toast';
 import { HabitCheck } from '@/components/habits/HabitCheck';
 import type { Habit } from '@/types';
-import { Section } from './shared';
+import { Badge } from '@/components/ui/primitives';
+import { LazyReorderList, ReorderButton, type ReorderItem } from '@/components/ui/Reorder';
+import { Caption, Section } from './shared';
 
 // ---------------------------------------------------------------------------
 // Swipe rows (habit row look) and toasts
@@ -109,11 +111,103 @@ function SwipeRowDemo() {
   );
 }
 
+const REORDER_HABITS: ReorderItem[] = [
+  { id: 'r1', title: 'Drink 2 litres of water' },
+  { id: 'r2', title: 'Read 20 pages' },
+  { id: 'r3', title: 'Morning walk' },
+  { id: 'r4', title: 'Stretch for 10 minutes' },
+  { id: 'r5', title: 'A very long habit name that wraps onto a second line on a phone to check the row' },
+  { id: 'r6', title: 'Call my mom' },
+];
+
+const STEPS: ReorderItem[] = [
+  { id: 's1', title: 'Learn the basics' },
+  { id: 's2', title: 'Build a small project' },
+  { id: 's3', title: 'Ship it to a friend' },
+  { id: 's4', title: 'Write what you learned' },
+];
+const DONE_STEPS = new Set(['s1']);
+
+/** One list with its Reorder entry, the way pages wire it: the order lives in this page's state only. */
+function ReorderListDemo({ label, initial, sequential }: { label: string; initial: ReorderItem[]; sequential?: boolean }) {
+  const [order, setOrder] = useState(() => initial.map((i) => i.id));
+  const [reordering, setReordering] = useState(false);
+  const byId = new Map(initial.map((i) => [i.id, i]));
+  const items = order.map((id) => byId.get(id)!);
+  // Sequential goal: a step is locked until the step before it is done (as the draft order would set it).
+  const meta = sequential
+    ? (id: string, draft: readonly string[]) => {
+        const index = draft.indexOf(id);
+        const locked = index > 0 && !DONE_STEPS.has(draft[index - 1]) && !DONE_STEPS.has(id);
+        return (
+          <>
+            <Badge size="xs" tone="neutral">
+              Step {index + 1} of {draft.length}
+            </Badge>
+            {DONE_STEPS.has(id) ? (
+              <Badge size="xs" tone="emerald">
+                Completed
+              </Badge>
+            ) : (
+              locked && (
+                <Badge size="xs" tone="warning">
+                  Locked
+                </Badge>
+              )
+            )}
+          </>
+        );
+      }
+    : undefined;
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between gap-3">
+        <Caption>{label}</Caption>
+        {!reordering && <ReorderButton label={label} onClick={() => setReordering(true)} />}
+      </div>
+      {reordering ? (
+        <LazyReorderList
+          label={label}
+          items={items}
+          renderMeta={meta}
+          onCancel={() => setReordering(false)}
+          onDone={(ids) => {
+            setOrder(ids);
+            setReordering(false);
+          }}
+        />
+      ) : (
+        <ol className="space-y-2">
+          {items.map((item, i) => (
+            <li key={item.id} className="card flex items-center gap-3 p-3">
+              <span className="figure w-5 text-center text-xs text-content-muted">{i + 1}</span>
+              <span className="item-name min-w-0 flex-1 break-words text-sm">{item.title}</span>
+            </li>
+          ))}
+        </ol>
+      )}
+    </div>
+  );
+}
+
+function ReorderDemo() {
+  return (
+    <div className="grid gap-6 lg:grid-cols-2">
+      <ReorderListDemo label="habits" initial={REORDER_HABITS} />
+      <ReorderListDemo label="steps" initial={STEPS} sequential />
+    </div>
+  );
+}
+
 export function ListsGroup() {
   return (
     <>
       <Section id="swipe-rows">
         <SwipeRowDemo />
+      </Section>
+
+      <Section id="reorder">
+        <ReorderDemo />
       </Section>
     </>
   );

@@ -3,7 +3,21 @@ import { Button, Dialog, Form, Input, NumberField, Switch, useFormController } f
 import { AscendLoadingIndicator } from '@/components/ui/AscendLoadingIndicator';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { useUnsavedChanges } from '@/lib/unsavedChanges';
-import { Section } from './shared';
+import { LogoutConfirmModal } from '@/components/ui/LogoutConfirmModal';
+import { GuestLogoutWarningModal } from '@/components/ui/GuestLogoutWarningModal';
+import { RenameDialog } from '@/components/ui/RenameDialog';
+import { NotificationCenter } from '@/components/ui/NotificationCenter';
+import { useToast } from '@/components/ui/Toast';
+import { FocusLogEditDialog } from '@/components/pfc/FocusLogEditDialog';
+import { EmotionNoteDialog } from '@/components/pfc/EmotionNoteDialog';
+import { DecisionFormDialog } from '@/components/pfc/DecisionFormDialog';
+import { MOODS, MoodBadge, MoodPicker } from '@/components/journal/moods';
+import { HABIT_NAME_MAX } from '@/lib/itemEdits';
+import { todayKey } from '@/lib/dates';
+import { trustedNowMs } from '@/lib/clock';
+import type { DecisionLog, EmotionLog, FocusSessionLog, Mood } from '@/types';
+import { Caption, Section } from './shared';
+import { demoNotifications, useFakeNotificationStore } from './fakes';
 import { wait } from './util';
 
 // ---------------------------------------------------------------------------
@@ -183,11 +197,264 @@ function DialogDemo() {
   );
 }
 
+function LogoutDemo() {
+  const [open, setOpen] = useState<'user' | 'guest' | null>(null);
+  const [busy, setBusy] = useState(false);
+  const { showInfoToast } = useToast();
+  const fakeLogout = async () => {
+    setBusy(true);
+    await wait(900);
+    setBusy(false);
+    setOpen(null);
+    showInfoToast('Not signed out', 'The Gallery only waits; nobody is signed out.');
+  };
+  return (
+    <div className="flex flex-wrap gap-2">
+      <Button size="sm" variant="secondary" onClick={() => setOpen('user')}>
+        Log out (account)
+      </Button>
+      <Button size="sm" variant="secondary" onClick={() => setOpen('guest')}>
+        Log out (guest)
+      </Button>
+      <LogoutConfirmModal open={open === 'user'} onClose={() => setOpen(null)} onConfirm={fakeLogout} isLoggingOut={busy} />
+      <GuestLogoutWarningModal
+        open={open === 'guest'}
+        onClose={() => setOpen(null)}
+        onSaveProgressFirst={() => {
+          setOpen(null);
+          showInfoToast('Create account', 'The Gallery never opens sign-up.');
+        }}
+        onLogoutAnyway={fakeLogout}
+        isLoggingOut={busy}
+      />
+    </div>
+  );
+}
+
+const TAKEN_NAMES = ['read 20 pages', 'drink 2 litres of water'];
+
+function RenameDemo() {
+  const [name, setName] = useState('Morning walk');
+  const [open, setOpen] = useState(false);
+  const [failSave, setFailSave] = useState(false);
+  const [run, setRun] = useState(0);
+  return (
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-center gap-3">
+        <span className="item-name text-sm">{name}</span>
+        <Button
+          size="sm"
+          variant="secondary"
+          onClick={() => {
+            setRun((n) => n + 1);
+            setOpen(true);
+          }}
+        >
+          Rename
+        </Button>
+        <label className="flex items-center gap-2 text-xs text-content-muted">
+          <Switch checked={failSave} onChange={() => setFailSave((v) => !v)} label="Make the save fail" />
+          Make the save fail
+        </label>
+      </div>
+      <p className="text-micro text-content-muted">Try “Read 20 pages” (taken), an empty name, or close with changes (Discard changes?).</p>
+      <RenameDialog
+        key={run}
+        open={open}
+        onClose={() => setOpen(false)}
+        title="Rename habit"
+        description="Its streak, history and points stay as they are."
+        label="Habit name"
+        initialName={name}
+        inputId="gallery-rename-input"
+        maxLength={HABIT_NAME_MAX}
+        validate={(next) => {
+          const clean = next.trim().toLowerCase();
+          if (!clean) return 'Enter a name.';
+          if (TAKEN_NAMES.includes(clean)) return 'You already have a habit with this name.';
+          return null;
+        }}
+        onSave={(next) => {
+          if (failSave) throw new Error('Couldn’t save. Check your connection and try again.');
+          setName(next.trim());
+        }}
+      />
+    </div>
+  );
+}
+
+const MINUTE = 60 * 1000;
+
+function PfcEditsDemo() {
+  const { showSuccessToast } = useToast();
+  const [focusLog, setFocusLog] = useState<FocusSessionLog>(() => ({
+    id: 'gallery-focus-1',
+    date: todayKey(),
+    taskName: 'Write the Gallery report',
+    durationMinutes: 50,
+    plannedMinutes: 50,
+    pointsAwarded: 6,
+    reflection: 'Got through the first half; the split went well.',
+    createdAt: new Date(trustedNowMs() - 20 * MINUTE).toISOString(),
+    startedAt: new Date(trustedNowMs() - 70 * MINUTE).toISOString(),
+  }));
+  const [emotion, setEmotion] = useState<EmotionLog>(() => ({
+    id: 'gallery-emotion-1',
+    date: new Date(trustedNowMs() - 3 * 60 * MINUTE).toISOString(),
+    emotion: 'Anxious',
+    intensity: 6,
+    context: 'Before the exam results came out.',
+    pointsAwarded: 2,
+    createdAt: new Date(trustedNowMs() - 3 * 60 * MINUTE).toISOString(),
+  }));
+  const [decision, setDecision] = useState<DecisionLog>(() => ({
+    id: 'gallery-decision-1',
+    title: 'Study in the mornings',
+    rationale: 'I focus better before noon.',
+    expectedOutcome: 'Two extra focused hours a day.',
+    revisitDate: todayKey(),
+    isReflected: true,
+    reflection: 'It worked on weekdays; weekends need another plan.',
+    createdAt: new Date(trustedNowMs() - 7 * 24 * 60 * MINUTE).toISOString(),
+  }));
+  const [open, setOpen] = useState<'focus' | 'emotion' | 'decision' | null>(null);
+  const [fail, setFail] = useState(false);
+  const save = async () => {
+    await wait(600);
+    if (fail) throw new Error('Couldn’t save. Check your connection and try again.');
+  };
+  return (
+    <div className="space-y-3">
+      <div className="flex flex-wrap gap-2">
+        <Button size="sm" variant="secondary" onClick={() => setOpen('focus')}>
+          Edit focus session
+        </Button>
+        <Button size="sm" variant="secondary" onClick={() => setOpen('decision')}>
+          Edit decision (reflected)
+        </Button>
+        <Button size="sm" variant="secondary" onClick={() => setOpen('emotion')}>
+          Edit emotion note
+        </Button>
+        <label className="flex items-center gap-2 text-xs text-content-muted">
+          <Switch checked={fail} onChange={() => setFail((v) => !v)} label="Make the save fail" />
+          Make the save fail
+        </label>
+      </div>
+      <ul className="space-y-1 text-xs text-content-muted">
+        <li>
+          Focus: <span className="text-content-secondary">{focusLog.taskName}</span> · {focusLog.reflection || 'no note'}
+        </li>
+        <li>
+          Decision: <span className="text-content-secondary">{decision.title}</span> · {decision.reflection}
+        </li>
+        <li>
+          Emotion: <span className="text-content-secondary">{emotion.emotion}</span> · {emotion.context || 'no note'}
+        </li>
+      </ul>
+      <FocusLogEditDialog
+        log={open === 'focus' ? focusLog : null}
+        onClose={() => setOpen(null)}
+        onSave={async (taskName, reflection) => {
+          await save();
+          setFocusLog((l) => ({ ...l, taskName, reflection }));
+          showSuccessToast('Session updated');
+        }}
+      />
+      <EmotionNoteDialog
+        log={open === 'emotion' ? emotion : null}
+        onClose={() => setOpen(null)}
+        onSave={async (context) => {
+          await save();
+          setEmotion((l) => ({ ...l, context }));
+          showSuccessToast('Note updated');
+        }}
+      />
+      <DecisionFormDialog
+        open={open === 'decision'}
+        onClose={() => setOpen(null)}
+        onSave={() => undefined}
+        editing={open === 'decision' ? decision : null}
+        onSaveEdit={async (_id, changes) => {
+          await save();
+          setDecision((d) => ({ ...d, ...changes }));
+          showSuccessToast('Decision updated');
+        }}
+      />
+    </div>
+  );
+}
+
+function MoodPickerDemo() {
+  const [mood, setMood] = useState<Mood>(MOODS[0].value);
+  return (
+    <div className="space-y-3">
+      <MoodPicker value={mood} onChange={setMood} />
+      <div className="flex flex-wrap items-center gap-2">
+        <Caption>MoodBadge</Caption>
+        {MOODS.map((m) => (
+          <MoodBadge key={m.value} mood={m.value} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function NotificationCenterDemo() {
+  const filled = useFakeNotificationStore();
+  const empty = useFakeNotificationStore(() => []);
+  const loading = useFakeNotificationStore(() => [], 'loading');
+  const failed = useFakeNotificationStore(() => [], 'failed');
+  const read = useFakeNotificationStore(() => demoNotifications().map((n) => ({ ...n, read: true })));
+  const bells = [
+    { label: 'Unread + read', fake: filled, compact: false },
+    { label: 'Compact', fake: filled, compact: true },
+    { label: 'All read', fake: read, compact: false },
+    { label: 'Empty', fake: empty, compact: false },
+    { label: 'Loading', fake: loading, compact: false },
+    { label: 'Failed (Retry)', fake: failed, compact: false },
+  ];
+  return (
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-end gap-6">
+        {bells.map((b) => (
+          <div key={b.label} className="flex flex-col items-center gap-1.5">
+            <NotificationCenter store={b.fake.store} compact={b.compact} align="left" />
+            <span className="text-micro text-content-muted">{b.label}</span>
+          </div>
+        ))}
+      </div>
+      <Button size="sm" variant="ghost" onClick={() => filled.reset()}>
+        Bring the notices back
+      </Button>
+    </div>
+  );
+}
+
 export function DialogsGroup() {
   return (
     <>
       <Section id="dialogs">
         <DialogDemo />
+      </Section>
+
+      <Section id="logout">
+        <LogoutDemo />
+      </Section>
+
+      <Section id="rename">
+        <RenameDemo />
+      </Section>
+
+      <Section id="pfc-edit">
+        <PfcEditsDemo />
+      </Section>
+
+      <Section id="mood-picker">
+        <MoodPickerDemo />
+      </Section>
+
+      <Section id="notification-center">
+        <NotificationCenterDemo />
       </Section>
     </>
   );

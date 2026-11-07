@@ -1,5 +1,12 @@
 import { useState, useEffect } from 'react';
-import { Button, Switch } from '@/components/ui/primitives';
+import { Bell, X } from 'lucide-react';
+import { Button, Disclosure, Switch } from '@/components/ui/primitives';
+import { OfflineBanner } from '@/components/ui/OfflineBanner';
+import { UpdateBanner } from '@/components/ui/UpdateBanner';
+import { TimezoneWaitBanner } from '@/components/ui/TimezoneWaitBanner';
+import { GuestSaveBanner } from '@/components/ui/GuestSaveBanner';
+import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
+import { trustedNowMs } from '@/lib/clock';
 import { AscendLoadingIndicator, AscendLoadingOverlay, OVERLAY_EXIT_MS } from '@/components/ui/AscendLoadingIndicator';
 import { useToast } from '@/components/ui/Toast';
 import { canVibrate, playSoundAt, vibrate, type SoundVolume, type VibrationStrength } from '@/lib/actionFeedback';
@@ -167,10 +174,12 @@ function ToastDemo() {
 const SOUND_VOLUMES: SoundVolume[] = ['soft', 'medium', 'loud'];
 const VIBRATION_STRENGTHS: VibrationStrength[] = ['light', 'medium', 'strong'];
 
+const OTHER_SOUND_COUNT = TICK_SOUNDS.length + SWIPE_SOUNDS.length - 2;
+
 function SoundsDemo() {
   const [volume, setVolume] = useState<SoundVolume>('soft');
   const [last, setLast] = useState('');
-  const group = (title: string, sounds: ActionSound[], inUse: string) => (
+  const group = (title: string, sounds: ActionSound[], inUse: string[]) => (
     <div className="space-y-2">
       <p className="text-sm font-medium text-content-primary">{title}</p>
       <div className="grid gap-2 sm:grid-cols-2">
@@ -183,12 +192,12 @@ function SoundsDemo() {
               setLast(sound.id);
             }}
             className={`rounded-xl border px-3 py-2.5 text-left transition-colors hover:bg-overlay-subtle ${
-              sound.id === inUse ? 'border-primary-500/60 bg-primary-500/5' : last === sound.id ? 'border-overlay-strong' : 'border-overlay-default'
+              inUse.includes(sound.id) ? 'border-primary-500/60 bg-primary-500/5' : last === sound.id ? 'border-overlay-strong' : 'border-overlay-default'
             }`}
           >
             <span className="text-sm font-medium text-content-primary">
               {sound.id.toUpperCase()} · {sound.name}
-              {sound.id === inUse && (
+              {inUse.includes(sound.id) && (
                 <span className="ml-2 rounded-full bg-primary-500/15 px-2 py-0.5 text-2xs font-medium text-brand-text">In use in the app</span>
               )}
             </span>
@@ -209,8 +218,13 @@ function SoundsDemo() {
           </Button>
         ))}
       </div>
-      {group('Tick sounds (ticking off)', TICK_SOUNDS, TICK_SOUND_ID)}
-      {group('Swipe sounds', SWIPE_SOUNDS, SWIPE_SOUND_ID)}
+      {group('In use in the app', [...TICK_SOUNDS, ...SWIPE_SOUNDS].filter((sound) => sound.id === TICK_SOUND_ID || sound.id === SWIPE_SOUND_ID), [TICK_SOUND_ID, SWIPE_SOUND_ID])}
+      <Disclosure title={`Other candidates (${OTHER_SOUND_COUNT}, not in use)`}>
+        <div className="space-y-4">
+          {group('Tick sounds (ticking off)', TICK_SOUNDS.filter((sound) => sound.id !== TICK_SOUND_ID), [])}
+          {group('Swipe sounds', SWIPE_SOUNDS.filter((sound) => sound.id !== SWIPE_SOUND_ID), [])}
+        </div>
+      </Disclosure>
       <div className="space-y-2">
         <p className="text-sm font-medium text-content-primary">Vibration strength</p>
         <div className="flex flex-wrap items-center gap-2">
@@ -226,12 +240,147 @@ function SoundsDemo() {
   );
 }
 
+type BannerKind = 'offline' | 'restored' | 'update' | 'timezone';
+const BANNER_KINDS: Array<{ id: BannerKind; label: string }> = [
+  { id: 'offline', label: 'Offline' },
+  { id: 'restored', label: 'Back online' },
+  { id: 'update', label: 'New version' },
+  { id: 'timezone', label: 'Timezone wait' },
+];
+
+/** BannerStack's slot (same wrapper markup) with the banner picked here instead of the live hooks. */
+function BannersDemo() {
+  const [kind, setKind] = useState<BannerKind>('offline');
+  const { showInfoToast } = useToast();
+  // About 3 hours from now, so the resume time reads like a real wait.
+  const [resumesAt] = useState(() => new Date(trustedNowMs() + 3 * 60 * 60 * 1000));
+  let banner: JSX.Element;
+  if (kind === 'offline') banner = <OfflineBanner status="offline" />;
+  else if (kind === 'restored') banner = <OfflineBanner status="restored" />;
+  else if (kind === 'update') banner = <UpdateBanner />;
+  else banner = <TimezoneWaitBanner wait={{ resumesAt }} />;
+  return (
+    <div className="space-y-5">
+      <div className="space-y-1.5">
+        <Caption>BannerStack shows one at a time, first match wins: Offline, Back online, New version, Timezone wait</Caption>
+        <div className="flex flex-wrap gap-2">
+          {BANNER_KINDS.map((b) => (
+            <Button key={b.id} size="sm" variant={kind === b.id ? 'primary' : 'secondary'} onClick={() => setKind(b.id)}>
+              {b.label}
+            </Button>
+          ))}
+        </div>
+        <div className="rounded-xl border border-dashed border-overlay-default">
+          <div className="flex shrink-0 justify-center px-4 pb-2 pt-2">{banner}</div>
+        </div>
+        {kind === 'update' && <p className="text-micro text-content-muted">Reload on the real banner reloads this page.</p>}
+      </div>
+      <div className="space-y-1.5">
+        <Caption>GuestSaveBanner (guest pages: turn the guest session into an account)</Caption>
+        <GuestSaveBanner
+          title={<>You&apos;re using a guest account</>}
+          description="Create an account to keep your progress on every device."
+          onCreateAccount={() => showInfoToast('Create account', 'The Gallery never opens sign-up.')}
+        />
+        <GuestSaveBanner title="Without a button" description="onCreateAccount absent: the button is hidden." />
+      </div>
+    </div>
+  );
+}
+
+/** Static copy of PushPromptCard's markup. The real card checks this browser's push state on mount
+ *  and its Turn on subscribes the browser and saves it to the account, so it never renders here. */
+function PushPromptCopy({ offer }: { offer: 'push' | 'home-screen' }) {
+  const { showInfoToast } = useToast();
+  const stub = () => showInfoToast('Not wired', 'The Gallery copy changes nothing.');
+  return (
+    <div className="flex flex-col items-start justify-between gap-3 rounded-xl border border-primary-500/20 p-4 sm:flex-row sm:items-center">
+      <div className="flex w-full items-start gap-3 sm:w-auto">
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary-500/15 text-brand-text">
+          <Bell size={18} aria-hidden="true" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-xs font-medium text-content-secondary">Turn on notifications on this device</p>
+          <p className="text-xs text-content-muted">
+            {offer === 'home-screen'
+              ? 'To get notifications on iPhone, add AscendDay to your Home Screen (Share → Add to Home Screen).'
+              : 'Get partner nudges and your evening reminder even when AscendDay is closed.'}
+          </p>
+        </div>
+        <Button variant="ghost" size="icon" onClick={stub} aria-label="Dismiss" title="Not now" className="-mr-2 -mt-2 sm:hidden">
+          <X size={16} aria-hidden="true" />
+        </Button>
+      </div>
+      <div className={`w-full shrink-0 items-center gap-1 sm:w-auto ${offer === 'push' ? 'flex' : 'hidden sm:flex'}`}>
+        {offer === 'push' && (
+          <Button onClick={stub} className="min-h-11 flex-1 text-xs sm:flex-none">
+            Turn on
+          </Button>
+        )}
+        <Button variant="ghost" size="icon" onClick={stub} aria-label="Dismiss" title="Not now" className="hidden sm:inline-flex">
+          <X size={16} aria-hidden="true" />
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function Thrower({ message }: { message: string }): JSX.Element {
+  throw new Error(message);
+}
+
+function ErrorBoundaryDemo() {
+  const [run, setRun] = useState(0);
+  const [broken, setBroken] = useState(false);
+  return (
+    <div className="space-y-3">
+      <div className="flex flex-wrap gap-2">
+        <Button size="sm" variant="danger" onClick={() => setBroken(true)}>
+          Throw in this section
+        </Button>
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={() => {
+            setBroken(false);
+            setRun((n) => n + 1);
+          }}
+        >
+          Reset
+        </Button>
+      </div>
+      <ErrorBoundary key={run} fallbackTitle="Demo section couldn’t load">
+        {broken ? <Thrower message="Gallery demo error (thrown on purpose)" /> : <div className="card p-4 text-sm text-content-secondary">A healthy section.</div>}
+      </ErrorBoundary>
+      <p className="text-micro text-content-muted">
+        Try again re-renders the child (it throws again until Reset). Repair app clears this browser&apos;s cached app files and reloads: leave it.
+        In dev nothing is reported (crash reports are production only). The dev overlay may also show the error.
+      </p>
+    </div>
+  );
+}
+
 export function FeedbackGroup() {
   const theme = useGalleryTheme();
   return (
     <>
       <Section id="toasts">
         <ToastDemo />
+      </Section>
+
+      <Section id="banners">
+        <BannersDemo />
+      </Section>
+
+      <Section id="push-prompt">
+        <div className="space-y-3">
+          <PushPromptCopy offer="push" />
+          <PushPromptCopy offer="home-screen" />
+        </div>
+      </Section>
+
+      <Section id="error-boundary">
+        <ErrorBoundaryDemo />
       </Section>
 
       <Section id="sounds">

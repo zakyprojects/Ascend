@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { Button, cx } from '@/components/ui/primitives';
 import { Ember, type EmberProps } from '@/components/auth/Ember';
 import { CLIMB_PANEL_BG } from '@/components/auth/ClimbPanel';
+import { PasswordInput } from '@/components/ui/PasswordInput';
+import { PasswordStaircase } from '@/components/ui/PasswordStaircase';
 import { Caption, Section } from './shared';
 
 type EmberPoseId =
@@ -123,11 +125,35 @@ function EmberDemo() {
 
 /** The real rank-up overlay for each step and jump, with its fanfare (whatever the tick choice). */
 
+function PasswordDemo() {
+  const [password, setPassword] = useState('');
+  const [visible, setVisible] = useState(false);
+  return (
+    <form className="max-w-sm space-y-3" onSubmit={(e) => e.preventDefault()} autoComplete="off">
+      <PasswordInput
+        id="gallery-password"
+        label="Password"
+        value={password}
+        onChange={(e) => setPassword(e.target.value)}
+        onVisibilityChange={setVisible}
+        autoComplete="new-password"
+      />
+      <PasswordStaircase password={password} />
+      <p className="text-micro text-content-muted">Shown: {visible ? 'yes' : 'no'}. Try a short one, then letters + numbers + 12 characters.</p>
+      <PasswordInput id="gallery-password-error" label="With an error" defaultValue="short" error="Use at least 8 characters." autoComplete="off" />
+    </form>
+  );
+}
+
 export function AuthGroup() {
   return (
     <>
       <Section id="ember">
         <EmberDemo />
+      </Section>
+
+      <Section id="password">
+        <PasswordDemo />
       </Section>
     </>
   );
