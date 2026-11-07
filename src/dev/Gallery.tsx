@@ -47,6 +47,7 @@ import {
   TabPanel,
   Tabs,
   Textarea,
+  ToolbarSelect,
   cx,
   useFormController,
   type BadgeTone,
@@ -66,6 +67,7 @@ import { ThemeToggle } from '../components/ui/ThemeToggle';
 import { ToastProvider, useToast } from '../components/ui/Toast';
 import { HabitCheck } from '../components/habits/HabitCheck';
 import { RankUpCelebration } from '../components/ui/RankUpCelebration';
+import { StatusSelect } from '../components/projects/ItemCard';
 import { TIERS } from '@/lib/tiers';
 import { useUnsavedChanges } from '@/lib/unsavedChanges';
 import type { NavStatus } from '@/lib/navStatus';
@@ -599,6 +601,148 @@ function FieldsDemo() {
         <Caption>FieldErrorBubble on its own (outside a form): attached, then form-wide</Caption>
         <FieldErrorBubble message="Pick an avatar." />
         <FieldErrorBubble message="Couldn’t save. Try again." attached={false} />
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Dropdowns (ui/primitives/Select.tsx: the app's one dropdown, never the browser's picker)
+// ---------------------------------------------------------------------------
+
+const DEMO_PAGES = [
+  'Dashboard', 'Daily habits', 'Bad habits', 'Weekly goals', 'Projects & Goals', 'Journal', 'Exercise', 'Reading',
+  'Skills', 'Recovery', 'Deep Focus', 'Emotions', 'Decisions', 'Time Tracker', 'Plans', 'Partners', 'Brain lessons',
+  'Leagues', 'Ranks', 'Settings', 'Other',
+];
+
+/** Required select with a placeholder in a Form: Save with nothing chosen shows "Choose an option." */
+function DropdownFormDemo() {
+  const [skill, setSkill] = useState('');
+  const [saved, setSaved] = useState('');
+  return (
+    <Form onSubmit={() => setSaved(skill)} className="space-y-3">
+      <Select id="gallery-dd-required" label="Skill" required value={skill} onChange={(e) => setSkill(e.target.value)}>
+        <option value="" disabled>Choose a skill</option>
+        <option value="guitar">Guitar</option>
+        <option value="chess">Chess</option>
+        <option value="drawing">Drawing</option>
+      </Select>
+      <div className="flex items-center gap-3">
+        <Button type="submit" size="sm">Save</Button>
+        {saved && <span className="text-xs text-success-text">Saved {saved}</span>}
+      </div>
+    </Form>
+  );
+}
+
+/** A select in a dialog: Escape and an outside tap close only the list, never the dialog or "Discard changes?". */
+function DropdownDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const [emotion, setEmotion] = useState('calm');
+  const [note, setNote] = useState('');
+  const form = useUnsavedChanges(open, [emotion, note]);
+  return (
+    <Dialog
+      open={open}
+      onClose={onClose}
+      dirty={form.dirty}
+      title="Select in a dialog"
+      description="Open the list, then press Esc or tap outside it: only the list closes."
+      footer={
+        <button type="button" onClick={() => form.confirmDiscard(onClose)} className="btn-secondary">
+          Close
+        </button>
+      }
+    >
+      <Form onSubmit={onClose} className="space-y-4">
+        <Select id="gallery-dd-dialog" label="Emotion" value={emotion} onChange={(e) => setEmotion(e.target.value)}>
+          {['Calm', 'Anxious', 'Angry', 'Sad', 'Bored', 'Restless', 'Tired', 'Happy', 'Other…'].map((e) => (
+            <option key={e} value={e.toLowerCase()}>{e}</option>
+          ))}
+        </Select>
+        <Select id="gallery-dd-dialog-page" label="Which page?" value="" onChange={() => undefined}>
+          <option value="">Not sure</option>
+          {DEMO_PAGES.map((p) => <option key={p} value={p}>{p}</option>)}
+        </Select>
+        <Input id="gallery-dd-dialog-note" label="Note" optional value={note} onChange={(e) => setNote(e.target.value)} />
+      </Form>
+    </Dialog>
+  );
+}
+
+function DropdownsDemo() {
+  const [plain, setPlain] = useState('member');
+  const [page, setPage] = useState('');
+  const [sort, setSort] = useState('newest');
+  const [category, setCategory] = useState('all');
+  const [status, setStatus] = useState('active');
+  const [dialogOpen, setDialogOpen] = useState(false);
+  return (
+    <div className="space-y-5">
+      <FieldRow>
+        <Select id="gallery-dd-default" label="Default" value={plain} onChange={(e) => setPlain(e.target.value)}>
+          <option value="owner">Owner</option>
+          <option value="admin">Admin</option>
+          <option value="member">Member</option>
+          <option value="viewer" disabled>Viewer (disabled option)</option>
+        </Select>
+        <Select id="gallery-dd-disabled" label="Disabled" hint="Locked after the first log." disabled value="pages" onChange={() => undefined}>
+          <option value="pages">Pages</option>
+          <option value="minutes">Minutes</option>
+        </Select>
+      </FieldRow>
+      <FieldRow>
+        <Select id="gallery-dd-long" label="Long scrolling list" hint="21 options; near the bottom of the screen it opens upward." value={page} onChange={(e) => setPage(e.target.value)}>
+          <option value="" disabled>Choose a page</option>
+          {DEMO_PAGES.map((p) => <option key={p} value={p}>{p}</option>)}
+        </Select>
+        <Select id="gallery-dd-error" label="Error state" error="Choose an option." value="" onChange={() => undefined}>
+          <option value="" disabled>Choose a habit</option>
+          <option value="read">Read 10 pages</option>
+          <option value="walk">Walk after lunch</option>
+        </Select>
+      </FieldRow>
+      <Select id="gallery-dd-empty" label="Empty (only a placeholder)" value="" onChange={() => undefined}>
+        <option value="" disabled>No skills yet</option>
+      </Select>
+      <div className="space-y-2">
+        <Caption>Required with a placeholder, in a Form: press Save with nothing chosen</Caption>
+        <DropdownFormDemo />
+      </div>
+      <div className="space-y-2">
+        <Caption>ToolbarSelect: page filter/sort row (as wide as its longest option)</Caption>
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <ToolbarSelect aria-label="Category" value={category} onChange={(e) => setCategory(e.target.value)} wrapperClassName="flex-1 sm:flex-none sm:w-44">
+            <option value="all">All categories</option>
+            <option value="habits">Habits</option>
+            <option value="fitness">Fitness</option>
+            <option value="mind">Mind</option>
+          </ToolbarSelect>
+          <ToolbarSelect aria-label="Sort" value={sort} onChange={(e) => setSort(e.target.value)}>
+            <option value="newest">Newest</option>
+            <option value="popular">Most popular</option>
+            <option value="az">A to Z</option>
+          </ToolbarSelect>
+        </div>
+      </div>
+      <div className="space-y-2">
+        <Caption>StatusSelect: the compact status picker in a card footer</Caption>
+        <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-overlay-subtle p-3">
+          <StatusSelect label="Status of the demo project" value={status} onChange={setStatus}>
+            <option value="planning">Planning</option>
+            <option value="active">Active</option>
+            <option value="paused">Paused</option>
+            <option value="completed" disabled>Completed (finish the tasks first)</option>
+          </StatusSelect>
+          <StatusSelect label="Locked status" value="active" onChange={() => undefined} disabled>
+            <option value="active">Active (locked)</option>
+          </StatusSelect>
+        </div>
+      </div>
+      <div className="space-y-2">
+        <Caption>Inside a dialog</Caption>
+        <Button variant="secondary" size="sm" onClick={() => setDialogOpen(true)}>Open dialog</Button>
+        <DropdownDialog open={dialogOpen} onClose={() => setDialogOpen(false)} />
       </div>
     </div>
   );
@@ -1833,6 +1977,10 @@ function GalleryContent() {
 
         <Section title="Fields" note="Input, Select, Textarea, NumberField, FieldRow (two columns from sm), optional marker, hint, error.">
           <FieldsDemo />
+        </Section>
+
+        <Section title="Dropdowns" note="Select (field), ToolbarSelect, StatusSelect: the app's own list, never the browser's picker. Keyboard: arrows, Home/End, letters, Enter/Space, Esc, Tab.">
+          <DropdownsDemo />
         </Section>
 
         <Section title="Form errors" note="One problem at a time as a bubble under its field; the field is focused and scrolled to. Press Save with everything empty.">
