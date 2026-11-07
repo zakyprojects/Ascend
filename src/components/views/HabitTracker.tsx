@@ -23,6 +23,8 @@ import { HabitRow } from '@/components/habits/HabitRow';
 import { AddHabitDialog } from '@/components/habits/AddHabitDialog';
 import { isReadingLinked } from '@/components/habits/HabitCheck';
 
+import { RenameDialog } from '@/components/ui/RenameDialog';
+import { canRenameHabit, habitNameProblem, HABIT_NAME_MAX, HABIT_PACT_RENAME_MESSAGE } from '@/lib/itemEdits';
 const WEEK_DAYS = 7;
 
 export function HabitTracker({ store }: { store: AppStore }) {
@@ -31,6 +33,9 @@ export function HabitTracker({ store }: { store: AppStore }) {
   const [showAdd, setShowAdd] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<Habit | null>(null);
   // Habits ticked here: their check pops even though the row moves from To do to Done (remounts).
+  // Rename (custom habits only). The habit stays set while the dialog closes.
+  const [renameTarget, setRenameTarget] = useState<Habit | null>(null);
+  const [renameOpen, setRenameOpen] = useState(false);
   const [popIds, setPopIds] = useState<ReadonlySet<string>>(() => new Set());
   // Re-render at local midnight (and a new week), so rows never show yesterday's state.
   const today = useLocalDayKey();
@@ -94,6 +99,14 @@ export function HabitTracker({ store }: { store: AppStore }) {
   };
 
   const deleteDescription = (habit: Habit | null): string => {
+        onEdit={
+          canRenameHabit(habit)
+            ? () => {
+                setRenameTarget(habit);
+                setRenameOpen(true);
+              }
+            : undefined
+        }
     if (!habit) return '';
     const earns = habit.points > 0 && !isReadingLinked(habit);
     const points = earns
@@ -230,6 +243,29 @@ export function HabitTracker({ store }: { store: AppStore }) {
 
 /** Share of daily habits done on each of the last 7 days, today highlighted. */
 function WeekConsistencyCard({ days, activeDays }: { days: ReturnType<typeof dailyHabitCompletions>; activeDays: number }) {
+      {renameTarget && (
+        <RenameDialog
+          key={renameTarget.id}
+          open={renameOpen}
+          onClose={() => setRenameOpen(false)}
+          title="Rename habit"
+          description={
+            runningPactsLinkedTo(store.state, renameTarget) > 0
+              ? HABIT_PACT_RENAME_MESSAGE
+              : 'Its streak, history and points stay as they are.'
+          }
+          label="Habit name"
+          initialName={renameTarget.name}
+          inputId="habit-rename-input"
+          maxLength={HABIT_NAME_MAX}
+          validate={(name) => habitNameProblem(name, renameTarget, store.state.habits, runningPactsLinkedTo(store.state, renameTarget))}
+          onSave={(name) => {
+            store.renameHabit(renameTarget.id, name);
+            showSuccessToast('Habit renamed', name.trim());
+          }}
+        />
+      )}
+
   return (
     <div className="card flex flex-col justify-between gap-2 p-4">
       <div className="flex items-baseline justify-between gap-2">

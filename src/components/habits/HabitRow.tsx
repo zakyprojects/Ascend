@@ -1,4 +1,4 @@
-import { AlertTriangle, Check, Flame, Trash2, Undo2 } from 'lucide-react';
+import { AlertTriangle, Check, Flame, Pencil, Trash2, Undo2 } from 'lucide-react';
 import type { Habit } from '@/types';
 import { calculateBestStreak, calculateStreak, periodKey, previousPeriodKey } from '@/lib/dates';
 import { getHabitConsecutiveMisses, getMissPenaltyMultiplier } from '@/lib/habitPenalties';
@@ -67,10 +67,12 @@ interface HabitRowProps {
   popClass: string;
   onToggle: () => void;
   onDelete: () => void;
+  /** Rename (custom habits only; the page leaves it out for Library and Reading habits). */
+  onEdit?: () => void;
 }
 
-/** One habit: tick, name, streak and points, the miss cost, the last seven periods, delete. */
-export function HabitRow({ habit, done, seasonPoints, popClass, onToggle, onDelete }: HabitRowProps) {
+/** One habit: tick, name, streak and points, the miss cost, the last seven periods, rename, delete. */
+export function HabitRow({ habit, done, seasonPoints, popClass, onToggle, onDelete, onEdit }: HabitRowProps) {
   const linked = isReadingLinked(habit);
   const weekly = habit.frequency === 'weekly';
   const unit = weekly ? 'week' : 'day';
@@ -152,6 +154,22 @@ export function HabitRow({ habit, done, seasonPoints, popClass, onToggle, onDele
             <HabitHistory habit={habit} className="mt-2 flex sm:hidden" />
           </div>
 
+          {onEdit && (
+            <button
+              type="button"
+              onClick={onEdit}
+              aria-label={`Rename ${habit.name}`}
+              title="Rename"
+              className={cx(
+                '-mr-2 shrink-0 rounded-lg p-2 text-content-muted hover:bg-overlay-subtle hover:text-content-secondary',
+                TAP_TARGET,
+                FOCUS_RING,
+                TRANSITION
+              )}
+            >
+              <Pencil size={16} aria-hidden="true" />
+            </button>
+          )}
           <button
             type="button"
             onClick={onDelete}

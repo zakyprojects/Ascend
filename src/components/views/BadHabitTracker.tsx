@@ -20,12 +20,17 @@ import { useLocalDayKey } from '@/lib/useLocalDayKey';
 import { CountUp, Reveal } from '@/components/ui/Motion';
 import { BadHabitRow } from '@/components/badHabits/BadHabitRow';
 import { AddBadHabitDialog } from '@/components/badHabits/AddBadHabitDialog';
+import { RenameDialog } from '@/components/ui/RenameDialog';
+import { badHabitNameProblem, canRenameBadHabit, HABIT_NAME_MAX, HABIT_PACT_RENAME_MESSAGE } from '@/lib/itemEdits';
 
 export function BadHabitTracker({ store }: { store: AppStore }) {
   const guide = useHowItWorks();
   const { showSuccessToast } = useToast();
   const [showAdd, setShowAdd] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<BadHabit | null>(null);
+  // Rename (custom bad habits only). The bad habit stays set while the dialog closes.
+  const [renameTarget, setRenameTarget] = useState<BadHabit | null>(null);
+  const [renameOpen, setRenameOpen] = useState(false);
   // Bad habits resisted here: their check pops even though the row moves from To log to Logged.
   const [popIds, setPopIds] = useState<ReadonlySet<string>>(() => new Set());
   // Re-renders at local midnight, so the page never shows yesterday's logs or taps dead rows (B4).
@@ -82,6 +87,14 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
         onSlip={() => slip(habit)}
         onUndo={() => undo(habit)}
         onDelete={() => setConfirmDelete(habit)}
+        onEdit={
+          canRenameBadHabit(habit)
+            ? () => {
+                setRenameTarget(habit);
+                setRenameOpen(true);
+              }
+            : undefined
+        }
       />
     );
   };
@@ -173,6 +186,29 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
           showSuccessToast('Bad habit added', name);
         }}
       />
+
+      {renameTarget && (
+        <RenameDialog
+          key={renameTarget.id}
+          open={renameOpen}
+          onClose={() => setRenameOpen(false)}
+          title="Rename bad habit"
+          description={
+            runningPactsLinkedToBadHabit(store.state, renameTarget) > 0
+              ? HABIT_PACT_RENAME_MESSAGE
+              : 'Its streak, history and points stay as they are.'
+          }
+          label="Bad habit"
+          initialName={renameTarget.name}
+          inputId="bad-habit-rename-input"
+          maxLength={HABIT_NAME_MAX}
+          validate={(name) => badHabitNameProblem(name, renameTarget, habits, runningPactsLinkedToBadHabit(store.state, renameTarget))}
+          onSave={(name) => {
+            store.renameBadHabit(renameTarget.id, name);
+            showSuccessToast('Bad habit renamed', name.trim());
+          }}
+        />
+      )}
 
       <ConfirmDeleteModal
         open={!!confirmDelete}

@@ -1,4 +1,4 @@
-import { AlertTriangle, Check, Flame, Trash2, Undo2, X } from 'lucide-react';
+import { AlertTriangle, Check, Flame, Pencil, Trash2, Undo2, X } from 'lucide-react';
 import type { BadHabit, BadHabitLog } from '@/types';
 import { todayKey, parseDate, calculateStreak, calculateBestStreak } from '@/lib/dates';
 import { badHabitCreatedDay, getBadHabitBadDaysBefore } from '@/lib/habitPenalties';
@@ -238,6 +238,8 @@ interface BadHabitRowProps {
   onSlip: () => void;
   onUndo: () => void;
   onDelete: () => void;
+  /** Rename (custom bad habits only; the page leaves it out for Library ones). */
+  onEdit?: () => void;
 }
 
 /** One bad habit: tick, name, streak and points, the slip cost, the last seven days, slip/undo, delete. */
@@ -253,6 +255,7 @@ export function BadHabitRow({
   onSlip,
   onUndo,
   onDelete,
+  onEdit,
 }: BadHabitRowProps) {
   const status = badHabitTodayStatus(todayLog);
   const { current, best } = resistStreaks(logs, today);
@@ -310,6 +313,22 @@ export function BadHabitRow({
 
           <div className="flex shrink-0 items-center gap-2">
             <BadHabitDayAction name={habit.name} logged={Boolean(status)} onSlip={onSlip} onUndo={onUndo} />
+            {onEdit && (
+              <button
+                type="button"
+                onClick={onEdit}
+                aria-label={`Rename ${habit.name}`}
+                title="Rename"
+                className={cx(
+                  '-mr-2 rounded-lg p-2 text-content-muted hover:bg-overlay-subtle hover:text-content-secondary',
+                  TAP_TARGET,
+                  FOCUS_RING,
+                  TRANSITION
+                )}
+              >
+                <Pencil size={16} aria-hidden="true" />
+              </button>
+            )}
             <button
               type="button"
               onClick={onDelete}
