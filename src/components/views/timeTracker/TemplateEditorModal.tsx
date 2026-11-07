@@ -34,7 +34,10 @@ interface TemplateEditorModalProps {
     title: string;
     activeDays: string[];
     blocks: TimeTrackerBlock[];
-  }) => Promise<void> | void;
+  }, options?: { updateAsked?: boolean }) => Promise<void> | void;
+  /** Days (today and later) this edit would change that were changed by hand; asked about before saving. */
+  previewReach?: (templateData: { title: string; activeDays: string[]; blocks: TimeTrackerBlock[] }) => string[];
+  today?: string;
   activities: TimeTrackerActivity[];
   templates?: TimeTrackerTemplate[];
   editingTemplate?: TimeTrackerTemplate | null;
@@ -44,6 +47,8 @@ export function TemplateEditorModal({
   open,
   onClose,
   onSave,
+  previewReach,
+  today,
   activities,
   templates = [],
   editingTemplate,
@@ -52,6 +57,8 @@ export function TemplateEditorModal({
   const [activeDays, setActiveDays] = useState<string[]>([]);
   const [blocks, setBlocks] = useState<TimeTrackerBlock[]>([]);
   const [isSaving, setIsSaving] = useState<boolean>(false);
+  // Hand-changed days this edit reaches: the footer asks "Update and save" or "Save only".
+  const [askDates, setAskDates] = useState<string[] | null>(null);
   const formIssues = useFormController();
   // The draft is per template (`:<id>` or `:new` comes from the open value).
   const form = useUnsavedChanges(open && (editingTemplate?.id ?? 'new'), [title, activeDays, blocks] as const, {
@@ -90,10 +97,16 @@ export function TemplateEditorModal({
     setTargetBlockForModal(null);
     formIssues.clear();
     setConflictState(null);
+    setAskDates(null);
     // Prefill once per open (and per edited template): re-running when `activities` changes
     // would wipe the user's edits whenever a sync or realtime update lands.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, editingTemplate?.id]);
+
+  // Any change to the draft makes the question stale: the next Save asks again.
+  useEffect(() => {
+    setAskDates(null);
+  }, [title, activeDays, blocks]);
 
   const toggleDay = (day: string) => {
     const isAdding = !activeDays.some((d) => d.toLowerCase() === day.toLowerCase());
@@ -182,8 +195,24 @@ export function TemplateEditorModal({
     setBlocks((prev) => prev.filter((b) => b.id !== blockId));
   };
 
+  const save = async (options?: { updateAsked?: boolean }) => {
+    setIsSaving(true);
+    try {
+      await onSave({ title: title.trim(), activeDays, blocks }, options);
+      onClose();
+    } catch (err: any) {
+      formIssues.showError(toUserMessage(err, "Couldn't save this template. Try again."));
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (askDates) {
+      await save({ updateAsked: true });
+      return;
+    }
     if (!title.trim()) {
       return; // the name field's required rule says so
     }
@@ -197,20 +226,19 @@ export function TemplateEditorModal({
       return;
     }
 
-    setIsSaving(true);
-    try {
-      await onSave({
-        title: title.trim(),
-        activeDays,
-        blocks,
-      });
-      onClose();
-    } catch (err: any) {
-      formIssues.showError(toUserMessage(err, "Couldn't save this template. Try again."));
-    } finally {
-      setIsSaving(false);
+    const asked = editingTemplate && previewReach ? previewReach({ title: title.trim(), activeDays, blocks }) : [];
+    if (asked.length > 0) {
+      setAskDates(asked);
+      return;
     }
+    await save();
   };
+
+  const askLater = askDates ? askDates.filter((d) => d !== today).length : 0;
+  const askToday = !!askDates && !!today && askDates.includes(today);
+  const askLaterText = `${askLater} later day${askLater === 1 ? '' : 's'}`;
+  const askedDaysText = askToday ? (askLater > 0 ? `today and ${askLaterText}` : 'today') : askLaterText;
+  const askedOne = askToday ? askLater === 0 : askLater === 1;
 
   return (
     <>
@@ -222,15 +250,27 @@ export function TemplateEditorModal({
         maxWidth="max-w-xl"
         preventClose={isSaving}
         footer={
-          <>
-            <button type="button" onClick={() => form.confirmDiscard(onClose)} disabled={isSaving} className="btn-secondary">
-              Cancel
-            </button>
-            <button type="submit" form="tt-template-form" disabled={isSaving} className="btn-primary">
-              {isSaving ? <AscendLoadingIndicator size="sm" /> : <Check size={16} />}
-              <span>{isSaving ? 'Saving…' : editingTemplate ? 'Save changes' : 'Create template'}</span>
-            </button>
-          </>
+          askDates ? (
+            <>
+              <button type="button" onClick={() => save()} disabled={isSaving} className="btn-secondary">
+                Save only
+              </button>
+              <button type="submit" form="tt-template-form" disabled={isSaving} className="btn-primary">
+                {isSaving ? <AscendLoadingIndicator size="sm" /> : <Check size={16} />}
+                <span>{isSaving ? 'Saving…' : 'Update and save'}</span>
+              </button>
+            </>
+          ) : (
+            <>
+              <button type="button" onClick={() => form.confirmDiscard(onClose)} disabled={isSaving} className="btn-secondary">
+                Cancel
+              </button>
+              <button type="submit" form="tt-template-form" disabled={isSaving} className="btn-primary">
+                {isSaving ? <AscendLoadingIndicator size="sm" /> : <Check size={16} />}
+                <span>{isSaving ? 'Saving…' : editingTemplate ? 'Save changes' : 'Create template'}</span>
+              </button>
+            </>
+          )
         }
       >
         <Form id="tt-template-form" onSubmit={handleSubmit} controller={formIssues} className="space-y-4">
@@ -379,6 +419,12 @@ export function TemplateEditorModal({
             )}
           </div>
 
+          {askDates && (
+            <p className="text-xs text-content-secondary" role="alert">
+              You changed {askedDaysText} by hand. Update {askedOne ? 'its' : 'their'} upcoming blocks to this template too? Blocks
+              you added there are removed; done and running blocks stay.
+            </p>
+          )}
         </Form>
       </Dialog>
 

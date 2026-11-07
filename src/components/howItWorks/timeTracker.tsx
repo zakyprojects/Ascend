@@ -39,6 +39,7 @@ export const timeTrackerGuide: HowItWorksGuide = {
     'Deleting a done block today works today’s points out again. Earlier days keep theirs.',
     'A small pill at the bottom of every page shows the block happening now. Drag it to either side, or turn it off in Settings › Appearance.',
     'Tap Reorder to put your categories or templates in your own order. The block picker uses the category order.',
+    'Editing a template’s blocks also updates the rest of today and saved later days it fills; what’s done, skipped or running stays. If you changed one of those days by hand, you’re asked first.',
   ],
   points: [
     <>

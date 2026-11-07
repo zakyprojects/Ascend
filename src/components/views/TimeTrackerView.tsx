@@ -123,10 +123,17 @@ export function TimeTrackerView({ store, onNavigate }: TimeTrackerViewProps) {
     setTemplateModalOpen(true);
   };
 
-  const saveTemplate = (data: { title: string; activeDays: string[]; blocks: TimeTrackerBlock[] }) => {
+  const saveTemplate = (data: { title: string; activeDays: string[]; blocks: TimeTrackerBlock[] }, options?: { updateAsked?: boolean }) => {
     if (editingTemplate) {
-      store.updateTimeTrackerTemplate(editingTemplate.id, data);
-      showSuccessToast('Template saved');
+      const reach = store.previewTemplateEditReach(editingTemplate.id, data);
+      const reached = [...reach.autoDates, ...(options?.updateAsked ? reach.askDates : [])];
+      store.updateTimeTrackerTemplate(editingTemplate.id, data, options);
+      const later = reached.filter((d) => d !== today).length;
+      const laterText = `${later} later day${later === 1 ? '' : 's'}`;
+      let updated: string | undefined;
+      if (reached.includes(today)) updated = later > 0 ? `Today and ${laterText} updated.` : 'Today updated.';
+      else if (later > 0) updated = `${laterText} updated.`;
+      showSuccessToast('Template saved', updated);
     } else {
       store.createTimeTrackerTemplate(data);
       showSuccessToast('Template created');
@@ -253,6 +260,8 @@ export function TimeTrackerView({ store, onNavigate }: TimeTrackerViewProps) {
         open={templateModalOpen}
         onClose={() => setTemplateModalOpen(false)}
         onSave={saveTemplate}
+        previewReach={(data) => (editingTemplate ? store.previewTemplateEditReach(editingTemplate.id, data).askDates : [])}
+        today={today}
         activities={activities}
         templates={templates}
         editingTemplate={editingTemplate}
