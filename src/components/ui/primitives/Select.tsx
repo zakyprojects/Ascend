@@ -194,6 +194,8 @@ export const Select = React.forwardRef<HTMLButtonElement, SelectProps>(function 
       close();
       return;
     }
+    // Measure at the width it will have: long labels wrap to two lines there.
+    list.style.width = `${placeMenu(anchor, area, 0).width}px`;
     const border = list.offsetHeight - list.clientHeight;
     setPlace(placeMenu(anchor, area, list.scrollHeight + border));
   }, [close]);
