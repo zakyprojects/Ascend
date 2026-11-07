@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { Calendar, Check, ChevronDown, ChevronUp, Edit3, FolderKanban, Lock, Timer, Trash2 } from 'lucide-react';
+import { Calendar, Check, ChevronDown, ChevronUp, Edit3, FolderKanban, Lock, Pencil, Timer, Trash2 } from 'lucide-react';
 import type { Task, TaskPriority, TaskSubtask } from '@/types';
 import { formatDateShort } from '@/lib/dates';
 import { cx, FieldErrorBubble, ProgressBar } from '@/components/ui/primitives';
@@ -8,6 +8,8 @@ import { useCompletionPop } from '@/lib/useCompletionPop';
 import { Chip } from './ItemCard';
 import { actionFeedback } from '@/lib/actionFeedback';
 import { nameTaken } from '@/lib/uniqueNames';
+import { SUBTASK_TITLE_MAX, subtaskTitleProblem } from '@/lib/itemEdits';
+import { toUserMessage } from '@/lib/userMessage';
 
 const PRIORITY_DOT: Record<TaskPriority, string> = {
   high: 'bg-rose-500',
@@ -29,6 +31,7 @@ export function TaskRow({
   onToggleSubtask,
   onAddSubtask,
   onDeleteSubtask,
+  onRenameSubtask,
   onOpenProject,
   onFocus,
   onEdit,
@@ -44,6 +47,8 @@ export function TaskRow({
   onToggleSubtask: (subtaskId: string) => void;
   onAddSubtask: (title: string) => void;
   onDeleteSubtask: (subtask: TaskSubtask) => void;
+  /** Renames a subtask; throws with the message to show (empty or taken title). */
+  onRenameSubtask?: (subtaskId: string, title: string) => void;
   onOpenProject: () => void;
   onFocus?: () => void;
   onEdit: () => void;
@@ -62,6 +67,25 @@ export function TaskRow({
   const newSubtaskId = `task-${task.id}-new-subtask`;
   // Armed by the tick and by subtask clicks: ticking the last subtask completes the task.
   const { arm: armCompletionPop, popClass } = useCompletionPop(task.completed);
+
+  // One subtask's title being edited in place (Enter or Save keeps it, Esc or Cancel drops it).
+  const [renaming, setRenaming] = useState<{ id: string; text: string; error: string | null } | null>(null);
+  const renameInputId = renaming ? `task-${task.id}-subtask-${renaming.id}-title` : '';
+  const saveRename = () => {
+    if (!renaming || !onRenameSubtask) return;
+    const problem = subtaskTitleProblem(renaming.text, task, renaming.id);
+    if (problem) {
+      setRenaming({ ...renaming, error: problem });
+      document.getElementById(renameInputId)?.focus();
+      return;
+    }
+    try {
+      onRenameSubtask(renaming.id, renaming.text);
+      setRenaming(null);
+    } catch (err) {
+      setRenaming({ ...renaming, error: toUserMessage(err, "Couldn't save. Try again.") });
+    }
+  };
 
   const addSubtask = () => {
     const title = newSubtask.trim();
@@ -196,7 +220,46 @@ export function TaskRow({
 
             {expanded && (
               <div className="mt-2 space-y-1.5 border-l-2 border-overlay-default pl-3 animate-fade-in">
-                {subtasks.map((st) => (
+                {subtasks.map((st) =>
+                  renaming?.id === st.id && !locked ? (
+                    <div key={st.id}>
+                      <form
+                        className="flex items-center gap-2"
+                        onSubmit={(e) => {
+                          e.preventDefault();
+                          saveRename();
+                        }}
+                      >
+                        <input
+                          id={renameInputId}
+                          type="text"
+                          aria-label={`Subtask title, was "${st.title}"`}
+                          aria-invalid={renaming.error ? true : undefined}
+                          aria-describedby={renaming.error ? `${renameInputId}-error` : undefined}
+                          value={renaming.text}
+                          onChange={(e) => setRenaming({ ...renaming, text: e.target.value, error: null })}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Escape') {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              setRenaming(null);
+                            }
+                          }}
+                          maxLength={SUBTASK_TITLE_MAX}
+                          enterKeyHint="done"
+                          autoFocus
+                          className="min-h-9 w-full rounded-lg border border-overlay-default bg-bg-900 px-2.5 py-1 text-base text-content-secondary placeholder:text-content-subtle focus:border-emerald-500/50 focus:outline-none sm:text-xs"
+                        />
+                        <button type="submit" className="btn-secondary shrink-0 px-3 py-1 text-xs">
+                          Save
+                        </button>
+                        <button type="button" onClick={() => setRenaming(null)} className="btn-ghost shrink-0 px-2 py-1 text-xs">
+                          Cancel
+                        </button>
+                      </form>
+                      {renaming.error && <FieldErrorBubble id={`${renameInputId}-error`} message={renaming.error} />}
+                    </div>
+                  ) : (
                   <div key={st.id} className="flex items-center justify-between gap-2">
                     <button
                       type="button"
@@ -224,6 +287,17 @@ export function TaskRow({
                         {st.title}
                       </span>
                     </button>
+                    {!locked && onRenameSubtask && (
+                      <button
+                        type="button"
+                        onClick={() => setRenaming({ id: st.id, text: st.title, error: null })}
+                        className={`p-1 text-content-disabled transition-colors hover:text-content-secondary ${TAP_TARGET}`}
+                        aria-label={`Rename subtask "${st.title}"`}
+                        title="Rename"
+                      >
+                        <Pencil size={12} />
+                      </button>
+                    )}
                     {!locked && (
                       <button
                         type="button"
@@ -236,7 +310,8 @@ export function TaskRow({
                       </button>
                     )}
                   </div>
-                ))}
+                  )
+                )}
 
                 {!locked && (
                   <form

@@ -1,13 +1,13 @@
 import { useState } from 'react';
 import { ListOrdered, Trash2 } from 'lucide-react';
 import type { Goal, GoalStatus, Project, ProjectStatus, Task, TaskPriority, TaskSubtask } from '@/types';
-import { Dialog, FieldRow, Form, Input, Select, Switch, Textarea, useFormController } from '@/components/ui/primitives';
+import { Dialog, FieldMessage, FieldRow, Form, Input, Select, Switch, Textarea, useFormController } from '@/components/ui/primitives';
 import { TAP_TARGET } from '@/components/ui/primitives/shared';
 import { earliestTargetDate, isNewPastDate, todayKey, uid } from '@/lib/dates';
 import { trustedNow } from '@/lib/clock';
 import { useUnsavedChanges } from '@/lib/unsavedChanges';
 import { toUserMessage } from '@/lib/userMessage';
-import { nameTaken } from '@/lib/uniqueNames';
+import { nameTaken, sameName } from '@/lib/uniqueNames';
 
 /**
  * Create/edit dialogs for goals, projects and tasks. Each is mounted fresh for every open (the
@@ -425,6 +425,20 @@ export function TaskFormDialog({
     setNewSubtask('');
   };
 
+  // A renamed subtask needs a title of its own; untouched ones may keep an old duplicate.
+  const subtaskIssue = () => {
+    for (const st of subtasks) {
+      const field = `pg-task-subtask-${st.id}`;
+      if (!st.title.trim()) return { message: 'Fill in this field.', field };
+      const before = editing?.subtasks?.find((x) => x.id === st.id);
+      if (before && sameName(before.title, st.title)) continue;
+      if (subtasks.some((x) => x.id !== st.id && sameName(x.title, st.title))) {
+        return { message: 'This task already has a subtask with this name.', field };
+      }
+    }
+    return null;
+  };
+
   const handleSubmit = () => {
     if (!title.trim()) return;
     try {
@@ -434,7 +448,7 @@ export function TaskFormDialog({
         projectId: projectId || undefined,
         dueDate: sanitizeDate(dueDate),
         priority,
-        subtasks,
+        subtasks: subtasks.map((st) => ({ ...st, title: st.title.trim() })),
       });
       onClose();
     } catch (err) {
@@ -455,14 +469,15 @@ export function TaskFormDialog({
         onSubmit={handleSubmit}
         controller={issues}
         validate={() =>
-          nameTaken(title, tasks.filter((t) => (t.projectId || '') === projectId), {
+          subtaskIssue() ??
+          (nameTaken(title, tasks.filter((t) => (t.projectId || '') === projectId), {
             editing: editing && (editing.projectId || '') === projectId ? editing : null,
           })
             ? {
                 message: projectId ? 'This project already has a task with this name.' : 'You already have a task with this name.',
                 field: 'pg-task-title',
               }
-            : pastDateIssue(dueDate, editing?.dueDate, 'pg-task-due-date')
+            : pastDateIssue(dueDate, editing?.dueDate, 'pg-task-due-date'))
         }
         className="space-y-4"
       >
@@ -517,9 +532,23 @@ export function TaskFormDialog({
           </p>
           {subtasks.length > 0 && (
             <div className="mb-2 space-y-1.5">
-              {subtasks.map((st) => (
-                <div key={st.id} className="flex items-center justify-between gap-2 rounded-lg border border-overlay-subtle py-1.5 pl-3 pr-1.5">
-                  <span className={`truncate text-sm ${st.completed ? 'text-content-muted line-through' : 'text-content-secondary'}`}>{st.title}</span>
+              {subtasks.map((st, index) => (
+                <div key={st.id} data-field={`pg-task-subtask-${st.id}`}>
+                <div className="flex items-center justify-between gap-2 rounded-lg border border-overlay-subtle py-1 pl-1 pr-1.5">
+                  {/* The title edits in place; the subtask keeps its done state. */}
+                  <input
+                    id={`pg-task-subtask-${st.id}`}
+                    type="text"
+                    aria-label={`Subtask ${index + 1} title`}
+                    value={st.title}
+                    onChange={(e) => {
+                      const title = e.target.value;
+                      setSubtasks((prev) => prev.map((x) => (x.id === st.id ? { ...x, title } : x)));
+                    }}
+                    maxLength={120}
+                    autoComplete="off"
+                    className={`min-h-9 w-full min-w-0 rounded-lg border border-transparent bg-transparent px-2 py-1 text-base focus:border-emerald-500/50 focus:outline-none sm:text-sm ${st.completed ? 'text-content-muted line-through' : 'text-content-secondary'}`}
+                  />
                   <button
                     type="button"
                     onClick={() => setSubtasks((prev) => prev.filter((x) => x.id !== st.id))}
@@ -528,6 +557,8 @@ export function TaskFormDialog({
                   >
                     <Trash2 size={14} />
                   </button>
+                </div>
+                <FieldMessage htmlFor={`pg-task-subtask-${st.id}`} />
                 </div>
               ))}
             </div>

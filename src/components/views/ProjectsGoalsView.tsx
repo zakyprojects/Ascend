@@ -594,6 +594,7 @@ export function ProjectsGoalsView({
         onToggle={() => store.toggleTaskCompleted(task.id)}
         onToggleSubtask={(id) => store.toggleSubtask(task.id, id)}
         onAddSubtask={(title) => store.addSubtask(task.id, title)}
+        onRenameSubtask={(id, title) => store.renameSubtask(task.id, id, title)}
         onDeleteSubtask={(subtask) => setDeleteSubtaskTarget({ taskId: task.id, subtask })}
         onOpenProject={() => task.projectId && openProjectTasks(task.projectId)}
         onFocus={onStartFocusSession ? () => onStartFocusSession(task.title) : undefined}
