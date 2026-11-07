@@ -138,7 +138,7 @@ export const journal: FeatureContent = {
         lead={
           <p>
             What you write and the moods you pick are visible only to you. They never appear in leagues or to partners,
-            and AscendDay never shares or sells them; a public profile shows only how many entries you have and on how many days you wrote. The{' '}
+            and AscendDay never shares or sells them; a public profile shows only how many entries you have and on how many days you wrote this season. The{' '}
             <a href="/privacy" className={LINK_CLASS}>
               Privacy Policy
             </a>{' '}
@@ -190,7 +190,7 @@ export const journal: FeatureContent = {
     },
     {
       q: 'Is the journal private?',
-      a: 'Yes. What you write and your moods are visible only to you. If you make your profile public, others can see how many entries you have and on how many days you wrote, never what is in them.',
+      a: 'Yes. What you write and your moods are visible only to you. If you make your profile public, others can see how many entries you have and on how many days you wrote this season, never what is in them.',
     },
     {
       q: 'How long does an entry need to be?',

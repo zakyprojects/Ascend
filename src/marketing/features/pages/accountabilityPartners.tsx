@@ -147,7 +147,7 @@ export const accountabilityPartners: FeatureContent = {
         lead={
           <>
             <p>
-              A partner sees your stats, such as your streaks, your season points and rank, and your last 30 days: days
+              A partner sees your stats, such as your streaks, your season points and rank, and this season so far: days
               active, habit check-ins, skill practice and focus hours, reading and journal days, and the names of your
               most-done exercises (never the names of your skills). They also see your timezone and everything you share
               in the partnership and its challenges, such as the name of a bad habit you resist together (but never
