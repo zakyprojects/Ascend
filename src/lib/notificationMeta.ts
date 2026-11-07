@@ -21,6 +21,7 @@ import type { AppNotification } from '@/types';
 import type { View } from './views';
 import { formatWeekdayDate, getWeekDates } from './dates';
 import { ptsText } from './leagues';
+import { planningWeekKey, weekSearch } from './weekParam';
 
 /**
  * How the app shows each notification type: icon, tone, the page a tap opens, and the title and
@@ -44,6 +45,8 @@ export interface NotificationView {
   tone: NotificationTone;
   /** The page a tap opens, or null when there is nowhere useful to go. */
   link: View | null;
+  /** Query for the page a tap opens (`?week=2026-W46`), or undefined. */
+  search?: string;
   title: string;
   message: string;
   /** Shows the actor's avatar (partner notices only; system notices carry a decorative emoji). */
@@ -241,7 +244,17 @@ export function describeNotification(n: AppNotification): NotificationView {
       };
     }
     case 'sunday_planning':
-      return { ...base, icon: CalendarCheck, tone: 'neutral', link: 'weekly-goals', title: 'Plan your week', message: "Take 5 minutes to set this week's goals." };
+      // Opens the week it plans (next week on Sunday night, this week by Monday morning); a week
+      // already past opens this week (WeeklyGoalsView).
+      return {
+        ...base,
+        icon: CalendarCheck,
+        tone: 'neutral',
+        link: 'weekly-goals',
+        search: weekSearch(planningWeekKey(p, n.createdAt)) || undefined,
+        title: 'Plan next week',
+        message: 'Set a few goals for next week, and look back at this one.',
+      };
     default:
       return {
         ...base,

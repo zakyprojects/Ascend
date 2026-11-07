@@ -39,7 +39,7 @@ const SAMPLES: AppNotification[] = [
   n({ type: 'missed_exercise_target', title: 'Exercise Goal Missed', message: 'You logged 1/3 workout sessions for week 2026-W41. 5 points deducted.', payload: { weekKey: '2026-W41', logged: 1, target: 3 } }),
   n({ type: 'addiction_milestone', title: 'Sobriety Milestone Reached! 🎉', message: 'Congratulations! You unlocked milestone(s): 1 Week Clean for Smoking.', payload: { substance: 'Smoking', milestones: ['1 Week Clean'] } }),
   n({ type: 'daily_reminder', actorUsername: 'Ascend System', actorAvatar: '⚡', title: 'Evening Tracker Check-in 🌙', message: "Don't break your momentum!", payload: { date: '2026-10-17', missing: ['Journal', 'Read'] } }),
-  n({ type: 'sunday_planning', actorUsername: 'Ascend Executive System', actorAvatar: '🎯', title: 'Sunday Evening Goal Planning', message: "Take 5 minutes to set your top 3 measurable goals and review last week's velocity.", payload: { weekKey: '2026-W42' } }),
+  n({ type: 'sunday_planning', title: 'Plan next week', message: 'Set a few goals for next week, and look back at this one.', payload: { weekKey: '2026-W46', planWeekKey: '2026-W47', dedupKey: 'sunday_planning_2026-W46' } }),
   n({ type: 'challenge_created', actorUsername: 'ali', actorAvatar: '🦊', title: 'New challenge', message: 'ali started the challenge "Run 5k" with you.', payload: { challengeId: 'c1' } }),
 ];
 
@@ -59,6 +59,19 @@ function runFixtures() {
   assert(byType('bad_habit_no_report').link === 'bad-habits', 'bad habit opens Bad habits');
   assert(byType('partner_invite').link === 'partner', 'invite opens Partners');
   assert(byType('sunday_planning').link === 'weekly-goals', 'Sunday planning opens Weekly goals');
+  assert(byType('sunday_planning').search === '?week=2026-W47', 'Sunday planning opens the week in planWeekKey');
+  assert(byType('sunday_planning').title === 'Plan next week', 'Sunday planning title');
+  assert(byType('sunday_planning').message === 'Set a few goals for next week, and look back at this one.', 'Sunday planning message');
+  assert(byType('sunday_planning').showActor === false, 'Sunday planning shows no sender');
+  // A row from before planWeekKey (old server copy, ISO weekKey): the week of the day after it was sent.
+  const sundayEvening = new Date(2026, 10, 1, 19, 2).toISOString(); // Sun Nov 1, 19:02 local
+  const oldRow = describeNotification(
+    n({ type: 'sunday_planning', actorUsername: 'Ascend Executive System', actorAvatar: '🎯', title: 'Sunday Evening Goal Planning', message: "Take 5 minutes to set your top 3 measurable goals and review last week's velocity.", payload: { weekKey: '2026-W44', dedupKey: 'sunday_planning_2026-W44' }, createdAt: sundayEvening })
+  );
+  assert(oldRow.search === '?week=2026-W45', `old Sunday planning row opens the week after it was sent (${oldRow.search})`);
+  assert(oldRow.title === 'Plan next week' && !oldRow.message.includes('velocity'), 'old row shows the new words');
+  const unreadable = describeNotification(n({ type: 'sunday_planning', payload: { planWeekKey: '2026-W99' }, createdAt: 'never' }));
+  assert(unreadable.link === 'weekly-goals' && unreadable.search === undefined, 'no readable week: opens Weekly goals on this week');
   assert(byType('addiction_milestone').link === 'recovery', 'milestone opens Recovery');
   assert(byType('daily_reminder').link === 'dashboard', 'daily reminder opens Dashboard');
   assert(byType('missed_exercise_target').link === 'exercise', 'exercise target opens Exercise');
