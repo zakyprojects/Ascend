@@ -180,6 +180,11 @@ export function Journal({ store }: { store: AppStore }) {
   const handleEntryEditSave = async () => {
     if (!editingEntry) return;
     const target = editingEntry;
+    // Nothing changed: back to the entry, no write and no toast.
+    if (editMood === target.mood && editContent.trim() === (target.content ?? '')) {
+      setEditingEntryId(null);
+      return;
+    }
     try {
       await executeSave(async () => {
         await store.editJournalEntry(target.id, editMood, editContent);
@@ -512,10 +517,11 @@ export function Journal({ store }: { store: AppStore }) {
         footer={
           editingEntry ? (
             <>
-              <button type="button" onClick={cancelEntryEdit} disabled={isSaving} className="btn-secondary">
+              {/* Keys: React must not reuse the Edit button as Save (a type change mid-click submits the form). */}
+              <button key="cancel" type="button" onClick={cancelEntryEdit} disabled={isSaving} className="btn-secondary">
                 Cancel
               </button>
-              <button type="submit" form="journal-entry-edit-form" disabled={isSaving} className="btn-primary">
+              <button key="save" type="submit" form="journal-entry-edit-form" disabled={isSaving} className="btn-primary">
                 {isSaving ? <AscendLoadingIndicator size="sm" /> : <Check size={16} />}
                 <span>{isSaving ? 'Saving…' : 'Save changes'}</span>
               </button>
@@ -523,6 +529,7 @@ export function Journal({ store }: { store: AppStore }) {
           ) : (
             <>
               <button
+                key="delete"
                 type="button"
                 onClick={() => {
                   const target = shownEntry;
@@ -534,11 +541,11 @@ export function Journal({ store }: { store: AppStore }) {
                 <Trash2 size={16} />
                 <span>Delete</span>
               </button>
-              <button type="button" onClick={() => shownEntry && startEntryEdit(shownEntry)} className="btn-secondary">
+              <button key="edit" type="button" onClick={() => shownEntry && startEntryEdit(shownEntry)} className="btn-secondary">
                 <Edit3 size={16} />
                 <span>Edit</span>
               </button>
-              <button type="button" onClick={closeEntryDialog} className="btn-secondary">
+              <button key="close" type="button" onClick={closeEntryDialog} className="btn-secondary">
                 Close
               </button>
             </>
