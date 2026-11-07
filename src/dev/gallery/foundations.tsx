@@ -1,7 +1,8 @@
-import React from 'react';
-import { Badge, type BadgeTone } from '@/components/ui/primitives';
+import React, { useEffect, useState } from 'react';
+import { Badge, Button, type BadgeTone } from '@/components/ui/primitives';
 import { AscendLoaderMark } from '@/components/ui/AscendLoadingIndicator';
 import { AppLockup, AppLogo } from '@/components/ui/AppLogo';
+import { compactNumber } from '@/lib/numberFormat';
 import { Caption, Section } from './shared';
 
 const TONES: BadgeTone[] = [
@@ -224,9 +225,9 @@ function TypographyDemo() {
   return (
     <div className="space-y-6">
       <div className="space-y-1.5">
-        <Caption>Page title (Instrument Serif, only here, the page’s one hero number and the auth welcome) + subtitle</Caption>
+        <Caption>Page title (Instrument Serif, only here, the page’s one hero number and the auth welcome) + one plain subtitle (Dashboard shows the date)</Caption>
         <h3 className="page-title">Dashboard</h3>
-        <p className="page-subtitle">Every summit reveals higher peaks. Consistent daily progress compounds.</p>
+        <p className="page-subtitle">Saturday, 7 November 2026</p>
       </div>
 
       <div className="space-y-1.5">
@@ -272,6 +273,122 @@ function TypographyDemo() {
   );
 }
 
+// The CSS badge classes pages use directly (index.css .badge-*), next to the Badge primitive.
+const CSS_BADGES = ['badge-neutral', 'badge-emerald', 'badge-amber', 'badge-rose', 'badge-sky', 'badge-cyan', 'badge-indigo', 'badge-purple', 'badge-season', 'badge-beta'];
+
+const COMPACT_INPUTS = [0, 999, 9999, 10000, 12500, 99999, 123456, 999950, 1250000, -12500, 3.25, Number.NaN];
+
+function NumbersDemo() {
+  return (
+    <div className="space-y-3">
+      <Caption>compactNumber(input) → what the member card shows</Caption>
+      <div className="overflow-x-auto">
+        <table className="w-full max-w-md text-sm">
+          <thead>
+            <tr className="text-left">
+              <th className="stat-label pb-1 font-normal">Input</th>
+              <th className="stat-label pb-1 font-normal">Shown</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-overlay-subtle">
+            {COMPACT_INPUTS.map((n) => (
+              <tr key={String(n)}>
+                <td className="py-1 font-mono text-xs text-content-muted">{String(n)}</td>
+                <td className="figure py-1 text-content-primary">{compactNumber(n)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function CssPatternsDemo() {
+  const [progressKey, setProgressKey] = useState(0);
+  const [showProgress, setShowProgress] = useState(false);
+  const [items, setItems] = useState([1, 2]);
+  return (
+    <div className="space-y-6">
+      <div className="space-y-1.5">
+        <Caption>.glass (top bars, popovers over content). Its stronger sibling in index.css is used by no page yet, so it is left out: naming it here would ship it in the prod CSS.</Caption>
+        <div className="relative overflow-hidden rounded-xl border border-overlay-subtle p-4" style={{ background: 'linear-gradient(120deg, rgb(16 185 129 / 0.35), rgb(99 102 241 / 0.35))' }}>
+          <div className="glass rounded-xl p-4 text-sm text-content-primary">.glass</div>
+        </div>
+      </div>
+
+      <div className="space-y-1.5">
+        <Caption>.scroll-fade with data-fade-start / data-fade-end (tab rows set these from lib/useScrollFade)</Caption>
+        <div className="scroll-fade overflow-x-auto rounded-xl border border-overlay-subtle p-3" data-fade-start="" data-fade-end="">
+          <div className="flex gap-2" style={{ width: 'max-content' }}>
+            {Array.from({ length: 14 }, (_, i) => (
+              <span key={i} className="badge badge-neutral">
+                Item {i + 1}
+              </span>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="space-y-1.5">
+        <Caption>.enter-item: a new list item rises in (off under reduced motion)</Caption>
+        <div className="flex flex-wrap gap-2">
+          <Button size="sm" variant="secondary" onClick={() => setItems((list) => [...list, list.length + 1])}>
+            Add an item
+          </Button>
+          <Button size="sm" variant="ghost" onClick={() => setItems([1, 2])}>
+            Reset
+          </Button>
+        </div>
+        <ul className="space-y-2">
+          {items.map((n) => (
+            <li key={n} className="card enter-item p-3 text-sm text-content-secondary">
+              Item {n}
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      <div className="space-y-1.5">
+        <Caption>.page-progress: the thin bar at the very top while a page loads (fixed, top of the screen)</Caption>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={() => {
+              setShowProgress(true);
+              setProgressKey((k) => k + 1);
+            }}
+          >
+            Show for 2 s
+          </Button>
+        </div>
+        {showProgress && <PageProgressFor key={progressKey} onDone={() => setShowProgress(false)} />}
+      </div>
+
+      <div className="space-y-1.5">
+        <Caption>.skip-link: off screen until keyboard focus (Tab into the box)</Caption>
+        <div className="relative h-16 overflow-hidden rounded-xl border border-dashed border-overlay-default [transform:translateZ(0)]">
+          <a href="#css-patterns" className="skip-link btn-primary">
+            Skip to content
+          </a>
+          <p className="p-3 text-xs text-content-muted">Press Tab until the link appears in the top-left of this box.</p>
+        </div>
+      </div>
+
+      <p className="text-micro text-content-muted">.hover-glide is the sidebar's hover highlight: try it in Navigation › Sidebar.</p>
+    </div>
+  );
+}
+
+function PageProgressFor({ onDone }: { onDone: () => void }) {
+  useEffect(() => {
+    const timer = setTimeout(onDone, 2000);
+    return () => clearTimeout(timer);
+  }, [onDone]);
+  return <div aria-hidden="true" className="page-progress" />;
+}
+
 export function FoundationsGroup() {
   return (
     <>
@@ -313,11 +430,29 @@ export function FoundationsGroup() {
               ))}
             </div>
           </div>
+          <div className="space-y-1.5">
+            <Caption>CSS classes (.badge + .badge-*), as pages write them</Caption>
+            <div className="flex flex-wrap gap-2">
+              {CSS_BADGES.map((name) => (
+                <span key={name} className={`badge ${name}`}>
+                  {name.replace('badge-', '')}
+                </span>
+              ))}
+            </div>
+          </div>
         </div>
       </Section>
 
       <Section id="brand">
         <BrandDemo />
+      </Section>
+
+      <Section id="numbers">
+        <NumbersDemo />
+      </Section>
+
+      <Section id="css-patterns">
+        <CssPatternsDemo />
       </Section>
     </>
   );

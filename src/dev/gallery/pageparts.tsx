@@ -1,7 +1,10 @@
 import { useState } from 'react';
 import { IntroMotionContext } from '@/lib/motion';
 import { Plus, Inbox } from 'lucide-react';
-import { Button, Card, EmptyState, PageColumns, ProgressBar, Skeleton, type ProgressTone } from '@/components/ui/primitives';
+import { Button, Card, EmptyState, ProgressBar, Skeleton, type ProgressTone } from '@/components/ui/primitives';
+import { WeekActivityCard } from '@/components/views/WeekActivityCard';
+import { PageSkeleton } from '@/components/views/PageSkeleton';
+import { lastDayKeys } from '@/lib/weeklyActivity';
 import { ProgressUpdateDialog, UpdateProgressButton } from '@/components/ui/ProgressUpdateDialog';
 import { PageHero } from '@/components/ui/PageHero';
 import { CapMeter } from '@/components/ui/CapMeter';
@@ -91,6 +94,7 @@ function ProgressDemo() {
 
 function PagePartsDemo() {
   const [earned, setEarned] = useState(18);
+  const guide = useHowItWorks();
   return (
     <div className="space-y-6">
       <div className="space-y-1.5">
@@ -113,7 +117,10 @@ function PagePartsDemo() {
       </div>
 
       <div className="space-y-1.5">
-        <Caption>PageHero with ring, lead number, stats and a CapMeter beside it</Caption>
+        <Caption>
+          PageHero with ring, lead number, stats and a CapMeter beside it. Pages pass CapMeterConnected bare (it reads the store); this is the
+          same CapMeter with fake numbers. How points work opens How it works at Points.
+        </Caption>
         <PageHero
           ariaLabel="Today’s habits"
           ring={{ value: 4, max: 6, label: 'Habits done today', center: '4/6', caption: 'today' }}
@@ -129,7 +136,7 @@ function PagePartsDemo() {
               label="Habit points today"
               earned={earned}
               cap={30}
-              onExplain={() => undefined}
+              onExplain={guide.showPoints}
             />
           }
         />
@@ -145,21 +152,11 @@ function PagePartsDemo() {
 
       <div className="space-y-1.5">
         <Caption>PageHero without ring or side; CapMeter slots variant</Caption>
+        <HowItWorksDialog open={guide.open} onClose={guide.close} guide={DEMO_GUIDE} focus={guide.focus} />
         <PageHero ariaLabel="Reading" lead={{ label: 'Pages this week', value: '214' }} stats={[{ label: 'Books open', value: '2' }]} />
         <div className="card max-w-sm p-4">
           <CapMeter variant="slots" label="Workouts this week" earned={2} cap={3} slotsUsed={2} slotsTotal={3} />
         </div>
-      </div>
-
-      <div className="space-y-1.5">
-        <Caption>PageColumns: one column below 1440px, main + side column from 1440px (lead, aside, children, footer)</Caption>
-        <PageColumns
-          lead={<div className="card p-4 text-sm text-content-secondary">lead (main column, first)</div>}
-          aside={<div className="card p-4 text-sm text-content-secondary">aside (side column; between lead and children on narrow screens)</div>}
-          footer={<div className="card p-4 text-sm text-content-secondary">footer (full width)</div>}
-        >
-          <div className="card p-4 text-sm text-content-secondary">children (main column, after)</div>
-        </PageColumns>
       </div>
     </div>
   );
@@ -197,6 +194,22 @@ function HowItWorksDemo() {
   );
 }
 
+// Seven fake days ending today: points earned and lost, habits done of due.
+function WeekActivityDemo() {
+  const days = lastDayKeys(7);
+  const earned = [12, 30, 8, 0, 22, 41, 17];
+  const lost = [0, 4, 0, 6, 0, 0, 2];
+  const done = [3, 5, 2, 0, 4, 6, 3];
+  return (
+    <div className="max-w-xl">
+      <WeekActivityCard
+        points={days.map((day, i) => ({ day, earned: earned[i], lost: lost[i] }))}
+        habits={days.map((day, i) => ({ day, done: done[i], total: 6 }))}
+      />
+    </div>
+  );
+}
+
 export function PagePartsGroup() {
   return (
     <>
@@ -210,6 +223,10 @@ export function PagePartsGroup() {
 
       <Section id="progress">
         <ProgressDemo />
+      </Section>
+
+      <Section id="week-activity">
+        <WeekActivityDemo />
       </Section>
 
       <Section id="empty-states">
@@ -237,7 +254,15 @@ export function PagePartsGroup() {
       </Section>
 
       <Section id="skeletons">
-        <SkeletonDemo />
+        <div className="space-y-6">
+          <SkeletonDemo />
+          <div className="space-y-1.5">
+            <Caption>PageSkeleton (views/PageSkeleton): the lazy page fallback, shaped like a page</Caption>
+            <div className="rounded-xl border border-dashed border-overlay-default p-4">
+              <PageSkeleton />
+            </div>
+          </div>
+        </div>
       </Section>
     </>
   );

@@ -10,7 +10,7 @@ export function Section({ id, children }: { id: string; children: React.ReactNod
   if (!info) throw new Error(`Gallery section "${id}" is missing from registry.ts`);
   const headingId = `${id}-title`;
   return (
-    <Card as="section" id={id} aria-labelledby={headingId} padding="lg" className="scroll-mt-28 space-y-4">
+    <Card as="section" id={id} aria-labelledby={headingId} padding="lg" className="space-y-4" style={{ scrollMarginTop: '7rem' }}>
       <div>
         <h3 id={headingId} className="section-title">
           <a href={`#${id}`} className="hover:underline">

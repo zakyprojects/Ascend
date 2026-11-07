@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Search } from 'lucide-react';
 import {
   Button,
   Dialog,
@@ -13,6 +14,7 @@ import {
   SlidingPill,
   Switch,
   Textarea,
+  ToolbarInput,
   ToolbarSelect,
   cx,
   useFormController,
@@ -296,6 +298,65 @@ function DropdownsDemo() {
 // Switch, progress, segmented, disclosure
 // ---------------------------------------------------------------------------
 
+const TOOLBAR_BOOKS = [
+  { title: 'Atomic Habits', author: 'James Clear', category: 'Self-help' },
+  { title: 'Deep Work', author: 'Cal Newport', category: 'Productivity' },
+  { title: 'The Pragmatic Programmer', author: 'Hunt & Thomas', category: 'Technology' },
+  { title: 'Sapiens', author: 'Yuval Noah Harari', category: 'History' },
+];
+
+/** The list toolbar the way Reading and Projects & Goals build it: search grows, filters keep their width. */
+function ToolbarRowDemo() {
+  const [query, setQuery] = useState('');
+  const [category, setCategory] = useState('all');
+  const [sort, setSort] = useState('az');
+  const q = query.trim().toLowerCase();
+  const rows = TOOLBAR_BOOKS.filter(
+    (b) => (category === 'all' || b.category === category) && (!q || `${b.title} ${b.author}`.toLowerCase().includes(q))
+  ).sort((a, b) => (sort === 'az' ? a.title.localeCompare(b.title) : b.title.localeCompare(a.title)));
+  return (
+    <div className="space-y-3">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+        <ToolbarInput
+          type="search"
+          icon={Search}
+          aria-label="Search books"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search title or author"
+          wrapperClassName="sm:flex-1"
+        />
+        <div className="flex items-center gap-2">
+          <ToolbarSelect aria-label="Filter by category" value={category} onChange={(e) => setCategory(e.target.value)} wrapperClassName="flex-1 sm:w-44 sm:flex-none">
+            <option value="all">All categories</option>
+            {Array.from(new Set(TOOLBAR_BOOKS.map((b) => b.category))).map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </ToolbarSelect>
+          <ToolbarSelect aria-label="Sort books" value={sort} onChange={(e) => setSort(e.target.value)} wrapperClassName="flex-1 sm:w-36 sm:flex-none">
+            <option value="az">A to Z</option>
+            <option value="za">Z to A</option>
+          </ToolbarSelect>
+        </div>
+      </div>
+      <ul className="divide-y divide-overlay-subtle rounded-xl border border-overlay-subtle">
+        {rows.length === 0 ? (
+          <li className="p-3 text-sm text-content-muted">No books match.</li>
+        ) : (
+          rows.map((b) => (
+            <li key={b.title} className="flex items-center justify-between gap-3 p-3">
+              <span className="item-name truncate text-sm">{b.title}</span>
+              <span className="shrink-0 text-xs text-content-muted">{b.author}</span>
+            </li>
+          ))
+        )}
+      </ul>
+    </div>
+  );
+}
+
 export function FormsGroup() {
   return (
     <>
@@ -305,6 +366,10 @@ export function FormsGroup() {
 
       <Section id="dropdowns">
         <DropdownsDemo />
+      </Section>
+
+      <Section id="toolbar-row">
+        <ToolbarRowDemo />
       </Section>
 
       <Section id="form-errors">
