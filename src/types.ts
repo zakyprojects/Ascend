@@ -53,11 +53,9 @@ export interface UserStats {
   booksRead: number;
   skillsPracticedCount: number;
   season_history?: SeasonHistoryEntry[];
-  /** Last-30-days figures for the member card (lib/memberStats.ts). Missing from apps older than 2026-11-05. */
-  card?: MemberCard;
 }
 
-/** One of the member's most-done exercises in the card window, in its own unit (never added across units). */
+/** One of the member's most-done exercises this season, in its own unit (never added across units). */
 export interface MemberCardExercise {
   /** The newest spelling the member used, at most 40 characters. */
   name: string;
@@ -70,22 +68,31 @@ export interface MemberCardExercise {
 }
 
 /**
- * What another member's profile card shows, written by the member's own app into profiles.stats.card
- * (lib/memberStats.ts). Every figure covers the window `days` long ending on `asOf` (30 days, fewer for a
- * newer account). A module the member never used is left out; a used one with nothing in the window is
- * there with zeros. Aggregates only: no skill, habit or book names, no journal content, no bad habits.
+ * A member's card for the current season, computed on the server when the card is opened
+ * (ascend_member_card, read by lib/memberStats.ts toSeasonCard). Figures cover `from`..`asOf`
+ * (`days` long), day keys in the member's own timezone. A module the member never used is left out;
+ * a used one with nothing this season is there with zeros. Aggregates only: no skill, habit or book
+ * names, no journal content, no bad habits.
  */
 export interface MemberCard {
-  v: 1;
-  /** The member's local day the figures were built on. */
+  v: 2;
+  season: number;
+  /** The member's local today. */
   asOf: string;
+  /** First day counted: the season's first day, or the join day when later. */
+  from: string;
   days: number;
   /** Days with anything logged (habits, exercise, skills, reading, focus, journal). */
   active: number;
+  streak: { days: number; category: string };
+  today: { habitsDone: number };
+  /** ISO instants (UTC). */
+  seasonStart: string;
+  seasonEnd: string;
   habits?: { done: number; due: number };
   exercise?: MemberCardExercise[];
   skills?: { minutes: number; days: number };
-  /** pages only when every page log in the window was for a book counted in pages. */
+  /** pages only when every page log this season was for a book counted in pages. */
   reading?: { days: number; booksThisSeason: number; pages?: number };
   focus?: { minutes: number; sessions: number };
   journal?: { days: number };

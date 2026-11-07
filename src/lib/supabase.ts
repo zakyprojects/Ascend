@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
-import { ImprovementPlan, PartnerInvite, Partnership, AppState, SharedChallenge, UserPlanFollow, AppNotification, PlanReflectionNote } from '@/types';
-import { buildMemberStats } from './memberStats';
+import { ImprovementPlan, PartnerInvite, Partnership, AppState, SharedChallenge, UserPlanFollow, AppNotification, PlanReflectionNote, type MemberCard } from '@/types';
+import { buildMemberStats, toSeasonCard } from './memberStats';
 import { getSeasonStart, leagueNow } from './leagueTime';
 import { mergeAppState } from './stateMerger';
 import { reconcileSharedChallengeLifecycle } from './pactLifecycle';
@@ -676,6 +676,27 @@ export async function fetchProfileByUsernameFromSupabase(username: string) {
   } catch (e) {
     console.error('Error fetching profile by username from Supabase:', e);
     return null;
+  }
+}
+
+/**
+ * A member's card for the current season, computed by the server when it is asked
+ * (ascend_member_card). ok with card undefined: the server does not share it with this viewer
+ * (or there is no such member). Not ok: the call failed (offline, server error).
+ */
+export async function fetchMemberCardFromSupabase(
+  memberId: string
+): Promise<{ ok: true; card: MemberCard | undefined } | { ok: false }> {
+  if (!isSupabaseConfigured) return { ok: false };
+  // A guest row without a server account ('current_user') has no card to fetch.
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(memberId)) return { ok: true, card: undefined };
+  try {
+    const { data, error } = await supabase.rpc('ascend_member_card', { p_member: memberId });
+    if (error) return { ok: false };
+    return { ok: true, card: toSeasonCard(data) };
+  } catch (e) {
+    console.error('Error fetching member card from Supabase:', e);
+    return { ok: false };
   }
 }
 

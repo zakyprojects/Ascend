@@ -198,6 +198,7 @@ import {
   saveUserDataToSupabase,
   fetchLeagueBoardsFromSupabase,
   fetchProfileByUsernameFromSupabase,
+  fetchMemberCardFromSupabase,
   fetchPartnerInvitesSupabase,
   fetchPartnershipsSupabase,
   deletePartnershipSupabase,
@@ -8290,13 +8291,17 @@ export function useAppState() {
     if (!partnerUsername) return null;
     const profile = await fetchProfileByUsernameFromSupabase(partnerUsername);
     if (!profile) return null;
+    // Streak and today's habits come from the server's live count (ascend_member_card), so they are
+    // right even while the partner hasn't opened the app; the stats they last published are the fallback.
+    const fetched = profile.id ? await fetchMemberCardFromSupabase(profile.id) : null;
+    const card = fetched?.ok ? fetched.card : undefined;
     const rawStats = profile.stats || {};
     const habitsCompletedCount = rawStats.habitsCompletedCount || 0;
-    const habitsCompletedTodayCount = rawStats.habitsCompletedTodayCount || 0;
-    const streakDays = rawStats.streakDays || 0;
-    const currentStreakDays = rawStats.currentStreakDays ?? rawStats.streakDays ?? 0;
-    const currentStreakCategory = rawStats.currentStreakCategory ?? rawStats.streakSource ?? '';
-    const currentStreakIsActive = rawStats.currentStreakIsActive !== undefined
+    const habitsCompletedTodayCount = card ? card.today.habitsDone : rawStats.habitsCompletedTodayCount || 0;
+    const streakDays = card ? card.streak.days : rawStats.streakDays || 0;
+    const currentStreakDays = card ? card.streak.days : rawStats.currentStreakDays ?? rawStats.streakDays ?? 0;
+    const currentStreakCategory = card ? card.streak.category : rawStats.currentStreakCategory ?? rawStats.streakSource ?? '';
+    const currentStreakIsActive = card ? true : rawStats.currentStreakIsActive !== undefined
       ? rawStats.currentStreakIsActive
       : true;
     const bestStreakDays = rawStats.bestStreakDays ?? rawStats.streakDays ?? 0;
@@ -8315,7 +8320,7 @@ export function useAppState() {
       stats: {
         ...rawStats,
         streakDays,
-        streakSource: rawStats.streakSource,
+        streakSource: card ? (card.streak.days > 0 ? card.streak.category : undefined) : rawStats.streakSource,
         currentStreakDays,
         currentStreakCategory,
         currentStreakIsActive,
@@ -8759,7 +8764,7 @@ export function useAppState() {
         userPoints = calculatePeriodPoints(state.pointsHistory, start, now, state.totalPoints);
       }
 
-      // The same builder writes the profile other members read, so the own card never drifts from it.
+      // The same builder writes the profile's legacy stats; the card itself comes from the server (ascend_member_card).
       const userStats = {
         ...buildMemberStats(state, { today: todayKey(), seasonStartMs: getSeasonStart(now).getTime() }),
         // Own trophy cabinet: the same closed-season scores other members read from the profile.
