@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { HeartPulse, AlertTriangle, RefreshCw, Activity, PhoneCall, Play, Pause, RotateCcw, Trash2, Medal, Trophy, Crown, Check, Plus } from 'lucide-react';
+import { HeartPulse, AlertTriangle, RefreshCw, Activity, PhoneCall, Play, Pause, RotateCcw, Trash2, Medal, Trophy, Crown, Check, Plus, Pencil } from 'lucide-react';
 import { AppStore, CLEAR_CRAVING_LOGS_MAX } from '@/lib/store';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { useToast } from '@/components/ui/Toast';
@@ -14,7 +14,8 @@ import { HowItWorksButton, HowItWorksDialog, useHowItWorks } from '@/components/
 import { recoveryGuide } from '@/components/howItWorks/recovery';
 import { PageHero } from '@/components/ui/PageHero';
 import { CountUp, Reveal } from '@/components/ui/Motion';
-import { Dialog, EmptyState, Form, Input, PageColumns } from '@/components/ui/primitives';
+import { Dialog, EmptyState, Form, Input, PageColumns, useFormController } from '@/components/ui/primitives';
+import { toUserMessage } from '@/lib/userMessage';
 import { useUnsavedChanges } from '@/lib/unsavedChanges';
 import { TAP_TARGET, cx } from '@/components/ui/primitives/shared';
 import { trustedNow } from '@/lib/clock';
@@ -115,6 +116,29 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
     },
   });
   const setupForm = useUnsavedChanges(setupTrackerModalOpen, trackerTitle);
+
+  // Rename keeps the clock: start date, milestones and points stay (store.renameAddictionTracker).
+  const [renameOpen, setRenameOpen] = useState(false);
+  const [renameTitle, setRenameTitle] = useState('');
+  const renameForm = useUnsavedChanges(renameOpen, renameTitle);
+  const renameIssues = useFormController();
+  const openRename = () => {
+    setRenameTitle(tracker?.title ?? '');
+    setRenameOpen(true);
+  };
+  const handleRename = () => {
+    if (!renameTitle.trim()) {
+      renameIssues.showError('Fill in this field.', 'rename-tracker-title');
+      return;
+    }
+    try {
+      store.renameAddictionTracker(renameTitle);
+      setRenameOpen(false);
+      showSuccessToast('Tracker renamed', 'Your streak keeps going.');
+    } catch (err) {
+      renameIssues.showError(toUserMessage(err, "Couldn't rename the tracker. Try again."));
+    }
+  };
 
   // Every open starts clean.
   const openCravingModal = () => {
@@ -235,6 +259,13 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <h2 className="section-title">Milestones</h2>
                 <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={openRename}
+                    className="btn-ghost text-xs text-content-muted hover:text-content-secondary max-sm:px-2 max-sm:py-1"
+                  >
+                    <Pencil size={14} /> Rename
+                  </button>
                   <button
                     onClick={() => setResetConfirmOpen(true)}
                     className="btn-ghost text-xs text-content-muted hover:text-warning-text max-sm:px-2 max-sm:py-1"
@@ -492,6 +523,37 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
             autoComplete="off"
             enterKeyHint="done"
             required
+          />
+        </Form>
+      </Dialog>
+
+      <Dialog
+        open={renameOpen}
+        onClose={() => setRenameOpen(false)}
+        dirty={renameForm.dirty}
+        title="Rename tracker"
+        description="Your clock, milestones and points stay as they are."
+        footer={
+          <>
+            <button type="button" onClick={() => renameForm.confirmDiscard(() => setRenameOpen(false))} className="btn-secondary">
+              Cancel
+            </button>
+            <button type="submit" form="rename-tracker-form" className="btn-primary">
+              Save
+            </button>
+          </>
+        }
+      >
+        <Form id="rename-tracker-form" onSubmit={handleRename} controller={renameIssues}>
+          <Input
+            id="rename-tracker-title"
+            label="What are you stepping away from?"
+            value={renameTitle}
+            onChange={(e) => setRenameTitle(e.target.value)}
+            placeholder="e.g. Alcohol, Smoking, Junk food, Gambling"
+            maxLength={60}
+            autoComplete="off"
+            enterKeyHint="done"
           />
         </Form>
       </Dialog>
