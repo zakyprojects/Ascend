@@ -10,6 +10,7 @@ import { actionFeedback } from '@/lib/actionFeedback';
 import { nameTaken } from '@/lib/uniqueNames';
 import { SUBTASK_TITLE_MAX, subtaskTitleProblem } from '@/lib/itemEdits';
 import { toUserMessage } from '@/lib/userMessage';
+import { LazyReorderList, ReorderButton } from '@/components/ui/Reorder';
 
 const PRIORITY_DOT: Record<TaskPriority, string> = {
   high: 'bg-rose-500',
@@ -32,6 +33,7 @@ export function TaskRow({
   onAddSubtask,
   onDeleteSubtask,
   onRenameSubtask,
+  onReorderSubtasks,
   onOpenProject,
   onFocus,
   onEdit,
@@ -49,6 +51,8 @@ export function TaskRow({
   onDeleteSubtask: (subtask: TaskSubtask) => void;
   /** Renames a subtask; throws with the message to show (empty or taken title). */
   onRenameSubtask?: (subtaskId: string, title: string) => void;
+  /** Saves the subtasks in a new order (Reorder). */
+  onReorderSubtasks?: (ids: string[]) => void;
   onOpenProject: () => void;
   onFocus?: () => void;
   onEdit: () => void;
@@ -70,6 +74,8 @@ export function TaskRow({
 
   // One subtask's title being edited in place (Enter or Save keeps it, Esc or Cancel drops it).
   const [renaming, setRenaming] = useState<{ id: string; text: string; error: string | null } | null>(null);
+  // Reorder mode of the subtasks (the task's own list; done ones stay where they are put).
+  const [reorderingSubtasks, setReorderingSubtasks] = useState(false);
   const renameInputId = renaming ? `task-${task.id}-subtask-${renaming.id}-title` : '';
   const saveRename = () => {
     if (!renaming || !onRenameSubtask) return;
@@ -220,6 +226,29 @@ export function TaskRow({
 
             {expanded && (
               <div className="mt-2 space-y-1.5 border-l-2 border-overlay-default pl-3 animate-fade-in">
+                {reorderingSubtasks && !locked && onReorderSubtasks ? (
+                  <LazyReorderList
+                    label={`subtasks of "${task.title}"`}
+                    items={subtasks.map((st) => ({ id: st.id, title: st.title }))}
+                    onCancel={() => setReorderingSubtasks(false)}
+                    onDone={(ids) => {
+                      onReorderSubtasks(ids);
+                      setReorderingSubtasks(false);
+                    }}
+                  />
+                ) : (
+                <>
+                {!locked && onReorderSubtasks && subtasks.length >= 2 && (
+                  <div className="flex justify-end">
+                    <ReorderButton
+                      label={`subtasks of "${task.title}"`}
+                      onClick={() => {
+                        setRenaming(null);
+                        setReorderingSubtasks(true);
+                      }}
+                    />
+                  </div>
+                )}
                 {subtasks.map((st) =>
                   renaming?.id === st.id && !locked ? (
                     <div key={st.id}>
@@ -344,6 +373,8 @@ export function TaskRow({
                   </form>
                 )}
                 {!locked && subtaskError && <FieldErrorBubble id={`${newSubtaskId}-error`} message={subtaskError} />}
+                </>
+                )}
               </div>
             )}
           </div>

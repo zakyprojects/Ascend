@@ -80,7 +80,7 @@ import { findCuratedBook } from './books';
 import { uid, generateUUID, generateNumericUID, periodKey, todayKey, isPlanJourneyDoneThisPeriod, calculateActivePlanStreak, getWeekDates, parseDate, getNow, getNextDateKey, weekKey, addDays, formatWeekdayDate } from './dates';
 import { computeLinkedGoalProgress, linkedEntryPresent, linkedGoalCrossing, linkedItemExists, linkedGoalUnit } from './linkedGoalMetrics';
 import { autoStatusChanges } from './projectProgress';
-import { nextSequenceOrder, sameOrder, topStandaloneOrder } from './listOrder';
+import { applyListOrder, nextSequenceOrder, sameOrder, topStandaloneOrder } from './listOrder';
 import { adoptServerInviteId } from './partnerInvites';
 import { singleFlight } from './singleFlight';
 import { timezoneWaitHoldsPreview } from './useTimezoneWait';
@@ -7097,6 +7097,27 @@ export function useAppState() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  /**
+   * Puts a task's subtasks in the order of `ids` (Reorder). Subtasks `ids` does not name keep their
+   * place after the named ones; done states and the task's completion never change.
+   */
+  const reorderSubtasks = useCallback((taskId: string, ids: string[]) => {
+    setState(
+      (prev) => {
+        const target = prev.tasks.find((t) => t.id === taskId);
+        if (!target) return prev;
+        const current = (target.subtasks || []).map((st) => st.id);
+        const next = applyListOrder(target.subtasks || [], ids, (a, b) => current.indexOf(a.id) - current.indexOf(b.id), 'end');
+        if (sameOrder(current, next.map((st) => st.id))) return prev;
+        const stamp = trustedNow().toISOString();
+        return { ...prev, tasks: prev.tasks.map((t) => (t.id === taskId ? { ...t, subtasks: next, updatedAt: stamp } : t)) };
+      },
+      { immediate: true }
+    );
+    // False positive: setState is stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Automatic status (lib/projectProgress.ts): applied on every change to goals, projects or tasks,
   // whichever page, tab or device made it, so it never waits for the Projects page to open.
   // Waits for the server data, so a device cache or a failed read never flips a status.
@@ -10257,6 +10278,7 @@ export function useAppState() {
     addSubtask,
     deleteSubtask,
     renameSubtask,
+    reorderSubtasks,
     // Time Tracker Module Actions
     addTimeTrackerActivity,
     updateTimeTrackerActivity,
