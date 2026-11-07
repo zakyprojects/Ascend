@@ -206,6 +206,12 @@ const transport: import('../focusServerSession').FocusTransport = {
   call: async (fn, args) => (online ? { ok: true, reply: JSON.parse(JSON.stringify(server.call(fn, args))) } : { ok: false, missing: false }),
 };
 
+/** Last item (the app targets ES2020, so no Array.prototype.at). */
+const last = <T,>(xs: readonly T[]): T | undefined => xs[xs.length - 1];
+
+/** Read through a call so TS does not keep the `= null` narrowing after sync(). */
+const localOf = (d: Device) => d.local;
+
 /** A device: its own stored copy + queue under its own user key (the real app has one per browser). */
 class Device {
   constructor(public uid: string) {}
@@ -316,7 +322,7 @@ eq(Math.round(S.remainingSeconds(pc.local!, server.now)), 40 * 60, '2: 40 min le
 phone.start('b1', 25);
 await phone.sync();
 eq(phone.local?.id, 'a2', '3: phone start refused, shows the running session');
-eq((phone.notices.at(-1) as { kind: string })?.kind, 'replaced', '3: notice: not saved');
+eq((last(phone.notices) as { kind: string })?.kind, 'replaced', '3: notice: not saved');
 eq(server.row?.session_id, 'a2', '3: server keeps the first session');
 
 // --- 4. Logout pauses everywhere (queued pause of the signing-out device) ---
@@ -324,7 +330,7 @@ mem.set(S.focusStorageKey('pc'), JSON.stringify(pc.local));
 S.pauseStoredSessionsForSignOut(server.now);
 pc.local = S.parseSession(mem.get(S.focusStorageKey('pc'))!);
 assert(pc.local?.isPaused === true, '4: PC paused locally at sign-out');
-eq(S.readFocusOps('pc').at(-1)?.kind, 'pause', '4: sign-out pause queued for the server');
+eq(last(S.readFocusOps('pc'))?.kind, 'pause', '4: sign-out pause queued for the server');
 await X.flushOps(transport, 'pc', pc.local?.revision);
 await phone.sync();
 assert(phone.local?.isPaused === true, '4: phone shows Paused after the PC logout');
@@ -345,10 +351,10 @@ pc.start('c1', 50, 10);
 await pc.sync();
 server.now += 75 * MIN;
 await phone.sync();
-eq(phone.logs.at(-1)?.sessionId, 'c1', '5: phone (opened first) logs the finished session');
-eq(phone.logs.at(-1)?.activeMinutes, 50, '5: full plan');
-eq(phone.logs.at(-1)?.points, 5, '5: finish bonus (50 = 5 pts)');
-eq(phone.logs.at(-1)?.milestonesAt.length, 3, '5: milestones 25/35/45');
+eq(last(phone.logs)?.sessionId, 'c1', '5: phone (opened first) logs the finished session');
+eq(last(phone.logs)?.activeMinutes, 50, '5: full plan');
+eq(last(phone.logs)?.points, 5, '5: finish bonus (50 = 5 pts)');
+eq(last(phone.logs)?.milestonesAt.length, 3, '5: milestones 25/35/45');
 eq(phone.local, null, '5: break already over');
 const before = pc.logs.length;
 await pc.sync();
@@ -383,8 +389,8 @@ online = true;
 await pc.sync();
 await phone.sync();
 eq(server.row?.session_id, 'e1', '7: first upload wins');
-eq(phone.local?.id, 'e1', '7: phone follows the PC session');
-eq((phone.notices.at(-1) as { kind: string })?.kind, 'replaced', '7: phone notice');
+eq(localOf(phone)?.id, 'e1', '7: phone follows the PC session');
+eq((last(phone.notices) as { kind: string })?.kind, 'replaced', '7: phone notice');
 
 // --- 8. Adopting a session started before this build (no revision) ---
 server.now += 30 * MIN; // e1 finished
