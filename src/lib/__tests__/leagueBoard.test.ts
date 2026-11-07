@@ -6,6 +6,7 @@ import {
   getRegisteredCompetitors,
   setCachedLeaguePoints,
   setCachedProfiles,
+  setCachedSeasonPoints,
   toCompetitorStats,
 } from '../auth';
 import { getMonthPeriodId, getSeasonNumber, getWeekPeriodId, leagueNow } from '../leagueTime';
@@ -94,6 +95,25 @@ assert(boardMemberCount([member('a', 0.4), member('b', 0.5)]) === 1, 'rounded li
 
   const slim = parseLeagueBoards({ weekly: { period_id: W, points: [['a', 101]] }, monthly: { period_id: M, points: [] } }, true);
   assert(!!slim && slim.profiles === null && slim.points![W].a === 101 && Object.keys(slim.points![M]).length === 0, 'slim answer');
+  assert(slim!.seasonPoints === undefined, 'slim answer without a season board (older SQL) carries no season points');
+  const slimSeason = parseLeagueBoards(
+    { weekly: { period_id: W, points: [['a', 101]] }, monthly: { period_id: M, points: [['a', 260]] }, ninetyDay: { period_id: 'S:1', points: [['a', 260]] } },
+    true
+  );
+  assert(!!slimSeason && slimSeason.profiles === null && slimSeason.seasonPoints?.a === 260, 'slim answer with the season board');
+  const slimBadSeason = parseLeagueBoards(
+    { weekly: { period_id: W, points: [] }, monthly: { period_id: M, points: [] }, ninetyDay: { period_id: 'S:1', points: [['a', '1']] } },
+    true
+  );
+  assert(!!slimBadSeason && slimBadSeason.seasonPoints === undefined, 'malformed slim season board is ignored, week/month still apply');
+
+  // A live poll's season points move the season board; members missing from it read 0; the rest stays.
+  setCachedSeasonPoints({ a: 260 });
+  const liveSeason = getRegisteredCompetitors('ninetyDay', 'me', now);
+  assert(liveSeason.find((c) => c.id === 'a')!.points === 260, 'slim season points applied');
+  assert(liveSeason.find((c) => c.id === 'b')!.points === 0, 'member absent from the season board reads 0');
+  assert(getProfileSeasonPointsByUsername('YAHYA', 'ninetyDay', now) === 260, 'season points by username follow the poll');
+  assert(getRegisteredCompetitors('ninetyDay', 'me', now).length === season.length, 'member list unchanged by a slim poll');
 
   assert(parseLeagueBoards({}, true) === null, 'empty answer (no session) is a failure');
   assert(parseLeagueBoards(null, false) === null, 'null answer is a failure');

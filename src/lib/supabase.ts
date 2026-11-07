@@ -651,7 +651,8 @@ export async function sendDeviceTimezone(userId: string): Promise<boolean> {
 /**
  * Other members' league standings from one ascend_league_boards call. Full: every member (no stats
  * or past seasons; the profile dialog fetches those on tap) with season points, plus this week's and
- * month's points. Slim (the live poll): this week's and month's points only. Null on failure.
+ * month's points. Slim (the live poll): the same points (season's too when the server sends them)
+ * without the member list. Null on failure.
  */
 export async function fetchLeagueBoardsFromSupabase(slim: boolean): Promise<LeagueStandingsResult | null> {
   if (!isSupabaseConfigured) return null;

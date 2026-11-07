@@ -26,6 +26,14 @@ export function setCachedProfiles(profiles: any[]) {
   cachedProfiles = profiles;
 }
 
+/**
+ * A live poll's season points (member id -> points, 0 when absent) onto the cached member list;
+ * the list itself (who is a member, their profile fields) only changes on a full fetch.
+ */
+export function setCachedSeasonPoints(seasonPoints: Record<string, number>) {
+  cachedProfiles = cachedProfiles.map((p) => ({ ...p, season_points: seasonPoints[String(p?.id)] ?? 0 }));
+}
+
 /** Weekly/monthly league points per period id, then per member id (from ascend_league_boards). */
 let cachedLeaguePoints: Record<string, Record<string, number>> = {};
 

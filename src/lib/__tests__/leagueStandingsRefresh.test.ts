@@ -15,11 +15,13 @@ function setup() {
   const applied: LeagueStandingsResult[] = [];
   let members = [{ id: 'me' }, { id: 'a' }];
   let livePoints: Record<string, Record<string, number>> = { W: { me: 5, a: 3 }, M: { me: 9 } };
+  let liveSeason: Record<string, number> | undefined;
   const refresher = createLeagueStandingsRefresher({
     sessionUserId: async () => 'me',
     fetchBoards: async (slim) => {
       calls.push(slim ? 'slim' : 'full');
-      return slim ? { profiles: null, points: { ...livePoints } } : { profiles: members, points: { ...livePoints } };
+      if (!slim) return { profiles: members, points: { ...livePoints } };
+      return liveSeason ? { profiles: null, points: { ...livePoints }, seasonPoints: { ...liveSeason } } : { profiles: null, points: { ...livePoints } };
     },
     now: () => new Date(nowMs),
     isOnline: () => true,
@@ -32,6 +34,7 @@ function setup() {
     advance: (ms: number) => (nowMs += ms),
     setMembers: (m: { id: string }[]) => (members = m),
     setLive: (p: Record<string, Record<string, number>>) => (livePoints = p),
+    setSeason: (p: Record<string, number> | undefined) => (liveSeason = p),
   };
 }
 
@@ -75,6 +78,34 @@ const last = <T,>(xs: T[]) => xs[xs.length - 1];
     await t.refresher.refresh();
     assert(t.calls.slice(1).join() === 'slim,full', 'unknown member triggers the full set');
     assert(last(t.applied).profiles?.length === 3, 'new member list applied');
+  }
+
+  // A slim poll carries the season points through to apply; without them (older SQL) apply gets none.
+  {
+    const t = setup();
+    await t.refresher.refresh();
+    t.advance(MIN);
+    t.setSeason({ me: 10, a: 4 });
+    await t.refresher.refresh();
+    assert(t.calls.slice(1).join() === 'slim', 'season poll is still one slim call');
+    assert(last(t.applied).profiles === null && last(t.applied).seasonPoints?.a === 4, 'slim season points applied');
+    t.advance(MIN);
+    t.setSeason(undefined);
+    await t.refresher.refresh();
+    assert(t.calls.slice(2).join() === 'slim', 'poll without season is one slim call');
+    assert(last(t.applied).seasonPoints === undefined, 'no season points: the cached ones are kept');
+    assert(last(t.applied).points?.W.me === 5, 'week/month still applied without season');
+  }
+
+  // A member missing from the list shows up only on the season board: the full set is taken.
+  {
+    const t = setup();
+    await t.refresher.refresh();
+    t.advance(MIN);
+    t.setSeason({ me: 10, latecomer: 1 });
+    t.setMembers([{ id: 'me' }, { id: 'a' }, { id: 'latecomer' }]);
+    await t.refresher.refresh();
+    assert(t.calls.slice(1).join() === 'slim,full', 'unknown member on the season board triggers the full set');
   }
 
   // Sign-out forgets the full set: the next refresh is a full one.

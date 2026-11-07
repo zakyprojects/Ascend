@@ -140,6 +140,7 @@ import {
   updateProfileAcceptPartnerInvites,
   updateProfileNotificationPreferences,
   setCachedProfiles,
+  setCachedSeasonPoints,
   setCachedLeaguePoints,
   fetchProfileByUidFromSupabase,
 } from './auth';
@@ -2017,8 +2018,10 @@ export function useAppState() {
       fetchBoards: fetchLeagueBoardsFromSupabase,
       now: leagueNow,
       isOnline: () => typeof navigator === 'undefined' || navigator.onLine !== false,
-      apply: ({ profiles, points }) => {
+      apply: ({ profiles, points, seasonPoints }) => {
         if (profiles) setCachedProfiles(profiles);
+        // A live poll moves the season board with week and month (full sets carry it in profiles).
+        else if (seasonPoints) setCachedSeasonPoints(seasonPoints);
         if (points) setCachedLeaguePoints(points);
         setLeagueDataVersion((v) => v + 1);
       },

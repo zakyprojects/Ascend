@@ -4,8 +4,8 @@ import { getMonthPeriodId, getSeasonNumber, getWeekPeriodId } from './leagueTime
 const MIN_GAP_MS = 15_000;
 
 /**
- * A poll between full fetches asks only for this week's and month's points (the ones that move);
- * the member list and season points are fetched again when they are this old.
+ * A poll between full fetches asks only for the points (this week's, month's and season's); the
+ * member list is fetched again when it is this old.
  */
 const FULL_SET_MAX_AGE_MS = 10 * 60_000;
 
@@ -19,6 +19,11 @@ export interface LeagueStandingsResult {
   profiles: any[] | null;
   /** Weekly/monthly points: period id -> member id -> points (members with 0 are absent). */
   points: Record<string, Record<string, number>> | null;
+  /**
+   * Slim only: this season's points, member id -> points (members with 0 are absent). Absent when
+   * the server sent no season board (older SQL): the cached season points stay as they are.
+   */
+  seasonPoints?: Record<string, number> | null;
 }
 
 const BOARD_POINT_TYPES = ['weekly', 'monthly'] as const;
@@ -49,9 +54,11 @@ export function parseLeagueBoards(data: unknown, slim: boolean): LeagueStandings
     if (typeof periodId !== 'string' || !byId) return null;
     points[periodId] = byId;
   }
-  if (slim) return { profiles: null, points };
-
   const seasonPoints = pointsById(boards.ninetyDay?.points);
+  // Slim: the season board is optional (servers before 2026-11-07 send none, a malformed one is
+  // ignored), so the live week/month points still apply and the cached season points stay.
+  if (slim) return seasonPoints ? { profiles: null, points, seasonPoints } : { profiles: null, points };
+
   const members = boards.members;
   // A real member list always holds at least the signed-in member.
   if (!seasonPoints || !Array.isArray(members) || members.length === 0) return null;
@@ -62,7 +69,7 @@ export function parseLeagueBoards(data: unknown, slim: boolean): LeagueStandings
 export interface LeagueStandingsDeps {
   /** The signed-in member (guest included), or null with no session. */
   sessionUserId: () => Promise<string | null>;
-  /** Full: members + this week's, month's and season's points; slim: this week's and month's points. Null on failure. */
+  /** Full: members + this week's, month's and season's points; slim: the same points without the members (season optional). Null on failure. */
   fetchBoards: (slim: boolean) => Promise<LeagueStandingsResult | null>;
   now: () => Date;
   isOnline: () => boolean;
@@ -119,12 +126,16 @@ export function createLeagueStandingsRefresher(deps: LeagueStandingsDeps) {
         if (!live?.points) return;
         const merged = { ...knownPoints, ...live.points };
         // Someone new scored: the member list must include them, so take the full set this time.
-        const hasNewMember = Object.values(live.points).some((byUser) =>
+        const hasNewMember = [...Object.values(live.points), live.seasonPoints ?? {}].some((byUser) =>
           Object.keys(byUser).some((id) => !knownMemberIds.has(id))
         );
         if (!hasNewMember) {
           knownPoints = merged;
-          deps.apply({ profiles: null, points: merged });
+          deps.apply(
+            live.seasonPoints
+              ? { profiles: null, points: merged, seasonPoints: live.seasonPoints }
+              : { profiles: null, points: merged }
+          );
           lastSuccessMs = now.getTime();
           succeeded = true;
           return;
