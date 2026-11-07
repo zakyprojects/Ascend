@@ -101,6 +101,7 @@ import { editWorkoutIn, renameBadHabitIn, renameHabitIn, renameSkillIn, renameSu
 import { editDecisionText, editEmotionNote, editFocusLogText } from './pfcLogEdits';
 import { pauseStoredSessionsForSignOut } from './focusSession';
 import { computeTimeTrackerAward, timeTrackerAwardId, timeTrackerGraceDay } from './timeTrackerAwards';
+import { planTemplateEditReach, templateEditReachDays, newLinkedBlockId } from './timeTrackerTemplateReach';
 import {
   countedGoalRefs,
   heldCountedGoals,
@@ -9164,19 +9165,69 @@ export function useAppState() {
     []
   );
 
+  /** The time tracker with one template edited (weekdays it takes leave every other template). */
+  const withTemplateEdited = (
+    currentTT: TimeTrackerState,
+    id: string,
+    updates: Partial<TimeTrackerTemplate>,
+    nowIso: string
+  ): TimeTrackerState | null => {
+    const target = (currentTT.templates || []).find((t) => t.id === id);
+    if (!target) return null;
+    const daysGiven = updates.activeDays !== undefined || updates.autoApplyDays !== undefined;
+    const nextDays = daysGiven ? templateDays({ activeDays: updates.activeDays || [], autoApplyDays: updates.autoApplyDays }) : templateDays(target);
+    const updated: TimeTrackerTemplate = { ...target, ...updates, activeDays: nextDays, autoApplyDays: nextDays, id: target.id, updatedAt: nowIso };
+    const templates = withoutDaysElsewhere(currentTT.templates || [], nextDays, id, nowIso).map((t) => (t.id === id ? updated : t));
+    return { ...currentTT, templates };
+  };
+
+  /**
+   * Which saved days (today and later) an edit to a template would reach: `auto` days update on
+   * their own; `asked` days were changed by hand, so the editor asks first.
+   */
+  const previewTemplateEditReach = useCallback(
+    (id: string, updates: Partial<TimeTrackerTemplate>): { autoDates: string[]; askDates: string[] } => {
+      const currentTT = get().timeTracker || DEFAULT_TIME_TRACKER_STATE;
+      const nextTT = withTemplateEdited(currentTT, id, updates, trustedNow().toISOString());
+      if (!nextTT) return { autoDates: [], askDates: [] };
+      const plans = planTemplateEditReach(currentTT, nextTT, id, todayKey(), trustedNow().getTime());
+      return {
+        autoDates: plans.filter((p) => p.kind === 'auto').map((p) => p.dateKey),
+        askDates: plans.filter((p) => p.kind === 'ask').map((p) => p.dateKey),
+      };
+    },
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    []
+  );
+
+  /**
+   * Saves a template edit. A change to its blocks also reaches today and saved later days that
+   * the template fills: what is done, skipped, running or past stays; the rest of the day follows
+   * the template. Days changed by hand are updated only with `updateAsked` ("Update and save").
+   */
   const updateTimeTrackerTemplate = useCallback(
-    (id: string, updates: Partial<TimeTrackerTemplate>) => {
-      const nowIso = trustedNow().toISOString();
-      setState((prev) => {
-        const currentTT = prev.timeTracker || DEFAULT_TIME_TRACKER_STATE;
-        const target = (currentTT.templates || []).find((t) => t.id === id);
-        if (!target) return prev;
-        const daysGiven = updates.activeDays !== undefined || updates.autoApplyDays !== undefined;
-        const nextDays = daysGiven ? templateDays({ activeDays: updates.activeDays || [], autoApplyDays: updates.autoApplyDays }) : templateDays(target);
-        const updated: TimeTrackerTemplate = { ...target, ...updates, activeDays: nextDays, autoApplyDays: nextDays, id: target.id, updatedAt: nowIso };
-        const templates = withoutDaysElsewhere(currentTT.templates || [], nextDays, id, nowIso).map((t) => (t.id === id ? updated : t));
-        return { ...prev, timeTracker: { ...currentTT, templates } };
-      });
+    (id: string, updates: Partial<TimeTrackerTemplate>, options?: { updateAsked?: boolean }) => {
+      setState(
+        (prev) => {
+          const nowIso = trustedNow().toISOString();
+          const currentTT = prev.timeTracker || DEFAULT_TIME_TRACKER_STATE;
+          const nextTT = withTemplateEdited(currentTT, id, updates, nowIso);
+          if (!nextTT) return prev;
+          const today = todayKey();
+          // Planned inside the update, so a tick that lands while the editor is open is kept.
+          const plans = planTemplateEditReach(currentTT, nextTT, id, today, trustedNow().getTime());
+          const days = templateEditReachDays(currentTT, plans, !!options?.updateAsked, today);
+          if (Object.keys(days).length === 0) return { ...prev, timeTracker: nextTT };
+          const committed = commitTimeTrackerDays(nextTT, days, nowIso);
+          return {
+            ...prev,
+            timeTracker: committed,
+            ...(days[today] ? recomputeTimeTrackerDailyPointsForState(prev, today, committed.dailyLogs[today]) : {}),
+          };
+        },
+        { immediate: true }
+      );
     },
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -10001,8 +10052,9 @@ export function useAppState() {
   ): { blocks: TimeTrackerBlock[]; added: number; rejected: number } | null => {
     const template = (tt.templates || []).find((t) => t.id === templateId);
     if (!template) return null;
+    // Linked to the template block (salted, never an id seen before), so a later template edit reaches it.
     const fresh = (b: TimeTrackerBlock): TimeTrackerBlock => ({
-      id: uid(),
+      id: b.id ? newLinkedBlockId(dateKey, template.id, b.id) : uid(),
       createdAt: trustedNow().toISOString(),
       startTime: b.startTime,
       endTime: b.endTime,
@@ -10285,6 +10337,7 @@ export function useAppState() {
     deleteTimeTrackerActivity,
     createTimeTrackerTemplate,
     updateTimeTrackerTemplate,
+    previewTemplateEditReach,
     deleteTimeTrackerTemplate,
     restoreTimeTrackerTemplate,
     toggleTemplateAutoApplyDay,
