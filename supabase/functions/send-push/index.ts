@@ -47,6 +47,18 @@ const PAGE_BY_TYPE: Record<string, string> = {
   sunday_planning: '/weekly-goals',
 };
 
+/**
+ * The address a tap opens. A Sunday planning notice opens the week it plans
+ * (`/weekly-goals?week=<payload.planWeekKey>`, the app's week key; the app opens this week for a
+ * past or unknown key); without a well-formed key it opens /weekly-goals as before.
+ */
+function urlFor(notice: { type: string; payload?: unknown }): string {
+  const page = PAGE_BY_TYPE[notice.type] ?? '/dashboard';
+  if (notice.type !== 'sunday_planning') return page;
+  const key = (notice.payload as { planWeekKey?: unknown } | null | undefined)?.planWeekKey;
+  return typeof key === 'string' && /^\d{4}-W(0[1-9]|[1-4]\d|5[0-3])$/.test(key) ? `${page}?week=${encodeURIComponent(key)}` : page;
+}
+
 const env = (name: string): string => {
   const value = Deno.env.get(name);
   if (!value) throw new Error(`Missing secret ${name}`);
@@ -133,7 +145,7 @@ Deno.serve(async (req) => {
   const { data: notice, error } = await readWithRetry('notification', { notification_id: noticeId }, () =>
     db
       .from('notifications')
-      .select('id, recipient_id, type, title, message, read, created_at')
+      .select('id, recipient_id, type, title, message, read, created_at, payload')
       .eq('id', noticeId)
       .maybeSingle()
   );
@@ -152,7 +164,7 @@ Deno.serve(async (req) => {
     id: notice.id,
     title: notice.title || 'AscendDay',
     body: notice.message || '',
-    url: PAGE_BY_TYPE[notice.type] ?? '/dashboard',
+    url: urlFor(notice),
   });
 
   let sent = 0;
