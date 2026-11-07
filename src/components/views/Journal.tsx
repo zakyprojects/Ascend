@@ -395,6 +395,15 @@ export function Journal({ store }: { store: AppStore }) {
                       <Edit3 size={14} />
                       <span>Edit</span>
                     </button>
+                    <button
+                      type="button"
+                      onClick={() => setDeleteModalEntry(existingToday)}
+                      aria-label="Delete today's entry"
+                      className="btn-danger text-xs px-3 py-1.5"
+                    >
+                      <Trash2 size={14} />
+                      <span>Delete</span>
+                    </button>
                   </div>
                 </div>
                 <p className="text-sm text-content-secondary leading-relaxed whitespace-pre-wrap" dir="auto">
