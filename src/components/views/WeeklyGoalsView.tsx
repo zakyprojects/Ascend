@@ -28,12 +28,25 @@ import { ReflectionsCard } from '@/components/weekly/ReflectionsCard';
 import { CarryOverCard, type UnfinishedGoal } from '@/components/weekly/CarryOverCard';
 import { deletedLinkNoun, heldWeekGoals, isGoalAchieved, isLinkedGoal, pointsLostOnDelete, recordedProgress, weekLabel, weekLabelInline, weekPointsFromLedger } from '@/components/weekly/weekMeta';
 import type { View } from '@/lib/views';
+import { WEEK_PARAM, weekFromParam } from '@/lib/weekParam';
 
 const TREND_WEEKS = 8;
 const CARRY_OVER_LOOKBACK_WEEKS = 4;
 const WEEK_POINTS_MAX = WEEKLY_GOALS_POINTS.maxWeeklyPoints + WEEKLY_REFLECTION_POINTS.awarded;
 
-export function WeeklyGoalsView({ store, onNavigate }: { store: AppStore; onNavigate: (view: View) => void }) {
+export function WeeklyGoalsView({
+  store,
+  onNavigate,
+  search = '',
+  onWeekParamHandled,
+}: {
+  store: AppStore;
+  onNavigate: (view: View) => void;
+  /** The page's query; `?week=<key>` opens that week once (lib/weekParam). */
+  search?: string;
+  /** Takes `?week=` off the address once it has been read (stable callback). */
+  onWeekParamHandled?: () => void;
+}) {
   const guide = useHowItWorks();
   const { showErrorToast, showSuccessToast } = useToast();
   const { isKeyLoading, executeWithKey } = useAsyncActionKey();
@@ -191,6 +204,30 @@ export function WeeklyGoalsView({ store, onNavigate }: { store: AppStore; onNavi
       showSuccessToast('Goal deleted', undefined, `weekly_goal_${goalId}`);
     });
   };
+  // `?week=<key>` (the Sunday planning notice, also with the page already open): shows that week
+  // once (a past or unreadable key: this week), then leaves the address, so reload and back stay
+  // put. Not while the goal form or the delete dialog is open: a save there would land in the
+  // other week. Unsaved typing (a reflection) or Reorder moves ask first, like the week arrows.
+  const requestedWeek = new URLSearchParams(search).get(WEEK_PARAM);
+  const handledWeekRef = useRef<string | null>(null);
+  const goalDialogOpen = formOpen || Boolean(deletingGoal);
+  useEffect(() => {
+    if (requestedWeek === null) {
+      handledWeekRef.current = null;
+      return;
+    }
+    if (handledWeekRef.current === requestedWeek) return;
+    handledWeekRef.current = requestedWeek;
+    const target = weekFromParam(requestedWeek, currentWeekKey);
+    if (!goalDialogOpen && target !== selectedWeekKey) {
+      confirmLeave(() => {
+        setReorderWeek(null);
+        setSelectedWeekKey(target);
+      });
+    }
+    onWeekParamHandled?.();
+  }, [requestedWeek, currentWeekKey, selectedWeekKey, goalDialogOpen, onWeekParamHandled]);
+
   const deletePoints = deletingGoal && !isFutureWeek ? pointsLostOnDelete(allWeekGoals, deletingGoal.id, heldGoals) : 0;
   const deleteDescription = deletingGoal
     ? [

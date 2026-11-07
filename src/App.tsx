@@ -1,4 +1,4 @@
-import { Suspense, lazy, useEffect, useLayoutEffect, useRef, useState, type ComponentType } from 'react';
+import { Suspense, lazy, useCallback, useEffect, useLayoutEffect, useRef, useState, type ComponentType } from 'react';
 import { useAppState } from '@/lib/store';
 import { useViewRoute } from '@/lib/useViewRoute';
 import { confirmLeave } from '@/lib/unsavedChanges';
@@ -8,6 +8,7 @@ import type { View } from '@/lib/views';
 import { isSupabaseConfigured, storedAuthSession } from '@/lib/supabase';
 import { reloadOnceForStaleChunk } from '@/lib/chunkReload';
 import { syncPushSubscription } from '@/lib/push';
+import { WEEK_PARAM } from '@/lib/weekParam';
 import { AppShell } from '@/components/AppShell';
 import { FocusSessionProvider } from '@/components/pfc/FocusSessionProvider';
 import {
@@ -253,6 +254,16 @@ function App() {
     goToPath(pathForView(view) + (rest ? `?${rest}` : '') + window.location.hash, { replace: true });
   }, [quickLogLaunch, search, view, goToPath]);
 
+  // Weekly Goals took `?week=` (lib/weekParam): it leaves the address in place, so a reload or
+  // back never opens that week again; the rest of the query and the hash stay.
+  const clearWeekParam = useCallback(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (!params.has(WEEK_PARAM)) return;
+    params.delete(WEEK_PARAM);
+    const rest = params.toString();
+    goToPath(window.location.pathname + (rest ? `?${rest}` : '') + window.location.hash, { replace: true });
+  }, [goToPath]);
+
   // A notification tapped while Ascend is open: public/sw.js focuses this window and posts the
   // notification's url (a push's page, the focus timer's PFC page); open that page here, query
   // included (`/weekly-goals?week=2026-W46`; on the page already on show it is handed over in
@@ -330,7 +341,9 @@ function App() {
                   {view === 'dashboard' && <Dashboard store={store} onViewChange={setView} onOpenAuth={openAuth} />}
                   {view === 'habits' && <HabitTracker store={store} />}
                   {view === 'time-tracker' && <TimeTrackerView store={store} onNavigate={setView} />}
-                  {view === 'weekly-goals' && <WeeklyGoalsView store={store} onNavigate={setView} />}
+                  {view === 'weekly-goals' && (
+                    <WeeklyGoalsView store={store} onNavigate={setView} search={search} onWeekParamHandled={clearWeekParam} />
+                  )}
                   {view === 'projects-goals' && (
                     <ProjectsGoalsView
                       store={store}
