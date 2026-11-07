@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react';
 import { AppLockup } from '@/components/ui/AppLogo';
-import { Ember, EmberFocus, EmberPhase, EmberRoute } from './Ember';
+import { Ember, EmberFocus, EmberGoogle, EmberPhase, EmberRoute } from './Ember';
 
 export type ClimbPanelMode = 'login' | 'signup' | 'signup-choice' | 'upgrade';
 export type ClimbPanelSide = 'left' | 'right';
@@ -22,6 +22,8 @@ export interface ClimbPanelProps {
   errorTick?: number;
   /** An error is showing and no field has changed since: Ember keeps its worried face. */
   upset?: boolean;
+  /** "Continue with Google" is being considered ('intent') or the page is opening it ('leaving'). */
+  google?: EmberGoogle;
   /** The side of the page the panel sits on; its slanted edge faces the form on the other side. */
   side: ClimbPanelSide;
   className?: string;
@@ -82,6 +84,7 @@ export function ClimbPanel({
   passwordVisible = false,
   errorTick = 0,
   upset = false,
+  google = null,
   side,
   className = '',
 }: ClimbPanelProps) {
@@ -135,6 +138,7 @@ export function ClimbPanel({
           upset={upset}
           progress={progress}
           hoverTrail={mode === 'signup-choice' ? hoverTrail : null}
+          google={google}
           badge={mode === 'signup' && avatar ? avatar : undefined}
           className="shrink-0 w-24 sm:w-28 lg:w-52"
         />

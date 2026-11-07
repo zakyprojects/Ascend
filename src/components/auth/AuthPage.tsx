@@ -70,6 +70,7 @@ function panelState(screen: AuthScreen, climb: AuthClimbState | null) {
       passwordVisible: climb.passwordVisible,
       errorTick,
       upset: climb.upset,
+      google: climb.google,
     };
   }
   const mode: ClimbPanelMode = screen === 'signup' ? 'signup-choice' : screen;
@@ -84,6 +85,7 @@ function panelState(screen: AuthScreen, climb: AuthClimbState | null) {
     passwordVisible: false,
     errorTick,
     upset: false,
+    google: null,
   };
 }
 
@@ -243,6 +245,7 @@ export function AuthPage({ screen, search, guestState, onAuthSuccess, onDone, on
           passwordVisible={panel.passwordVisible}
           errorTick={panel.errorTick}
           upset={panel.upset}
+          google={panel.google}
           side={side}
           className="auth-swap auth-band h-full lg:min-h-0"
         />

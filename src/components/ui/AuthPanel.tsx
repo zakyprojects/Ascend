@@ -87,6 +87,8 @@ export type AuthScreen = 'login' | 'signup-choice' | 'signup-form' | 'upgrade';
  * - passwordVisible: the focused password field shows its text (show/hide toggle).
  * - errorTick: goes up by one each time the form shows an error message.
  * - upset: an error was shown and the user has not changed any field since (or left the screen).
+ * - google: "Continue with Google" is hovered (after GOOGLE_HOVER_MS) or keyboard-focused or touched
+ *   ('intent'), or the page is opening Google ('leaving'); null elsewhere.
  */
 export type AuthFocus = 'email' | 'password' | 'confirm' | 'username' | null;
 
@@ -102,7 +104,11 @@ export interface AuthClimbState {
   passwordVisible: boolean;
   errorTick: number;
   upset: boolean;
+  google: 'intent' | 'leaving' | null;
 }
+
+/** A mouse resting on "Continue with Google" this long counts as intent (passing over it does not). */
+const GOOGLE_HOVER_MS = 120;
 
 /**
  * Guest: a profile with no account behind it. Lucide's circle-user-round with the outer ring dashed
@@ -294,6 +300,21 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
   // "Continue with Google": its own error (also when Google sent the page back with one) and busy state.
   const [googleError, setGoogleError] = useState(() => takeGoogleSignInError() ?? '');
   const [googleLoading, setGoogleLoading] = useState(false);
+  // For the page's mascot: the user is considering "Continue with Google" (hover, keyboard focus, touch).
+  const [googleIntent, setGoogleIntent] = useState(false);
+  const googleHoverTimer = useRef<number | undefined>(undefined);
+  useEffect(() => () => window.clearTimeout(googleHoverTimer.current), []);
+  // Supabase starts the trip to Google with location.assign and returns at once, so the button
+  // stays busy until the page leaves; a Back from Google (page restored from cache) frees it.
+  useEffect(() => {
+    const onPageShow = (e: PageTransitionEvent) => {
+      if (!e.persisted) return;
+      setGoogleLoading(false);
+      setGoogleIntent(false);
+    };
+    window.addEventListener('pageshow', onPageShow);
+    return () => window.removeEventListener('pageshow', onPageShow);
+  }, []);
   const [successMsg, setSuccessMsg] = useState('');
   const [loading, setLoading] = useState(false);
   // True once the current request has run for SLOW_HINT_MS; reset when it ends.
@@ -401,6 +422,9 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
   useEffect(() => {
     setFocus(null);
     setErrorInputs(null);
+    // The button that had the pointer may be gone without a pointerleave.
+    window.clearTimeout(googleHoverTimer.current);
+    setGoogleIntent(false);
   }, [screen]);
 
   // With a mouse/trackpad each form screen (first shown, or switched to: log in, sign up, forgot,
@@ -440,7 +464,11 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
       setFocus(null);
     },
     onSelect: (event: React.SyntheticEvent<HTMLFormElement>) => trackCaret(event.target),
-    onInput: (event: React.FormEvent<HTMLFormElement>) => trackCaret(event.target),
+    onInput: (event: React.FormEvent<HTMLFormElement>) => {
+      trackCaret(event.target);
+      // Typing takes the mascot's eyes back to the field, even with the mouse still on Google.
+      setGoogleIntent(false);
+    },
   };
 
   // Live username availability check
@@ -512,6 +540,8 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
     shownFocus === 'password' ? shownPasswords.password : shownFocus === 'confirm' ? shownPasswords.confirm : false;
   const shownCaret = shownFocus === 'email' || shownFocus === 'username' ? caret : 0;
   const upset = phase === 'idle' && errorInputs !== null && errorInputs === inputsKey;
+  const googleShown = (screen === 'login' && !forgot) || screen === 'signup-choice';
+  const google: AuthClimbState['google'] = !googleShown ? null : googleLoading ? 'leaving' : googleIntent ? 'intent' : null;
 
   // Report the climb state upward. The callback lives in a ref so a new function from the parent
   // on every render never re-fires this (no render loops); only real changes do.
@@ -532,8 +562,9 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
       passwordVisible,
       errorTick,
       upset,
+      google,
     });
-  }, [screen, progress, steps, phase, shownTrail, previewUsername, previewAvatar, shownFocus, shownCaret, passwordVisible, errorTick, upset]);
+  }, [screen, progress, steps, phase, shownTrail, previewUsername, previewAvatar, shownFocus, shownCaret, passwordVisible, errorTick, upset, google]);
 
   /** Shows the success screen, then runs `next`. Reduced motion skips straight to `next`. */
   const finishWithSuccess = async (title: string, next: () => void) => {
@@ -558,7 +589,36 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
     } catch (err: unknown) {
       setGoogleError(toUserMessage(err, 'Couldn’t open Google sign-in. Try again.'));
       setGoogleLoading(false);
+      setGoogleIntent(false);
+      noteError();
     }
+  };
+
+  // Both Google buttons tell the mascot when the user is considering them.
+  const considerGoogle = () => {
+    if (!loading && !googleLoading) setGoogleIntent(true);
+  };
+  const leaveGoogle = () => {
+    window.clearTimeout(googleHoverTimer.current);
+    setGoogleIntent(false);
+  };
+  const googleIntentHandlers = {
+    'data-ember-target': 'google',
+    onPointerEnter: (event: React.PointerEvent<HTMLButtonElement>) => {
+      if (event.pointerType === 'touch') return;
+      window.clearTimeout(googleHoverTimer.current);
+      googleHoverTimer.current = window.setTimeout(considerGoogle, GOOGLE_HOVER_MS);
+    },
+    onPointerDown: (event: React.PointerEvent<HTMLButtonElement>) => {
+      if (event.pointerType === 'touch') considerGoogle();
+    },
+    onPointerLeave: leaveGoogle,
+    onPointerCancel: leaveGoogle,
+    // Keyboard focus only: a mouse click's focus is already covered by the hover.
+    onFocus: (event: React.FocusEvent<HTMLButtonElement>) => {
+      if (event.currentTarget.matches(':focus-visible')) considerGoogle();
+    },
+    onBlur: leaveGoogle,
   };
 
   const googleButton = (
@@ -567,6 +627,7 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
         type="button"
         onClick={handleGoogleSignIn}
         disabled={loading || googleLoading}
+        {...googleIntentHandlers}
         className="w-full h-11 bg-bg-700 hover:bg-bg-600 border border-overlay-default text-content-primary font-medium text-sm rounded-xl transition-colors duration-base flex items-center justify-center gap-2.5 disabled:opacity-50 disabled:cursor-default"
       >
         {googleLoading ? (
@@ -783,6 +844,7 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
     setResendError(null);
     setLoginStep('forgot');
     setFocus(null);
+    leaveGoogle();
   };
   const closeForgot = () => {
     setSlide('left');
@@ -1005,6 +1067,7 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
                   type="button"
                   onClick={handleGoogleSignIn}
                   disabled={loading || googleLoading}
+                  {...googleIntentHandlers}
                   className="group w-full p-4 bg-bg-700 hover:bg-bg-600 border border-overlay-default text-content-primary rounded-xl transition-colors duration-base flex items-center gap-3 text-left disabled:opacity-50"
                 >
                   <span className="w-9 h-9 shrink-0 rounded-lg bg-bg-800 border border-overlay-subtle flex items-center justify-center">

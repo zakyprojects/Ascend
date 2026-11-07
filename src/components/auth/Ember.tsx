@@ -4,6 +4,8 @@ import { useReducedMotion } from '@/lib/motion';
 export type EmberPhase = 'idle' | 'submitting' | 'success';
 export type EmberRoute = 'account' | 'guest';
 export type EmberFocus = 'email' | 'password' | 'confirm' | 'username' | null;
+/** "Continue with Google": 'intent' while it is hovered or focused, 'leaving' while the page opens Google. */
+export type EmberGoogle = 'intent' | 'leaving' | null;
 
 export interface EmberProps {
   /** Where the form sits next to the panel on the desktop split; below lg the form is always below. */
@@ -23,6 +25,8 @@ export interface EmberProps {
   progress: number;
   /** Signup choice: the option the pointer or focus is on. */
   hoverTrail: EmberRoute | null;
+  /** The "Continue with Google" button (the element marked `data-ember-target="google"`). */
+  google?: EmberGoogle;
   /** Signup form: the chosen avatar, held up on a badge. */
   badge?: string;
   className?: string;
@@ -78,7 +82,7 @@ function handAt(pose: ArmPose) {
 }
 
 const COVER = reach(EYE_L.x, EYE_L.y);
-const ARM = {
+export const ARM = {
   rest: { angle: 10, length: COVER.length * 0.68 },
   cover: COVER,
   /** One hand drops to the cheek; the eye above it peeks out. */
@@ -86,6 +90,10 @@ const ARM = {
   cheer: { angle: 172, length: COVER.length * 1.24 },
   eager: { angle: 64, length: COVER.length },
   badge: { angle: 98, length: COVER.length * 0.9 },
+  /** One hand out to the side, "this way" (Google intent). */
+  point: { angle: 78, length: COVER.length },
+  /** One hand up beside the head, waving goodbye (leaving for Google). */
+  wave: { angle: 145, length: COVER.length * 1.1 },
 } satisfies Record<string, ArmPose>;
 
 const BADGE_HAND = handAt(ARM.badge);
@@ -109,9 +117,13 @@ interface Pose {
   badge: boolean;
   /**
    * Where the pupils look: -1..1 each way, 'pointer' to follow the mouse, or 'field' to look at the
-   * focused input on screen (at the caret), wherever the form sits relative to Ember.
+   * focused input on screen (at the caret), wherever the form sits relative to Ember, or 'google' to
+   * look at the "Continue with Google" button.
    */
-  gaze: { x: number; y: number } | 'pointer' | 'field';
+  gaze: { x: number; y: number } | 'pointer' | 'field' | 'google';
+  /** One-offs on entering the pose: a wink of the eye nearest the form, a wave of the form-side hand. */
+  wink: boolean;
+  wave: boolean;
 }
 
 const SPLIT_QUERY = '(min-width: 1024px)';
@@ -131,8 +143,13 @@ function useMedia(query: string): boolean {
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 
-function poseFor(
-  p: Pick<EmberProps, 'phase' | 'focus' | 'caret' | 'passwordVisible' | 'hoverTrail' | 'badge'>,
+/**
+ * The pose for the form's state, highest first: success > submitting > leaving for Google > password
+ * covered > password shown > Google intent > text focus > choice hovers > idle. The hands never
+ * leave the eyes for Google intent while a hidden password has focus.
+ */
+export function poseFor(
+  p: Pick<EmberProps, 'phase' | 'focus' | 'caret' | 'passwordVisible' | 'hoverTrail' | 'badge' | 'google'>,
   worried: boolean,
   split: boolean,
   finePointer: boolean,
@@ -155,6 +172,8 @@ function poseFor(
     mouth: 'smile',
     badge: false,
     gaze: split && finePointer ? 'pointer' : { x: 0, y: 0 },
+    wink: false,
+    wave: false,
   };
   let pose: Pose = base;
 
@@ -165,6 +184,18 @@ function poseFor(
     pose = { ...base, left: ARM.cheer, right: ARM.cheer, tilt: 0, faceBias: 0, eyes: 'happy', mouth: 'open', gaze: { x: 0, y: -0.9 } };
   } else if (p.phase === 'submitting') {
     pose = { ...base, tilt: fx * 9, faceBias: fx * 3, brows: 'raised', mouth: 'o', gaze: { x: fx * 0.3, y: -1 } };
+  } else if (p.google === 'leaving') {
+    // Off to Google: happy eyes, and the form-side hand waves goodbye.
+    pose = {
+      ...base,
+      ...(formHandRight ? { right: ARM.wave } : { left: ARM.wave }),
+      tilt: fx * 4,
+      faceBias: fx * 2,
+      eyes: 'happy',
+      mouth: 'open',
+      gaze: { x: fx * 0.3, y: -0.3 },
+      wave: true,
+    };
   } else if (passwordFocus && !p.passwordVisible) {
     pose = { ...base, left: ARM.cover, right: ARM.cover, tilt: -fx * 3, faceBias: 0, faceFollow: false, gaze: { x: 0, y: 0 } };
   } else if (passwordFocus) {
@@ -177,6 +208,18 @@ function poseFor(
       faceFollow: false,
       mouth: 'o',
       gaze: split ? 'field' : { x: 0.2, y: 0.9 },
+    };
+  } else if (p.google === 'intent') {
+    // Considering Google: look at the button, lean toward it, a "this way" hand and a wink.
+    const lean = split ? fx : 0.5;
+    pose = {
+      ...base,
+      ...(formHandRight ? { right: ARM.point } : { left: ARM.point }),
+      tilt: lean * 6,
+      faceBias: lean * 3,
+      brows: 'raised',
+      gaze: 'google',
+      wink: true,
     };
   } else if (textFocus) {
     // Left at the start of the field, right at the end, with the range shifted toward the form.
@@ -201,7 +244,7 @@ function poseFor(
   }
 
   // Signup form: the avatar badge goes in the form-side hand while that hand is free.
-  const handsBusy = p.phase === 'success' || passwordFocus;
+  const handsBusy = p.phase === 'success' || passwordFocus || p.google === 'leaving';
   if (p.badge && !handsBusy) {
     pose = { ...pose, badge: true, ...(formHandRight ? { right: ARM.badge } : { left: ARM.badge }) };
   }
@@ -220,6 +263,8 @@ const EASE_SPRING = 'cubic-bezier(0.34, 1.36, 0.64, 1)';
 const GAZE_T = `transform 150ms ${EASE_OUT}`;
 const POSE_T = `transform 320ms ${EASE_SPRING}`;
 const FADE_T = 'opacity 140ms linear';
+/** At most one Google wink in this long, so hovering in and out does not wink every time. */
+const WINK_COOLDOWN_MS = 1500;
 
 const origin = (x: number, y: number) => `${x}px ${y}px`;
 
@@ -231,21 +276,26 @@ function armStyle(pose: ArmPose): CSSProperties {
   };
 }
 
-/** One arm, drawn for the viewer's left side (the right arm is this, mirrored). */
-function Arm({ pose }: { pose: ArmPose }) {
+/**
+ * One arm, drawn for the viewer's left side (the right arm is this, mirrored). `waveRef` is an extra
+ * wrapper at the shoulder for the wave, so the one-off never overwrites the pose's own transform.
+ */
+function Arm({ pose, waveRef }: { pose: ArmPose; waveRef: React.Ref<SVGGElement> }) {
   return (
-    <g style={armStyle(pose)}>
-      <circle r={6} fill={C.limb} />
-      <rect
-        x={-6}
-        width={12}
-        height={1}
-        fill={C.limb}
-        style={{ transform: `scaleY(${pose.length.toFixed(2)})`, transformOrigin: '0 0', transition: POSE_T }}
-      />
-      <g style={{ transform: `translateY(${pose.length.toFixed(2)}px)`, transformOrigin: '0 0', transition: POSE_T }}>
-        <circle r={HAND_R} fill={C.hand} />
-        <circle cx={-9} cy={-8} r={5} fill={C.hand} />
+    <g ref={waveRef} style={{ transformOrigin: origin(SHOULDER.x, SHOULDER.y) }}>
+      <g style={armStyle(pose)}>
+        <circle r={6} fill={C.limb} />
+        <rect
+          x={-6}
+          width={12}
+          height={1}
+          fill={C.limb}
+          style={{ transform: `scaleY(${pose.length.toFixed(2)})`, transformOrigin: '0 0', transition: POSE_T }}
+        />
+        <g style={{ transform: `translateY(${pose.length.toFixed(2)}px)`, transformOrigin: '0 0', transition: POSE_T }}>
+          <circle r={HAND_R} fill={C.hand} />
+          <circle cx={-9} cy={-8} r={5} fill={C.hand} />
+        </g>
       </g>
     </g>
   );
@@ -300,7 +350,8 @@ const MOUTHS: Record<Mouth, React.ReactNode> = {
 /**
  * Ember, the sign-in pages' mascot: a small emerald flame in a torch bowl that reacts to the form
  * (looks along what is typed, covers its eyes for a password, peeks when it is shown, nods at a
- * valid field, shakes at an error, cheers on success). Input-driven only: nothing moves on a timer.
+ * valid field, shakes at an error, cheers on success, glances and winks at "Continue with Google"
+ * and waves while the page opens it). Input-driven only: nothing moves on a timer.
  * Decorative (aria-hidden). Reduced motion: no pointer following or one-off moves; poses switch
  * instantly (the global reduced-motion rule zeroes the transitions).
  */
@@ -314,6 +365,7 @@ export function Ember({
   upset,
   progress,
   hoverTrail,
+  google = null,
   badge,
   className = '',
 }: EmberProps) {
@@ -329,6 +381,8 @@ export function Ember({
   const flameRef = useRef<SVGGElement>(null);
   const blinkL = useRef<SVGGElement>(null);
   const blinkR = useRef<SVGGElement>(null);
+  const waveL = useRef<SVGGElement>(null);
+  const waveR = useRef<SVGGElement>(null);
 
   // Each new error: a head shake. The worried face itself holds while `upset` (until a field changes).
   const lastErrorTick = useRef(errorTick);
@@ -350,7 +404,9 @@ export function Ember({
     );
   }, [errorTick, reduced]);
 
-  const pose = poseFor({ phase, focus, caret, passwordVisible, hoverTrail, badge }, upset, split, finePointer, formSide);
+  const pose = poseFor({ phase, focus, caret, passwordVisible, hoverTrail, badge, google }, upset, split, finePointer, formSide);
+  // The hand and eye nearest the form (phones: the right ones), as in poseFor.
+  const formHandRight = !split || formSide === 'right';
 
   // ---- One-off reactions (WAAPI; skipped under reduced motion) ----
   const lastProgress = useRef(progress);
@@ -396,6 +452,38 @@ export function Ember({
     blinkR.current?.animate(blink, { duration: 180, easing: 'ease-in-out' });
   }, [focus, reduced]);
 
+  // Google intent: one wink of the eye nearest the form, at most once per WINK_COOLDOWN_MS.
+  const lastWinkAt = useRef(-Infinity);
+  useEffect(() => {
+    if (!pose.wink || reduced) return;
+    const now = performance.now();
+    if (now - lastWinkAt.current < WINK_COOLDOWN_MS) return;
+    lastWinkAt.current = now;
+    const eye = (formHandRight ? blinkR : blinkL).current;
+    eye?.getAnimations().forEach((animation) => animation.cancel());
+    eye?.animate(
+      [{ transform: 'none' }, { transform: 'scaleY(0.1)', offset: 0.35 }, { transform: 'scaleY(0.1)', offset: 0.7 }, { transform: 'none' }],
+      { duration: 320, easing: 'ease-in-out' }
+    );
+  }, [pose.wink, reduced, formHandRight]);
+
+  // Leaving for Google: the raised form-side hand waves twice (it lands while the arm rises).
+  useEffect(() => {
+    if (!pose.wave || reduced) return;
+    const animation = (formHandRight ? waveR : waveL).current?.animate(
+      [
+        { transform: 'none' },
+        { transform: 'rotate(-12deg)', offset: 0.15 },
+        { transform: 'rotate(12deg)', offset: 0.4 },
+        { transform: 'rotate(-12deg)', offset: 0.65 },
+        { transform: 'rotate(12deg)', offset: 0.88 },
+        { transform: 'none' },
+      ],
+      { duration: 700, delay: 160, easing: 'ease-in-out' }
+    );
+    return () => animation?.cancel();
+  }, [pose.wave, reduced, formHandRight]);
+
   // Panel side swap: a quick turn toward the form's new side (the lean itself transitions).
   const lastSide = useRef(formSide);
   useEffect(() => {
@@ -414,9 +502,28 @@ export function Ember({
   const gazeY = typeof gaze === 'string' ? null : gaze.y;
   const followPointer = gaze === 'pointer' && !reduced;
   const followField = gaze === 'field';
+  const followGoogle = gaze === 'google';
   useLayoutEffect(() => {
     const svg = svgRef.current;
     if (!svg) return;
+    if (followGoogle) {
+      // Look from the eyes to the middle of the Google button; without one, toward the form.
+      const button = document.querySelector('[data-ember-target="google"]');
+      const box = svg.getBoundingClientRect();
+      const r = button?.getBoundingClientRect();
+      if (r && r.width > 0) {
+        const dx = r.left + r.width / 2 - (box.left + box.width * 0.5);
+        const dy = r.top + r.height / 2 - (box.top + box.height * EYE_Y_FRAC);
+        const dist = Math.hypot(dx, dy) || 1;
+        svg.style.setProperty('--ember-gx', (dx / dist).toFixed(3));
+        svg.style.setProperty('--ember-gy', (dy / dist).toFixed(3));
+      } else {
+        const fx = split ? (formSide === 'right' ? 1 : -1) : 0.2;
+        svg.style.setProperty('--ember-gx', String(fx));
+        svg.style.setProperty('--ember-gy', split ? '0.6' : '1');
+      }
+      return;
+    }
     if (followField) {
       // Look from the eyes to the caret's spot in the focused input.
       const field = document.activeElement;
@@ -470,7 +577,7 @@ export function Ember({
       document.documentElement.removeEventListener('pointerleave', onLeave);
       if (frame) cancelAnimationFrame(frame);
     };
-  }, [gazeX, gazeY, followPointer, followField, caret, focus, formSide]);
+  }, [gazeX, gazeY, followPointer, followField, followGoogle, split, caret, focus, formSide]);
 
   const tiltK = gaze === 'pointer' && !reduced ? 1 : 0;
   const leanStyle: CSSProperties = {
@@ -485,7 +592,6 @@ export function Ember({
   };
 
   // Badge position: above the form-side hand in its badge pose.
-  const formHandRight = !split || formSide === 'right';
   const badgeX = formHandRight ? 200 - BADGE_HAND.x : BADGE_HAND.x;
   const badgeY = BADGE_HAND.y - 25;
 
@@ -554,9 +660,9 @@ export function Ember({
                   </text>
                 )}
               </g>
-              <Arm pose={pose.left} />
+              <Arm pose={pose.left} waveRef={waveL} />
               <g transform="translate(200 0) scale(-1 1)">
-                <Arm pose={pose.right} />
+                <Arm pose={pose.right} waveRef={waveR} />
               </g>
             </g>
           </g>
