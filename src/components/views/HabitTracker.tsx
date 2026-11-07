@@ -22,9 +22,9 @@ import { dailyHabitCompletions, lastDayKeys } from '@/lib/weeklyActivity';
 import { HabitRow } from '@/components/habits/HabitRow';
 import { AddHabitDialog } from '@/components/habits/AddHabitDialog';
 import { isReadingLinked } from '@/components/habits/HabitCheck';
-
 import { RenameDialog } from '@/components/ui/RenameDialog';
 import { canRenameHabit, habitNameProblem, HABIT_NAME_MAX, HABIT_PACT_RENAME_MESSAGE } from '@/lib/itemEdits';
+
 const WEEK_DAYS = 7;
 
 export function HabitTracker({ store }: { store: AppStore }) {
@@ -32,10 +32,10 @@ export function HabitTracker({ store }: { store: AppStore }) {
   const { showSuccessToast } = useToast();
   const [showAdd, setShowAdd] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<Habit | null>(null);
-  // Habits ticked here: their check pops even though the row moves from To do to Done (remounts).
   // Rename (custom habits only). The habit stays set while the dialog closes.
   const [renameTarget, setRenameTarget] = useState<Habit | null>(null);
   const [renameOpen, setRenameOpen] = useState(false);
+  // Habits ticked here: their check pops even though the row moves from To do to Done (remounts).
   const [popIds, setPopIds] = useState<ReadonlySet<string>>(() => new Set());
   // Re-render at local midnight (and a new week), so rows never show yesterday's state.
   const today = useLocalDayKey();
@@ -94,11 +94,6 @@ export function HabitTracker({ store }: { store: AppStore }) {
         popClass={habitDone && popIds.has(habit.id) ? 'animate-pop' : ''}
         onToggle={() => toggle(habit)}
         onDelete={() => setConfirmDelete(habit)}
-      />
-    );
-  };
-
-  const deleteDescription = (habit: Habit | null): string => {
         onEdit={
           canRenameHabit(habit)
             ? () => {
@@ -107,6 +102,11 @@ export function HabitTracker({ store }: { store: AppStore }) {
               }
             : undefined
         }
+      />
+    );
+  };
+
+  const deleteDescription = (habit: Habit | null): string => {
     if (!habit) return '';
     const earns = habit.points > 0 && !isReadingLinked(habit);
     const points = earns
@@ -222,27 +222,6 @@ export function HabitTracker({ store }: { store: AppStore }) {
         }}
       />
 
-      <ConfirmDeleteModal
-        open={!!confirmDelete}
-        onClose={() => setConfirmDelete(null)}
-        onConfirm={async () => {
-          if (confirmDelete) {
-            await store.deleteHabit(confirmDelete.id);
-            setConfirmDelete(null);
-            showSuccessToast(`Deleted ${confirmDelete.name}`, undefined, `habit_${confirmDelete.id}`);
-          }
-        }}
-        title="Delete habit?"
-        itemName={confirmDelete?.name}
-        description={deleteDescription(confirmDelete)}
-      />
-      <HowItWorksDialog open={guide.open} onClose={guide.close} guide={habitsGuide} focus={guide.focus} />
-    </div>
-  );
-}
-
-/** Share of daily habits done on each of the last 7 days, today highlighted. */
-function WeekConsistencyCard({ days, activeDays }: { days: ReturnType<typeof dailyHabitCompletions>; activeDays: number }) {
       {renameTarget && (
         <RenameDialog
           key={renameTarget.id}
@@ -266,6 +245,27 @@ function WeekConsistencyCard({ days, activeDays }: { days: ReturnType<typeof dai
         />
       )}
 
+      <ConfirmDeleteModal
+        open={!!confirmDelete}
+        onClose={() => setConfirmDelete(null)}
+        onConfirm={async () => {
+          if (confirmDelete) {
+            await store.deleteHabit(confirmDelete.id);
+            setConfirmDelete(null);
+            showSuccessToast(`Deleted ${confirmDelete.name}`, undefined, `habit_${confirmDelete.id}`);
+          }
+        }}
+        title="Delete habit?"
+        itemName={confirmDelete?.name}
+        description={deleteDescription(confirmDelete)}
+      />
+      <HowItWorksDialog open={guide.open} onClose={guide.close} guide={habitsGuide} focus={guide.focus} />
+    </div>
+  );
+}
+
+/** Share of daily habits done on each of the last 7 days, today highlighted. */
+function WeekConsistencyCard({ days, activeDays }: { days: ReturnType<typeof dailyHabitCompletions>; activeDays: number }) {
   return (
     <div className="card flex flex-col justify-between gap-2 p-4">
       <div className="flex items-baseline justify-between gap-2">
