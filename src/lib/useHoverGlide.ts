@@ -1,4 +1,4 @@
-import { useEffect, type RefObject } from 'react';
+import { useEffect, useRef, type RefObject } from 'react';
 import { prefersReducedMotion } from './motion';
 
 /**
@@ -12,6 +12,13 @@ import { prefersReducedMotion } from './motion';
  * `[data-glide-item]` descendants. Mouse/trackpad and keyboard only: touch has no hover, so on a
  * touch-only device nothing is attached. Reduced motion jumps instead of travelling. The highlight
  * is painted from transform/height/width only (no layout per frame).
+ *
+ * Optional, for lists whose items never take focus (the dropdown's options: focus stays on its
+ * button): the returned `moveTo(item)` moves the glide on demand (arrow keys, typeahead), and
+ * `options` turn the hook on only while the list is mounted (`enabled`), keep the glide where it is
+ * when the pointer leaves (`keepOnLeave`), and measure items by their layout offsets instead of
+ * their on-screen boxes (`measure: 'offset'`: right inside a scaled/animating container). Callers
+ * that pass no options and ignore the return value behave exactly as before.
  */
 const STIFFNESS = 520;
 const DAMPING = 2 * Math.sqrt(STIFFNESS); // critical: fastest settle with no overshoot
@@ -24,8 +31,55 @@ interface Box {
   h: number;
 }
 
-export function useHoverGlide(containerRef: RefObject<HTMLElement>, glideRef: RefObject<HTMLElement>): void {
+export interface HoverGlideOptions {
+  /** Attach only while true (default true); flip it when the container mounts/unmounts. */
+  enabled?: boolean;
+  /** Keep the glide on its item when the pointer leaves the container (default false: fade). */
+  keepOnLeave?: boolean;
+  /** 'rect' (default): on-screen boxes. 'offset': offsetTop/Left/Width/Height (item's offsetParent must be the container). */
+  measure?: 'rect' | 'offset';
+}
+
+export interface HoverGlide {
+  /** Move the glide to `item` (travel, or appear in place when hidden); `instant` jumps. */
+  moveTo(item: HTMLElement, opts?: { instant?: boolean }): void;
+  /** Fade the glide out where it stands. */
+  hide(): void;
+}
+
+interface LiveGlide {
+  moveTo(item: HTMLElement, instant: boolean): void;
+  hide(): void;
+}
+
+export function useHoverGlide(
+  containerRef: RefObject<HTMLElement>,
+  glideRef: RefObject<HTMLElement>,
+  options?: HoverGlideOptions
+): HoverGlide {
+  const enabled = options?.enabled ?? true;
+  const keepOnLeave = options?.keepOnLeave ?? false;
+  const measure = options?.measure ?? 'rect';
+  const live = useRef<LiveGlide | null>(null);
+  // A move asked for before the listeners attached (same commit as the list mounting).
+  const pending = useRef<{ item: HTMLElement; instant: boolean } | null>(null);
+  const api = useRef<HoverGlide | null>(null);
+  if (!api.current) {
+    api.current = {
+      moveTo(item, opts) {
+        const instant = Boolean(opts?.instant);
+        if (live.current) live.current.moveTo(item, instant);
+        else pending.current = { item, instant };
+      },
+      hide() {
+        pending.current = null;
+        live.current?.hide();
+      },
+    };
+  }
+
   useEffect(() => {
+    if (!enabled) return;
     const container = containerRef.current;
     const glide = glideRef.current;
     if (!container || !glide) return;
@@ -65,6 +119,8 @@ export function useHoverGlide(containerRef: RefObject<HTMLElement>, glideRef: Re
     };
 
     const boxOf = (item: HTMLElement): Box => {
+      if (measure === 'offset')
+        return { x: item.offsetLeft, y: item.offsetTop, w: item.offsetWidth, h: item.offsetHeight };
       const c = container.getBoundingClientRect();
       const r = item.getBoundingClientRect();
       return {
@@ -75,9 +131,11 @@ export function useHoverGlide(containerRef: RefObject<HTMLElement>, glideRef: Re
       };
     };
 
-    const moveTo = (item: HTMLElement) => {
+    const moveTo = (item: HTMLElement, instant = false) => {
       target = boxOf(item);
-      if (!visible || prefersReducedMotion()) {
+      if (instant || !visible || prefersReducedMotion()) {
+        cancelAnimationFrame(frame);
+        frame = 0;
         // Appear in place: no travel from the last spot the list was left at.
         Object.assign(pos, target);
         Object.assign(vel, { x: 0, y: 0, w: 0, h: 0 });
@@ -119,14 +177,20 @@ export function useHoverGlide(containerRef: RefObject<HTMLElement>, glideRef: Re
       if (item) requestAnimationFrame(() => item.isConnected && visible && moveTo(item));
     };
 
+    live.current = { moveTo, hide };
+    const asked = pending.current;
+    pending.current = null;
+    if (asked && asked.item.isConnected && container.contains(asked.item)) moveTo(asked.item, asked.instant);
+
     if (canHover) {
       container.addEventListener('pointerover', onOver);
-      container.addEventListener('pointerleave', hide);
+      if (!keepOnLeave) container.addEventListener('pointerleave', hide);
       container.addEventListener('click', onClick);
     }
     container.addEventListener('focusin', onFocus);
     container.addEventListener('focusout', onBlur);
     return () => {
+      live.current = null;
       cancelAnimationFrame(frame);
       container.removeEventListener('pointerover', onOver);
       container.removeEventListener('pointerleave', hide);
@@ -134,5 +198,7 @@ export function useHoverGlide(containerRef: RefObject<HTMLElement>, glideRef: Re
       container.removeEventListener('focusin', onFocus);
       container.removeEventListener('focusout', onBlur);
     };
-  }, [containerRef, glideRef]);
+  }, [containerRef, glideRef, enabled, keepOnLeave, measure]);
+
+  return api.current;
 }
