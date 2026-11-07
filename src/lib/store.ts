@@ -96,6 +96,7 @@ import { computeJournalAward, isJournalDayEntry, isRetiredAppJournalAward, journ
 import { applyJournalEntryEdit } from './journalEdits';
 import { computeFocusAwards, focusFloorDay, isFocusDayEntry, isRetiredAppFocusAward } from './focusAwards';
 import { focusSkillLogFor, withReflectionNote } from './focusSkillLog';
+import { editWorkoutIn, renameBadHabitIn, renameHabitIn, renameSkillIn, renameSubtaskIn, renameTracker, workoutFields } from './itemEdits';
 import { editDecisionText, editEmotionNote, editFocusLogText } from './pfcLogEdits';
 import { pauseStoredSessionsForSignOut } from './focusSession';
 import { computeTimeTrackerAward, timeTrackerAwardId, timeTrackerGraceDay } from './timeTrackerAwards';
@@ -3958,6 +3959,29 @@ export function useAppState() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  /** Renames a custom habit (Library and Reading habits keep their names; see itemEdits). */
+  const renameHabit = useCallback((habitId: string, name: string) => {
+    const state = get();
+    const habit = state.habits.find((h) => h && h.id === habitId);
+    // Throws the form's message (taken, Library name, running challenge, Library habit).
+    renameHabitIn(state.habits, habitId, name, habit ? runningPactsLinkedTo(state, habit) : 0, trustedNow().toISOString());
+    return setState(
+      (prev) => {
+        const target = prev.habits.find((h) => h && h.id === habitId);
+        if (!target) return prev;
+        try {
+          const habits = renameHabitIn(prev.habits, habitId, name, runningPactsLinkedTo(prev, target), trustedNow().toISOString());
+          return habits === prev.habits ? prev : { ...prev, habits };
+        } catch {
+          return prev;
+        }
+      },
+      { immediate: true }
+    );
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const deleteHabit = useCallback((habitId: string) => {
     const currentWeekKey = weekKey(getNow());
     setState(
@@ -4395,20 +4419,12 @@ export function useAppState() {
   const logWorkout = useCallback((type: string, durationMinutes: number, amount?: number, unit?: string) => {
     const date = todayKey();
     setState((prev) => {
-      const normalizedUnit = (unit || 'mins').trim().toLowerCase();
-      const safeDurationMinutes = Math.max(0, Number(durationMinutes) || 0);
-      const safeAmount = typeof amount === 'number' && !isNaN(amount) ? Math.max(0, Number(amount)) : undefined;
-
-      const savedDuration = normalizedUnit === 'mins' ? (safeAmount !== undefined && safeAmount > 0 ? safeAmount : safeDurationMinutes) : 0;
-
+      // One rule for the saved fields, shared with updateWorkout.
       const workout: WorkoutLog = {
         id: uid(),
         date,
-        type: type.trim() || 'General Workout',
-        durationMinutes: savedDuration,
+        ...workoutFields(type, durationMinutes, amount, unit),
         pointsAwarded: 0,
-        amount: safeAmount !== undefined ? safeAmount : (normalizedUnit === 'mins' ? safeDurationMinutes : undefined),
-        unit: normalizedUnit,
         createdAt: trustedNow().toISOString(),
       };
 
@@ -4449,6 +4465,31 @@ export function useAppState() {
         },
         { immediate: true, actionLabel: 'Workout deletion', entityId: workoutId }
       )
+    );
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  /**
+   * Changes today's workout (type, amount, measure). Any other day throws: the server drops those
+   * edits. Today's award is recomputed here as the server does on the update.
+   */
+  const updateWorkout = useCallback((workoutId: string, type: string, durationMinutes: number, amount?: number, unit?: string) => {
+    const fields = workoutFields(type, durationMinutes, amount, unit);
+    editWorkoutIn(get().workouts, workoutId, fields, todayKey());
+    return setState(
+      (prev) => {
+        const today = todayKey();
+        let workouts: WorkoutLog[];
+        try {
+          workouts = editWorkoutIn(prev.workouts, workoutId, fields, today);
+        } catch {
+          return prev;
+        }
+        const awards = applyWorkoutAwardsInternal(prev, workouts, today);
+        return reconcileLinkedWeeklyGoals({ ...prev, workouts: awards.workouts, ...awards.points });
+      },
+      { immediate: true }
     );
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -5269,6 +5310,25 @@ export function useAppState() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  /** Renames a skill and sets its category; it keeps its id, so logs, sessions and goals follow. */
+  const updateSkill = useCallback((skillId: string, changes: { name: string; category: string }) => {
+    // Throws the form's message (empty or taken name, deleted skill).
+    renameSkillIn(get().skills, skillId, changes, trustedNow().toISOString());
+    return setState(
+      (prev) => {
+        try {
+          const skills = renameSkillIn(prev.skills, skillId, changes, trustedNow().toISOString());
+          return skills === prev.skills ? prev : { ...prev, skills };
+        } catch {
+          return prev;
+        }
+      },
+      { immediate: true }
+    );
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const deleteSkill = useCallback((skillId: string) => {
     const currentWeekKey = weekKey(getNow());
     void (
@@ -5637,6 +5697,29 @@ export function useAppState() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  /** Renames a custom bad habit (Library ones keep their names; see itemEdits). */
+  const renameBadHabit = useCallback((badHabitId: string, name: string) => {
+    const state = get();
+    const target = state.badHabits.find((b) => b && b.id === badHabitId);
+    const active = (list: BadHabit[]) => list.filter((b) => b && !b.isCompleted);
+    renameBadHabitIn(state.badHabits, badHabitId, name, active(state.badHabits), target ? runningPactsLinkedToBadHabit(state, target) : 0);
+    return setState(
+      (prev) => {
+        const bh = prev.badHabits.find((b) => b && b.id === badHabitId);
+        if (!bh) return prev;
+        try {
+          const badHabits = renameBadHabitIn(prev.badHabits, badHabitId, name, active(prev.badHabits), runningPactsLinkedToBadHabit(prev, bh));
+          return badHabits === prev.badHabits ? prev : { ...prev, badHabits };
+        } catch {
+          return prev;
+        }
+      },
+      { immediate: true }
+    );
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // --- MODULE 5: ADDICTION RECOVERY ACTIONS ---
   const setAddictionTracker = useCallback((title: string, startDateIso?: string) => {
     setState((prev) => {
@@ -5650,6 +5733,27 @@ export function useAppState() {
       };
       return { ...prev, addictionTracker: tracker };
     });
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  /** Renames the recovery tracker. Never resets: start date, milestones and awards stay. */
+  const renameAddictionTracker = useCallback((title: string) => {
+    const current = get().addictionTracker;
+    if (!current) throw new Error('This tracker was deleted.');
+    renameTracker(current, title);
+    return setState(
+      (prev) => {
+        if (!prev.addictionTracker) return prev;
+        try {
+          const addictionTracker = renameTracker(prev.addictionTracker, title);
+          return addictionTracker === prev.addictionTracker ? prev : { ...prev, addictionTracker };
+        } catch {
+          return prev;
+        }
+      },
+      { immediate: true }
+    );
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -6976,6 +7080,24 @@ export function useAppState() {
         },
         { immediate: true, actionLabel: 'Subtask deletion', entityId: subtaskId }
       )
+    );
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  /** Renames a subtask; it stays done or not done, and so does its task. */
+  const renameSubtask = useCallback((taskId: string, subtaskId: string, title: string) => {
+    renameSubtaskIn(get().tasks, taskId, subtaskId, title);
+    return setState(
+      (prev) => {
+        try {
+          const tasks = renameSubtaskIn(prev.tasks, taskId, subtaskId, title);
+          return tasks === prev.tasks ? prev : { ...prev, tasks };
+        } catch {
+          return prev;
+        }
+      },
+      { immediate: true }
     );
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -9997,6 +10119,7 @@ export function useAppState() {
     addPresetHabit,
     addCustomHabit,
     updateHabit,
+    renameHabit,
     deleteHabit,
     toggleHabit,
     toggleReadingHabit,
@@ -10020,6 +10143,7 @@ export function useAppState() {
     // New Module Actions
     logWorkout,
     deleteWorkout,
+    updateWorkout,
     clearWorkoutsBefore,
     addBook,
     updateBookTargetDate,
@@ -10029,6 +10153,7 @@ export function useAppState() {
     addSkill,
     logSkillPractice,
     updateSkillLevel,
+    updateSkill,
     deleteSkill,
     deleteSkillLog,
     updateSkillLog,
@@ -10040,7 +10165,9 @@ export function useAppState() {
     undoTodayBadHabitLog,
     deleteBadHabit,
     updateBadHabit,
+    renameBadHabit,
     setAddictionTracker,
+    renameAddictionTracker,
     deleteAddictionTracker,
     resetAddictionStreak,
     checkAddictionMilestones,
@@ -10134,6 +10261,7 @@ export function useAppState() {
     toggleSubtask,
     addSubtask,
     deleteSubtask,
+    renameSubtask,
     // Time Tracker Module Actions
     addTimeTrackerActivity,
     updateTimeTrackerActivity,
