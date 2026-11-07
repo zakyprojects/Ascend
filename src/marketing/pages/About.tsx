@@ -63,8 +63,9 @@ export function About() {
         <SectionHeading id="shape-title" kicker="Help shape it" title="Tell me what to fix or build next" />
         <div className="card scroll-rise mt-8 max-w-3xl p-6 sm:p-8 text-base leading-relaxed text-content-secondary">
           <p>
-            AscendDay grows from what the people using it tell me. Inside the app, Settings has Report a bug and Suggest an
-            idea. For anything else, email me at <Email />.
+            AscendDay grows from what the people using it tell me. Inside the app, use Send feedback for a bug, an idea
+            or anything else. Without an account, use the <a href="/contact" className={LINK_CLASS}>contact page</a>, or
+            email me at <Email />.
           </p>
         </div>
       </Section>
@@ -99,7 +100,10 @@ export function About() {
           <h3 className="text-lg font-semibold text-content-primary">Free ways to help</h3>
           <ul className="mt-3 list-disc space-y-1.5 pl-5 marker:text-content-muted">
             <li>Tell a friend about AscendDay. More people in a league makes it better for everyone.</li>
-            <li>Found something broken, or have an idea? Use Report a bug or Suggest an idea in the app’s Settings.</li>
+            <li>
+              Found something broken, or have an idea? Use Send feedback in the app, or the{' '}
+              <a href="/contact" className={LINK_CLASS}>contact page</a>.
+            </li>
           </ul>
           <p className="mt-4 text-sm text-content-muted">
             Nothing is paid on this site or in the app. Thank you for being here.

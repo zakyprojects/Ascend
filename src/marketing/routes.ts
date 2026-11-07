@@ -6,11 +6,11 @@ import { SITE_NAME } from './site';
  * manifest for the pages, the sitemap, robots.txt and the checks. App pages are not here: they
  * are the app shell (app-shell.html, noindex, vercel.json).
  *
- *   landing / hub / feature / about / notFound: rendered from React components to static HTML
+ *   landing / hub / feature / about / contact / notFound: rendered from React components to static HTML
  *   legal: the app's LegalPage rendered to static HTML (the app shows the same page in-app)
  *   auth: the app shell with this page's head (the sign-in screen itself needs the app)
  */
-export type MarketingKind = 'landing' | 'hub' | 'feature' | 'about' | 'legal' | 'auth' | 'notFound';
+export type MarketingKind = 'landing' | 'hub' | 'feature' | 'about' | 'contact' | 'legal' | 'auth' | 'notFound';
 
 export interface MarketingRoute {
   path: string;
@@ -45,7 +45,7 @@ const ogTitleOf = (title: string) => (title.endsWith(BRAND_SUFFIX) ? title.slice
  * feature copy changed on this date (2026-10-30: the "why" answers and FAQ on home and every feature page).
  * Bump a route's own date when only its text changes.
  */
-const SITE_COPY_UPDATED = '2026-10-30';
+const SITE_COPY_UPDATED = '2026-11-07'; // 2026-11-07: footer Contact link, About's feedback lines
 
 const featureRoutes: MarketingRoute[] = FEATURE_SLUGS.map((slug) => {
   const f = FEATURES[slug];
@@ -106,6 +106,19 @@ export const MARKETING_ROUTES: MarketingRoute[] = [
     updated: SITE_COPY_UPDATED,
   },
   {
+    path: '/contact',
+    file: 'contact.html',
+    kind: 'contact',
+    title: 'Contact AscendDay – Feedback, Bugs and Questions',
+    ogTitle: 'Contact AscendDay – Feedback, Bugs and Questions',
+    description:
+      'Write to the maker of AscendDay: report a bug, suggest an idea or ask a question, no account needed. Every message is read; replies come by email.',
+    ogImage: 'contact',
+    ogAlt: 'Contact AscendDay: report a bug, suggest an idea or ask a question',
+    index: true,
+    updated: '2026-11-07',
+  },
+  {
     path: '/login',
     file: 'login.html',
     kind: 'auth',
@@ -143,7 +156,7 @@ export const MARKETING_ROUTES: MarketingRoute[] = [
     ogImage: 'privacy',
     ogAlt: 'AscendDay Privacy Policy: what AscendDay collects and who can see it',
     index: true,
-    updated: '2026-11-03', // legal text (LegalPage, no marketing footer): fair play / point farming and team review, Last updated 3 November 2026
+    updated: '2026-11-07', // legal text (LegalPage, no marketing footer): feedback rating, reply email and contact page, Last updated 7 November 2026
   },
   {
     path: '/terms',

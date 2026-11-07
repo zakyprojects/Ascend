@@ -1,7 +1,7 @@
 /**
  * Bot check for the Auth calls Supabase can guard with a CAPTCHA: sign-up, sign-in (email, and the
  * username sign-in, which passes the token on), guest start, the password-reset email and the
- * current-password check. Cloudflare Turnstile, free; the widget is created in the Cloudflare
+ * current-password check. Also the public /contact form, whose token api/feedback.ts verifies. Cloudflare Turnstile, free; the widget is created in the Cloudflare
  * dashboard as Invisible (or Managed), so people normally see nothing.
  *
  * - Off unless VITE_TURNSTILE_SITE_KEY is set: then no script loads and no token is sent, exactly
@@ -63,7 +63,7 @@ export function captchaFailureMessage(failure: CaptchaFailure): string {
 }
 
 /** Turnstile action names (shown in Cloudflare analytics). */
-export type CaptchaAction = 'sign_in' | 'sign_up' | 'guest' | 'password_reset' | 'password_check';
+export type CaptchaAction = 'sign_in' | 'sign_up' | 'guest' | 'password_reset' | 'password_check' | 'contact';
 
 /** Auth refused the token (expired, used, or missing while CAPTCHA is on). */
 export class CaptchaRejectedError extends Error {

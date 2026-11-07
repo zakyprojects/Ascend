@@ -148,6 +148,9 @@ function Footer() {
             <a href="/about" className={cx('inline-flex min-h-9 items-center rounded hover:text-content-primary', FOCUS_RING)}>
               About
             </a>
+            <a href="/contact" className={cx('inline-flex min-h-9 items-center rounded hover:text-content-primary', FOCUS_RING)}>
+              Contact
+            </a>
             <a href="/privacy" className={cx('inline-flex min-h-9 items-center rounded hover:text-content-primary', FOCUS_RING)}>
               Privacy
             </a>

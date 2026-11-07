@@ -126,3 +126,7 @@ installScrollRise({ everyWidth: true });
 installCardSpotlight();
 installPressGlow();
 installAnalytics();
+
+// /contact only: the form's script (and Turnstile) load there and nowhere else.
+const contactForm = document.querySelector<HTMLFormElement>('form[data-contact-form]');
+if (contactForm) void import('./contactForm').then((m) => m.installContactForm(contactForm));

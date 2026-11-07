@@ -4,6 +4,7 @@ import { LegalPage } from '@/components/legal/LegalPage';
 import { marketingHead, type PageAssets } from './head';
 import type { MarketingRoute } from './routes';
 import { About } from './pages/About';
+import { Contact } from './pages/Contact';
 import { FeaturePage } from './pages/FeaturePage';
 import { FeaturesHub } from './pages/FeaturesHub';
 import { Landing } from './pages/Landing';
@@ -26,6 +27,8 @@ function pageElement(route: MarketingRoute): ReactElement {
       return <FeaturePage slug={route.slug} />;
     case 'about':
       return <About />;
+    case 'contact':
+      return <Contact />;
     case 'notFound':
       return <NotFound />;
     case 'legal':
