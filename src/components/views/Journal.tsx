@@ -399,10 +399,10 @@ export function Journal({ store }: { store: AppStore }) {
                       type="button"
                       onClick={() => setDeleteModalEntry(existingToday)}
                       aria-label="Delete today's entry"
-                      className="btn-danger text-xs px-3 py-1.5"
+                      title="Delete today's entry"
+                      className={`p-1.5 rounded-lg text-content-muted hover:text-rose-theme hover:bg-rose-500/10 transition-colors shrink-0 ${TAP_TARGET}`}
                     >
-                      <Trash2 size={14} />
-                      <span>Delete</span>
+                      <Trash2 size={16} />
                     </button>
                   </div>
                 </div>
