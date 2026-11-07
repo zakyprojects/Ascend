@@ -22,7 +22,10 @@ export const habitsGuide: HowItWorksGuide = {
       text: 'The Reading habit ticks itself when you log reading. A habit in a partner challenge ticks the challenge too, and the other way round.',
     },
   ],
-  notes: ['Deleting a habit removes only today’s points from it. Earlier points and penalties stay.'],
+  notes: [
+    'Tap Reorder to put your habits in your own order. It shows on every device, and the Dashboard uses it too.',
+    'Deleting a habit removes only today’s points from it. Earlier points and penalties stay.',
+  ],
   points: [
     <>
       Library habits earn their own points, daily custom habits <Gain>{pts(CUSTOM_HABIT_POINTS, true)}</Gain> each, up to{' '}

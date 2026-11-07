@@ -35,13 +35,14 @@ export const projectsGoalsGuide: HowItWorksGuide = {
       icon: ListOrdered,
       iconClass: 'border-overlay-default bg-overlay-subtle text-content-tertiary',
       title: 'Projects in order',
-      text: 'Turn it on for a goal and each project unlocks when the ones before it are done. Its tasks wait until then.',
+      text: 'Turn it on for a goal and each project unlocks when the ones before it are done. Its tasks wait until then. Reorder a goal’s projects to change which comes next.',
     },
   ],
   notes: [
     'A project with no tasks, or a goal with no projects, you update by hand.',
     'A goal with projects becomes Achieved on its own when all of them are done.',
     'Start a focus session from any open task with its timer button.',
+    'Tap Reorder to put goals, a goal’s projects or tasks in your own order. Done items stay under Done.',
   ],
   points: [
     'Projects & Goals earns no points and can’t cost any.',
