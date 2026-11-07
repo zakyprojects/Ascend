@@ -27,7 +27,7 @@ export function demoNotifications(): AppNotification[] {
     notice('n2', 'partner_nudge', 'sara_k nudged you: time for your evening walk.', 35, false, { actorUsername: 'sara_k', actorAvatar: '🦊' }),
     notice('n3', 'missed_habit', 'You missed Drink 2 litres of water yesterday.', 60 * 14, false, { payload: { period: '2026-11-06' } }),
     notice('n4', 'challenge_completed', 'You and sara_k finished the 7-day reading challenge.', 60 * 30, true, { actorUsername: 'sara_k', actorAvatar: '🦊' }),
-    notice('n5', 'sunday_planning', 'Take 5 minutes to set your top 3 goals for the week.', 60 * 24 * 3, true),
+    notice('n5', 'sunday_planning', 'Set a few goals for next week, and look back at this one.', 60 * 24 * 3, true, { title: 'Plan next week' }),
   ];
 }
 

@@ -66,8 +66,8 @@ function NotificationPreview() {
         </div>
         <div className="mt-1.5 flex items-start gap-3">
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-medium">Sunday Evening Goal Planning</p>
-            <p className="text-xs text-white/70">Take 5 minutes to set your top 3 measurable goals and review last week&apos;s velocity.</p>
+            <p className="text-sm font-medium">Plan next week</p>
+            <p className="text-xs text-white/70">Set a few goals for next week, and look back at this one.</p>
           </div>
           <img src={NOTIFICATION_ICON} alt="" className="h-10 w-10 shrink-0 rounded-full" />
         </div>

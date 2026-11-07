@@ -25,7 +25,7 @@ const NOTIFICATION_PREFERENCES: { key: NotificationPreferenceKey; title: string;
   {
     key: 'notifSundayPlanning',
     title: 'Sunday planning reminder',
-    description: "Sundays at 7 PM: review last week's goals and plan the next.",
+    description: 'Sundays at 7 PM: plan next week and look back at this one.',
   },
 ];
 
