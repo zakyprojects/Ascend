@@ -94,6 +94,7 @@ import { computeRecoveryChanges, RECOVERY_MILESTONES, trackerStartMs } from './r
 import { computeJournalAward, isJournalDayEntry, isRetiredAppJournalAward, journalEntryEarns } from './journalAwards';
 import { computeFocusAwards, focusFloorDay, isFocusDayEntry, isRetiredAppFocusAward } from './focusAwards';
 import { focusSkillLogFor, withReflectionNote } from './focusSkillLog';
+import { editDecisionText, editEmotionNote, editFocusLogText } from './pfcLogEdits';
 import { pauseStoredSessionsForSignOut } from './focusSession';
 import { computeTimeTrackerAward, timeTrackerAwardId, timeTrackerGraceDay } from './timeTrackerAwards';
 import {
@@ -5884,6 +5885,56 @@ export function useAppState() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  /** Task name and reflection of a past or today's focus session; minutes, times and points stay. */
+  const updateFocusLogText = useCallback((logId: string, changes: { taskName: string; reflection: string }) => {
+    if (!get().focusLogs.some((f) => f && f.id === logId)) throw new Error('This focus session was deleted.');
+    return setState(
+      (prev) => {
+        const next = editFocusLogText(prev.focusLogs, prev.skillLogs, logId, changes);
+        if (!next) return prev;
+        return {
+          ...prev,
+          focusLogs: next.focusLogs,
+          ...(next.skillLogs !== prev.skillLogs ? { skillLogs: next.skillLogs } : {}),
+        };
+      },
+      { immediate: true }
+    );
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  /** Words of a decision (title, why, expected outcome, reflection once written); dates stay. */
+  const updateDecisionText = useCallback(
+    (decisionId: string, changes: { title: string; rationale: string; expectedOutcome: string; reflection?: string }) => {
+      if (!get().decisionLogs.some((d) => d && d.id === decisionId)) throw new Error('This decision was deleted.');
+      return setState(
+        (prev) => {
+          const decisionLogs = editDecisionText(prev.decisionLogs, decisionId, changes);
+          return decisionLogs ? { ...prev, decisionLogs } : prev;
+        },
+        { immediate: true }
+      );
+    },
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    []
+  );
+
+  /** The note of an emotion entry; the emotion, intensity and time stay. */
+  const updateEmotionNote = useCallback((emotionId: string, context: string) => {
+    if (!get().emotionLogs.some((e) => e && e.id === emotionId)) throw new Error('This entry was deleted.');
+    return setState(
+      (prev) => {
+        const emotionLogs = editEmotionNote(prev.emotionLogs, emotionId, context);
+        return emotionLogs ? { ...prev, emotionLogs } : prev;
+      },
+      { immediate: true }
+    );
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const addDecision = useCallback((title: string, rationale: string, expectedOutcome: string, revisitDate: string) => {
     const decision: DecisionLog = {
       id: uid(),
@@ -9980,12 +10031,15 @@ export function useAppState() {
     clearCravingLogsBefore,
     logFocusSession,
     updateFocusLogReflection,
+    updateFocusLogText,
     deleteFocusLog,
     addDecision,
     reflectDecision,
     deleteDecisionLog,
+    updateDecisionText,
     logEmotion,
     deleteEmotionLog,
+    updateEmotionNote,
     addWeeklyReflection,
     updateWeeklyReflection,
     deleteWeeklyReflection,

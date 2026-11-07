@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Edit3, Trash2 } from 'lucide-react';
+import { Edit3, Pencil, Trash2 } from 'lucide-react';
 import type { DecisionLog } from '@/types';
 import { formatWeekdayDate } from '@/lib/dates';
 import { cx, TAP_TARGET } from '@/components/ui/primitives/shared';
@@ -17,11 +17,13 @@ export function DecisionCard({
   decision: d,
   today,
   onReflect,
+  onEdit,
   onDelete,
 }: {
   decision: DecisionLog;
   today: string;
   onReflect: () => void;
+  onEdit: () => void;
   onDelete: () => void;
 }) {
   const [expanded, setExpanded] = useState(false);
@@ -36,15 +38,26 @@ export function DecisionCard({
           <h4 className={cx('item-name text-sm text-content-secondary', WRAP)}>{d.title}</h4>
           <span className={cx('badge text-2xs px-2 py-0.5', badge.className)}>{badge.text}</span>
         </div>
-        <button
-          type="button"
-          onClick={onDelete}
-          aria-label={`Delete decision ${d.title}`}
-          title="Delete decision"
-          className={`p-1.5 rounded-lg text-content-disabled hover:text-rose-theme hover:bg-rose-500/10 transition-colors shrink-0 ${TAP_TARGET}`}
-        >
-          <Trash2 size={16} aria-hidden="true" />
-        </button>
+        <div className="flex shrink-0 items-center gap-1">
+          <button
+            type="button"
+            onClick={onEdit}
+            aria-label={`Edit decision ${d.title}`}
+            title="Edit decision"
+            className={`p-1.5 rounded-lg text-content-muted hover:text-content-secondary hover:bg-overlay-subtle transition-colors ${TAP_TARGET}`}
+          >
+            <Pencil size={16} aria-hidden="true" />
+          </button>
+          <button
+            type="button"
+            onClick={onDelete}
+            aria-label={`Delete decision ${d.title}`}
+            title="Delete decision"
+            className={`p-1.5 rounded-lg text-content-disabled hover:text-rose-theme hover:bg-rose-500/10 transition-colors ${TAP_TARGET}`}
+          >
+            <Trash2 size={16} aria-hidden="true" />
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs text-content-tertiary">

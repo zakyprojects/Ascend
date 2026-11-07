@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Timer, Trash2 } from 'lucide-react';
+import { Pencil, Timer, Trash2 } from 'lucide-react';
 import type { AppStore } from '@/lib/store';
 import type { FocusSessionLog } from '@/types';
 import { formatDateLong, localDayStartMs } from '@/lib/dates';
@@ -10,6 +10,7 @@ import { useToast } from '@/components/ui/Toast';
 import { useAsyncActionKey } from '@/lib/useAsyncAction';
 import { TAP_TARGET } from '@/components/ui/primitives/shared';
 import { byNewest, groupByDay, timeOfDay, DAYS_PAGE } from './pfcLists';
+import { FocusLogEditDialog } from './FocusLogEditDialog';
 
 /** Today's points from these sessions (same rule as the server), for the delete message. */
 function todaysFocusPoints(logs: FocusSessionLog[], today: string): number {
@@ -22,6 +23,7 @@ export function FocusHistory({ store, today }: { store: AppStore; today: string 
   const { isKeyLoading, executeWithKey } = useAsyncActionKey();
   const [daysShown, setDaysShown] = useState(DAYS_PAGE);
   const [toDelete, setToDelete] = useState<FocusSessionLog | null>(null);
+  const [editing, setEditing] = useState<FocusSessionLog | null>(null);
 
   const logs = store.state.focusLogs;
   const skills = store.state.skills;
@@ -60,6 +62,15 @@ export function FocusHistory({ store, today }: { store: AppStore; today: string 
           </div>
           <div className="flex shrink-0 items-center gap-2">
             {log.pointsAwarded > 0 && <span className="figure text-xs text-brand-text whitespace-nowrap">+{log.pointsAwarded} pts</span>}
+            <button
+              type="button"
+              onClick={() => setEditing(log)}
+              aria-label={`Edit focus session ${log.taskName}`}
+              title="Edit focus session"
+              className={`p-1.5 rounded-lg text-content-muted hover:text-content-secondary hover:bg-overlay-subtle transition-colors ${TAP_TARGET}`}
+            >
+              <Pencil size={16} aria-hidden="true" />
+            </button>
             <button
               type="button"
               onClick={() => setToDelete(log)}
@@ -113,6 +124,18 @@ export function FocusHistory({ store, today }: { store: AppStore; today: string 
           )}
         </div>
       )}
+
+      <FocusLogEditDialog
+        log={editing}
+        onClose={() => setEditing(null)}
+        onSave={(taskName, reflection) => {
+          if (!editing) return;
+          // Saved on the device at once; the store reports an upload problem itself.
+          void store.updateFocusLogText(editing.id, { taskName, reflection });
+          setEditing(null);
+          showSuccessToast('Session saved', taskName, `focus_log_edit_${editing.id}`);
+        }}
+      />
 
       <ConfirmDeleteModal
         open={!!toDelete}

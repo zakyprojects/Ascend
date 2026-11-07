@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { HeartHandshake, Plus, Trash2 } from 'lucide-react';
+import { HeartHandshake, Pencil, Plus, Trash2 } from 'lucide-react';
 import type { AppStore } from '@/lib/store';
 import type { EmotionLog } from '@/types';
 import { addDays, formatDateLong } from '@/lib/dates';
@@ -9,6 +9,7 @@ import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { useToast } from '@/components/ui/Toast';
 import { useAsyncActionKey } from '@/lib/useAsyncAction';
 import { EmotionFormDialog } from './EmotionFormDialog';
+import { EmotionNoteDialog } from './EmotionNoteDialog';
 import { byNewest, COMMON_EMOTIONS, DAYS_PAGE, emotionSummary, groupByDay, localDayOf, timeOfDay } from './pfcLists';
 
 const SUMMARY_DAYS = 30;
@@ -19,6 +20,7 @@ export function EmotionLabeler({ store, today }: { store: AppStore; today: strin
   const { isKeyLoading, executeWithKey } = useAsyncActionKey();
   const [formEmotion, setFormEmotion] = useState<string | null>(null);
   const [toDelete, setToDelete] = useState<EmotionLog | null>(null);
+  const [editing, setEditing] = useState<EmotionLog | null>(null);
   const [daysShown, setDaysShown] = useState(DAYS_PAGE);
 
   const logs = store.state.emotionLogs;
@@ -40,15 +42,26 @@ export function EmotionLabeler({ store, today }: { store: AppStore; today: strin
         </div>
         {l.context && <p className="text-content-muted mt-0.5 break-words [overflow-wrap:anywhere] whitespace-pre-wrap">{l.context}</p>}
       </div>
-      <button
-        type="button"
-        onClick={() => setToDelete(l)}
-        aria-label={`Delete emotion ${l.emotion}`}
-        title="Delete emotion"
-        className={`p-1.5 rounded-lg text-content-disabled hover:text-rose-theme hover:bg-rose-500/10 transition-colors shrink-0 ${TAP_TARGET}`}
-      >
-        <Trash2 size={16} aria-hidden="true" />
-      </button>
+      <div className="flex shrink-0 items-center gap-1">
+        <button
+          type="button"
+          onClick={() => setEditing(l)}
+          aria-label={`Edit note for ${l.emotion}`}
+          title="Edit note"
+          className={`p-1.5 rounded-lg text-content-muted hover:text-content-secondary hover:bg-overlay-subtle transition-colors ${TAP_TARGET}`}
+        >
+          <Pencil size={16} aria-hidden="true" />
+        </button>
+        <button
+          type="button"
+          onClick={() => setToDelete(l)}
+          aria-label={`Delete emotion ${l.emotion}`}
+          title="Delete emotion"
+          className={`p-1.5 rounded-lg text-content-disabled hover:text-rose-theme hover:bg-rose-500/10 transition-colors ${TAP_TARGET}`}
+        >
+          <Trash2 size={16} aria-hidden="true" />
+        </button>
+      </div>
     </div>
   );
 
@@ -142,6 +155,18 @@ export function EmotionLabeler({ store, today }: { store: AppStore; today: strin
           store.logEmotion(emotion, intensity, context);
           setFormEmotion(null);
           showSuccessToast('Emotion labeled', emotion);
+        }}
+      />
+
+      <EmotionNoteDialog
+        log={editing}
+        onClose={() => setEditing(null)}
+        onSave={(context) => {
+          if (!editing) return;
+          // Saved on the device at once; the store reports an upload problem itself.
+          void store.updateEmotionNote(editing.id, context);
+          setEditing(null);
+          showSuccessToast('Note saved', editing.emotion, `emotion_edit_${editing.id}`);
         }}
       />
 

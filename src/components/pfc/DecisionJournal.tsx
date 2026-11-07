@@ -19,6 +19,7 @@ export function DecisionJournal({ store, today }: { store: AppStore; today: stri
   const { isKeyLoading, executeWithKey } = useAsyncActionKey();
   const [formOpen, setFormOpen] = useState(false);
   const [reflecting, setReflecting] = useState<DecisionLog | null>(null);
+  const [editing, setEditing] = useState<DecisionLog | null>(null);
   const [toDelete, setToDelete] = useState<DecisionLog | null>(null);
   const [showReflected, setShowReflected] = useState(false);
   const [reflectedShown, setReflectedShown] = useState(REFLECTED_PAGE);
@@ -35,7 +36,14 @@ export function DecisionJournal({ store, today }: { store: AppStore; today: stri
   );
 
   const card = (d: DecisionLog) => (
-    <DecisionCard key={d.id} decision={d} today={today} onReflect={() => setReflecting(d)} onDelete={() => setToDelete(d)} />
+    <DecisionCard
+      key={d.id}
+      decision={d}
+      today={today}
+      onReflect={() => setReflecting(d)}
+      onEdit={() => setEditing(d)}
+      onDelete={() => setToDelete(d)}
+    />
   );
 
   return (
@@ -122,6 +130,19 @@ export function DecisionJournal({ store, today }: { store: AppStore; today: stri
           store.addDecision(title, rationale, outcome, revisit);
           setFormOpen(false);
           showSuccessToast('Decision logged', 'It shows up again on its revisit day.');
+        }}
+      />
+
+      <DecisionFormDialog
+        open={!!editing}
+        editing={editing}
+        onClose={() => setEditing(null)}
+        onSave={() => undefined}
+        onSaveEdit={(id, changes) => {
+          // Saved on the device at once; the store reports an upload problem itself.
+          void store.updateDecisionText(id, changes);
+          setEditing(null);
+          showSuccessToast('Decision saved', changes.title, `decision_edit_${id}`);
         }}
       />
 
