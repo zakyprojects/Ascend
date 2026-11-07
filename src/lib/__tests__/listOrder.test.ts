@@ -74,3 +74,25 @@ const plainGoal = { ...goal, sequentialMode: false };
 assert(!lockStatusOf(inGoal[2], [plainGoal], byGoal, complete).isLocked, 'non-sequential goal never locks');
 
 console.log('listOrder: all assertions passed');
+
+// Currently reading: a saved order, and a book touched after it still goes to the top.
+{
+  const { applyListOrderTouchedFirst } = await import('../listOrder');
+  const t = (iso: string) => Date.parse(iso);
+  const books = [
+    { id: 'a', at: '2026-11-07T08:00:00.000Z' },
+    { id: 'b', at: '2026-11-07T09:00:00.000Z' },
+    { id: 'c', at: '2026-11-07T10:00:00.000Z' },
+  ];
+  const touchedAt = (x: { at: string }) => t(x.at);
+  const newest = (x: { at: string }, y: { at: string }) => t(y.at) - t(x.at);
+  assert(ids(applyListOrderTouchedFirst(books, undefined, touchedAt, newest)) === 'c,b,a', 'no order: last touched first');
+  const order = { id: 'books:reading', ids: ['a', 'c', 'b'], createdAt: '2026-11-07T11:00:00.000Z', updatedAt: '2026-11-07T11:00:00.000Z' };
+  assert(ids(applyListOrderTouchedFirst(books, order, touchedAt, newest)) === 'a,c,b', 'saved order holds');
+  const logged = books.map((x) => (x.id === 'b' ? { ...x, at: '2026-11-07T12:00:00.000Z' } : x));
+  assert(ids(applyListOrderTouchedFirst(logged, order, touchedAt, newest)) === 'b,a,c', 'book logged after the order goes to the top');
+  const started = [...books, { id: 'd', at: '2026-11-07T12:30:00.000Z' }];
+  assert(ids(applyListOrderTouchedFirst(started, order, touchedAt, newest)) === 'd,a,c,b', 'new book joins the top');
+  const bad = { ...order, updatedAt: 'nope' };
+  assert(ids(applyListOrderTouchedFirst(books, bad, touchedAt, newest)) === 'a,c,b', 'unreadable time: saved order');
+}

@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { BookOpen, CheckCircle2, ListTodo, Pause, Pencil, PlayCircle, Plus, RotateCcw, Search, Trash2 } from 'lucide-react';
 import { AppStore, runningPactsLinkedTo } from '@/lib/store';
 import { pactUnlinkNote } from '@/lib/pactLifecycle';
-import { applyListOrder, LIST_ORDER_KEYS, reorderInSlots, savedOrderIds } from '@/lib/listOrder';
+import { applyListOrder, applyListOrderTouchedFirst, LIST_ORDER_KEYS, reorderInSlots, savedOrderIds } from '@/lib/listOrder';
 import { LazyReorderList, ReorderButton } from '@/components/ui/Reorder';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { Badge, Dialog, EmptyState, PageColumns, ProgressBar, Switch, TabPanel, Tabs, ToolbarInput, ToolbarSelect } from '@/components/ui/primitives';
@@ -27,7 +27,7 @@ import { BookCard, ClampedText } from '@/components/reading/BookCard';
 import { BookFormDialog } from '@/components/reading/BookFormDialog';
 import { StartReadingDialog } from '@/components/reading/StartReadingDialog';
 import { FinishBookDialog } from '@/components/reading/FinishBookDialog';
-import { bookBonus, bookProgress, byNewest, formatAmount, matchesBookFilter, sameBook, targetLine } from '@/components/reading/bookMeta';
+import { bookBonus, bookProgress, byNewest, formatAmount, matchesBookFilter, sameBook, targetLine, timeOf } from '@/components/reading/bookMeta';
 
 type ReadingHubTab = 'reading' | 'library' | 'finished' | 'discover';
 const READING_TABS: ReadingHubTab[] = ['reading', 'library', 'finished', 'discover'];
@@ -144,12 +144,21 @@ export function ReadingHub({ store }: { store: AppStore }) {
     [pointsHistory]
   );
 
-  const readingBooks = useMemo(
-    () => libraryBooks.filter((b) => b.status === 'reading').sort(byNewest('updatedAt', 'startedAt', 'addedAt')),
-    [libraryBooks]
-  );
-  // The To read queue: the user's order (Reorder), else newest first; new books join the top.
   const listOrders = store.state.listOrders;
+  // Currently reading: the book you last logged (or started) on top. Reorder sets an order, and a
+  // book logged after that still goes to the top.
+  const readingBooks = useMemo(
+    () =>
+      applyListOrderTouchedFirst(
+        libraryBooks.filter((b) => b.status === 'reading'),
+        listOrders?.find((o) => o.id === LIST_ORDER_KEYS.reading),
+        (b) => timeOf(b.updatedAt || b.startedAt || b.addedAt),
+        byNewest('updatedAt', 'startedAt', 'addedAt')
+      ),
+    [libraryBooks, listOrders]
+  );
+  const [reorderingReading, setReorderingReading] = useState(false);
+  // The To read queue: the user's order (Reorder), else newest first; new books join the top.
   const libraryList = useMemo(
     () =>
       applyListOrder(
@@ -395,7 +404,23 @@ export function ReadingHub({ store }: { store: AppStore }) {
                   </div>
                 }
               />
+            ) : reorderingReading ? (
+              <LazyReorderList
+                label="books you're reading"
+                items={readingBooks.map((b) => ({ id: b.id, title: b.title }))}
+                onCancel={() => setReorderingReading(false)}
+                onDone={(ids) => {
+                  store.saveListOrder(LIST_ORDER_KEYS.reading, ids);
+                  setReorderingReading(false);
+                }}
+              />
             ) : (
+              <div className="space-y-3">
+              {readingBooks.length >= 2 && (
+                <div className="flex justify-end">
+                  <ReorderButton label="books you're reading" onClick={() => setReorderingReading(true)} />
+                </div>
+              )}
               <div className="grid-cards-lg gap-4">
                 {readingBooks.map((book) => {
                   const p = bookProgress(book);
@@ -453,6 +478,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
                     </BookCard>
                   );
                 })}
+              </div>
               </div>
             ))}
 

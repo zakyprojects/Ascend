@@ -89,6 +89,7 @@ export const LIST_ORDER_KEYS = {
   skills: 'skills',
   badHabits: 'badHabits',
   toRead: 'books:toRead',
+  reading: 'books:reading',
   plans: 'plans',
   ttActivities: 'tt:activities',
   ttTemplates: 'tt:templates',
@@ -121,6 +122,25 @@ export function applyListOrder<T extends { id: string }>(
   const known = sorted.filter((item) => rank.has(item.id)).sort((a, b) => rank.get(a.id)! - rank.get(b.id)!);
   const unknown = sorted.filter((item) => !rank.has(item.id));
   return newAt === 'start' ? [...unknown, ...known] : [...known, ...unknown];
+}
+
+/**
+ * A saved order that activity can still lead (Currently reading: the book you log goes to the
+ * top). Items touched after the order was saved come first, newest first; the rest keep the
+ * saved order, with unnamed items placed by `fallback` at the start. No saved order: `fallback`.
+ */
+export function applyListOrderTouchedFirst<T extends { id: string }>(
+  items: readonly T[],
+  order: ListOrder | undefined,
+  touchedAt: (item: T) => number,
+  fallback: (a: T, b: T) => number
+): T[] {
+  if (!order || order.ids.length === 0) return [...items].sort(fallback);
+  const savedAt = Date.parse(order.updatedAt);
+  if (Number.isNaN(savedAt)) return applyListOrder(items, order.ids, fallback, 'start');
+  const touched = items.filter((item) => touchedAt(item) > savedAt).sort((a, b) => touchedAt(b) - touchedAt(a));
+  const rest = items.filter((item) => !(touchedAt(item) > savedAt));
+  return [...touched, ...applyListOrder(rest, order.ids, fallback, 'start')];
 }
 
 /**

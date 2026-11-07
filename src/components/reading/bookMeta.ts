@@ -99,7 +99,7 @@ export function matchesBookFilter(
   return [book.title, book.author, book.description, book.reflection].some((v) => (v || '').toLowerCase().includes(q));
 }
 
-const timeOf = (iso?: string): number => {
+export const timeOf = (iso?: string): number => {
   const ms = iso ? Date.parse(iso) : NaN;
   return Number.isNaN(ms) ? 0 : ms;
 };
