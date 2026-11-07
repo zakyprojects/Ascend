@@ -16,6 +16,13 @@ import { ListsGroup } from './gallery/lists';
 import { LeaguesGroup } from './gallery/leagues';
 import { ChartsGroup } from './gallery/charts';
 import { AuthGroup } from './gallery/auth';
+import { DockGroup } from './gallery/dock';
+import { DashboardGroup } from './gallery/dashboard';
+import { ExcludedGroup } from './gallery/excluded';
+
+// Classes: Tailwind scans src/dev too, so a utility used only here ships in the prod CSS. Use classes the
+// app already uses, or inline styles (as below), so the prod bundle stays byte-for-byte the same.
+const SCROLL_MARGIN = { scrollMarginTop: '7rem' } as const;
 
 // Dev-only test bed for the real UI components with fake data (no store, no Supabase).
 // Reached only through main.tsx's `import.meta.env.DEV && ?gallery` dynamic import, so nothing
@@ -32,8 +39,11 @@ const GROUP_CONTENT: Record<string, React.ComponentType> = {
   feedback: FeedbackGroup,
   lists: ListsGroup,
   leagues: LeaguesGroup,
+  dock: DockGroup,
+  dashboard: DashboardGroup,
   charts: ChartsGroup,
   auth: AuthGroup,
+  excluded: ExcludedGroup,
 };
 
 /** Every section, grouped, as anchor links (deep links like /?gallery#member-card). */
@@ -41,7 +51,7 @@ function GalleryIndex() {
   return (
     <nav aria-label="Gallery sections" className="card p-4 sm:p-6">
       <h2 className="section-title">Sections</h2>
-      <div className="mt-3 grid grid-cols-2 gap-x-6 gap-y-4 lg:grid-cols-4">
+      <div className="mt-3 grid grid-cols-2 gap-x-6 lg:grid-cols-4" style={{ rowGap: '1rem' }}>
         {GALLERY_GROUPS.map((group) => (
           <div key={group.id} className="min-w-0">
             <a href={`#group-${group.id}`} className="stat-label hover:underline">
@@ -107,17 +117,17 @@ function GalleryContent() {
       <div className="min-h-screen text-content-secondary">
         <div aria-hidden="true" className="app-atmosphere" />
         {/* Top bar: stays on screen; the group row scrolls sideways inside itself on phones. */}
-        <header className="glass-strong sticky top-0 z-30 border-b border-overlay-subtle">
+        <header className="glass sticky top-0 z-30 border-b border-overlay-subtle">
           <div className="mx-auto max-w-5xl px-4 pt-3 sm:px-8">
             <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
-              <h1 className="text-base font-semibold text-content-primary sm:text-xl">AscendDay UI gallery (dev only)</h1>
+              <h1 className="text-base font-semibold text-content-primary sm:text-lg">AscendDay UI gallery (dev only)</h1>
               <div className="flex items-center gap-3">
                 <span className="font-mono text-xs text-content-muted">body overflow: {bodyOverflow}</span>
                 <ThemeToggle isDark={theme === 'dark'} onToggle={toggleTheme} />
               </div>
             </div>
-            <nav aria-label="Gallery groups" className="scroll-fade -mx-4 mt-2 overflow-x-auto px-4 pb-2 sm:-mx-8 sm:px-8">
-              <ul className="flex w-max gap-1.5">
+            <nav aria-label="Gallery groups" className="scroll-fade mt-2 overflow-x-auto pb-2">
+              <ul className="flex gap-1.5" style={{ width: 'max-content' }}>
                 {GALLERY_GROUPS.map((group) => (
                   <li key={group.id}>
                     <a
@@ -144,7 +154,7 @@ function GalleryContent() {
             const Content = GROUP_CONTENT[group.id];
             if (!Content) return null;
             return (
-              <section key={group.id} id={`group-${group.id}`} aria-labelledby={`group-${group.id}-title`} className="scroll-mt-28 space-y-6">
+              <section key={group.id} id={`group-${group.id}`} aria-labelledby={`group-${group.id}-title`} className="space-y-6" style={SCROLL_MARGIN}>
                 <h2 id={`group-${group.id}-title`} className="page-title">
                   {group.label}
                 </h2>
