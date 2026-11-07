@@ -303,6 +303,53 @@ check(linkedTemplateBlockId('lmk3abc', TODAY, 'T') === null, 'a hand id is not l
   check(!!p && p.blocks[0] === today[0], 'the running day block stays');
 }
 
+// --- 20. legacy days (applied before linked ids: every block has a plain id) ---
+{
+  // Zakria's retest: Saturday template "123", today holds one plain Sleep 00:00–07:00 (past), Exercise 22–23 added at 20:52.
+  const SAT = '2026-11-07';
+  const sat = [tb('s1', '00:00', '07:00', 'act-sleep'), tb('s2', '07:00', '08:00', 'act-reading'), tb('s3', '08:00', '09:00', 'act-skills')];
+  const t123 = tpl(sat, { title: '123', activeDays: ['Saturday'] });
+  const plainSleep = tb('mw6jnv8tbxwtrq', '00:00', '07:00', 'act-sleep');
+  const before = tt([t123], { [SAT]: [plainSleep] });
+  const after = tt([{ ...t123, blocks: [...sat, tb('s4', '22:00', '23:00', 'act-exercise')] }], { [SAT]: [plainSleep] });
+  const plans = planTemplateEditReach(before, after, 'T', SAT, at(20, 52, 7), salt);
+  const p = day(plans, SAT);
+  check(plans.length === 1 && p?.kind === 'auto', 'legacy: a plain Sleep matching the template reaches today on its own', plans.map((x) => [x.dateKey, x.kind]));
+  check(!!p && p.blocks[0] === plainSleep && JSON.stringify(times(p.blocks)) === JSON.stringify(['00:00-07:00 act-sleep', '22:00-23:00 act-exercise']), 'legacy: Sleep stays, Exercise 22–23 added', p && times(p.blocks));
+  check(!!p && linkedTemplateBlockId(p.blocks[1].id, SAT, 'T') === 's4' && p.removed.length === 0, 'legacy: the new block gets a linked id, nothing removed');
+}
+{
+  // Legacy day with upcoming matched blocks: updated in place, keeping their plain ids.
+  const legacy = BASE.map((b) => ({ ...b, id: `plain-${b.id}`, ...(b.id === 'a' || b.id === 'b' ? { completed: true } : {}) }));
+  const before = tt([tpl(BASE)], { [TODAY]: legacy });
+  const edited = [BASE[0], BASE[1], BASE[2], tb('d', '11:00', '12:00'), tb('e', '13:00', '15:00', 'act-new'), tb('g', '18:00', '20:00')];
+  const p = day(plan(before, tt([tpl(edited)], { [TODAY]: legacy })));
+  check(p?.kind === 'auto', 'legacy: untouched upcoming matched blocks update on their own');
+  check(!!p && JSON.stringify(times(p.blocks)) === JSON.stringify(['00:00-07:00 act-a', '07:00-09:00 act-b', '09:00-11:00 act-c', '11:00-12:00 act-d', '13:00-15:00 act-new', '18:00-20:00 act-g']), 'legacy: later blocks match the template', p && times(p.blocks));
+  check(!!p && p.blocks[3].id === 'plain-d' && p.blocks[4].id === 'plain-e' && linkedTemplateBlockId(p.blocks[5].id, TODAY, 'T') === 'g', 'legacy: matched blocks keep their own ids; the new one is linked', p && p.blocks.map((b) => b.id));
+  check(!!p && p.removed.map((b) => b.id).join() === 'plain-f', 'legacy: only the dropped template block is removed');
+  // An unchanged upcoming matched block is the same object.
+  const p2 = day(plan(before, tt([tpl([...BASE.slice(0, 5), tb('f', '16:00', '18:00')])], { [TODAY]: legacy })));
+  check(!!p2 && p2.blocks.find((b) => b.id === 'plain-e') === legacy[4], 'legacy: an unchanged matched block stays as it is');
+  // An extra hand block later today: ask.
+  const withHand = [...legacy, tb('lmk3hand', '19:00', '20:00', 'act-hand')];
+  const before3 = tt([tpl(BASE)], { [TODAY]: withHand });
+  check(day(plan(before3, tt([tpl(edited)], { [TODAY]: withHand })))?.kind === 'ask', 'legacy: an extra hand block asks');
+  // No plain block matches the template: not reached.
+  const unrelated = [tb('h1', '08:00', '10:00', 'act-x'), tb('h2', '14:00', '16:00', 'act-y')];
+  const before4 = tt([tpl(BASE)], { [TODAY]: unrelated });
+  check(plan(before4, tt([tpl(edited)], { [TODAY]: unrelated })).length === 0, 'legacy: a day with no matching block is not reached');
+  // A matching plain day on a weekday the template doesn't own (no owner, or another template's): left.
+  const noMon = ALL.filter((d) => d !== 'Monday');
+  const before5 = tt([tpl(BASE, { activeDays: noMon })], { [TODAY]: legacy });
+  check(plan(before5, tt([tpl(edited, { activeDays: noMon })], { [TODAY]: legacy })).length === 0, 'legacy: plain matches on a day the template doesn’t own are not reached');
+  const other = tpl([tb('o', '08:00', '09:00')], { id: 'U', title: 'Other', activeDays: ['Monday'] });
+  const before6 = tt([other, tpl(BASE, { activeDays: noMon })], { [TODAY]: legacy });
+  check(plan(before6, tt([other, tpl(edited, { activeDays: noMon })], { [TODAY]: legacy })).length === 0, 'legacy: plain matches on another template’s weekday are not reached');
+  // Weekday removed in the same save: still left.
+  check(plan(before, tt([tpl(edited, { activeDays: noMon })], { [TODAY]: legacy })).length === 0, 'legacy: weekday removed in the same save leaves the day');
+}
+
 if (failures > 0) {
   throw new Error(`${failures} check(s) failed`);
 }

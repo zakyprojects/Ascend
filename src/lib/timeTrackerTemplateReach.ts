@@ -12,6 +12,15 @@ import { END_OF_DAY, blockIntervalMs, getBlockTimingAt, minutesToTimeString, tem
  * edited template's blocks, each cut to the free time after now and around what stays (pieces
  * under 5 minutes dropped). A day whose upcoming part is still exactly what the template (before
  * this edit) put there updates on its own; any other day is asked about first.
+ *
+ * Legacy days (filled before linked ids existed, so every block has a plain id): on a day the
+ * template owns by weekday, an unlinked block whose plan fields match a block of the template as
+ * it was before the edit counts as that template block (each template block and each day block
+ * matched once). One match is enough for the day to be reached; matched blocks count as linked for
+ * the untouched check and an upcoming one that still fits whole keeps its own id. Other unlinked
+ * upcoming blocks are hand blocks (the day is asked about). On a day the template does not own,
+ * plain blocks are never matched: a manual Apply there always wrote linked ids, so a match there
+ * is a coincidence (a hand block or another template's), and the day is left.
  */
 
 /** Pieces of a cut template block shorter than this are dropped. */
@@ -144,7 +153,7 @@ export interface TemplateEditReachDay {
  * The days a template edit reaches and what each becomes. `before` is the time tracker before the
  * edit, `after` the same with only the templates changed. Reached: today and every saved later day
  * that is not cleared, holds at least one block linked to it (filled on its weekday or by a
- * manual Apply), was not moved away from it by this edit (weekday removed or taken by another
+ * manual Apply) or, on a legacy day it owns, one plain block matching it, was not moved away from it by this edit (weekday removed or taken by another
  * template in the same save), and whose upcoming part would actually change. Nothing is reached when the
  * template is gone or its blocks did not change (a name- or weekday-only edit).
  */
@@ -168,7 +177,23 @@ export function planTemplateEditReach(
     // reached only by a manual Apply (not its weekday, or another template's) is still reached.
     if (templateForDate(before, dateKey)?.id === templateId && templateForDate(after, dateKey)?.id !== templateId) continue;
     const blocks = dayBlocks || [];
-    if (!blocks.some((b) => linkedTemplateBlockId(b.id, dateKey, templateId) !== null)) continue;
+    // Which template block each day block is: its linked id, or (legacy day) a plan-field match.
+    const linkOf = new Map<TimeTrackerBlock, string>();
+    for (const b of blocks) {
+      const link = linkedTemplateBlockId(b.id, dateKey, templateId);
+      if (link !== null) linkOf.set(b, link);
+    }
+    if (linkOf.size === 0 && templateForDate(before, dateKey)?.id === templateId) {
+      const used = new Set<string>();
+      for (const b of blocks) {
+        if (b.id.startsWith('auto_')) continue; // another template's (or another date's) block
+        const tb = (oldTemplate.blocks || []).find((x) => !!x.id && !used.has(x.id) && samePlanFields(b, x));
+        if (!tb) continue;
+        used.add(tb.id);
+        linkOf.set(b, tb.id);
+      }
+    }
+    if (linkOf.size === 0) continue;
 
     const kept = blocks.filter((b) => isKept(b, dateKey, nowMs));
     const upcoming = blocks.filter((b) => !isKept(b, dateKey, nowMs));
@@ -179,12 +204,12 @@ export function planTemplateEditReach(
     const seen = new Set<string>();
     let untouched = !kept.some((b) => hasBookkeeping(b) && getBlockTimingAt(b, dateKey, nowMs) === 'upcoming');
     for (const b of upcoming) {
-      const link = linkedTemplateBlockId(b.id, dateKey, templateId);
+      const link = linkOf.get(b) ?? null;
       const tb = link ? oldById.get(link) : undefined;
       if (!link || !tb || seen.has(link) || !samePlanFields(b, tb)) untouched = false;
       if (link) seen.add(link);
     }
-    const linkedOnDay = new Set(blocks.map((b) => linkedTemplateBlockId(b.id, dateKey, templateId)).filter(Boolean));
+    const linkedOnDay = new Set(linkOf.values());
     for (const tb of oldTemplate.blocks || []) {
       if (getBlockTimingAt(tb, dateKey, nowMs) === 'upcoming' && !linkedOnDay.has(tb.id)) untouched = false;
     }
@@ -196,7 +221,7 @@ export function planTemplateEditReach(
 
     const reusable = new Map<string, TimeTrackerBlock>();
     for (const b of upcoming) {
-      const link = linkedTemplateBlockId(b.id, dateKey, templateId);
+      const link = linkOf.get(b);
       if (link && !reusable.has(link)) reusable.set(link, b);
     }
     const nowIso = new Date(nowMs).toISOString();
