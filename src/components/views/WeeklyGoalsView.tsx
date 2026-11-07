@@ -67,6 +67,7 @@ export function WeeklyGoalsView({
   const isFutureWeek = selectedWeekKey > currentWeekKey;
   const isCurrentWeek = selectedWeekKey === currentWeekKey;
   const previousWeekKey = offsetWeekKey(currentWeekKey, -1);
+  const nextWeekKey = offsetWeekKey(currentWeekKey, 1);
   const selectedLabel = weekLabel(selectedWeekKey, currentWeekKey);
   const selectedText = weekLabelInline(selectedWeekKey, currentWeekKey);
 
@@ -432,6 +433,8 @@ export function WeeklyGoalsView({
               weekText={selectedText}
               lastWeekWindowOpen={isCurrentWeek && isReflectionWindowOpen(previousWeekKey, getNow())}
               onOpenLastWeek={() => goToWeek(previousWeekKey)}
+              thisWeekWindowOpen={selectedWeekKey === nextWeekKey && isReflectionWindowOpen(currentWeekKey, getNow())}
+              onOpenThisWeek={() => goToWeek(currentWeekKey)}
             />
 
             {/* Needs at least two planned weeks to say anything. */}

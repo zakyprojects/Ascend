@@ -37,6 +37,8 @@ export function ReflectionsCard({
   weekText,
   lastWeekWindowOpen,
   onOpenLastWeek,
+  thisWeekWindowOpen = false,
+  onOpenThisWeek,
 }: {
   store: AppStore;
   weekKey: string;
@@ -45,6 +47,9 @@ export function ReflectionsCard({
   /** Viewing this week while last week's window is still open (Mondays). */
   lastWeekWindowOpen: boolean;
   onOpenLastWeek: () => void;
+  /** Viewing next week while this week's window is open (Friday 6 AM to the end of Monday). */
+  thisWeekWindowOpen?: boolean;
+  onOpenThisWeek?: () => void;
 }) {
   const { showSuccessToast } = useToast();
   const { isKeyLoading, executeWithKey } = useAsyncActionKey();
@@ -134,6 +139,12 @@ export function ReflectionsCard({
       {lastWeekWindowOpen && (
         <button type="button" onClick={onOpenLastWeek} className="text-left text-xs font-medium text-brand-text hover:underline">
           Last week's reflection is open until the end of today. Write it now
+        </button>
+      )}
+
+      {thisWeekWindowOpen && onOpenThisWeek && (
+        <button type="button" onClick={onOpenThisWeek} className="text-left text-xs font-medium text-brand-text hover:underline">
+          This week's reflection is open until the end of Monday. Write it now
         </button>
       )}
 
