@@ -1614,7 +1614,8 @@ function EmberDemo() {
   const pick = (id: EmberPoseId) => {
     const next = EMBER_POSES.find((p) => p.id === id) ?? EMBER_POSES[0];
     if (id === 'error') setErrorTick((tick) => tick + 1);
-    else if (id === poseId) setRun((n) => n + 1);
+    // Success leaves the flame flared (its real page moves on); a fresh Ember drops that.
+    else if (id === poseId || poseId === 'success') setRun((n) => n + 1);
     setPoseId(id);
     const field = next.field === 'email' ? emailRef.current : next.field === 'password' ? passwordRef.current : null;
     if (field) field.focus({ preventScroll: true });
