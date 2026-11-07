@@ -23,7 +23,8 @@ import { AppStore } from '@/lib/store';
 import { View } from '@/components/AppShell';
 import { Habit, LeagueType } from '@/types';
 import { habitPointsMeta } from '@/components/habits/habitPointsMeta';
-import { formatDateLong, parseDate, startOfWeek } from '@/lib/dates';
+import { addDays, formatDateLong, startOfWeek, todayKey } from '@/lib/dates';
+import { exerciseAmountText, topWorkouts } from '@/lib/exerciseSummary';
 import { ProgressRing } from '@/components/ui/charts';
 import { LEAGUE_CONFIG, pointsText, ptsText } from '@/lib/leagues';
 import { leagueNow } from '@/lib/leagueTime';
@@ -205,12 +206,15 @@ export function Dashboard({ store, onViewChange, onOpenAuth }: DashboardProps) {
   const weekPoints = dailyPoints(store.state.pointsHistory || [], weekDays);
   const weekHabits = dailyHabitCompletions(habits, weekDays);
 
-  // Module summaries (personal features use the local week from Monday).
-  const weekStart = startOfWeek(trustedNow());
-  const thisWeek = (date: string) => (parseDate(date) || new Date(0)) >= weekStart;
+  // Module summaries (personal features use the local week from Monday). Same windows as their pages:
+  // Exercise counts Monday to Sunday, Focus Monday to today.
+  const weekStartKey = todayKey(startOfWeek(trustedNow()));
+  const weekEndKey = addDays(weekStartKey, 6);
 
-  const weeklyWorkouts = store.state.workouts.filter((w) => thisWeek(w.date));
-  const weeklyExerciseMins = weeklyWorkouts.reduce((sum, w) => sum + w.durationMinutes, 0);
+  const weeklyWorkouts = store.state.workouts.filter((w) => w.date >= weekStartKey && w.date <= weekEndKey);
+  // This week's exercises in their own unit, ranked like the player card (never added across units).
+  const weeklyExercises = topWorkouts(weeklyWorkouts, weekStartKey, weekEndKey);
+  const topExercise = weeklyExercises[0];
 
   const activeBooks = (store.state.libraryBooks || []).filter((b) => b.status === 'reading').length;
   const finishedBooks = (store.state.libraryBooks || []).filter((b) => b.status === 'completed').length;
@@ -222,7 +226,7 @@ export function Dashboard({ store, onViewChange, onOpenAuth }: DashboardProps) {
         6
     ) / 10;
 
-  const weeklyFocusLogs = store.state.focusLogs.filter((l) => thisWeek(l.date));
+  const weeklyFocusLogs = store.state.focusLogs.filter((l) => l.date >= weekStartKey && l.date <= today);
   const weeklyFocusMins = weeklyFocusLogs.reduce((sum, l) => sum + l.durationMinutes, 0);
 
   // Bad habits: how many of the active ones were reported resisted today (date keys are local).
@@ -441,9 +445,18 @@ export function Dashboard({ store, onViewChange, onOpenAuth }: DashboardProps) {
                   title="Exercise"
                   view="exercise"
                   navigate={onViewChange}
-                  value={<CountUp value={weeklyExerciseMins} />}
-                  unit="mins this week"
-                  sub={<><CountUp value={weeklyWorkouts.length} /> {plural(weeklyWorkouts.length, 'session')} this week</>}
+                  value={weeklyWorkouts.length === 0 ? 'No workouts' : <CountUp value={weeklyWorkouts.length} />}
+                  unit={weeklyWorkouts.length === 0 ? 'this week' : `${plural(weeklyWorkouts.length, 'workout')} this week`}
+                  sub={
+                    topExercise ? (
+                      <span className="block truncate">
+                        <span className="item-name">{topExercise.name}</span> · {exerciseAmountText(topExercise.total, topExercise.unit)}
+                        {weeklyExercises.length > 1 && ` · +${weeklyExercises.length - 1} more`}
+                      </span>
+                    ) : (
+                      'Nothing logged since Monday'
+                    )
+                  }
                 />
                 <ModuleLink
                   tone="amber"
@@ -461,8 +474,8 @@ export function Dashboard({ store, onViewChange, onOpenAuth }: DashboardProps) {
                   title="Skills"
                   view="skills"
                   navigate={onViewChange}
-                  value={<CountUp value={totalSkillHours} decimals={1} />}
-                  unit="hrs practice"
+                  value={<CountUp value={totalSkillHours} decimals={totalSkillHours === 0 ? 0 : 1} />}
+                  unit="hrs total"
                   sub={<><CountUp value={store.state.skills.length} /> {plural(store.state.skills.length, 'skill')} tracked</>}
                 />
                 <ModuleLink
@@ -473,7 +486,13 @@ export function Dashboard({ store, onViewChange, onOpenAuth }: DashboardProps) {
                   navigate={onViewChange}
                   value={<CountUp value={resistedTodayCount} />}
                   unit="resisted today"
-                  sub={<>of <CountUp value={activeBadHabits.length} /> active {plural(activeBadHabits.length, 'habit')}</>}
+                  sub={
+                    activeBadHabits.length === 0 ? (
+                      'No bad habits tracked'
+                    ) : (
+                      <>of <CountUp value={activeBadHabits.length} /> active {plural(activeBadHabits.length, 'habit')}</>
+                    )
+                  }
                 />
                 <ModuleLink
                   tone="red"
@@ -492,7 +511,7 @@ export function Dashboard({ store, onViewChange, onOpenAuth }: DashboardProps) {
                   view="prefrontal"
                   navigate={onViewChange}
                   value={<CountUp value={weeklyFocusMins} />}
-                  unit="focus mins this week"
+                  unit="min this week"
                   sub={<><CountUp value={weeklyFocusLogs.length} /> {plural(weeklyFocusLogs.length, 'session')} this week</>}
                 />
                 <ModuleLink
@@ -501,7 +520,7 @@ export function Dashboard({ store, onViewChange, onOpenAuth }: DashboardProps) {
                   title="Time Tracker"
                   view="time-tracker"
                   navigate={onViewChange}
-                  value={<AutoNum text={todayScheduledMins > 0 ? formatDurationHuman(todayScheduledMins) : '0h 0m'} />}
+                  value={<AutoNum text={formatDurationHuman(todayScheduledMins)} />}
                   unit="planned today"
                   sub={
                     todayBlocks.length > 0 ? (

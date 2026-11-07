@@ -1,5 +1,5 @@
 import { useId } from 'react';
-import type { LeagueCompetitor, MemberCard, MemberCardExercise } from '@/types';
+import type { LeagueCompetitor, MemberCard } from '@/types';
 import { TierBadge } from './TierBadge';
 import { Dialog, Skeleton } from '@/components/ui/primitives';
 import { CalendarCheck, CheckSquare, BookOpen, Book, Target, Timer, Lock, EyeOff, WifiOff, type LucideIcon } from 'lucide-react';
@@ -8,6 +8,7 @@ import { getCurrentTier } from '@/lib/tiers';
 import { formatDateShort } from '@/lib/dates';
 import { ptUnit } from '@/lib/leagues';
 import { compactNumber } from '@/lib/numberFormat';
+import { exerciseAmountText as exerciseText, minutesText } from '@/lib/exerciseSummary';
 import type { MemberDetails } from '@/lib/useMemberDetails';
 
 interface CompetitorProfileModalProps {
@@ -241,25 +242,10 @@ function ptsShort(n: number): string {
   return `${compactNumber(n)} ${ptUnit(n)}`;
 }
 
-const amountText = compactNumber;
-
 /** "1 Nov": a day key on the card's own calendar (no time zone shift). */
 function dayMonth(key: string): string {
   const [y, m, d] = key.split('-').map(Number);
   return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' });
-}
-
-/** Minutes as "45 min", or hours with one decimal from an hour up ("6.5 h"). */
-function minutesText(min: number): string {
-  if (min < 60) return `${compactNumber(min)} min`;
-  return `${amountText(Math.round((min / 60) * 10) / 10)} h`;
-}
-
-/** An exercise amount in its own unit. */
-function exerciseText(n: number, unit: MemberCardExercise['unit']): string {
-  if (unit === 'mins') return minutesText(Math.round(n));
-  if (unit === 'km') return `${amountText(n)} km`;
-  return `${amountText(n)} ${n === 1 ? unit.slice(0, -1) : unit}`;
 }
 
 /** Placeholder for the card while another member's stats load (same shape as MemberCardStats). */
