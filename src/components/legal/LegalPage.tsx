@@ -113,9 +113,13 @@ function PrivacyPolicy({ onNavigate }: { onNavigate: (path: string) => void }) {
             If you turn on push notifications, we store your browser’s push address for that device.
           </li>
           <li>
-            <Term>Bug reports and ideas.</Term> When you send one, we keep your text, any screenshots you add, your
-            browser, device, screen size, theme, the app version, and your user ID (or “guest”). They are stored as
-            issues in a private GitHub repository.
+            <Term>Feedback (bug reports, ideas and other messages).</Term> When you send one in the app, we keep your
+            text, any screenshots you add, the optional 1 to 5 rating, your browser, device, screen size, theme, the
+            app version, and your user ID (or “guest”). Your account email is added only if you tick “Can I reply to
+            you?”. From the contact page, without an account, we keep your message, the email you give (to reply),
+            your name if you give it, and your browser, device type and screen size; Cloudflare Turnstile checks that
+            you are not a bot. The rating is private and never shown publicly. All of it is stored as issues in a
+            private GitHub repository.
           </li>
           <li>
             <Term>On your device.</Term> The app keeps your sign-in, a copy of your data for offline use, drafts and
@@ -180,7 +184,8 @@ function PrivacyPolicy({ onNavigate }: { onNavigate: (path: string) => void }) {
             <Term>Cloudflare Turnstile:</Term> the bot check.
           </li>
           <li>
-            <Term>GitHub:</Term> keeps the bug reports and ideas you send, in a private repository.
+            <Term>GitHub:</Term> keeps the feedback you send (bug reports, ideas and other messages), in a private
+            repository.
           </li>
           <li>
             <Term>UptimeRobot:</Term> checks every few minutes that the site is up. It doesn’t receive your data.
@@ -207,7 +212,7 @@ function PrivacyPolicy({ onNavigate }: { onNavigate: (path: string) => void }) {
           <li>Notifications: 30 days, then deleted automatically.</li>
           <li>Crash reports: for a limited time, under Sentry’s retention rules.</li>
           <li>Page-visit counts: anonymous, under Vercel’s retention rules.</li>
-          <li>Bug reports and ideas: until you ask us to remove them.</li>
+          <li>Feedback you send (bug reports, ideas and other messages): until you ask us to remove it.</li>
         </List>
       </Section>
 
@@ -221,7 +226,7 @@ function PrivacyPolicy({ onNavigate }: { onNavigate: (path: string) => void }) {
         <p>What stays:</p>
         <List>
           <li>Copies of your public plans that others already followed (without your name).</li>
-          <li>Bug reports and ideas you sent, until you ask us to remove them.</li>
+          <li>Feedback you sent (bug reports, ideas and other messages), until you ask us to remove it.</li>
           <li>Copies in our providers’ logs and backups, for a short time until they expire.</li>
           <li>Data saved on your other devices, until you sign out there.</li>
         </List>
@@ -230,8 +235,8 @@ function PrivacyPolicy({ onNavigate }: { onNavigate: (path: string) => void }) {
       <Section title="Your choices">
         <p>
           You can see and change most of your data in the app, make your profile private, turn notifications on or
-          off, and delete your account in Settings. To ask for a copy of your data, a correction, or the removal of a
-          bug report, email <ContactEmail />.
+          off, and delete your account in Settings. To ask for a copy of your data, a correction, or the removal of
+          feedback you sent, email <ContactEmail />.
         </p>
       </Section>
 

@@ -13,7 +13,7 @@ export const LEGAL_OPERATOR = 'AscendDay (formerly Ascend), run by Zakria Khan, 
 export const MIN_AGE = 13;
 
 /** Shown on both pages as "Last updated". Change it with every edit to either page. */
-export const LEGAL_UPDATED = '5 November 2026';
+export const LEGAL_UPDATED = '7 November 2026';
 
 /**
  * The version a new account agrees to: sent in the sign-up and guest-start metadata, where the
