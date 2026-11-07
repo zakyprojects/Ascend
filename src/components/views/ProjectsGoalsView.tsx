@@ -733,16 +733,13 @@ export function ProjectsGoalsView({
             badge: tabCounts[id],
           }))}
         />
-        {/* The order switch unlocks once there is a goal to lead with. */}
         <button
           type="button"
-          disabled={goals.length === 0}
           onClick={() => setTabOrder(NEXT_ORDER[tabOrder])}
-          title={goals.length === 0 ? 'Add a goal to change the order' : `Order: ${ORDER_LABEL[tabOrder]}. Tap to switch.`}
-          aria-label={goals.length === 0 ? 'Change order (add a goal first)' : `Order: ${ORDER_LABEL[tabOrder]}. Switch to ${ORDER_LABEL[NEXT_ORDER[tabOrder]]}`}
+          title={`Order: ${ORDER_LABEL[tabOrder]}. Tap to switch.`}
+          aria-label={`Order: ${ORDER_LABEL[tabOrder]}. Switch to ${ORDER_LABEL[NEXT_ORDER[tabOrder]]}`}
           className={cx(
-            'flex shrink-0 items-center gap-1.5 rounded-xl px-2.5 py-2 text-xs font-semibold transition-colors',
-            goals.length === 0 ? 'cursor-not-allowed text-content-disabled' : 'text-content-muted hover:bg-overlay-subtle hover:text-content-primary',
+            'flex shrink-0 items-center gap-1.5 rounded-xl px-2.5 py-2 text-xs font-semibold text-content-muted transition-colors hover:bg-overlay-subtle hover:text-content-primary',
             TAP_TARGET
           )}
         >
