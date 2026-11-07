@@ -19,6 +19,8 @@ import { Dialog, Disclosure, EmptyState } from '@/components/ui/primitives';
 import { cx, TAP_TARGET } from '@/components/ui/primitives/shared';
 import { LIST_ORDER_KEYS } from '@/lib/listOrder';
 import { LazyReorderList, ReorderButton } from '@/components/ui/Reorder';
+import { groupMinutes } from '@/lib/timeTrackerGroups';
+import { TimeGroups } from './TimeGroups';
 
 interface TemplatesTabProps {
   store: AppStore;
@@ -197,6 +199,8 @@ export function TemplatesTab({ store, templates, activities, onCreateTemplate, o
                     })}
                   </div>
                 </div>
+
+                {blocks.length > 0 && <TimeGroups minutes={groupMinutes(blocks, activityMap)} show="planned" />}
 
                 {blocks.length > 0 && (
                   <div className="relative h-3 overflow-hidden rounded-full bg-overlay-subtle" aria-hidden="true">

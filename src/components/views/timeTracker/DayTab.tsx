@@ -30,6 +30,8 @@ import { NowCard } from './NowCard';
 import { DayTimeline, type TimelineBlock } from './DayTimeline';
 import { blockName, blockRange, ledgerDayPoints, nextTierHint, useNowTick } from './dayMeta';
 import { actionFeedback } from '@/lib/actionFeedback';
+import { groupMinutes } from '@/lib/timeTrackerGroups';
+import { TimeGroups } from './TimeGroups';
 
 interface DayTabProps {
   store: AppStore;
@@ -83,6 +85,8 @@ export function DayTab({
   const points = ledgerDayPoints(store.state, selectedDateKey);
   const doneCount = blocks.filter((b) => b.completed).length;
   const skippedCount = blocks.filter((b) => !b.completed && b.skipped).length;
+  // Hours per group from this day's blocks only (not Focus, Skills or Exercise logs).
+  const groups = useMemo(() => groupMinutes(blocks, activityMap), [blocks, activityMap]);
 
   const items: TimelineBlock[] = useMemo(
     () =>
@@ -216,6 +220,7 @@ export function DayTab({
               <CapMeter variant="bar" label="Points today" earned={points} cap={TIME_TRACKER_POINTS.dailyCap} onExplain={onExplainPoints} />
             ) : undefined
           }
+          footer={blocks.length > 0 ? <TimeGroups minutes={groups} show={mode === 'future' ? 'planned' : 'done'} /> : undefined}
         />
       </Reveal>
 

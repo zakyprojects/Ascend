@@ -24,6 +24,8 @@ export interface PageHeroProps {
   stats?: PageHeroStat[];
   /** Right-hand slot, usually the page's points meter. */
   side?: ReactNode;
+  /** Optional full-width row under the hero, set off by a hairline (a page's breakdown line). */
+  footer?: ReactNode;
   ariaLabel: string;
   className?: string;
 }
@@ -32,7 +34,7 @@ export interface PageHeroProps {
  * The top of a module page (Design v3): one card that says how you are doing here, in the
  * same shape as the Dashboard hero. Replaces rows of equal stat boxes.
  */
-export function PageHero({ ring, lead, stats = [], side, ariaLabel, className }: PageHeroProps) {
+export function PageHero({ ring, lead, stats = [], side, footer, ariaLabel, className }: PageHeroProps) {
   return (
     <section className={cx('card relative overflow-hidden p-5 sm:p-6', className)} aria-label={ariaLabel}>
       <div aria-hidden="true" className="hero-glow hero-glow-corner" />
@@ -80,6 +82,7 @@ export function PageHero({ ring, lead, stats = [], side, ariaLabel, className }:
 
         {side && <div className="border-t border-overlay-subtle pt-5 xl:border-l xl:border-t-0 xl:pl-8 xl:pt-0">{side}</div>}
       </div>
+      {footer && <div className="relative mt-5 border-t border-overlay-subtle pt-4 sm:mt-6">{footer}</div>}
     </section>
   );
 }

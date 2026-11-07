@@ -35,6 +35,7 @@ export const timeTrackerGuide: HowItWorksGuide = {
       Until <Fig>{graceTime}</Fig> you can still tick yesterday’s last block. After that the day is fixed.
     </>,
     'Other past days are read-only.',
+    'Hours per group come from your blocks only. Productive: Deep Work, Skills, Reading, Exercise and categories linked to them. Rest: Break, Meals, Entertainment, Walking. Other: Praying and the rest. A block counts once, in its main category’s group.',
     'Deleting a done block today works today’s points out again. Earlier days keep theirs.',
     'A small pill at the bottom of every page shows the block happening now. Drag it to either side, or turn it off in Settings › Appearance.',
     'Tap Reorder to put your categories or templates in your own order. The block picker uses the category order.',
