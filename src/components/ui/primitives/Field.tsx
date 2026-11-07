@@ -1,5 +1,5 @@
 import React from 'react';
-import { AlertCircle, ChevronDown } from 'lucide-react';
+import { AlertCircle } from 'lucide-react';
 import { cx } from './shared';
 import { toUserMessage } from '@/lib/userMessage';
 
@@ -54,10 +54,6 @@ export interface InputProps
   extends React.InputHTMLAttributes<HTMLInputElement>,
     BaseFieldProps {}
 
-export interface SelectProps
-  extends React.SelectHTMLAttributes<HTMLSelectElement>,
-    BaseFieldProps {}
-
 export interface TextareaProps
   extends React.TextareaHTMLAttributes<HTMLTextAreaElement>,
     BaseFieldProps {}
@@ -71,7 +67,8 @@ interface FieldShellProps {
   children: React.ReactElement;
 }
 
-function FieldShell({ id, label, hint, error, optional, children }: FieldShellProps) {
+/** Label, control, error bubble and hint around one field (shared with Select.tsx). */
+export function FieldShell({ id, label, hint, error, optional, children }: FieldShellProps) {
   const hasLabel = Boolean(label);
   const hasHint = Boolean(hint);
   const hasError = Boolean(error);
@@ -97,10 +94,17 @@ function FieldShell({ id, label, hint, error, optional, children }: FieldShellPr
   );
 }
 
-const controlBase =
+export const controlBase =
   'w-full rounded-xl border bg-bg-700 text-content-primary placeholder:text-content-disabled px-3.5 py-2.5 text-base sm:text-sm focus:outline-none focus:ring-2 disabled:opacity-60 disabled:cursor-not-allowed';
 
-function useFieldLinking(
+/** Border + focus ring of a form control, rose while it shows a problem. */
+export function fieldBorder(hasError: boolean): string {
+  return hasError
+    ? 'border-error focus:border-error focus:ring-error/20'
+    : 'border-overlay-default hover:border-overlay-medium focus:border-primary-500 focus:ring-primary-500/20';
+}
+
+export function useFieldLinking(
   idProp?: string,
   label?: string,
   ariaLabel?: string,
@@ -172,64 +176,6 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
 );
 
 Input.displayName = 'Input';
-
-export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
-  (
-    {
-      label,
-      hint,
-      error: errorProp,
-      optional,
-      id: idProp,
-      className,
-      children,
-      'aria-describedby': describedByProp,
-      ...props
-    },
-    ref
-  ) => {
-    const { id, errorId, hintId, error } = useFieldLinking(
-      idProp,
-      label,
-      props['aria-label'],
-      props['aria-labelledby'],
-      errorProp,
-      hint
-    );
-
-    return (
-      <FieldShell id={id} label={label} hint={hint} error={error} optional={optional}>
-        <div className="relative w-full">
-          <select
-            ref={ref}
-            id={id}
-            aria-describedby={
-              [describedByProp, errorId, hintId].filter(Boolean).join(' ') || undefined
-            }
-            aria-invalid={error ? true : undefined}
-            className={cx(
-              controlBase,
-              'appearance-none pr-9',
-              error
-                ? 'border-error focus:border-error focus:ring-error/20'
-                : 'border-overlay-default hover:border-overlay-medium focus:border-primary-500 focus:ring-primary-500/20',
-              className
-            )}
-            {...props}
-          >
-            {children}
-          </select>
-          <ChevronDown
-            size={16}
-            className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-content-muted"
-          />
-        </div>
-      </FieldShell>
-    );
-  }
-);
-
-Select.displayName = 'Select';
 
 export const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
   (
@@ -489,7 +435,9 @@ export const Form = React.forwardRef<HTMLFormElement, FormProps>(
           !el.disabled &&
           (!el.validity.valid || isBlankText(el))
         ) {
-          show({ message: messageFor(el), field: el.id || undefined });
+          // A Select's hidden native select names its visible button (data-field-for), so the
+          // bubble attaches there and the button takes focus.
+          show({ message: messageFor(el), field: el.getAttribute('data-field-for') || el.id || undefined });
           return;
         }
       }

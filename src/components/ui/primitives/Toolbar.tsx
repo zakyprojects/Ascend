@@ -1,9 +1,9 @@
 import React from 'react';
-import { ChevronDown, type LucideIcon } from 'lucide-react';
+import { type LucideIcon } from 'lucide-react';
 import { cx } from './shared';
 
 /**
- * Page toolbar controls (search boxes, filter dropdowns, quick-add rows): one compact look that
+ * Page toolbar controls (search boxes, quick-add rows; filter dropdowns are `ToolbarSelect` in Select.tsx): one compact look that
  * matches the form fields' colours and focus ring. Text is 16px on phones so iOS never zooms in on
  * focus. They are not form fields: no label row and no error bubble, so an accessible name is required.
  */
@@ -33,26 +33,3 @@ export const ToolbarInput = React.forwardRef<HTMLInputElement, ToolbarInputProps
   )
 );
 ToolbarInput.displayName = 'ToolbarInput';
-
-export type ToolbarSelectProps = React.SelectHTMLAttributes<HTMLSelectElement> & {
-  'aria-label': string;
-  /** Classes for the wrapper (width, flex). */
-  wrapperClassName?: string;
-};
-
-/** Filter/sort dropdown for toolbars, with a drawn chevron. */
-export const ToolbarSelect = React.forwardRef<HTMLSelectElement, ToolbarSelectProps>(
-  ({ wrapperClassName, className, children, ...props }, ref) => (
-    <div className={cx('relative w-full sm:w-auto shrink-0', wrapperClassName)}>
-      <select ref={ref} className={cx(toolbarControl, 'appearance-none pl-3 pr-8', className)} {...props}>
-        {children}
-      </select>
-      <ChevronDown
-        size={14}
-        aria-hidden="true"
-        className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-content-muted"
-      />
-    </div>
-  )
-);
-ToolbarSelect.displayName = 'ToolbarSelect';

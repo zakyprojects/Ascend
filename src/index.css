@@ -1149,6 +1149,15 @@
     transform-origin: left top;
     animation: menu-in 180ms var(--ease-emphasized) both;
   }
+  /* The app's dropdown list (Select.tsx): grows from the trigger's side. */
+  .select-menu {
+    transform-origin: center top;
+    animation: menu-in 160ms var(--ease-emphasized) both;
+  }
+  .select-menu[data-side='above'] {
+    transform-origin: center bottom;
+    animation-name: menu-in-up;
+  }
   /* Phone zone bar: a floating glass pill; the current zone's slot widens to show its name. */
   .zone-bar {
     background: rgb(var(--color-bg-900-rgb, 15 17 17) / 0.82);
@@ -1195,8 +1204,11 @@
   @keyframes menu-in {
     from { opacity: 0; transform: translateY(-4px) scale(0.97); }
   }
+  @keyframes menu-in-up {
+    from { opacity: 0; transform: translateY(4px) scale(0.97); }
+  }
   @media (prefers-reduced-motion: reduce) {
-    .account-menu, .zone-slot-active > span, .zone-sheet, .zone-sheet-backdrop, .zone-sheet-closing { animation: none; }
+    .account-menu, .select-menu, .zone-slot-active > span, .zone-sheet, .zone-sheet-backdrop, .zone-sheet-closing { animation: none; }
     .zone-sheet-settle { transition: none; }
     .zone-slot { transition: none; }
   }

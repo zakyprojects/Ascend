@@ -27,11 +27,10 @@ export { Dialog } from './Dialog';
 export { focusField, focusStillInForm, isFinePointer, useFocusOnRender } from './focus';
 export type { DialogProps } from './Dialog';
 
-export { Input, Select, Textarea, NumberField, Form, FormAlert, FieldGroup, FieldMessage, FieldRow, FieldErrorBubble, useFormController, useFieldIssue } from './Field';
+export { Input, Textarea, NumberField, Form, FormAlert, FieldGroup, FieldMessage, FieldRow, FieldErrorBubble, useFormController, useFieldIssue } from './Field';
 export type {
   BaseFieldProps,
   InputProps,
-  SelectProps,
   TextareaProps,
   NumberFieldProps,
   FormProps,
@@ -74,5 +73,8 @@ export type { PageColumnsProps } from './PageColumns';
 export { Disclosure } from './Disclosure';
 export type { DisclosureProps } from './Disclosure';
 
-export { ToolbarInput, ToolbarSelect } from './Toolbar';
-export type { ToolbarInputProps, ToolbarSelectProps } from './Toolbar';
+export { ToolbarInput } from './Toolbar';
+export type { ToolbarInputProps } from './Toolbar';
+
+export { Select, ToolbarSelect } from './Select';
+export type { SelectProps, ToolbarSelectProps } from './Select';
