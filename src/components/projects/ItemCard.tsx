@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { Edit3, Lock, Trash2 } from 'lucide-react';
-import { cx, ProgressBar } from '@/components/ui/primitives';
+import { cx, ProgressBar, Select } from '@/components/ui/primitives';
 import type { ProgressTone } from '@/components/ui/primitives/ProgressBar';
 import { TAP_TARGET_Y } from '@/components/ui/primitives/shared';
 import { UpdateProgressButton } from '@/components/ui/ProgressUpdateDialog';
@@ -167,7 +167,7 @@ export function ItemCard({
   );
 }
 
-/** The compact status menu in a card's footer. */
+/** The compact status menu in a card's footer (the app's dropdown, compact size). */
 export function StatusSelect({ value, onChange, label, disabled, children }: {
   value: string;
   onChange: (value: string) => void;
@@ -176,14 +176,8 @@ export function StatusSelect({ value, onChange, label, disabled, children }: {
   children: ReactNode;
 }) {
   return (
-    <select
-      value={value}
-      disabled={disabled}
-      aria-label={label}
-      onChange={(e) => onChange(e.target.value)}
-      className="min-h-9 rounded-xl border border-overlay-default bg-bg-900 px-2.5 py-1.5 text-base text-content-secondary focus:border-primary-500/50 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60 sm:text-xs"
-    >
+    <Select size="compact" value={value} disabled={disabled} aria-label={label} onValueChange={onChange}>
       {children}
-    </select>
+    </Select>
   );
 }
