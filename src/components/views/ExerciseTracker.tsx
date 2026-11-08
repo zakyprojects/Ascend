@@ -492,7 +492,7 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
                 : remainingCap === 0
                 ? `Today's ${WORKOUT_POINTS.dailyCap} pts are reached. It still saves.`
                 : previewRaw > previewPoints
-                ? `Only ${ptsText(remainingCap)} left today.`
+                ? "Today's max"
                 : 'You earn'}
             </span>
             {!timezoneWait && <span className="figure text-success-text shrink-0">{ptsText(previewPoints, true)}</span>}

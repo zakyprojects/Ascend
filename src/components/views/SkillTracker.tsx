@@ -1037,7 +1037,7 @@ export function SkillTracker({ store, onNavigate }: { store: AppStore; onNavigat
                   : remainingCap === 0
                     ? `${SKILLS_POINTS.dailyCap} pts reached today. It still saves.`
                     : previewRaw > previewPoints
-                      ? `Only ${ptsText(remainingCap)} left today.`
+                      ? "Today's max"
                       : 'Points to earn'}
               </span>
               {!timezoneWait && <span className="figure text-brand-text shrink-0">{ptsText(previewPoints, true)}</span>}
