@@ -301,11 +301,6 @@ export async function fetchUserDataWithStatusFromSupabase(userId: string): Promi
   }
 }
 
-export async function fetchUserDataFromSupabase(userId: string): Promise<AppState | null> {
-  const res = await fetchUserDataWithStatusFromSupabase(userId);
-  return res.state;
-}
-
 /** Writes this account's profile row from the state (stats, settings, device timezone); throws on failure. */
 async function writeProfileFromState(userId: string, st: AppState): Promise<null> {
   if (!st.currentUser) return null;
@@ -1227,43 +1222,6 @@ export async function deletePartnerInviteSupabase(inviteId: string) {
   } catch (e) {
     console.error('deletePartnerInviteSupabase failed:', e);
     throw e;
-  }
-}
-
-export async function fetchPartnershipSupabase(userId: string, username?: string): Promise<Partnership | null> {
-  if (!isSupabaseConfigured || (!userId && !username)) return null;
-  try {
-    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId);
-    let filterString = '';
-    if (isUuid) {
-      filterString = `user1_id.eq.${userId},user2_id.eq.${userId}`;
-    }
-    if (username) {
-      const name = ilikeExactOrValue(username);
-      const userFilter = `user1_username.ilike.${name},user2_username.ilike.${name}`;
-      filterString = filterString ? `${filterString},${userFilter}` : userFilter;
-    }
-    if (!filterString) return null;
-
-    const { data, error } = await supabase
-      .from('partnerships')
-      .select('*')
-      .or(filterString)
-      .maybeSingle();
-
-    if (error || !data) return null;
-
-    return {
-      id: data.id,
-      user1Id: data.user1_id,
-      user1Username: data.user1_username,
-      user2Id: data.user2_id,
-      user2Username: data.user2_username,
-      pairedAt: data.paired_at,
-    };
-  } catch (e) {
-    console.error('Error fetching partnership from Supabase:', e);
-    return null;
   }
 }
 

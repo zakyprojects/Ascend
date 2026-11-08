@@ -42,9 +42,6 @@ export const THEME_SCRIPT = `(function(){try{var t=localStorage.getItem('ascend_
  */
 export const LANDING_REDIRECT_SCRIPT = `(function(){try{if(location.pathname!=='/')return;var h=location.hash,s=location.search,go=null;if(h.indexOf('#/')===0){var id=decodeURIComponent(h.slice(2)).replace(/^\\/+|\\/+$/g,'').toLowerCase();var r={'':'dashboard','index.html':'dashboard',books:'reading',prefrontal:'prefrontal-cortex'};if(Object.prototype.hasOwnProperty.call(r,id))id=r[id];if(!/^[a-z0-9-]+$/.test(id))id='dashboard';go='/'+id+s;}else if(/[#&](access_token|error)=/.test(h)||/[?&](code|quick-log)(=|&|$)/.test(s)){go='/dashboard'+s+h;}else{for(var i=0;i<localStorage.length;i++){var k=localStorage.key(i);if(!k||!/^sb-[a-z0-9]+-auth-token$/.test(k))continue;var v=JSON.parse(localStorage.getItem(k)||'null');if(v&&typeof v.refresh_token==='string'&&v.refresh_token){go='/dashboard'+s+h;break;}}}if(go){document.documentElement.style.visibility='hidden';location.replace(go);}}catch(e){}})();`;
 
-/** Every inline executable script a marketing page can carry (checkSeo hashes them into the CSP). */
-export const MARKETING_INLINE_SCRIPTS = [THEME_SCRIPT, LANDING_REDIRECT_SCRIPT];
-
 const ogImageUrl = (name: string) => `${SITE_URL}/og/${name}.png?v=${OG_IMAGE_VERSION}`;
 
 /** Title, description, canonical, robots and the link-preview tags of one page. */

@@ -346,16 +346,6 @@ export function getBlockTimingAt(
   return atMs < endMs ? 'current' : 'over';
 }
 
-/** True while `at` is inside the block (see getBlockTimingAt). */
-export function isBlockCurrentAt(block: Pick<TimeTrackerBlock, 'startTime' | 'endTime'>, dateKey: string, at: Date | number): boolean {
-  return getBlockTimingAt(block, dateKey, at) === 'current';
-}
-
-/** True once `at` has reached the block's end (see getBlockTimingAt). */
-export function isBlockOverAt(block: Pick<TimeTrackerBlock, 'startTime' | 'endTime'>, dateKey: string, at: Date | number): boolean {
-  return getBlockTimingAt(block, dateKey, at) === 'over';
-}
-
 /** Returns the day of week name (e.g. 'Wednesday') for a given dateKey (YYYY-MM-DD) or Date. */
 export function getDayOfWeekName(dateKeyOrDate: string | Date): DayOfWeek {
   let d: Date;

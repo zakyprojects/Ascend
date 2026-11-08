@@ -210,10 +210,6 @@ export function formatDateShort(dateVal?: string | Date | number | null, fallbac
   });
 }
 
-export function isToday(dateStr: string): boolean {
-  return dateStr === todayKey();
-}
-
 export function isTodayLocal(dateIso?: string | null): boolean {
   if (!dateIso) return false;
   const d = parseDate(dateIso);

@@ -1,5 +1,4 @@
 import { trustedNowMs } from '@/lib/clock';
-import { todayKey } from '@/lib/dates';
 import { FOCUS_MILESTONES, FOCUS_MIN_MINUTES, focusR1Points } from '@/lib/focusPoints';
 
 /**
@@ -95,9 +94,6 @@ export function remainingSeconds(session: FocusSession, nowMs: number = trustedN
 export function sessionEndMs(session: FocusSession): number | null {
   return session.isPaused ? null : session.startTime + session.plannedDurationSeconds * 1000;
 }
-
-/** Local day a session that ended at this time belongs to. */
-export const endDayKey = (endMs: number): string => todayKey(new Date(endMs));
 
 /** "mm:ss", or "h:mm:ss" from an hour up. */
 export function formatClock(totalSeconds: number): string {
