@@ -1,6 +1,8 @@
 // Offline audit LOW fixes of 2026-11-09 (knowledge/mode-a-offline-resilience-2026-11-09.md, F4–F8).
 // F4: storage full while queueing: this tab's versions and edit times stay, so the edit is queued
 //     on the next save instead of being read as an old copy and replaced by the server row.
+// F6: a finished save clears the dirty flag only when no newer change set it meanwhile (or the save
+//     could not queue its changes). The store wiring (state effect, autosaves, logout) is not run here.
 import { DEFAULT_STATE, type AppState } from '@/types';
 
 const store = new Map<string, string>();
@@ -38,6 +40,7 @@ const { SYNCED_COLLECTIONS } = await import('../syncedCollections');
 const { setTabSyncedHashes, clearTabSyncedHashes, tabSyncedHashes } = await import('../tabVersions');
 const { noteEditTimes, readEditTimes } = await import('../editTimes');
 const { supabase } = await import('../../supabase');
+const { clearDirtyAfterSave, dirtyMark, markDirty } = await import('../dirtyFlag');
 
 function assert(condition: boolean, msg: string) {
   if (!condition) throw new Error(`Assertion failed: ${msg}`);
@@ -103,6 +106,40 @@ function synced(state: AppState) {
   assert(op?.updatedAt === EDIT, 'stamped with the time it was made');
   assert(tabSyncedHashes(UID).tasks.t1 === hashOf('tasks', task('t1', 'Essay v2', false)), 'the version moves with the queued copy');
   assert(!events.some((e) => e.type === 'ascend-sync-behind'), 'the edit is not read as an old copy');
+}
+
+// ---------------------------------------------------------------- F6: dirty flag generations
+{
+  reset();
+  const key = `ascend_dirty_${UID}`;
+  markDirty(UID);
+  const a = dirtyMark(UID);
+  assert(Boolean(a), 'the flag is set');
+  // Edit B lands while A's save runs.
+  markDirty(UID);
+  const b = dirtyMark(UID);
+  assert(a !== b, 'every mark is new');
+  clearDirtyAfterSave(UID, a);
+  assert(store.get(key) === b, "A's finished save keeps the flag B set (before the fix it was removed)");
+  clearDirtyAfterSave(UID, b);
+  assert(!store.has(key), "B's own save clears it");
+  // A save that started with no flag never clears one set meanwhile.
+  markDirty(UID);
+  clearDirtyAfterSave(UID, null);
+  assert(store.has(key), 'a flag set after the save took its state stays');
+  // An older bundle's '1' mark still clears normally.
+  store.set(key, '1');
+  clearDirtyAfterSave(UID, dirtyMark(UID));
+  assert(!store.has(key), "an older tab's '1' is cleared by a save that read it");
+  // The save could not queue its row changes (storage full): the flag stays.
+  synced(base({ tasks: [task('t1', 'Essay', false)] }));
+  markDirty(UID);
+  const c = dirtyMark(UID);
+  failWrites = /^ascend_outbox_/;
+  recordSyncedChanges(base({ tasks: [task('t1', 'Changed', false)] }));
+  failWrites = null;
+  clearDirtyAfterSave(UID, c);
+  assert(store.get(key) === c, 'storage full keeps the flag, so logout keeps the data and reconnect retries');
 }
 
 console.log('offlineLowFixes: all passed');

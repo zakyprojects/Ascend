@@ -242,6 +242,7 @@ import { GuardBlockedError, SessionLostError } from './errors';
 import { SYNC_BEHIND_EVENT, SYNC_VERSIONS_EVENT, flushOutbox, hasPendingSyncOps, readBaseline, recordSyncedChanges } from './sync/outbox';
 import { setTabSyncedHashes, storeTabSyncedHashes, tabSyncedHashes, type Baseline } from './sync/tabVersions';
 import { noteEditTimes } from './sync/editTimes';
+import { clearDirtyAfterSave, dirtyMark, markDirty } from './sync/dirtyFlag';
 import { adoptTabState, applyRemoteChanges, prepareRemoteRows, pullSyncedRows, takePeerVersions, type RemoteChange } from './sync/pull';
 import { SYNCED_COLLECTIONS, cacheWithHydratedCollections, itemsOf, rowIdOf, syncKeyOf } from './sync/syncedCollections';
 import { mergeAppState, deduplicatePresetHabits, mergeAppStateWithGuardResult, isLegitimateTombstoneId, signInMergeBase } from './stateMerger';
@@ -2508,7 +2509,7 @@ export function useAppState() {
             localStorage.setItem(`ascend_user_cache_${uid}`, JSON.stringify(state));
             storeTabSyncedHashes(uid);
             if (hasStateData(state)) {
-              localStorage.setItem(`ascend_dirty_${uid}`, '1');
+              markDirty(uid);
             }
           } else {
             localStorage.setItem(GUEST_STORAGE_KEY, JSON.stringify(state));
@@ -2530,10 +2531,12 @@ export function useAppState() {
           clearTimeout(debounceTimer.current);
           debounceTimer.current = null;
         }
+        // A change made while this save runs sets a new mark, and keeps the flag for its own save.
+        const dirtyAtSave = state.currentUser?.id ? dirtyMark(state.currentUser.id) : null;
         enqueuePersist(state)
           .then(() => {
             if (typeof window !== 'undefined' && state.currentUser?.id) {
-              localStorage.removeItem(`ascend_dirty_${state.currentUser.id}`);
+              clearDirtyAfterSave(state.currentUser.id, dirtyAtSave);
             }
             resolversToDrain.forEach(({ resolve }) => resolve());
           })
@@ -2626,10 +2629,11 @@ export function useAppState() {
           // would send it as an edit. Another account's state never stands in.
           const latest = stateRef.current;
           const toSave = latest.currentUser?.id === state.currentUser?.id ? latest : state;
+          const dirtyAtSave = toSave.currentUser?.id ? dirtyMark(toSave.currentUser.id) : null;
           try {
             await enqueuePersist(toSave);
             if (typeof window !== 'undefined' && toSave.currentUser?.id) {
-              localStorage.removeItem(`ascend_dirty_${toSave.currentUser.id}`);
+              clearDirtyAfterSave(toSave.currentUser.id, dirtyAtSave);
             }
           } catch (err) {
             if (err instanceof SessionLostError) {
@@ -3832,8 +3836,9 @@ export function useAppState() {
       // Changes made while the delete ran started no save either.
       if (hadPendingSave || stateRef.current !== stateAtStart) {
         const stateToSave = stateRef.current;
+        const dirtyAtSave = dirtyMark(userId);
         enqueuePersist(stateToSave)
-          .then(() => localStorage.removeItem(`ascend_dirty_${userId}`))
+          .then(() => clearDirtyAfterSave(userId, dirtyAtSave))
           .catch((saveErr) => console.error('Failed to save after a refused account deletion:', saveErr));
       }
       throw err;
