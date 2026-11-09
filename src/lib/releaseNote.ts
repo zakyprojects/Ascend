@@ -47,4 +47,12 @@ export function releaseNoteGroups(note: ReleaseNote): { key: ReleaseNoteGroupKey
   });
 }
 
-export const RELEASE_NOTE: ReleaseNote | null = null;
+export const RELEASE_NOTE: ReleaseNote | null = {
+  id: 1,
+  releasedAt: '2026-11-09T19:06:00+05:00',
+  new: ['Recovery: tapped Clean today by mistake? Tap the tick to undo it the same day.'],
+  changed: [
+    "Focus: every 12 minutes of focus now gives 1 point, and today's sessions add up. No finish bonus.",
+    'Recovery: points now come from a daily "Clean today" check-in, 1 point a day, instead of milestones.',
+  ],
+};
