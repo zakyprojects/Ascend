@@ -6,8 +6,14 @@
 --     table recovery_checkins, row id = the day 'YYYY-MM-DD'. A check-in earns 1 point
 --     (point_entries 'recovery_day_<day>', source 'recovery_checkin').
 --   * The app can add today's check-in, or yesterday's when it was missed (late tap). Anything else
---     (two or more days ago, tomorrow, an edit or a delete of an existing row) is dropped silently,
---     like the reading/skill late-day guards. A second device's tap on the same day is a no-op.
+--     (two or more days ago, tomorrow, an edit of an existing row) is dropped silently, like the
+--     reading/skill late-day guards. A second device's tap on the same day is a no-op.
+--   * Undo (the tick on the done card): the app may soft-delete (deleted_at) TODAY's check-in only,
+--     today in the writer's timezone. That also soft-deletes today's point (recovery_day_<today>),
+--     only while that day is still the user's current local day. A delete of yesterday's or an older
+--     check-in is dropped and never touches a point. After an undo the app may tap Clean today again
+--     (the deleted row comes back, today or yesterday only); the same single point comes back once
+--     (same id, never a second one), so undo + re-tap cannot farm points.
 --   * No tap = no point; the streak itself is not affected (it runs from the tracker's startDate).
 --   * The day the tracker was created (local day of the new server-stamped
 --     addiction_trackers.server_created_at, never the client's created_at) earns 0; points start on
@@ -15,7 +21,8 @@
 --   * Season cap: at most 90 recovery points per season (check-ins plus the old milestone rows of
 --     that season), enforced here. The streak carries across seasons; each season allows 90 again.
 --   * No bonuses. Earned points are never taken back: a relapse or a deleted tracker changes nothing
---     already written. Old milestone rows stay exactly as they are.
+--     already written; the only exception is the user's own undo of today's check-in (above), on the
+--     same day. Old milestone rows stay exactly as they are.
 --   * The award is dated at the check-in's server receipt, clamped inside its day (a late tap is
 --     dated yesterday 23:59:59.999 local), and only while the day started less than 48 h ago, so a
 --     final league archive never changes.
@@ -27,7 +34,7 @@
 -- (ascend_run_recovery_awards). Rollback bodies: work/rcc/*.live.sql (dumped 2026-11-09).
 --
 -- Table follows the S1 sync template (20261107150000_list_orders.sql): PK (user_id, id),
--- keep_newer + stamp triggers, owner RLS select/insert/update (no DELETE), explicit grants,
+-- keep_newer (revivable variant: an undone day can be checked in again) + stamp triggers, owner RLS select/insert/update (no DELETE), explicit grants,
 -- realtime, size limit, the 30-day soft-delete purge list. The FK cascades on account deletion.
 -- Older app versions never read or write recovery_checkins (they simply cannot check in); their
 -- tracker writes keep working (server_created_at is never sent by any app and is pinned here).
@@ -94,15 +101,18 @@ CREATE TABLE public.recovery_checkins (
 
 CREATE INDEX recovery_checkins_user_cursor_idx ON public.recovery_checkins (user_id, server_updated_at);
 
--- App writes: a NEW row of today or yesterday (writer's timezone) only; rows are immutable for the
--- app (an upsert on an existing day, an edit or a tombstone is dropped). Service roles pass.
+-- App writes (writer's timezone): a NEW row of today or yesterday; the undo of TODAY's live row
+-- (deleted_at set, data kept); a re-tap that brings an undone row of today or yesterday back. Every
+-- other app write is dropped: an upsert on a live day (second device), an edit, a delete of
+-- yesterday or older, a new row born deleted. Service roles pass.
 CREATE FUNCTION public.recovery_checkins_guard()
  RETURNS trigger
  LANGUAGE plpgsql
  SET search_path TO ''
 AS $function$
 DECLARE
-  v_day date;
+  v_day   date;
+  v_today text;
 BEGIN
   IF current_user NOT IN ('anon', 'authenticated') THEN
     IF TG_OP = 'UPDATE' THEN
@@ -110,11 +120,26 @@ BEGIN
     END IF;
     RETURN NEW;
   END IF;
-  IF TG_OP = 'UPDATE' OR NEW.deleted_at IS NOT NULL THEN
+  v_day := (now() AT TIME ZONE coalesce(public.ascend_own_timezone(NEW.user_id), 'Asia/Karachi'))::date;
+  v_today := to_char(v_day, 'YYYY-MM-DD');
+  IF TG_OP = 'UPDATE' THEN
+    IF OLD.deleted_at IS NULL AND NEW.deleted_at IS NOT NULL THEN
+      -- Undo: today's check-in only; the row keeps what it was.
+      IF OLD.id <> v_today THEN
+        RETURN NULL;
+      END IF;
+      NEW.data := OLD.data;
+      NEW.received_at := OLD.received_at;
+      RETURN NEW;
+    END IF;
+    IF NOT (OLD.deleted_at IS NOT NULL AND NEW.deleted_at IS NULL) THEN
+      RETURN NULL; -- an edit or a second tap of a live day, or a write to an undone row
+    END IF;
+    -- Re-tap after an undo: falls through to the same checks as a new row.
+  ELSIF NEW.deleted_at IS NOT NULL THEN
     RETURN NULL;
   END IF;
-  v_day := (now() AT TIME ZONE coalesce(public.ascend_own_timezone(NEW.user_id), 'Asia/Karachi'))::date;
-  IF NEW.id NOT IN (to_char(v_day, 'YYYY-MM-DD'), to_char(v_day - 1, 'YYYY-MM-DD'))
+  IF NEW.id NOT IN (v_today, to_char(v_day - 1, 'YYYY-MM-DD'))
      OR NEW.data->>'id' IS DISTINCT FROM NEW.id
   THEN
     RETURN NULL; -- a future day, an older day, or a mismatched document
@@ -128,7 +153,7 @@ $function$;
 CREATE TRIGGER recovery_checkins_guard BEFORE INSERT OR UPDATE ON public.recovery_checkins
   FOR EACH ROW EXECUTE FUNCTION public.recovery_checkins_guard();
 CREATE TRIGGER recovery_checkins_keep_newer BEFORE UPDATE ON public.recovery_checkins
-  FOR EACH ROW EXECUTE FUNCTION public.sync_keep_newer_row();
+  FOR EACH ROW EXECUTE FUNCTION public.sync_keep_newer_revivable_row();
 CREATE TRIGGER recovery_checkins_stamp BEFORE INSERT OR UPDATE ON public.recovery_checkins
   FOR EACH ROW EXECUTE FUNCTION public.sync_stamp_row();
 
@@ -147,7 +172,8 @@ GRANT ALL ON public.recovery_checkins TO service_role;
 
 ALTER PUBLICATION supabase_realtime ADD TABLE public.recovery_checkins;
 
--- 4. The point for one check-in day (idempotent; never lowers or removes anything).
+-- 4. The point for one check-in day (idempotent; never lowers anything). A point row an undo
+--    soft-deleted comes back as the same single row on the re-tap.
 CREATE FUNCTION public.ascend_award_recovery_checkin(p_user uuid, p_day text)
  RETURNS void
  LANGUAGE plpgsql
@@ -176,7 +202,9 @@ BEGIN
   SELECT c.received_at, c.data->>'trackerId' INTO v_received, v_tid
   FROM public.recovery_checkins c
   WHERE c.user_id = p_user AND c.id = p_day AND c.deleted_at IS NULL;
-  IF NOT FOUND OR EXISTS (SELECT 1 FROM public.point_entries pe WHERE pe.user_id = p_user AND pe.id = v_id) THEN
+  IF NOT FOUND OR EXISTS (
+    SELECT 1 FROM public.point_entries pe WHERE pe.user_id = p_user AND pe.id = v_id AND pe.deleted_at IS NULL
+  ) THEN
     RETURN;
   END IF;
 
@@ -218,7 +246,7 @@ BEGIN
     RETURN; -- season cap reached
   END IF;
 
-  INSERT INTO public.point_entries (user_id, id, data, created_at, updated_at)
+  INSERT INTO public.point_entries AS pe (user_id, id, data, created_at, updated_at)
   VALUES (p_user, v_id, jsonb_build_object(
     'id', v_id,
     'amount', v_amount,
@@ -227,7 +255,32 @@ BEGIN
     'timestamp', to_char(v_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'),
     'metadata', jsonb_build_object('date', p_day, 'trackerId', v_tid)
   ), now(), now())
-  ON CONFLICT (user_id, id) DO NOTHING;
+  ON CONFLICT (user_id, id) DO UPDATE
+    SET data = EXCLUDED.data, deleted_at = NULL, updated_at = greatest(now(), pe.updated_at)
+    WHERE pe.deleted_at IS NOT NULL;
+END;
+$function$;
+
+-- 4b. Undo of today's check-in: soft-deletes today's point, only while p_day is still the user's
+--     current local day. Any other day (yesterday's late tap, an undo arriving after midnight)
+--     changes nothing.
+CREATE FUNCTION public.ascend_revoke_recovery_checkin(p_user uuid, p_day text)
+ RETURNS void
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+BEGIN
+  PERFORM pg_advisory_xact_lock(hashtext('recovery_checkin:' || p_user::text));
+  IF p_day IS DISTINCT FROM to_char((now() AT TIME ZONE public.ascend_user_timezone(p_user))::date, 'YYYY-MM-DD') THEN
+    RETURN;
+  END IF;
+  UPDATE public.point_entries pe
+  SET deleted_at = now(), updated_at = greatest(now(), pe.updated_at)
+  WHERE pe.user_id = p_user
+    AND pe.id = 'recovery_day_' || p_day
+    AND pe.deleted_at IS NULL
+    AND pe.data->>'source' = 'recovery_checkin';
 END;
 $function$;
 
@@ -238,19 +291,26 @@ CREATE FUNCTION public.recovery_checkins_award_points()
  SET search_path TO ''
 AS $function$
 BEGIN
-  IF NEW.deleted_at IS NULL THEN
-    PERFORM public.ascend_award_recovery_checkin(NEW.user_id, NEW.id);
+  IF TG_OP = 'INSERT' THEN
+    IF NEW.deleted_at IS NULL THEN
+      PERFORM public.ascend_award_recovery_checkin(NEW.user_id, NEW.id);
+    END IF;
+  ELSIF OLD.deleted_at IS NOT NULL AND NEW.deleted_at IS NULL THEN
+    PERFORM public.ascend_award_recovery_checkin(NEW.user_id, NEW.id); -- re-tap after an undo
+  ELSIF OLD.deleted_at IS NULL AND NEW.deleted_at IS NOT NULL THEN
+    PERFORM public.ascend_revoke_recovery_checkin(NEW.user_id, NEW.id); -- undo
   END IF;
   RETURN NULL;
 END;
 $function$;
 
-CREATE TRIGGER recovery_checkins_award_points AFTER INSERT ON public.recovery_checkins
+CREATE TRIGGER recovery_checkins_award_points AFTER INSERT OR UPDATE ON public.recovery_checkins
   FOR EACH ROW EXECUTE FUNCTION public.recovery_checkins_award_points();
 
 REVOKE ALL ON FUNCTION public.addiction_trackers_pin_created() FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.recovery_checkins_guard() FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.ascend_award_recovery_checkin(uuid, text) FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.ascend_revoke_recovery_checkin(uuid, text) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.recovery_checkins_award_points() FROM PUBLIC, anon, authenticated;
 
 -- 5. Soft-delete purge: the live body (20261107150000) plus recovery_checkins.
