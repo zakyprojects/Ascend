@@ -3,6 +3,9 @@
 //     on the next save instead of being read as an old copy and replaced by the server row.
 // F7: a device away 30+ days with a queued edit of a row the server purged drops that edit at the
 //     stale full pull instead of inserting the purged row again; a new row's first upload is kept.
+// F8: rows the server rejects for good (22/23/42) are kept in a short dead-letter list (ids, table,
+//     code; no row values or error text). The Sentry report itself is a no-op outside production
+//     builds and is not checked here.
 // F5: the logout save clears the dirty flag, so the device data is removed when nothing is unsent
 //     (the store's logout itself is not run here: its step 3b condition is checked on the helpers).
 // F6: a finished save clears the dirty flag only when no newer change set it meanwhile (or the save
@@ -39,7 +42,7 @@ const events: Array<{ type: string; detail?: unknown }> = [];
   }
 };
 
-const { diffSyncedCollections, flushOutbox, hasPendingSyncOps, hashRow, lastFullPullKey, readBaseline, recordSyncedChanges, syncStorageFailed } =
+const { diffSyncedCollections, droppedOps, flushOutbox, hasPendingSyncOps, hashRow, lastFullPullKey, readBaseline, recordSyncedChanges, syncStorageFailed } =
   await import('../outbox');
 const { applyRemoteChanges, pullSyncedRows } = await import('../pull');
 const { trustedNowMs } = await import('../../clock');
@@ -231,6 +234,45 @@ function synced(state: AppState) {
   await pullSyncedRows(UID, true);
   client.auth.getSession = async () => ({ data: { session: null } });
   assert('tasks:t1' in outbox(), "an unmarked op is kept (it may be a new row's first upload)");
+}
+
+// ---------------------------------------------------------------- F8: rejected rows are recorded
+{
+  reset();
+  const s0 = base({ tasks: [task('t1', 'A', false), task('t2', 'B', false), task('t3', 'C', false)] });
+  synced(s0);
+  // t1 edited (the server rejects it: a check violation), t2 edited (stored), t3 deleted (the
+  // update is rejected: a bad input).
+  recordSyncedChanges(base({ tasks: [task('t1', 'A2', false), task('t2', 'B2', false)], deletedEntityIds: ['t3'] }));
+  await flushOutbox(UID);
+  const reject = { code: '23514', message: 'new row for relation "tasks" violates check constraint: secret text' };
+  client.auth.getSession = async () => ({ data: { session: { user: { id: UID } } } });
+  client.from = () => {
+    let upserted: Array<Record<string, unknown>> | null = null;
+    let updating = false;
+    const query = {
+      select: () => query,
+      eq: () => query,
+      in: () => query,
+      upsert: (rows: Array<Record<string, unknown>> | Record<string, unknown>) => ((upserted = Array.isArray(rows) ? rows : [rows]), query),
+      update: () => ((updating = true), query),
+      then: (resolve: (r: unknown) => void) => {
+        if (updating) return resolve({ data: null, error: { code: '22P02', message: 'invalid input syntax' } });
+        if (upserted && upserted.some((r) => r.id === 't1')) return resolve({ data: null, error: reject });
+        return resolve({ data: (upserted || []).map((r) => ({ id: r.id })), error: null });
+      },
+    };
+    return query;
+  };
+  await flushOutbox(UID);
+  client.auth.getSession = async () => ({ data: { session: null } });
+  assert(Object.keys(outbox()).length === 0, 'rejected ops still leave the outbox (they can never succeed)');
+  const dropped = droppedOps(UID);
+  assert(dropped.length === 2, `two drops recorded (got ${dropped.length})`);
+  assert(dropped.some((d) => d.table === 'tasks' && d.id === 't1' && d.kind === 'upsert' && d.code === '23514'), 'the rejected upsert is recorded');
+  assert(dropped.some((d) => d.id === 't3' && d.kind === 'delete' && d.code === '22P02'), 'the rejected delete is recorded');
+  assert(!JSON.stringify(dropped).includes('secret text') && !JSON.stringify(dropped).includes('A2'), 'no error text or row values kept');
+  assert(!dropped.some((d) => d.id === 't2'), 'the stored row is not recorded');
 }
 
 console.log('offlineLowFixes: all passed');

@@ -6,6 +6,7 @@ import { trustedNow } from '../clock';
 import { clearTabSyncedHashes, setTabSyncedHashes, tabSyncedHashes, type Baseline } from './tabVersions';
 import { hashRow } from './rowHash';
 import { clearEditTimes, editTimeOf, pruneEditTimes, readEditTimes, type EditTimes } from './editTimes';
+import { reportError } from '../errorReporting';
 
 /**
  * Relational sync outbox (DB normalization, S2 dual-write).
@@ -60,6 +61,9 @@ export const lastFullPullKey = (userId: string) => `ascend_sync_last_full_pull_$
 /** Rows the server did not store from an upsert (keep-newer, a deleted row, a day guard): table -> ids, re-read by the next pull. */
 const refetchKey = (userId: string) => `ascend_sync_refetch_${userId}`;
 const DELETE_CHUNK = 100;
+/** Ops the server rejected for good (22/23/42 errors): the last few, ids only, for support. */
+const droppedKey = (userId: string) => `ascend_sync_dropped_${userId}`;
+const MAX_DROPPED = 50;
 /**
  * Fired (window event, detail { userId, refused? }) when a save held old copies back, or (refused:
  * true) when the server did not store some rows sent: this tab should pull.
@@ -366,6 +370,7 @@ export function clearSyncStorage(userId: string): void {
     for (const { table } of SYNCED_COLLECTIONS) localStorage.removeItem(cursorKey(userId, table));
     localStorage.removeItem(lastFullPullKey(userId));
     localStorage.removeItem(refetchKey(userId));
+    localStorage.removeItem(droppedKey(userId));
     clearTabSyncedHashes(userId);
     clearEditTimes(userId);
   } catch {
@@ -376,6 +381,36 @@ export function clearSyncStorage(userId: string): void {
 /** Data, constraint and permission errors: retrying the same op can never succeed. */
 function isPermanent(error: PostgrestError): boolean {
   return /^(22|23|42)/.test(error.code || '');
+}
+
+export interface DroppedOp {
+  table: string;
+  id: string;
+  kind: OutboxOp['kind'];
+  code: string;
+  at: string;
+}
+
+/**
+ * An op the server rejected for good is dropped (retrying can never succeed), so this device keeps
+ * a row the server and other devices never get. Reported to Sentry (table, ids and error code only;
+ * the error text can quote row values) and kept in a short device list, so the drop is not silent.
+ */
+function noteDropped(userId: string, table: string, kind: OutboxOp['kind'], ids: string[], error: PostgrestError): void {
+  const code = error.code || 'unknown';
+  reportError(new Error(`Sync ${kind} rejected by the server (${code})`), { table, kind, code, count: ids.length, ids: ids.slice(0, 20) });
+  try {
+    const at = trustedNow().toISOString();
+    const list = [...droppedOps(userId), ...ids.map((id) => ({ table, id, kind, code, at }))];
+    writeJson(droppedKey(userId), list.slice(-MAX_DROPPED));
+  } catch {
+    /* quota: Sentry still has it */
+  }
+}
+
+/** The last ops the server rejected for good on this device (newest last). */
+export function droppedOps(userId: string): DroppedOp[] {
+  return readJson<DroppedOp[]>(droppedKey(userId)) || [];
 }
 
 /** Drops sent ops from storage unless a newer op replaced them meanwhile. */
@@ -446,8 +481,10 @@ async function sendUpserts(userId: string, table: string, ops: UpsertOp[]): Prom
   for (const op of ops) {
     const single = await supabase.from(table).upsert(toRow(op), { onConflict: 'user_id,id' }).select('id');
     if (single.error && !isPermanent(single.error)) return false;
-    if (single.error) console.error(`[SYNC OUTBOX] Dropped ${table}:${op.id}:`, single.error.message);
-    else noteRefused(userId, table, [op], single.data);
+    if (single.error) {
+      console.error(`[SYNC OUTBOX] Dropped ${table}:${op.id}:`, single.error.message);
+      noteDropped(userId, table, 'upsert', [op.id], single.error);
+    } else noteRefused(userId, table, [op], single.data);
     settle(userId, [op]);
   }
   return true;
@@ -466,7 +503,16 @@ async function sendDeletes(userId: string, table: string, ops: DeleteOp[]): Prom
         chunk.map((op) => op.id)
       );
     if (error && !isPermanent(error)) return false;
-    if (error) console.error(`[SYNC OUTBOX] Dropped ${chunk.length} ${table} deletes:`, error.message);
+    if (error) {
+      console.error(`[SYNC OUTBOX] Dropped ${chunk.length} ${table} deletes:`, error.message);
+      noteDropped(
+        userId,
+        table,
+        'delete',
+        chunk.map((op) => op.id),
+        error
+      );
+    }
     settle(userId, chunk);
   }
   return true;
