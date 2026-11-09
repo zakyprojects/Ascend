@@ -8,9 +8,11 @@
 --    never a log: src/lib/bookUnits.ts switchBookUnit).
 --  * A book's points for a day follow its net progress in pages (1 chapter = 20 pages): reading the
 --    same pages again after a switch earns nothing. The app keeps, on the book, each switch of today
---    and yesterday that lowered its place (data.unitSwitches: date, at, pagesBefore, pagesAfter, in
---    pages). Per book, in time order, each log adds its pages and each such switch subtracts
---    pagesBefore - pagesAfter; the book counts the highest running total it reached (never below 0).
+--    and yesterday that moved its place (data.unitSwitches: date, at, pagesBefore, pagesAfter, in
+--    pages). Per book, in time order, each log adds its pages; a switch that lowered the place
+--    subtracts pagesBefore - pagesAfter (and owes it); a switch that raised it gives back at most
+--    what earlier switches of that day still owe (switching back makes new reading earn again,
+--    never more). The book counts the highest running total it reached (never below 0).
 --    A day without a switch is the plain sum, exactly as before.
 --  * Lowering progress takes back only today's logs (the app; reading_logs_guard_today unchanged).
 --
@@ -103,8 +105,9 @@ DECLARE
   v_at        timestamptz;
   v_id        text        := 'reading_award_' || to_char(p_day, 'YYYY-MM-DD');
   v_item      record;
-  v_books     jsonb       := '{}'::jsonb; -- per book: running total "t" and best "b", in pages
+  v_books     jsonb       := '{}'::jsonb; -- per book: running total "t", best "b", owed "d", in pages
   v_total     numeric;
+  v_owed      numeric;
   v_best      numeric;
   v_new_best  numeric;
 BEGIN
@@ -131,7 +134,7 @@ BEGIN
       SELECT 1,
              b.id,
              b.id || '#' || s.ord,
-             -greatest((s.e->>'pagesBefore')::numeric - (s.e->>'pagesAfter')::numeric, 0),
+             (s.e->>'pagesAfter')::numeric - (s.e->>'pagesBefore')::numeric,
              public.ascend_instant(s.e->>'at')
       FROM public.reading_books b
       CROSS JOIN LATERAL jsonb_array_elements(
@@ -146,11 +149,20 @@ BEGIN
     ) ev
     ORDER BY ev.logged_at NULLS LAST, ev.kind, ev.ord_id COLLATE "C"
   LOOP
-    v_total := coalesce((v_books->v_item.book_id->>'t')::numeric, 0) + v_item.pages;
+    v_total := coalesce((v_books->v_item.book_id->>'t')::numeric, 0);
     v_best := coalesce((v_books->v_item.book_id->>'b')::numeric, 0);
+    v_owed := coalesce((v_books->v_item.book_id->>'d')::numeric, 0);
+    IF v_item.kind = 0 OR v_item.pages < 0 THEN
+      v_total := v_total + v_item.pages;
+    ELSE
+      v_total := v_total + least(v_item.pages, v_owed); -- a raising switch only gives back what is owed
+    END IF;
+    IF v_item.kind = 1 THEN
+      v_owed := greatest(v_owed - v_item.pages, 0);
+    END IF;
     v_new_best := greatest(v_best, v_total);
     v_pages := v_pages + (v_new_best - v_best);
-    v_books := v_books || jsonb_build_object(v_item.book_id, jsonb_build_object('t', v_total, 'b', v_new_best));
+    v_books := v_books || jsonb_build_object(v_item.book_id, jsonb_build_object('t', v_total, 'b', v_new_best, 'd', v_owed));
     IF v_item.kind = 0 THEN
       v_count := v_count + 1;
       IF v_first IS NULL AND least(floor(v_pages / 2), 10) > 0 THEN
