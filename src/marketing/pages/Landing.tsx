@@ -18,8 +18,7 @@ import {
 } from '@/lib/pointsConfig';
 import { PRESET_BAD_HABITS, PRESET_CATEGORIES } from '@/lib/presets';
 import { TIERS } from '@/lib/tiers';
-import { FOCUS_FIRST_MILESTONE_POINTS, FOCUS_MIN_MINUTES, FOCUS_STEP_MINUTES, FOCUS_STEP_POINTS } from '@/lib/focusPoints';
-import { FOCUS_PRESETS, focusFinishedPoints } from '@/lib/focusSession';
+import { FOCUS_MINUTES_PER_POINT, FOCUS_MIN_MINUTES } from '@/lib/focusPoints';
 import { LINK_CLASS, MarketingLayout } from '../components/MarketingLayout';
 import { HeroShot, Screenshot } from '../components/Screenshot';
 import { CtaBand, FaqList, Section, SectionHeading } from '../components/Sections';
@@ -72,7 +71,7 @@ const EARNS: { what: string; rule: string; href: string }[] = [
   },
   {
     what: 'Focus timer',
-    rule: `${FOCUS_FIRST_MILESTONE_POINTS} at ${FOCUS_MIN_MINUTES} min, then +${FOCUS_STEP_POINTS} every ${FOCUS_STEP_MINUTES} min, plus a bonus for finishing (${FOCUS_PRESETS.map((p) => `${p.focus} min = ${focusFinishedPoints(p.focus)}`).join(', ')}), up to ${PFC_POINTS.focus.dailyCap} a day`,
+    rule: `1 point per ${FOCUS_MINUTES_PER_POINT} minutes of focus (sessions from ${FOCUS_MIN_MINUTES} min, the day’s sessions add up), up to ${PFC_POINTS.focus.dailyCap} a day`,
     href: featurePath('brain-lessons'),
   },
   {

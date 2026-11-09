@@ -1,4 +1,5 @@
 import { Dialog } from '@/components/ui/primitives';
+import { FOCUS_DAILY_CAP, FOCUS_MINUTES_PER_POINT, FOCUS_MIN_MINUTES } from '@/lib/focusPoints';
 import { FOCUS_RESUME_WINDOW_MINUTES } from './focusSession';
 
 export function AboutFocusDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -29,8 +30,9 @@ export function AboutFocusDialog({ open, onClose }: { open: boolean; onClose: ()
           </div>
           <div className="py-2.5">
             <span className="item-name !text-content-secondary block mb-0.5">2. Pick the right length</span>
-            25 min if you are starting out, 50 min for core tasks, 90 min or more for complex work. Points
-            build up from 25 min, and finishing what you planned adds a bonus.
+            25 min if you are starting out, 50 min for core tasks, 90 min or more for complex work. A session
+            counts from {FOCUS_MIN_MINUTES} min: every {FOCUS_MINUTES_PER_POINT} min of focus is 1 pt, and today&apos;s sessions add
+            up, up to {FOCUS_DAILY_CAP} pts a day.
           </div>
           <div className="py-2.5">
             <span className="item-name !text-content-secondary block mb-0.5">3. Stay with it</span>

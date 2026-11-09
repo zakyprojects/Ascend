@@ -30,7 +30,7 @@ import {
 } from '@/lib/pointsConfig';
 import { CUSTOM_HABIT_POINTS } from '@/lib/habitAwards';
 import { READING_BONUS_COOLDOWN_DAYS, READING_BONUS_MIN_LOG_DAYS, READING_BONUS_MIN_SPAN_DAYS } from '@/lib/readingAwards';
-import { FOCUS_FIRST_MILESTONE_POINTS, FOCUS_MIN_MINUTES, FOCUS_STEP_MINUTES } from '@/lib/focusPoints';
+import { FOCUS_MINUTES_PER_POINT, FOCUS_MIN_MINUTES } from '@/lib/focusPoints';
 import { FOCUS_RESUME_WINDOW_MINUTES } from '@/lib/focusSession';
 import { MAX_PARTNERS, CHALLENGE_LENGTH_OPTIONS } from '@/lib/partnerRules';
 import { SKILL_LEVELS } from '@/lib/skillLevels';
@@ -139,8 +139,9 @@ const guides: [string, HowItWorksGuide, (string | number)[]][] = [
     'prefrontalCortex',
     prefrontalCortexGuide,
     [
-      `${FOCUS_FIRST_MILESTONE_POINTS} pts at ${FOCUS_MIN_MINUTES} min`,
-      `every ${FOCUS_STEP_MINUTES} min`,
+      `every ${FOCUS_MINUTES_PER_POINT} min of focus`,
+      `counts from ${FOCUS_MIN_MINUTES} min`,
+      'today’s sessions add up',
       `${PFC_POINTS.focus.dailyCap} pts`,
       `within ${FOCUS_RESUME_WINDOW_MINUTES} min`,
       'Breaks, decisions and emotions earn no points',

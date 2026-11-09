@@ -1,5 +1,5 @@
 import { FOCUS_PRESETS, FOCUS_RESUME_WINDOW_MINUTES, focusFinishedPoints } from '@/components/pfc/focusSession';
-import { FOCUS_FINISH_BONUS, FOCUS_FIRST_MILESTONE_POINTS, FOCUS_MIN_MINUTES, FOCUS_STEP_MINUTES, FOCUS_STEP_POINTS, focusR1Points } from '@/lib/focusPoints';
+import { FOCUS_MINUTES_PER_POINT, FOCUS_MIN_MINUTES, focusPointsForMinutes } from '@/lib/focusPoints';
 import { COMMON_EMOTIONS } from '@/components/pfc/pfcLists';
 import { LESSONS, LESSON_CATEGORIES } from '@/lib/lessons';
 import { PFC_POINTS } from '@/lib/pointsConfig';
@@ -10,7 +10,7 @@ import { Block, Cards, Note, Rules, Steps, type FeatureContent } from '../blocks
 import { pts, range } from '../format';
 
 /* /features/brain-lessons (Prefrontal Cortex page + Neuroplasticity guide + Lessons in one page).
-   Sources: lib/focusPoints.ts (partial points: 2 at 25 min, +1 every 10 min, finish bonus),
+   Sources: lib/focusPoints.ts (rule 2: 1 pt per 12 active min, a day's sessions added up, from 25 min),
    lib/pointsConfig.ts PFC_POINTS (daily cap), lib/focusSession.ts FOCUS_PRESETS and the 30-minute
    resume window (running sessions keep running when closed or locked; logout pauses),
    components/howItWorks/prefrontalCortex.tsx, the page's How it works (paused time does not count,
@@ -25,9 +25,11 @@ import { pts, range } from '../format';
 const presets = FOCUS_PRESETS.map((p) => ({ minutes: p.focus, points: focusFinishedPoints(p.focus) }));
 const shortest = presets[0];
 const longest = presets[presets.length - 1];
-const bonuses = FOCUS_FINISH_BONUS.slice().reverse();
-const focusRule = `${pts(FOCUS_FIRST_MILESTONE_POINTS)} at ${FOCUS_MIN_MINUTES} minutes of focus, then +${FOCUS_STEP_POINTS} every ${FOCUS_STEP_MINUTES} minutes`;
+const deep = presets.find((p) => p.minutes === 90) ?? longest; // the app suggests 90+ for complex work (AboutFocusDialog)
+const focusRule = `1 point for every ${FOCUS_MINUTES_PER_POINT} minutes of focus, counted from ${FOCUS_MIN_MINUTES} minutes in a session`;
 const focusCap = PFC_POINTS.focus.dailyCap;
+const focusCapMinutes = focusCap * FOCUS_MINUTES_PER_POINT;
+const shotMinutes = 75; // the focus-phone screenshot: 50 + 25 minutes today
 const lessonPoints = [...new Set(LESSONS.map((l) => l.points))].sort((a, b) => a - b);
 const lessonsWorth = (p: number) => LESSONS.filter((l) => l.points === p).length;
 const lessonTotal = LESSONS.reduce((sum, l) => sum + l.points, 0);
@@ -53,7 +55,7 @@ export const brainLessons: FeatureContent = {
     name: 'focus-phone',
     width: 540,
     height: 1246,
-    alt: `The Prefrontal Cortex page on a phone: 7 of ${focusCap} focus points today from 75 minutes in 2 sessions, 175 focus minutes this week, 1 decision to revisit, 5 emotions labeled in the last 7 days, and the timer’s ${list(FOCUS_PRESETS.map((p) => `${p.focus}`))}-minute presets`,
+    alt: `The Prefrontal Cortex page on a phone: ${focusPointsForMinutes(shotMinutes)} of ${focusCap} focus points today from ${shotMinutes} minutes in 2 sessions, 175 focus minutes this week, 1 decision to revisit, 5 emotions labeled in the last 7 days, and the timer’s ${list(FOCUS_PRESETS.map((p) => `${p.focus}`))}-minute presets`,
   },
   body: (
     <>
@@ -84,7 +86,7 @@ export const brainLessons: FeatureContent = {
           items={[
             {
               title: 'Pick a length',
-              text: `Choose ${list(FOCUS_PRESETS.map((p) => `${p.focus} minutes with a ${p.break}-minute break`))}, or set a custom length. The app suggests ${shortest.minutes} minutes if you are starting out and ${longest.minutes} or more for complex work.`,
+              text: `Choose ${list(FOCUS_PRESETS.map((p) => `${p.focus} minutes with a ${p.break}-minute break`))}, or set a custom length. The app suggests ${shortest.minutes} minutes if you are starting out and ${deep.minutes} or more for complex work.`,
             },
             {
               title: 'Name the task',
@@ -92,7 +94,7 @@ export const brainLessons: FeatureContent = {
             },
             {
               title: 'Stay with it',
-              text: `Points build up while you focus: ${focusRule}. Finishing the length you planned adds a bonus. From ${FOCUS_MIN_MINUTES} minutes you can complete early and keep what you earned; before that a stop saves nothing. Allow notifications and AscendDay tells you when the session and the break are over.`,
+              text: `Points build up while you focus: ${focusRule}, and the minutes of all of the day’s sessions add up. From ${FOCUS_MIN_MINUTES} minutes you can complete early and keep what you earned; before that a stop saves nothing. Allow notifications and AscendDay tells you when the session and the break are over.`,
             },
             {
               title: 'Note how it went',
@@ -180,17 +182,15 @@ export const brainLessons: FeatureContent = {
         <Rules
           caption="What earns points"
           rows={[
-            { what: `${FOCUS_MIN_MINUTES} minutes of focus in one session`, amount: pts(FOCUS_FIRST_MILESTONE_POINTS), note: 'Paused time does not count.' },
-            { what: `Every ${FOCUS_STEP_MINUTES} minutes after that (up to 85)`, amount: `+${FOCUS_STEP_POINTS}` },
-            ...bonuses.map((b) => ({ what: `Finishing a planned session of ${b.minPlanned} minutes or more`, amount: `+${b.points}` })),
-            { what: 'All focus sessions in one day', amount: `up to ${focusCap} a day`, note: 'Only today’s sessions earn, plus one that ended yesterday while the app was closed. Deleting one recounts today; earlier days keep their points.' },
+            { what: `Every ${FOCUS_MINUTES_PER_POINT} minutes of focus`, amount: '+1', note: `A session counts from ${FOCUS_MIN_MINUTES} minutes. Paused time does not count.` },
+            { what: 'All focus sessions in one day', amount: `up to ${focusCap} a day`, note: `Their minutes add up, so ${focusCapMinutes} minutes reach the limit. Only today’s sessions earn, plus one that ended yesterday while the app was closed. Deleting one recounts today; earlier days keep their points.` },
             ...lessonPoints.map((p) => ({ what: `Reading one of the ${lessonsWorth(p)} lessons worth ${pts(p)}`, amount: pts(p), note: 'Once per lesson per season.' })),
             { what: 'Breaks, decisions and emotions', amount: 'no points', tone: 'none' as const },
           ]}
         />
         <Note title="The numbers in one line.">
-          A finished {list(presets.map((p) => `${p.minutes}-minute session earns ${pts(p.points)}`))}, stopping a{' '}
-          {longest.minutes}-minute session at 75 minutes still earns {pts(focusR1Points(75, longest.minutes))}, and reading every lesson is worth {pts(lessonTotal)} each season.
+          On its own, a {list(presets.map((p) => `${p.minutes}-minute session earns ${pts(p.points)}`))}; two 30-minute sessions
+          on one day earn {pts(focusPointsForMinutes(60))}, and reading every lesson is worth {pts(lessonTotal)} each season.
         </Note>
       </Block>
 
@@ -268,7 +268,7 @@ export const brainLessons: FeatureContent = {
     caption: 'The Lessons page on a computer, with the demo user Ali’s season.',
   },
   facts: [
-    ['Focus points', `${FOCUS_FIRST_MILESTONE_POINTS} at ${FOCUS_MIN_MINUTES} min, +${FOCUS_STEP_POINTS} every ${FOCUS_STEP_MINUTES} min, finish bonus`],
+    ['Focus points', `1 per ${FOCUS_MINUTES_PER_POINT} min, from ${FOCUS_MIN_MINUTES} min a session`],
     ['Focus limit', `${focusCap} points a day`],
     ['Lessons', `${LESSONS.length}, ${lessonPoints.map((p) => `${lessonsWorth(p)} × ${pts(p)}`).join(' + ')}`],
     ['Lesson points', `${lessonTotal} a season, once per lesson`],
@@ -278,7 +278,7 @@ export const brainLessons: FeatureContent = {
     ['Works on', 'Any browser, phone or computer'],
   ],
   fitsIf: [
-    'You study or work in long blocks and want a focus timer that earns points for finishing them.',
+    'You study or work in long blocks and want a focus timer that earns points for the time you focus.',
     'You like knowing why a habit works before you commit to it.',
     'You want short reads you can finish between classes.',
   ],
@@ -289,11 +289,11 @@ export const brainLessons: FeatureContent = {
   faq: [
     {
       q: 'Why use AscendDay for focus sessions instead of a separate Pomodoro app?',
-      a: `Because a finished session here earns points (up to ${pts(focusCap)} a day) toward your rank and the leagues, next to your habits, workouts and reading. You can start a session straight from a task in Projects & Goals or from a focus block in the Time Tracker, and the lessons explain why focus and new habits feel hard at first. A separate timer counts minutes; here they count toward everything else you are working on.`,
+      a: `Because focus time here earns points (up to ${pts(focusCap)} a day) toward your rank and the leagues, next to your habits, workouts and reading. You can start a session straight from a task in Projects & Goals or from a focus block in the Time Tracker, and the lessons explain why focus and new habits feel hard at first. A separate timer counts minutes; here they count toward everything else you are working on.`,
     },
     {
-      q: 'Why do longer focus sessions earn more?',
-      a: `Because deep work takes time to get into. Points start at ${FOCUS_MIN_MINUTES} minutes (${pts(FOCUS_FIRST_MILESTONE_POINTS)}), grow by ${FOCUS_STEP_POINTS} every ${FOCUS_STEP_MINUTES} minutes, and finishing a long plan adds a bonus, so a finished ${list(presets.map((p) => `${p.minutes}-minute session earns ${pts(p.points)}`))}. Four ${shortest.minutes}-minute sessions earn less than one ${longest.minutes}-minute one, so the points reward staying on one task, not starting many.`,
+      q: 'How do focus sessions earn points?',
+      a: `By the minutes you focus: 1 point for every ${FOCUS_MINUTES_PER_POINT} minutes, and the minutes of all of the day’s sessions add up, up to ${pts(focusCap)} a day (${focusCapMinutes} minutes). A session counts from ${FOCUS_MIN_MINUTES} minutes, because deep work takes time to get into; a shorter one saves nothing. So on its own a ${list(presets.map((p) => `${p.minutes}-minute session earns ${pts(p.points)}`))}, and a custom length works the same way.`,
     },
     {
       q: 'Is the focus timer a Pomodoro timer?',
@@ -301,7 +301,7 @@ export const brainLessons: FeatureContent = {
     },
     {
       q: 'What if I stop a session early?',
-      a: `From ${FOCUS_MIN_MINUTES} minutes of focus you can complete it early and keep the points you reached; only the finish bonus needs the full length. Before ${FOCUS_MIN_MINUTES} minutes a discarded session saves nothing. A paused session can be resumed within ${FOCUS_RESUME_WINDOW_MINUTES} minutes; after that it ends where you paused.`,
+      a: `From ${FOCUS_MIN_MINUTES} minutes of focus you can complete it early and keep the points you reached: every minute counts the same, so there is nothing extra for running the full length. Before ${FOCUS_MIN_MINUTES} minutes a discarded session saves nothing. A paused session can be resumed within ${FOCUS_RESUME_WINDOW_MINUTES} minutes; after that it ends where you paused.`,
     },
     {
       q: 'Can I earn lesson points more than once?',

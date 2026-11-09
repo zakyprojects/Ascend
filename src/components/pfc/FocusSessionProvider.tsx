@@ -52,7 +52,7 @@ import { showFocusNotification } from './focusNotifications';
  *
  * A running focus session runs on wall time: in the background, with the screen locked, the tab
  * closed or the device asleep, the time still counts. Opened after its planned end, it ends at
- * the planned end (finish bonus, milestones at start + their minutes). Only a manual or logout
+ * the planned end (all its planned minutes, milestones at start + their minutes). Only a manual or logout
  * pause stops it; a pause can be resumed within 30 minutes, later it is closed at the pause
  * (saved from 25 active minutes, dropped below). Logs go through the store's outbox, which keeps
  * them until they upload.

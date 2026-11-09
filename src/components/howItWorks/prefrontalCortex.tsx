@@ -1,22 +1,16 @@
 import { Fig, Gain, pts, type HowItWorksGuide } from '@/components/ui/HowItWorks';
 import { PFC_POINTS } from '@/lib/pointsConfig';
-import {
-  FOCUS_FINISH_BONUS,
-  FOCUS_FIRST_MILESTONE_POINTS,
-  FOCUS_MILESTONES,
-  FOCUS_MIN_MINUTES,
-  FOCUS_STEP_MINUTES,
-  FOCUS_STEP_POINTS,
-} from '@/lib/focusPoints';
+import { FOCUS_MINUTES_PER_POINT, FOCUS_MIN_MINUTES, focusPointsForMinutes } from '@/lib/focusPoints';
 import { FOCUS_PRESETS, FOCUS_RESUME_WINDOW_MINUTES, focusFinishedPoints } from '@/lib/focusSession';
 
 /**
- * Prefrontal Cortex. Points from lib/focusPoints.ts (rule R1: milestones, finish bonus) and
- * lib/focusSession.ts (presets, 30-min resume window), the late-day rule (a session that ended
- * yesterday while the app was closed). PFC_POINTS.focus.tiers is legacy (old logs only): never quoted.
+ * Prefrontal Cortex. Points from lib/focusPoints.ts (rule 2: 1 pt per 12 active min, a day's
+ * sessions added up, from 25 min a session) and lib/focusSession.ts (presets, 30-min resume
+ * window), the late-day rule (a session that ended yesterday while the app was closed). R1 and
+ * PFC_POINTS.focus.tiers are legacy (old logs only): never quoted.
  * Tabs: Focus, Schedule (follows Time Tracker blocks), Decisions (Revisit on), Emotions.
  */
-const finishBonus = FOCUS_FINISH_BONUS.slice().reverse();
+const capMinutes = PFC_POINTS.focus.dailyCap * FOCUS_MINUTES_PER_POINT;
 
 export const prefrontalCortexGuide: HowItWorksGuide = {
   title: 'How Prefrontal Cortex works',
@@ -45,21 +39,16 @@ export const prefrontalCortexGuide: HowItWorksGuide = {
   ],
   points: [
     <>
-      <Gain>{pts(FOCUS_FIRST_MILESTONE_POINTS)}</Gain> at <Fig>{FOCUS_MIN_MINUTES}</Fig> min of focus, then <Gain>{pts(FOCUS_STEP_POINTS, true)}</Gain>{' '}
-      every <Fig>{FOCUS_STEP_MINUTES}</Fig> min up to <Fig>{FOCUS_MILESTONES[FOCUS_MILESTONES.length - 1]}</Fig> min. Paused time doesn’t count.
+      <Gain>{pts(1, true)}</Gain> for every <Fig>{FOCUS_MINUTES_PER_POINT}</Fig> min of focus. A session counts from <Fig>{FOCUS_MIN_MINUTES}</Fig> min.
+      Paused time doesn’t count.
     </>,
     <>
-      Finish the length you planned:{' '}
-      {finishBonus.map((b, i) => (
-        <span key={b.minPlanned}>
-          {i > 0 && ', '}
-          <Gain>{pts(b.points, true)}</Gain> for <Fig>{b.minPlanned}</Fig> min or more
-        </span>
-      ))}
-      . So {FOCUS_PRESETS.map((p) => p.focus).join(' / ')} min give {FOCUS_PRESETS.map((p) => focusFinishedPoints(p.focus)).join(' / ')} pts.
+      The minutes of all of today’s sessions add up, so two 30-min sessions give <Fig>{pts(focusPointsForMinutes(60))}</Fig>. Any length
+      works the same way: {FOCUS_PRESETS.map((p) => p.focus).join(' / ')} min on their own give{' '}
+      {FOCUS_PRESETS.map((p) => focusFinishedPoints(p.focus)).join(' / ')} pts.
     </>,
     <>
-      Up to <Fig>{pts(PFC_POINTS.focus.dailyCap)}</Fig> a day, counted on the day each point is reached.
+      Up to <Fig>{pts(PFC_POINTS.focus.dailyCap)}</Fig> a day (<Fig>{capMinutes}</Fig> min). Minutes before midnight count on that day.
     </>,
     'Only today’s sessions earn, plus one that ended yesterday while the app was closed.',
     'Breaks, decisions and emotions earn no points.',
