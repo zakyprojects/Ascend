@@ -6,12 +6,12 @@ import type { CuratedBook, UserBook } from '@/types';
 import { earliestTargetDate, isNewPastDate } from '@/lib/dates';
 import { useUnsavedChanges } from '@/lib/unsavedChanges';
 import { unitSwitchDefaults } from '@/lib/bookUnits';
-import { UNIT_SWITCH_NOTE, bookProgress, bookUnit, lengthsByUnit, type BookUnit } from './bookMeta';
+import { bookProgress, bookUnit, lengthsByUnit, unitSwitchNote, type BookUnit } from './bookMeta';
 
 /**
  * Moves a library book to Reading, or adds a Discover book straight to Reading, after
- * confirming its length and an optional target date. Switching the unit of a book with progress
- * converts where the reader is too (editable; switchBookUnit writes no log).
+ * confirming its length and an optional target date. Switching the unit of a library book
+ * converts where the reader is too (shown, editable; switchBookUnit writes no log).
  */
 export function StartReadingDialog({
   store,
@@ -41,8 +41,8 @@ export function StartReadingDialog({
   const [targetDate, setTargetDate] = useState(() => book?.targetFinishDate || '');
   const guard = useUnsavedChanges(open ? book?.id ?? curated?.id ?? null : null, [total, unit, current, targetDate]);
   const title = book?.title ?? curated?.title;
-  // A book already started that switches unit: its place is converted and shown to edit.
-  const switching = Boolean(saved && unit !== saved.unit && saved.current > 0);
+  // A saved book that switches unit: its place is converted and always shown to check or edit.
+  const switching = Boolean(saved && unit !== saved.unit);
   const minLength = saved ? Math.max(1, switching ? current : saved.current) : 1;
   const changeUnit = (next: BookUnit) => {
     if (next === unit) return;
@@ -127,7 +127,7 @@ export function StartReadingDialog({
             required
             value={current}
             onValueChange={setCurrent}
-            hint={UNIT_SWITCH_NOTE}
+            hint={saved ? unitSwitchNote(saved.current, saved.unit) : undefined}
           />
         )}
         <Input

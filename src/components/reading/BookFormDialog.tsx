@@ -10,12 +10,12 @@ import { unitSwitchDefaults } from '@/lib/bookUnits';
 import {
   DEFAULT_BOOK_LENGTH,
   UNIT_FINISHED_HINT,
-  UNIT_SWITCH_NOTE,
   bookProgress,
   bookUnit,
   formatAmount,
   lengthsByUnit,
   sameBook,
+  unitSwitchNote,
   type BookUnit,
 } from './bookMeta';
 
@@ -65,8 +65,9 @@ function valuesFrom(book: UserBook | null, status: UserBookStatus): BookFormValu
 
 /**
  * Adds a book, or edits one (title, author, category, length, target, notes; a finished book's
- * takeaway; the unit of a book not finished yet). Switching the unit of a book with progress also
- * converts where the reader is (both editable; switchBookUnit writes no log, so no points move).
+ * takeaway; the unit of a book not finished yet). Switching the unit of a saved book also converts
+ * where the reader is, always shown with the converted length (both editable; switchBookUnit writes
+ * no log, so no points move).
  * Logs are never changed here.
  * Remounted for each open (by key), so the form always starts from the book's saved values or a
  * blank book.
@@ -96,8 +97,9 @@ export function BookFormDialog({
   const unit = book && unitLocked ? bookUnit(book) : values.unit;
   const unitWord = unit === 'chapters' ? 'Chapters' : 'Pages';
   const saved = book ? bookProgress(book) : null;
-  // Switching the unit of a book already started: the place is converted too, and shown to edit.
-  const switching = Boolean(book && saved && !unitLocked && unit !== saved.unit && saved.current > 0);
+  // Switching the unit of a saved book: the place is converted too and always shown to check or edit
+  // (also at 0, and right after an earlier switch).
+  const switching = Boolean(book && saved && !unitLocked && unit !== saved.unit);
   // In progress, the length can't go below where the reader is.
   const minLength = book && !finished ? Math.max(1, switching ? values.current : saved?.current ?? 0) : 1;
   // A new book: one length per unit, so switching to chapters and back restores the page count.
@@ -266,7 +268,7 @@ export function BookFormDialog({
             required
             value={values.current}
             onValueChange={(n) => update({ current: n })}
-            hint={UNIT_SWITCH_NOTE}
+            hint={saved ? unitSwitchNote(saved.current, saved.unit) : undefined}
           />
         )}
 

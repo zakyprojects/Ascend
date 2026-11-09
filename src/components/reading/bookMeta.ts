@@ -1,6 +1,6 @@
 import type { BookCategory, PointsEntry, UserBook } from '@/types';
 import { formatDateLong, todayKey } from '@/lib/dates';
-import { isChapterBook, readingBonusId } from '@/lib/readingAwards';
+import { PAGES_PER_CHAPTER, isChapterBook, readingBonusId } from '@/lib/readingAwards';
 import { trustedNow } from '@/lib/clock';
 import { sameName } from '@/lib/uniqueNames';
 
@@ -12,26 +12,27 @@ export const sameBook = (a: Pick<UserBook, 'title' | 'author'>, b: Pick<UserBook
 
 export const DEFAULT_BOOK_LENGTH = 250;
 
-/** The book's unit as the forms use it (older rows may carry other spellings); the same rule points use. */
-/** The length a form shows when its unit is switched to chapters and none was typed for chapters yet. */
-export const DEFAULT_CHAPTER_COUNT = 10;
-
 /**
- * The starting length for each unit in a book form: the saved length for the saved unit, the
- * defaults (or the book's known page count) for the other. Switching units shows that unit's entry
+ * The starting length for each unit in a book form: the saved (or catalogue) length for its unit,
+ * converted for the other at 1 chapter = 20 pages (pages / 20 rounded up, at least 1; chapters × 20),
+ * the same rule as a switch mid-book (unitSwitchDefaults). Switching units shows that unit's entry
  * and typing updates it, so switching back restores what the unit had.
  */
-export function lengthsByUnit(unit: BookUnit, total: number, pages: number = DEFAULT_BOOK_LENGTH): Record<BookUnit, number> {
-  return unit === 'chapters' ? { pages, chapters: total } : { pages: total, chapters: DEFAULT_CHAPTER_COUNT };
+export function lengthsByUnit(unit: BookUnit, total: number): Record<BookUnit, number> {
+  return unit === 'chapters'
+    ? { pages: total * PAGES_PER_CHAPTER, chapters: total }
+    : { pages: total, chapters: Math.max(1, Math.ceil(total / PAGES_PER_CHAPTER)) };
 }
 
+/** The book's unit as the forms use it (older rows may carry other spellings); the same rule points use. */
 export const bookUnit = (book: Pick<UserBook, 'unit'>): BookUnit => (isChapterBook(book) ? 'chapters' : 'pages');
 
 /** Under the disabled "Count in" select of a finished book (only a book still being read can switch). */
 export const UNIT_FINISHED_HINT = 'A finished book keeps its unit.';
 
-/** Under the place a unit switch converts (switchBookUnit writes no log). */
-export const UNIT_SWITCH_NOTE = "Points you already earned don't change.";
+/** Under the place a unit switch converts (switchBookUnit writes no log): where the reader was, and the points rule. */
+export const unitSwitchNote = (was: number, unit: BookUnit): string =>
+  `You were at ${formatAmount(was, unit)}. Points you already earned don't change.`;
 
 /** "1 page", "12 pages", "3 chapters". */
 export const formatAmount = (n: number, unit: BookUnit): string =>
