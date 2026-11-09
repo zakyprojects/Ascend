@@ -11,7 +11,6 @@ import {
   type LinkedModule,
   type MetricKey,
 } from '@/lib/linkedGoalMetrics';
-import { isChapterBook } from '@/lib/readingAwards';
 import { workoutMeasureOf, workoutTypeKey, workoutTypeNames, type WorkoutMeasure } from '@/lib/workoutTypes';
 import { pageLinkProps } from '@/lib/pageLink';
 import type { View } from '@/lib/views';
@@ -162,13 +161,14 @@ export function GoalFormDialog({
   const itemCount = module === 'habit' ? state.habits.length : module === 'reading' ? state.libraryBooks.length : module === 'skill' ? state.skills.length : 1;
   const emptyList = module && itemCount === 0 ? EMPTY_LIST[module] : undefined;
 
-  // A goal on one book counts in that book's unit, so it has just that one Count.
+  // A goal on one book has just one Count: the unit it was set in (a new goal: the book's unit now).
+  // It keeps that unit if the book later switches (linkedGoalMetrics converts the other unit's logs).
   const metricOptions: LinkedGoalMetricDefinition[] = !module
     ? []
     : module === 'reading' && book
-      ? LINKED_GOAL_METRICS.reading
-          .filter((m) => m.key === (linkedMetricKey === 'pages_read' || linkedMetricKey === 'chapters_read' ? linkedMetricKey : readingMetricFor(book)))
-          .map((m) => ({ ...m, label: isChapterBook(book) ? 'chapters' : 'pages' }))
+      ? LINKED_GOAL_METRICS.reading.filter(
+          (m) => m.key === (linkedMetricKey === 'pages_read' || linkedMetricKey === 'chapters_read' ? linkedMetricKey : readingMetricFor(book))
+        )
       : module === 'skill' && skill
         ? [
             ...LINKED_GOAL_METRICS.skill,
@@ -242,8 +242,11 @@ export function GoalFormDialog({
       }
       case 'pages_read':
       case 'chapters_read': {
-        const label = book ? (isChapterBook(book) ? 'chapters' : 'pages') : linkedMetricKey === 'chapters_read' ? 'chapters' : 'pages';
-        return book ? `Adds the ${label} you log for ${book.title} this week.` : `Adds ${label} from every book you count in ${label}.`;
+        const label = linkedMetricKey === 'chapters_read' ? 'chapters' : 'pages';
+        if (!book) return `Adds ${label} from every book you count in ${label}.`;
+        // The book now counts in the other unit: its logs count converted (linkedGoalMetrics).
+        const converted = (readingMetricFor(book) === 'chapters_read') !== (label === 'chapters');
+        return `Adds the ${label} you log for ${book.title} this week.${converted ? ' 20 pages count as 1 chapter.' : ''}`;
       }
       case 'minutes_practiced':
         return isAny ? 'Adds practice minutes from all your skills this week.' : `Adds practice minutes from ${itemName} logs this week.`;

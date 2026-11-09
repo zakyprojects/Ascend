@@ -258,7 +258,9 @@ export interface ReadingLog {
   id: string;
   bookId?: string;
   date: string; // YYYY-MM-DD
-  pagesRead: number; // positive delta only
+  pagesRead: number; // positive delta only, in `unit`
+  /** The unit pagesRead is in. The app writes it on new logs and the server stamps it (reading_logs_unit); it never changes. Older logs: the book's unit (logUnit). */
+  unit?: 'pages' | 'chapters';
   createdAt: string; // ISO timestamp
   pointsAwarded?: number;
   finish?: boolean; // unread pages added by Finish: no page points, still a reading day
@@ -296,6 +298,17 @@ export interface CuratedBook {
   bestSellerRank?: number;
 }
 
+/**
+ * One switch of a book's unit (switchBookUnit): the local day and time, and the book's place in
+ * pages (a chapter = 20 pages) just before and just after. ascend_recompute_reading_awards reads it.
+ */
+export interface BookUnitSwitch {
+  date: string; // YYYY-MM-DD, local
+  at: string; // ISO timestamp
+  pagesBefore: number;
+  pagesAfter: number;
+}
+
 export interface UserBook {
   id: string;
   curatedBookId?: string;
@@ -328,6 +341,10 @@ export interface UserBook {
   completedAt?: string;
   isFinished?: boolean;
   linkedBookId?: string;
+  /** The length last saved for each unit, so switching units back and forth keeps both (switchBookUnit). */
+  lengthByUnit?: { pages?: number; chapters?: number };
+  /** Unit switches of today and yesterday that lowered the book's place; the points rule reads them (unitSwitchDebt). */
+  unitSwitches?: BookUnitSwitch[];
   /** @deprecated Book deadline penalties removed. Field retained for schema/backward compatibility. */
   consecutiveMisses?: number;
   /** @deprecated Book deadline penalties removed. Field retained for schema/backward compatibility. */

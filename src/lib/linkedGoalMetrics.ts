@@ -1,6 +1,6 @@
-import { AppState, UserBook, WeeklyGoalItem, WorkoutLog } from '@/types';
+import { AppState, ReadingLog, UserBook, WeeklyGoalItem, WorkoutLog } from '@/types';
 import { parseDate, weekKey } from './dates';
-import { isChapterBook } from './readingAwards';
+import { PAGES_PER_CHAPTER, isChapterBook, logUnit } from './readingAwards';
 import { workoutMeasureOf, workoutTypeKey, type WorkoutMeasure } from './workoutTypes';
 import { findDrill, logDrillCount, parseDrillMetricKey } from './skillDrills';
 
@@ -55,22 +55,38 @@ export const linkedBook = (state: Pick<AppState, 'libraryBooks'>, bookId: string
   bookId ? (state.libraryBooks || []).find((b) => b.id === bookId || b.linkedBookId === bookId) : undefined;
 
 /**
- * Reading logs of the week for a goal. A goal on one book counts all of its logs, in the book's
- * own unit (pages_read and chapters_read alike). A goal on any book counts the logs of the books
- * kept in its metric's unit (a log whose book is gone counts as pages). Finish logs count (Zakria 2026-10-19).
+ * Reading logs of the week for a goal, each in its own unit (logUnit). A goal on one book counts all
+ * of the book's logs in the goal's unit: a book can switch units, so a log in the other unit counts
+ * converted (1 chapter = 20 pages; pages count as whole chapters as they add up). A goal on any book
+ * counts the logs written in its metric's unit (a log whose book is gone counts in its own unit,
+ * else as pages). Finish logs count (Zakria 2026-10-19).
  */
 const readingEntries = (chapters: boolean) => (state: AppState, item: WeeklyGoalItem, dateStrings: string[]): MetricEntry[] => {
+  const unit = chapters ? 'chapters' : 'pages';
+  const books = new Map((state.libraryBooks || []).filter(Boolean).map((b) => [b.id, b]));
+  const unitOf = (l: ReadingLog) => logUnit(l, books.get(l.bookId ?? ''));
   const logs = (state.readingLogs || []).filter((l) => dateStrings.includes(l.date));
-  let filtered;
-  if (item.linkedItemId) {
-    const book = linkedBook(state, item.linkedItemId);
-    const ids = new Set([item.linkedItemId, book?.id, book?.linkedBookId].filter(Boolean));
-    filtered = logs.filter((l) => Boolean(l.bookId && ids.has(l.bookId)));
-  } else {
-    const chapterBookIds = new Set((state.libraryBooks || []).filter((b) => b && isChapterBook(b)).map((b) => b.id));
-    filtered = logs.filter((l) => chapterBookIds.has(l.bookId ?? '') === chapters);
+  const entry = (l: ReadingLog, value: number): MetricEntry => ({ id: l.id, at: l.createdAt || dayInstant(l.date), value });
+  if (!item.linkedItemId) {
+    return logs.filter((l) => unitOf(l) === unit).map((l) => entry(l, l.pagesRead || 0));
   }
-  return filtered.map((l) => ({ id: l.id, at: l.createdAt || dayInstant(l.date), value: l.pagesRead || 0 }));
+  const book = linkedBook(state, item.linkedItemId);
+  const ids = new Set([item.linkedItemId, book?.id, book?.linkedBookId].filter(Boolean));
+  const own = logs.filter((l) => Boolean(l.bookId && ids.has(l.bookId)));
+  if (!chapters) {
+    return own.map((l) => entry(l, (l.pagesRead || 0) * (unitOf(l) === 'chapters' ? PAGES_PER_CHAPTER : 1)));
+  }
+  // A chapters goal: pages logs add a chapter each time their running total (in time order) passes 20 more pages.
+  let pages = 0;
+  return own
+    .map((l) => ({ l, e: entry(l, l.pagesRead || 0) }))
+    .sort((a, b) => (a.e.at < b.e.at ? -1 : a.e.at > b.e.at ? 1 : 0))
+    .map(({ l, e }) => {
+      if (unitOf(l) === 'chapters') return e;
+      const before = Math.floor(pages / PAGES_PER_CHAPTER);
+      pages += l.pagesRead || 0;
+      return { ...e, value: Math.floor(pages / PAGES_PER_CHAPTER) - before };
+    });
 };
 
 const skillEntries = (value: (minutes: number) => number) => (state: AppState, item: WeeklyGoalItem, dateStrings: string[]): MetricEntry[] =>
@@ -155,15 +171,9 @@ function metricOf(item: WeeklyGoalItem, state: Pick<AppState, 'skills'>): Linked
   return LINKED_GOAL_METRICS[item.linkedModule as LinkedModule]?.find((m) => m.key === item.linkedMetricKey);
 }
 
-/** What a linked goal counts, as shown next to its numbers. A goal on one book counts in the book's unit; a drill goal in the drill's unit. */
+/** What a linked goal counts, as shown next to its numbers: its metric's unit (a reading goal keeps it when its book switches units); a drill goal in the drill's unit. */
 export function linkedGoalUnit(item: WeeklyGoalItem, state: Pick<AppState, 'libraryBooks' | 'skills'>): string | null {
-  const metric = metricOf(item, state);
-  if (!metric) return null;
-  if (item.linkedModule === 'reading' && item.linkedItemId) {
-    const book = linkedBook(state, item.linkedItemId);
-    if (book) return isChapterBook(book) ? 'chapters' : 'pages';
-  }
-  return metric.label;
+  return metricOf(item, state)?.label ?? null;
 }
 
 /**

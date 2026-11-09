@@ -6,8 +6,18 @@ import { BOOK_CATEGORIES } from '@/lib/books';
 import type { BookCategory, UserBook, UserBookStatus } from '@/types';
 import { earliestTargetDate, isNewPastDate } from '@/lib/dates';
 import { useUnsavedChanges } from '@/lib/unsavedChanges';
-import { isBookUnitLocked } from '@/lib/readingAwards';
-import { DEFAULT_BOOK_LENGTH, UNIT_LOCKED_HINT, bookProgress, bookUnit, formatAmount, lengthsByUnit, sameBook, type BookUnit } from './bookMeta';
+import { unitSwitchDefaults } from '@/lib/bookUnits';
+import {
+  DEFAULT_BOOK_LENGTH,
+  UNIT_FINISHED_HINT,
+  UNIT_SWITCH_NOTE,
+  bookProgress,
+  bookUnit,
+  formatAmount,
+  lengthsByUnit,
+  sameBook,
+  type BookUnit,
+} from './bookMeta';
 
 interface BookFormValues {
   title: string;
@@ -15,6 +25,8 @@ interface BookFormValues {
   category: BookCategory | '';
   status: UserBookStatus;
   totalAmount: number;
+  /** Where the reader is, in `unit` (changes only with a unit switch). */
+  current: number;
   unit: BookUnit;
   targetFinishDate: string;
   reflection: string;
@@ -29,6 +41,7 @@ function valuesFrom(book: UserBook | null, status: UserBookStatus): BookFormValu
       category: '',
       status,
       totalAmount: DEFAULT_BOOK_LENGTH,
+      current: 0,
       unit: 'pages',
       targetFinishDate: '',
       reflection: '',
@@ -42,6 +55,7 @@ function valuesFrom(book: UserBook | null, status: UserBookStatus): BookFormValu
     category: (BOOK_CATEGORIES.some((c) => c.name === book.category) ? book.category : '') as BookCategory | '',
     status: book.status,
     totalAmount: p.total,
+    current: p.current,
     unit: bookUnit(book),
     targetFinishDate: book.targetFinishDate || '',
     reflection: book.reflection || '',
@@ -51,7 +65,9 @@ function valuesFrom(book: UserBook | null, status: UserBookStatus): BookFormValu
 
 /**
  * Adds a book, or edits one (title, author, category, length, target, notes; a finished book's
- * takeaway; the unit until the book has a log). Progress and logs are never changed here.
+ * takeaway; the unit of a book not finished yet). Switching the unit of a book with progress also
+ * converts where the reader is (both editable; switchBookUnit writes no log, so no points move).
+ * Logs are never changed here.
  * Remounted for each open (by key), so the form always starts from the book's saved values or a
  * blank book.
  */
@@ -75,17 +91,27 @@ export function BookFormDialog({
 
   const editing = Boolean(book);
   const finished = values.status === 'completed';
-  // In progress, the length can't go below what is already read.
-  const minLength = book && !finished ? Math.max(1, bookProgress(book).current) : 1;
-  // A book with logs keeps its saved unit (a restored draft can't change it either).
-  const unitLocked = Boolean(book && isBookUnitLocked(book, store.state.readingLogs || []));
+  // A finished book keeps its saved unit (a restored draft can't change it either).
+  const unitLocked = Boolean(book && book.status === 'completed');
   const unit = book && unitLocked ? bookUnit(book) : values.unit;
   const unitWord = unit === 'chapters' ? 'Chapters' : 'Pages';
-  // One length per unit, so switching to chapters and back restores the page count.
+  const saved = book ? bookProgress(book) : null;
+  // Switching the unit of a book already started: the place is converted too, and shown to edit.
+  const switching = Boolean(book && saved && !unitLocked && unit !== saved.unit && saved.current > 0);
+  // In progress, the length can't go below where the reader is.
+  const minLength = book && !finished ? Math.max(1, switching ? values.current : saved?.current ?? 0) : 1;
+  // A new book: one length per unit, so switching to chapters and back restores the page count.
   const [lengths, setLengths] = useState(() => lengthsByUnit(values.unit, values.totalAmount));
   const changeUnit = (next: BookUnit) => {
+    if (next === values.unit) return;
+    if (book && saved) {
+      // Back to the saved unit restores the saved numbers; the other unit starts at the converted ones.
+      const to = next === saved.unit ? { current: saved.current, total: saved.total } : unitSwitchDefaults(book, next);
+      update({ unit: next, current: to.current, totalAmount: to.total });
+      return;
+    }
     setLengths((l) => ({ ...l, [values.unit]: values.totalAmount }));
-    update({ unit: next, totalAmount: next === values.unit ? values.totalAmount : lengths[next] });
+    update({ unit: next, totalAmount: lengths[next] });
   };
 
   // Two books may share a title, so a book is the same book when title and author both match. A book
@@ -106,7 +132,8 @@ export function BookFormDialog({
         category: values.category || undefined,
         description: values.description,
         totalAmount: values.totalAmount,
-        unit: values.unit,
+        unit,
+        current: switching ? values.current : undefined,
         targetFinishDate,
         reflection: values.reflection,
       });
@@ -215,7 +242,7 @@ export function BookFormDialog({
             required
             value={values.totalAmount}
             onValueChange={(n) => update({ totalAmount: n })}
-            hint={minLength > 1 ? `You're at ${formatAmount(minLength, unit)}.` : undefined}
+            hint={!switching && minLength > 1 ? `You're at ${formatAmount(minLength, unit)}.` : undefined}
           />
           <Select
             id="rh-book-unit"
@@ -223,12 +250,25 @@ export function BookFormDialog({
             value={unit}
             onChange={(e) => changeUnit(e.target.value as BookUnit)}
             disabled={unitLocked}
-            hint={unitLocked ? UNIT_LOCKED_HINT : undefined}
+            hint={unitLocked ? UNIT_FINISHED_HINT : undefined}
           >
             <option value="pages">Pages</option>
             <option value="chapters">Chapters</option>
           </Select>
         </FieldRow>
+
+        {switching && (
+          <NumberField
+            id="rh-book-current"
+            label={`You're at (${unitWord.toLowerCase()})`}
+            min={0}
+            max={values.totalAmount}
+            required
+            value={values.current}
+            onValueChange={(n) => update({ current: n })}
+            hint={UNIT_SWITCH_NOTE}
+          />
+        )}
 
         {finished ? (
           <Textarea

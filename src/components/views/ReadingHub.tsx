@@ -8,10 +8,10 @@ import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { Badge, Dialog, EmptyState, PageColumns, ProgressBar, Switch, TabPanel, Tabs, ToolbarInput, ToolbarSelect } from '@/components/ui/primitives';
 import { TAP_TARGET, cx } from '@/components/ui/primitives/shared';
 import { CURATED_BOOKS, BOOK_CATEGORIES } from '@/lib/books';
-import type { BookCategory, CuratedBook, UserBook } from '@/types';
+import type { BookCategory, CuratedBook, ReadingLog, UserBook } from '@/types';
 import { formatDateLong, getNow, weekKey, formatWeekdayDate, formatWeekdayShort, calculateStreak, parseDate } from '@/lib/dates';
 import { READING_POINTS } from '@/lib/pointsConfig';
-import { bookRemovalPoints, isChapterBook, isRetiredAppReadingAward } from '@/lib/readingAwards';
+import { bookRemovalPoints, isRetiredAppReadingAward, logUnit } from '@/lib/readingAwards';
 import { getCapStatus } from '@/lib/capStatus';
 import { CapMeterConnected } from '@/components/ui/CapMeterConnected';
 import { HowItWorksButton, HowItWorksDialog, useHowItWorks } from '@/components/ui/HowItWorks';
@@ -106,14 +106,12 @@ export function ReadingHub({ store }: { store: AppStore }) {
   // Rolls at local midnight like the other day-scoped pages (streak, Last 7 days, points today).
   const today = useLocalDayKey();
   const pageDays = lastDayKeys(7, today);
-  // A log is in chapters when its book counts chapters (as for points and weekly goals); a log
-  // whose book is gone counts as pages.
-  const chapterBookIds = useMemo(
-    () => new Set(libraryBooks.filter((b) => b && isChapterBook(b)).map((b) => b.id)),
-    [libraryBooks]
-  );
-  const pagesByDay = sumPerDay(readingLogs, pageDays, (l) => (chapterBookIds.has(l.bookId ?? '') ? 0 : l.pagesRead));
-  const chaptersByDay = sumPerDay(readingLogs, pageDays, (l) => (chapterBookIds.has(l.bookId ?? '') ? l.pagesRead : 0));
+  // A log counts in its own unit (logUnit: the book's unit when it was written; a log whose book is
+  // gone counts as pages), as for points and weekly goals.
+  const bookById = useMemo(() => new Map(libraryBooks.filter(Boolean).map((b) => [b.id, b])), [libraryBooks]);
+  const inChapters = (l: ReadingLog) => logUnit(l, bookById.get(l.bookId ?? '')) === 'chapters';
+  const pagesByDay = sumPerDay(readingLogs, pageDays, (l) => (inChapters(l) ? 0 : l.pagesRead));
+  const chaptersByDay = sumPerDay(readingLogs, pageDays, (l) => (inChapters(l) ? l.pagesRead : 0));
   const pagesThisWeek = pagesByDay.reduce((sum, p) => sum + p, 0);
   const chaptersThisWeek = chaptersByDay.reduce((sum, c) => sum + c, 0);
   // Bars show pages, unless the week has only chapters.

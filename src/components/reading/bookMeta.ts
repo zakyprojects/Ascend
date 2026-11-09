@@ -27,8 +27,11 @@ export function lengthsByUnit(unit: BookUnit, total: number, pages: number = DEF
 
 export const bookUnit = (book: Pick<UserBook, 'unit'>): BookUnit => (isChapterBook(book) ? 'chapters' : 'pages');
 
-/** Under the disabled "Count in" select of a book that has logs (isBookUnitLocked). */
-export const UNIT_LOCKED_HINT = 'Locked once you log reading.';
+/** Under the disabled "Count in" select of a finished book (only a book still being read can switch). */
+export const UNIT_FINISHED_HINT = 'A finished book keeps its unit.';
+
+/** Under the place a unit switch converts (switchBookUnit writes no log). */
+export const UNIT_SWITCH_NOTE = "Points you already earned don't change.";
 
 /** "1 page", "12 pages", "3 chapters". */
 export const formatAmount = (n: number, unit: BookUnit): string =>

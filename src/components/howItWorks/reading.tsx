@@ -1,10 +1,10 @@
 import { Fig, Gain, pts, type HowItWorksGuide } from '@/components/ui/HowItWorks';
 import { READING_POINTS } from '@/lib/pointsConfig';
-import { READING_BONUS_COOLDOWN_DAYS, READING_BONUS_MIN_LOG_DAYS, READING_BONUS_MIN_SPAN_DAYS } from '@/lib/readingAwards';
+import { PAGES_PER_CHAPTER, READING_BONUS_COOLDOWN_DAYS, READING_BONUS_MIN_LOG_DAYS, READING_BONUS_MIN_SPAN_DAYS } from '@/lib/readingAwards';
 
 /**
  * Reading Hub. Rules from lib/pointsConfig.ts READING_POINTS, lib/readingAwards.ts (finish bonus:
- * log days, span, cooldown), components/reading/bookMeta.ts (unit locked once you log),
+ * log days, span, cooldown), lib/bookUnits.ts (switch a book's unit; finished books keep theirs),
  * FinishBookDialog (key takeaway required), ReadingHub.tsx (tabs, Discover Library/Start, Daily habit switch).
  */
 export const readingGuide: HowItWorksGuide = {
@@ -13,7 +13,7 @@ export const readingGuide: HowItWorksGuide = {
   steps: [
     {
       title: 'Reading',
-      text: 'Books you’re reading now. Log progress in pages, or in chapters if you set the book that way. The unit locks once you log.',
+      text: 'Books you’re reading now. Log progress in pages, or in chapters if you set the book that way. You can switch a book between the two in Edit book.',
     },
     { title: 'Library', text: 'Books you want to read. Start one and it moves to Reading.' },
     { title: 'Finished', text: 'Finish a book with its key takeaway. You can read it again any time.' },
@@ -38,5 +38,9 @@ export const readingGuide: HowItWorksGuide = {
       At most one finish bonus every <Fig>{READING_BONUS_COOLDOWN_DAYS}</Fig> days; a book finished sooner gets none.
     </>,
     'The pages Finish adds for you earn no page points.',
+    <>
+      Switching a book between pages and chapters (<Fig>1</Fig> chapter = <Fig>{PAGES_PER_CHAPTER}</Fig> pages) earns and takes no
+      points. Reading the same pages again that day earns nothing.
+    </>,
   ],
 };

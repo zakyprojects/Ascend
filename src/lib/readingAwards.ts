@@ -1,4 +1,4 @@
-import type { PointsEntry, ReadingLog, UserBook } from '@/types';
+import type { BookUnitSwitch, PointsEntry, ReadingLog, UserBook } from '@/types';
 import { READING_POINTS } from './pointsConfig';
 import { addDays as addDayKeys, todayKey } from './dates';
 
@@ -65,16 +65,34 @@ const logPages = (log: ReadingLog): number =>
 /** The book counts in chapters (unit "chapters" in any case; anything else is pages), as the server reads it. */
 export const isChapterBook = (book: Pick<UserBook, 'unit'>): boolean => String(book.unit || '').toLowerCase() === 'chapters';
 
-/**
- * A book's unit is fixed once it has any reading log (finish logs included), so logged pages never
- * turn into chapters or back. Mirror of the reading_books_keep_unit trigger
- * (supabase/migrations/20261019170000_reading_book_unit_lock.sql).
- */
-export const isBookUnitLocked = (book: Pick<UserBook, 'id' | 'linkedBookId'>, logs: ReadingLog[]): boolean =>
-  logs.some((l) => Boolean(l && l.bookId && (l.bookId === book.id || l.bookId === book.linkedBookId)));
-
 /** Pages one chapter counts as for points: 1 chapter = pointsPerChapter points. */
-const PAGES_PER_CHAPTER = READING_POINTS.pointsPerChapter * READING_POINTS.pagesPerPoint;
+export const PAGES_PER_CHAPTER = READING_POINTS.pointsPerChapter * READING_POINTS.pagesPerPoint;
+
+const validUnit = (unit: unknown): 'pages' | 'chapters' | null => {
+  const u = typeof unit === 'string' ? unit.toLowerCase() : '';
+  return u === 'pages' || u === 'chapters' ? u : null;
+};
+
+/**
+ * The unit a log was written in: its own `unit` (stamped by the reading_logs_unit trigger, and by
+ * the app on new logs), else the book's current unit (a log made before units were stamped).
+ * A book can switch units (switchBookUnit), so a log is never read in the book's unit when it has its own.
+ */
+export const logUnit = (log: Pick<ReadingLog, 'unit'>, book: Pick<UserBook, 'unit'> | undefined): 'pages' | 'chapters' =>
+  validUnit(log.unit) ?? (book && isChapterBook(book) ? 'chapters' : 'pages');
+
+/** A log's amount in pages (a chapter = PAGES_PER_CHAPTER pages); only a positive number counts. */
+export const logPageAmount = (log: ReadingLog, book: Pick<UserBook, 'unit'> | undefined): number =>
+  logPages(log) * (logUnit(log, book) === 'chapters' ? PAGES_PER_CHAPTER : 1);
+
+/**
+ * The pages a unit switch took off the book's place (before minus after, in pages), so reading
+ * them again that day earns nothing. 0 when the switch kept or raised the place.
+ */
+export const unitSwitchDebt = (s: BookUnitSwitch): number =>
+  typeof s?.pagesBefore === 'number' && typeof s?.pagesAfter === 'number' && Number.isFinite(s.pagesBefore) && Number.isFinite(s.pagesAfter)
+    ? Math.max(0, s.pagesBefore - s.pagesAfter)
+    : 0;
 
 /**
  * The day before `today` when the server raises it for this log (reading_award_points): a live log
@@ -92,9 +110,13 @@ const dayLastMs = (day: string): number => new Date(`${addDayKeys(day, 1)}T00:00
 /**
  * Mirror of ascend_recompute_reading_awards: the page award entry of one local day (null when the
  * day earns nothing), and each counted log's share in log order (shown on the log). Only logs of
- * books still in the library count, and not the pages Finish adds (finish: true); a chapter
- * book's log counts each chapter as PAGES_PER_CHAPTER pages; points = floor(day pages / pagesPerPoint),
- * capped across all books.
+ * books still in the library count, and not the pages Finish adds (finish: true); a log in chapters
+ * counts each chapter as PAGES_PER_CHAPTER pages (the log's own unit, logUnit).
+ * Per book, in time order, each log adds its pages and each unit switch of that day subtracts the
+ * pages it took off the book's place (unitSwitchDebt); the book earns for the highest running total
+ * it reached (never below 0). So a switch never takes points, and reading the same pages again after
+ * a switch earns nothing until the book passes where it was. A day without a switch is the plain sum.
+ * Points = floor(the books' pages / pagesPerPoint), capped across all books.
  * The row's time follows the server: a day whose row already exists (existing, the live ledger row)
  * keeps that row's time and only the amount changes; a new row is stamped at the day's first
  * earning log, clamped to [dayStartMs, nowMs] and never after the day's last millisecond.
@@ -110,22 +132,45 @@ export function computeReadingDayAward(
   existing?: PointsEntry | null,
   opts: { floor?: boolean } = {}
 ): { entry: PointsEntry | null; logPoints: Map<string, number> } {
-  const chapterBookIds = new Set(books.filter((b) => b && isChapterBook(b)).map((b) => b.id));
-  const bookIds = new Set(books.filter(Boolean).map((b) => b.id));
-  const dayLogs = logs
-    .filter((l) => l && l.date === day && l.finish !== true && Boolean(l.bookId && bookIds.has(l.bookId)))
-    .sort((a, b) => timeOf(a.createdAt) - timeOf(b.createdAt) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+  const bookById = new Map(books.filter(Boolean).map((b) => [b.id, b]));
+  const dayLogs = logs.filter((l) => l && l.date === day && l.finish !== true && Boolean(l.bookId && bookById.has(l.bookId)));
+
+  type DayEvent = { at: number; kind: 0 | 1; key: string; bookId: string; pages: number; log?: ReadingLog };
+  const events: DayEvent[] = dayLogs.map((l) => ({
+    at: timeOf(l.createdAt),
+    kind: 0,
+    key: l.id,
+    bookId: l.bookId as string,
+    pages: logPageAmount(l, bookById.get(l.bookId as string)),
+    log: l,
+  }));
+  for (const b of bookById.values()) {
+    (Array.isArray(b.unitSwitches) ? b.unitSwitches : []).forEach((s, i) => {
+      if (s && s.date === day && typeof s.pagesBefore === 'number' && typeof s.pagesAfter === 'number') {
+        events.push({ at: timeOf(s.at), kind: 1, key: `${b.id}#${i + 1}`, bookId: b.id, pages: -unitSwitchDebt(s) });
+      }
+    });
+  }
+  // Same order as the server: time (unknown last), logs before switches, then id byte order.
+  events.sort((a, b) => a.at - b.at || a.kind - b.kind || (a.key < b.key ? -1 : a.key > b.key ? 1 : 0));
 
   const logPoints = new Map<string, number>();
+  const running = new Map<string, { total: number; best: number }>();
   let pages = 0;
   let used = 0;
   let firstMs: number | null = null;
-  for (const l of dayLogs) {
-    pages += logPages(l) * (chapterBookIds.has(l.bookId ?? '') ? PAGES_PER_CHAPTER : 1);
+  for (const ev of events) {
+    const book = running.get(ev.bookId) ?? { total: 0, best: 0 };
+    book.total += ev.pages;
+    const best = Math.max(book.best, book.total);
+    pages += best - book.best;
+    book.best = best;
+    running.set(ev.bookId, book);
+    if (!ev.log) continue;
     const earned = Math.min(Math.floor(pages / READING_POINTS.pagesPerPoint), READING_POINTS.dailyCap);
-    logPoints.set(l.id, earned - used);
+    logPoints.set(ev.log.id, earned - used);
     used = earned;
-    if (firstMs === null && used > 0) firstMs = timeOf(l.createdAt);
+    if (firstMs === null && used > 0) firstMs = ev.at;
   }
   const id = readingAwardId(day);
   const kept = existing && existing.id === id ? existing : null;

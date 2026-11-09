@@ -5,12 +5,13 @@ import type { AppStore } from '@/lib/store';
 import type { CuratedBook, UserBook } from '@/types';
 import { earliestTargetDate, isNewPastDate } from '@/lib/dates';
 import { useUnsavedChanges } from '@/lib/unsavedChanges';
-import { isBookUnitLocked } from '@/lib/readingAwards';
-import { UNIT_LOCKED_HINT, bookProgress, bookUnit, lengthsByUnit, type BookUnit } from './bookMeta';
+import { unitSwitchDefaults } from '@/lib/bookUnits';
+import { UNIT_SWITCH_NOTE, bookProgress, bookUnit, lengthsByUnit, type BookUnit } from './bookMeta';
 
 /**
  * Moves a library book to Reading, or adds a Discover book straight to Reading, after
- * confirming its length and an optional target date.
+ * confirming its length and an optional target date. Switching the unit of a book with progress
+ * converts where the reader is too (editable; switchBookUnit writes no log).
  */
 export function StartReadingDialog({
   store,
@@ -35,17 +36,30 @@ export function StartReadingDialog({
   );
   const total = lengths[unit];
   const setTotal = (n: number) => setLengths((l) => ({ ...l, [unit]: n }));
+  const saved = book ? bookProgress(book) : null;
+  const [current, setCurrent] = useState(() => saved?.current ?? 0);
   const [targetDate, setTargetDate] = useState(() => book?.targetFinishDate || '');
-  const guard = useUnsavedChanges(open ? book?.id ?? curated?.id ?? null : null, [total, unit, targetDate]);
+  const guard = useUnsavedChanges(open ? book?.id ?? curated?.id ?? null : null, [total, unit, current, targetDate]);
   const title = book?.title ?? curated?.title;
-  const minLength = book ? Math.max(1, bookProgress(book).current) : 1;
-  const unitLocked = Boolean(book && isBookUnitLocked(book, store.state.readingLogs || []));
+  // A book already started that switches unit: its place is converted and shown to edit.
+  const switching = Boolean(saved && unit !== saved.unit && saved.current > 0);
+  const minLength = saved ? Math.max(1, switching ? current : saved.current) : 1;
+  const changeUnit = (next: BookUnit) => {
+    if (next === unit) return;
+    if (book && saved) {
+      const to = next === saved.unit ? { current: saved.current, total: saved.total } : unitSwitchDefaults(book, next);
+      setLengths((l) => ({ ...l, [next]: to.total }));
+      setCurrent(to.current);
+    }
+    setUnit(next);
+  };
 
   const submit = () => {
     if (book) {
       store.updateUserBookStatus(book.id, 'reading', {
         totalAmount: total,
         unit,
+        current: switching ? current : undefined,
         targetFinishDate: targetDate.trim() || undefined,
       });
     } else if (curated) {
@@ -98,14 +112,24 @@ export function StartReadingDialog({
             id="rh-start-unit"
             label="Count in"
             value={unit}
-            onChange={(e) => setUnit(e.target.value as BookUnit)}
-            disabled={unitLocked}
-            hint={unitLocked ? UNIT_LOCKED_HINT : undefined}
+            onChange={(e) => changeUnit(e.target.value as BookUnit)}
           >
             <option value="pages">Pages</option>
             <option value="chapters">Chapters</option>
           </Select>
         </FieldRow>
+        {switching && (
+          <NumberField
+            id="rh-start-current"
+            label={`You're at (${unit})`}
+            min={0}
+            max={total}
+            required
+            value={current}
+            onValueChange={setCurrent}
+            hint={UNIT_SWITCH_NOTE}
+          />
+        )}
         <Input
           id="rh-start-date"
           label="Target finish date"

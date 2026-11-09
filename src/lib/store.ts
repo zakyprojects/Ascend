@@ -122,9 +122,10 @@ import {
   weeklyScoringGoals,
 } from './weeklyAwards';
 import { computeLessonAward, isLessonReadInSeason, lessonReadId } from './lessonAwards';
+import { stampLogUnits, switchBookUnit, takeBackTodaysReading, unitSwitchDefaults } from './bookUnits';
 import {
   computeReadingDayAward,
-  isBookUnitLocked,
+  isChapterBook,
   isReadingDayEntry,
   isRetiredAppReadingAward,
   meetsReadingBonusGates,
@@ -4635,31 +4636,23 @@ export function useAppState() {
           bookId: targetUserBook.id,
           date,
           pagesRead: pageDelta,
+          unit: isChapterBook(targetUserBook) ? 'chapters' : 'pages',
           pointsAwarded: 0,
           createdAt: trustedNow().toISOString(),
         };
         updatedReadingLogs = [readingLog, ...updatedReadingLogs];
       } else if (pageDelta < 0) {
-        let decreaseToApply = Math.abs(pageDelta);
-        const validBookIds = new Set(
-          [targetUserBook.id, bookId, targetUserBook.linkedBookId, targetUserBook.curatedBookId].filter(Boolean)
+        // Takes back today's reading of this book only, in pages, whatever unit each log is in.
+        const taken = takeBackTodaysReading(
+          updatedReadingLogs,
+          targetUserBook,
+          date,
+          -pageDelta,
+          trustedNow().toISOString(),
+          () => `reading-log-${trustedNowMs()}-${Math.random().toString(36).substring(2, 9)}`
         );
-        const nowIso = trustedNow().toISOString();
-        updatedReadingLogs = updatedReadingLogs.map((l) => {
-          if (decreaseToApply <= 0 || l.date !== date || !l.bookId || !validBookIds.has(l.bookId)) {
-            return l;
-          }
-          const currentLogPages = l.pagesRead || 0;
-          if (currentLogPages <= decreaseToApply) {
-            decreaseToApply -= currentLogPages;
-            removedLogIds.push(l.id);
-            return null;
-          } else {
-            const remaining = currentLogPages - decreaseToApply;
-            decreaseToApply = 0;
-            return { ...l, pagesRead: remaining, updatedAt: nowIso };
-          }
-        }).filter((l): l is ReadingLog => l !== null);
+        updatedReadingLogs = taken.logs;
+        removedLogIds = taken.removedIds;
       }
 
       // The server writes the day's page award (applyReadingAwardsInternal shows the same row now).
@@ -4778,6 +4771,7 @@ export function useAppState() {
             bookId: targetUserBook.id,
             date: today,
             pagesRead: unreadDelta,
+            unit: isChapterBook(targetUserBook) ? 'chapters' : 'pages',
             pointsAwarded: 0,
             finish: true,
             createdAt: now,
@@ -5096,17 +5090,29 @@ export function useAppState() {
     (
       bookId: string,
       status: UserBookStatus,
-      options?: { totalAmount?: number; unit?: 'pages' | 'chapters'; targetFinishDate?: string }
+      options?: { totalAmount?: number; unit?: 'pages' | 'chapters'; current?: number; targetFinishDate?: string }
     ) => {
       setState((prev) => {
         const now = trustedNow().toISOString();
+        let readingLogs = prev.readingLogs || [];
         return {
           ...prev,
-          libraryBooks: prev.libraryBooks.map((b) => {
-            if (b.id === bookId || b.linkedBookId === bookId) {
+          libraryBooks: prev.libraryBooks.map((original) => {
+            if (original.id === bookId || original.linkedBookId === bookId) {
+              // A unit change converts the place too (switchBookUnit); it writes no log.
+              let b = original;
+              if (options?.unit && options.unit !== (isChapterBook(original) ? 'chapters' : 'pages') && original.status !== 'completed') {
+                const defaults = unitSwitchDefaults(original, options.unit);
+                readingLogs = stampLogUnits(readingLogs, original);
+                b = switchBookUnit(
+                  original,
+                  { unit: options.unit, current: options.current ?? defaults.current, total: options.totalAmount ?? defaults.total },
+                  now,
+                  todayKey()
+                );
+              }
               const maxPages = options?.totalAmount ?? b.totalAmount ?? b.totalPages ?? 250;
-              // A logged book keeps its unit (isBookUnitLocked; the server keeps it too).
-              const unit = isBookUnitLocked(b, prev.readingLogs || []) ? b.unit : options?.unit ?? b.unit ?? 'pages';
+              const unit = b.unit ?? 'pages';
               const targetFinishDate = options?.targetFinishDate !== undefined ? options.targetFinishDate : b.targetFinishDate;
               return {
                 ...b,
@@ -5125,8 +5131,9 @@ export function useAppState() {
                 dateCompleted: status === 'completed' ? (b.dateCompleted || now) : undefined,
               };
             }
-            return b;
+            return original;
           }),
+          readingLogs,
           books: [],
         };
       });
@@ -5146,16 +5153,30 @@ export function useAppState() {
         description?: string;
         totalAmount: number;
         unit: 'pages' | 'chapters';
+        /** The place in the new unit when the unit changes (switchBookUnit); the converted place when left out. */
+        current?: number;
         targetFinishDate?: string;
         reflection?: string;
       }
     ) => {
       setState((prev) => {
         const now = trustedNow().toISOString();
+        let readingLogs = prev.readingLogs || [];
         return {
           ...prev,
-          libraryBooks: prev.libraryBooks.map((b) => {
-            if (b.id !== bookId) return b;
+          libraryBooks: prev.libraryBooks.map((original) => {
+            if (original.id !== bookId) return original;
+            // A unit change converts the place too and writes no log; a finished book keeps its unit.
+            let b = original;
+            if (details.unit !== (isChapterBook(original) ? 'chapters' : 'pages') && original.status !== 'completed') {
+              readingLogs = stampLogUnits(readingLogs, original);
+              b = switchBookUnit(
+                original,
+                { unit: details.unit, current: details.current ?? unitSwitchDefaults(original, details.unit).current, total: details.totalAmount },
+                now,
+                todayKey()
+              );
+            }
             const current = b.currentAmount ?? b.currentPage ?? 0;
             const finished = b.status === 'completed';
             // The form keeps the length at or above the progress; a finished book stays read in full.
@@ -5171,12 +5192,12 @@ export function useAppState() {
               totalPages: total,
               currentAmount: nextCurrent,
               currentPage: nextCurrent,
-              unit: isBookUnitLocked(b, prev.readingLogs || []) ? b.unit : details.unit,
               targetFinishDate: finished ? b.targetFinishDate : details.targetFinishDate?.trim() || undefined,
               reflection: finished ? details.reflection?.trim() || b.reflection : b.reflection,
               updatedAt: now,
             };
           }),
+          readingLogs,
           books: [],
         };
       });

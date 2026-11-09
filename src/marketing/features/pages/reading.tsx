@@ -1,6 +1,6 @@
 import { BOOK_CATEGORIES, CURATED_BOOKS } from '@/lib/books';
 import { READING_POINTS } from '@/lib/pointsConfig';
-import { READING_BONUS_COOLDOWN_DAYS, READING_BONUS_MIN_LOG_DAYS, READING_BONUS_MIN_SPAN_DAYS } from '@/lib/readingAwards';
+import { PAGES_PER_CHAPTER, READING_BONUS_COOLDOWN_DAYS, READING_BONUS_MIN_LOG_DAYS, READING_BONUS_MIN_SPAN_DAYS } from '@/lib/readingAwards';
 import { LINK_CLASS } from '../../components/MarketingLayout';
 import { featurePath } from '../catalog';
 import { Block, Cards, Note, Rules, Steps, type FeatureContent } from '../blocks';
@@ -222,7 +222,7 @@ export const reading: FeatureContent = {
     },
     {
       q: 'Can I track a book by chapters instead of pages?',
-      a: `Yes. Choose chapters when you add it. For a chapter book every chapter earns ${pts(R.pointsPerChapter)}. A book’s unit is fixed once you log it, so earlier logs never change meaning.`,
+      a: `Yes. Choose chapters when you add it, or switch a book between pages and chapters later in Edit book (1 chapter = ${PAGES_PER_CHAPTER} pages). For a chapter book every chapter earns ${pts(R.pointsPerChapter)}. A switch never changes the points you already earned, and earlier logs keep their unit.`,
     },
     {
       q: 'How do I get the finish bonus?',
