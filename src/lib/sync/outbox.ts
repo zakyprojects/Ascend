@@ -225,6 +225,9 @@ function keepMovedVersions(result: Baseline, atStart: Baseline, current: Baselin
   return next;
 }
 
+/** Accounts whose last save could not store its changes on this device (storage full). */
+const storageFailed = new Set<string>();
+
 /**
  * Call after the blob save for this state succeeded. versionsAtStart: this tab's versions when the
  * save took the state (tabSyncedHashes then). A pull or a broadcast taken in during the save moves
@@ -248,6 +251,30 @@ export function recordSyncedChanges(state: AppState, versionsAtStart?: Baseline)
     atStart === current ? {} : current,
     readEditTimes(userId)
   );
+  if (result.changed) {
+    try {
+      // Outbox first: if the baseline write is lost, the next diff only re-queues the same ops.
+      writeJson(outboxKey(userId), result.outbox);
+      writeJson(baselineKey(userId), result.baseline);
+    } catch (err) {
+      // Storage full: nothing was queued, so this tab's versions and the edit times stay as they
+      // were. Moved on, the edits would read as old copies next time and be replaced by the server.
+      console.error('[SYNC OUTBOX] Could not store pending changes:', err);
+      storageFailed.add(userId);
+      window.dispatchEvent(
+        new CustomEvent('app-toast-error', {
+          detail: {
+            title: 'Device storage is full',
+            message: "Your latest changes can't be queued to sync. Free up browser storage and keep this tab open.",
+            dedupKey: 'sync-storage-full',
+          },
+        })
+      );
+      if (result.behind > 0) window.dispatchEvent(new CustomEvent(SYNC_BEHIND_EVENT, { detail: { userId } }));
+      return;
+    }
+  }
+  storageFailed.delete(userId);
   pruneEditTimes(userId, state);
   const nextVersions = atStart === current ? result.tabHashes : keepMovedVersions(result.tabHashes, atStart, current);
   const versionsMoved = JSON.stringify(nextVersions) !== JSON.stringify(current);
@@ -257,16 +284,12 @@ export function recordSyncedChanges(state: AppState, versionsAtStart?: Baseline)
   }
   if (result.behind > 0) window.dispatchEvent(new CustomEvent(SYNC_BEHIND_EVENT, { detail: { userId } }));
   if (!result.changed) return;
-
-  try {
-    // Outbox first: if the baseline write is lost, the next diff only re-queues the same ops.
-    writeJson(outboxKey(userId), result.outbox);
-    writeJson(baselineKey(userId), result.baseline);
-  } catch (err) {
-    console.error('[SYNC OUTBOX] Could not store pending changes:', err);
-    return;
-  }
   void flushOutbox(userId);
+}
+
+/** True while this tab's last save for the account could not queue its changes (storage full). */
+export function syncStorageFailed(userId: string): boolean {
+  return storageFailed.has(userId);
 }
 
 /** Ids with a local op still waiting to be sent; a server row must not overwrite those. */
