@@ -5907,7 +5907,8 @@ export function useAppState() {
    * Logs a focus session and returns its id. `id` makes the log idempotent (a second call with the
    * same id, or one for a deleted log, changes nothing); `endedAtMs` dates it on the local day it
    * ended. `durationMinutes` is the active time; the timer also passes the plan, the first start
-   * and the milestone crossings, which make the server use the partial-points rule (focusPoints.ts).
+   * and the milestone crossings (they bound the credited minutes and place them on each side of
+   * midnight). The session earns rule 2 (focusPoints.ts).
    * The server awards only its own today, and raises the day before for a session with points on
    * it (one across midnight, or one that ended yesterday and arrives today), so only those get a
    * preview. The log reaches the server through the outbox, which
@@ -5936,6 +5937,8 @@ export function useAppState() {
           pointsAwarded: 0,
           reflection: reflection?.trim() || undefined,
           createdAt: endedAt.toISOString(),
+          // The server stamps every new row with rule 2 (focus_logs.points_rule); the preview matches it.
+          pointsRule: 2,
           ...(planned !== undefined && opts?.startedAtMs !== undefined
             ? {
                 plannedMinutes: planned,

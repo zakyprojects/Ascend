@@ -353,7 +353,7 @@ server.now += 75 * MIN;
 await phone.sync();
 eq(last(phone.logs)?.sessionId, 'c1', '5: phone (opened first) logs the finished session');
 eq(last(phone.logs)?.activeMinutes, 50, '5: full plan');
-eq(last(phone.logs)?.points, 5, '5: finish bonus (50 = 5 pts)');
+eq(last(phone.logs)?.points, 4, '5: a finished 50 alone = 4 pts (rule 2)');
 eq(last(phone.logs)?.milestonesAt.length, 3, '5: milestones 25/35/45');
 eq(phone.local, null, '5: break already over');
 const before = pc.logs.length;

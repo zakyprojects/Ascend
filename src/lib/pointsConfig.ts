@@ -86,8 +86,10 @@ export const SKILLS_POINTS = {
 } as const;
 
 export const PFC_POINTS = {
-  // 25m = 2pts, 50m = 5pts, 90m = 10pts (tiered)
+  // Rule 2 (2026-11-09): 1 pt per 12 active min, a day's sessions added up, from 25 min a session,
+  // cap 10 (focusPoints.ts). `tiers` = the old rule of rows logged without a planned length.
   focus: {
+    minutesPerPoint: 12,
     tiers: [
       { minMinutes: 90, points: 10 },
       { minMinutes: 50, points: 5 },

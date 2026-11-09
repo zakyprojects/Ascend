@@ -1,5 +1,6 @@
-// Focus timer partial points (rule R1, Zakria 2026-11-04) and the session rules around it:
-// the R1 value table, the server mirror (cap, midnight split, late arrival of yesterday's session,
+// Focus timer partial points (rule R1, Zakria 2026-11-04; since 2026-11-09 only for rows logged
+// before rule 2, which keep it: the rule-2 suite is focusPoints12min.test.ts) and the session rules
+// around it: the R1 value table, the server mirror (cap, midnight split, late arrival of yesterday's session,
 // wall-clock clamp, old rows),
 // paused time never counting, the 30-minute resume window, a running session counting wall time
 // while the app is closed or the phone locked, and logout pausing it for the same account only.
@@ -19,7 +20,7 @@ const store = new Map<string, string>();
   clear: () => store.clear(),
 } as Storage;
 
-const { focusR1Points, nextFocusReward, FOCUS_DAILY_CAP } = await import('../focusPoints');
+const { focusR1Points, FOCUS_DAILY_CAP } = await import('../focusPoints');
 const { computeFocusAwards, creditedFocusMinutes, focusFloorDay } = await import('../focusAwards');
 const S = await import('../focusSession');
 const { PFC_POINTS } = await import('../pointsConfig');
@@ -40,10 +41,6 @@ const table: Array<[planned: number, active: number, points: number]> = [
   [120, 120, 10], [120, 100, 8], [90, 200, 10], // active above the plan is capped at the plan
 ];
 for (const [planned, active, points] of table) eq(focusR1Points(active, planned), points, `R1 ${active} of ${planned}`);
-eq(nextFocusReward(30, 90)?.atMinutes, 35, 'next milestone after 30 is 35');
-eq(nextFocusReward(86, 90)?.points, 2, 'only the finish bonus is left at 86 of 90');
-eq(nextFocusReward(20, 50)?.atMinutes, 25, 'first milestone at 25');
-assert(nextFocusReward(10, 10) === null, 'a 10-min plan earns nothing more');
 
 // --- 2. Server mirror ---
 const DAY = '2026-11-04';
@@ -176,7 +173,7 @@ function newSession(minutes: number, userId = 'user-a'): FocusSession {
   eq(S.activeMinutesAt(s, T0 + 50 * MIN), 30, 'after resume: 20 + 10');
   const close = S.closeAt(s, T0 + 70 * MIN); // 50 active
   eq(close.activeMinutes, 50, '50 active minutes in 70 wall minutes');
-  eq(close.points, 4, '50 of 90 = 25, 35, 45 = 4');
+  eq(close.points, 4, '50 active min alone = 4 (rule 2)');
   eq(close.milestonesAt[0], T0 + 45 * MIN, '25-min mark crossed 20 min late because of the pause');
   eq(close.milestonesAt.length, 3, 'three milestones');
   // The mirror accepts these crossings (each at least start + its minutes).
@@ -197,7 +194,7 @@ eq(S.FOCUS_RESUME_WINDOW_MINUTES, 30, 'resume window is 30 minutes');
   eq(r2.close!.endMs, p0, 'closed at the pause moment');
   eq(r2.close!.activeMinutes, 40, 'credited only up to the pause');
   assert(r2.close!.save, '40 active min is saved');
-  eq(r2.close!.points, 3, '40 of 90 = 25 + 35 = 3, no finish bonus');
+  eq(r2.close!.points, 3, '40 active min alone = 3 (rule 2)');
   assert(r2.notice?.kind === 'expired' && r2.notice.saved, 'notice: saved');
 
   const short = S.pauseAt(newSession(90), T0 + 20 * MIN);
@@ -220,7 +217,7 @@ eq(S.FOCUS_RESUME_WINDOW_MINUTES, 30, 'resume window is 30 minutes');
   // Away for hours, even past the old 30-minute window: still running, nothing closed early.
   const longAway = S.settleSession(s, T0 + 89 * MIN);
   assert(!longAway.changed && longAway.session?.isPaused === false, 'away 59 min (end not reached): still running');
-  // Away past the planned end: it ends at the planned end with the finish bonus.
+  // Away past the planned end: it ends at the planned end with all its planned minutes.
   const later = T0 + 5 * 60 * MIN;
   assert(!S.settleSession(s, later).changed, 'settle leaves a running session to the end check');
   const endMs = S.sessionEndMs(s)!;
@@ -229,18 +226,19 @@ eq(S.FOCUS_RESUME_WINDOW_MINUTES, 30, 'resume window is 30 minutes');
   const close = S.closeAt(s, endMs);
   eq(close.endMs, T0 + 90 * MIN, 'logged at the planned end, not at the reopen time');
   eq(close.activeMinutes, 90, '90 active min');
-  eq(close.points, 10, 'finished 90 = 10 with the finish bonus');
+  eq(close.points, 7, 'finished 90 alone = 7 (rule 2, no finish bonus)');
   eq(close.milestonesAt.length, 7, 'all 7 milestones');
   eq(close.milestonesAt[0], T0 + 25 * MIN, '25-min mark at start + 25 min');
   eq(close.milestonesAt[6], T0 + 85 * MIN, '85-min mark at start + 85 min (not the reopen time)');
   const log = r1Log('away', T0, 90, 90, { createdAt: iso(later), milestonesAt: close.milestonesAt.map(iso) });
-  eq(amount([log]), 10, 'mirror: the late upload of a finished 90 earns 10');
+  eq(amount([log]), 10, 'mirror (legacy R1 row): the late upload of a finished 90 earns 10');
+  eq(amount([{ ...log, pointsRule: 2 }]), 7, 'mirror (rule 2 row): the late upload of a finished 90 earns 7');
   // After a pause and resume, a later lock still counts and marks skip only the pause.
   let p = S.pauseAt(newSession(50), T0 + 10 * MIN);
   p = S.resumeAt(p, T0 + 20 * MIN); // 10 min paused
   const pc = S.closeAt(p, S.sessionEndMs(p)!);
   eq(pc.endMs, T0 + 60 * MIN, 'planned end moves by the pause only');
-  eq(pc.points, 5, 'finished 50 = 5');
+  eq(pc.points, 4, 'finished 50 alone = 4 (rule 2)');
   eq(pc.milestonesAt[0], T0 + 35 * MIN, '25-min mark = start + 25 + 10 paused');
 }
 
@@ -295,16 +293,6 @@ eq(S.FOCUS_RESUME_WINDOW_MINUTES, 30, 'resume window is 30 minutes');
   // Account deletion drops it.
   S.dropStoredSession('user-a');
   assert(S.readStoredSession('user-a', T0 + MIN) === null, 'account deletion drops the session');
-}
-
-// The timer shows only what today's focus cap has left (Complete popup, points so far).
-{
-  const { focusPointsWithinCap } = await import('../focusPoints');
-  eq(focusPointsWithinCap(4, 0), 4, 'empty day: full session points');
-  eq(focusPointsWithinCap(4, 6), 4, '4 left: 4');
-  eq(focusPointsWithinCap(4, 8), 2, '2 left: 2');
-  eq(focusPointsWithinCap(4, 10), 0, 'cap reached: 0');
-  eq(focusPointsWithinCap(10, 12), 0, 'over cap: 0');
 }
 
 console.log('focusPartialPoints: all assertions passed');

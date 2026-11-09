@@ -1,5 +1,5 @@
 import { trustedNowMs } from '@/lib/clock';
-import { FOCUS_MILESTONES, FOCUS_MIN_MINUTES, focusR1Points } from '@/lib/focusPoints';
+import { FOCUS_MILESTONES, FOCUS_MIN_MINUTES, focusSessionAlonePoints } from '@/lib/focusPoints';
 
 /**
  * The running focus timer, kept in localStorage under the signed-in account's own key, so every
@@ -69,10 +69,11 @@ export const FOCUS_PRESETS: FocusPreset[] = [
   { focus: 25, break: 5 },
   { focus: 50, break: 10 },
   { focus: 90, break: 15 },
+  { focus: 120, break: 20 },
 ];
 
-/** Points a session of this planned length earns when finished (before the daily cap). */
-export const focusFinishedPoints = (minutes: number): number => focusR1Points(minutes, minutes);
+/** Points a finished session of this planned length earns on its own (a day with nothing else; rule 2). */
+export const focusFinishedPoints = (minutes: number): number => focusSessionAlonePoints(minutes);
 
 /** The focus log row of a session: deterministic, so a second completion (other tab, race) is the same row. */
 export const focusLogIdFor = (sessionId: string): string => `focus_${sessionId}`;
@@ -298,7 +299,7 @@ export function closeAt(session: FocusSession, endMs: number): FocusClose {
     plannedMinutes: session.focusMinutes,
     milestonesAt: milestoneTimes(session, endMs),
     save: activeMinutes >= FOCUS_MIN_MINUTES,
-    points: focusR1Points(activeMinutes, session.focusMinutes),
+    points: focusSessionAlonePoints(Math.min(activeMinutes, session.focusMinutes)),
   };
 }
 

@@ -258,6 +258,8 @@ const focusLogs: SyncedCollection<'focusLogs'> = {
     ...optional('plannedMinutes', r.planned_minutes, Number),
     ...optional('startedAt', r.started_at, isoTime),
     ...(Array.isArray(r.milestones_at) ? { milestonesAt: (r.milestones_at as unknown[]).map(isoTime) } : {}),
+    // Server-stamped points rule (20261109140000_focus_points_12min.sql): read only, never sent.
+    ...(Number(r.points_rule) === 2 ? { pointsRule: 2 as const } : {}),
   }),
   ownTimestamp: (f) => f.createdAt,
 };

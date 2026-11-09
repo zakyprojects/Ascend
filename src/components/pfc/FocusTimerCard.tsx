@@ -4,10 +4,9 @@ import type { AppStore } from '@/lib/store';
 import { Dialog, FieldErrorBubble, Input, NumberField, ProgressBar, Select } from '@/components/ui/primitives';
 import { cx } from '@/components/ui/primitives/shared';
 import { trustedNowMs } from '@/lib/clock';
-import { FOCUS_DAILY_CAP, FOCUS_RULE_SHORT, focusPointsWithinCap, focusR1Points, nextFocusReward } from '@/lib/focusPoints';
-import { computeFocusAwards } from '@/lib/focusAwards';
-import { localDayStartMs, todayKey } from '@/lib/dates';
-import type { FocusSessionLog } from '@/types';
+import { FOCUS_DAILY_CAP, FOCUS_RULE_SHORT, focusDayGain, focusDayPoints, nextFocusReward, type FocusDayTally } from '@/lib/focusPoints';
+import { focusDayTally } from '@/lib/focusAwards';
+import { todayKey } from '@/lib/dates';
 import {
   FOCUS_MIN_MINUTES_TO_SAVE,
   FOCUS_PRESETS,
@@ -36,12 +35,6 @@ function pendingTask(): string | null {
 
 const pts = (n: number) => `${n} ${n === 1 ? 'pt' : 'pts'}`;
 
-/** Focus points already earned today from saved sessions (same rule as the server). */
-function focusPointsToday(logs: FocusSessionLog[], nowMs: number): number {
-  const today = todayKey();
-  return computeFocusAwards(logs, today, localDayStartMs(today), nowMs).entry?.amount ?? 0;
-}
-
 const CAP_REACHED = `Today's focus cap of ${FOCUS_DAILY_CAP} pts is reached`;
 
 /** Re-renders the caller once a second while `on` (pause countdown, points so far). */
@@ -55,15 +48,16 @@ function useSecondTick(on: boolean): number {
   return trustedNowMs();
 }
 
-/** Points so far and the next one on a focus session; while paused, the time left to resume. */
-function FocusProgressLine({ session, earnedToday }: { session: FocusSession; earnedToday: number }) {
+/**
+ * Points so far and the next one on a focus session, counted on top of today's saved sessions
+ * (their minutes add up with this one's); while paused, the time left to resume.
+ */
+function FocusProgressLine({ session, today }: { session: FocusSession; today: FocusDayTally }) {
   const nowMs = useSecondTick(true);
-  const active = activeMinutesAt(session, nowMs);
-  const raw = focusR1Points(active, session.focusMinutes);
-  const earned = focusPointsWithinCap(raw, earnedToday);
-  const capFull = earnedToday >= FOCUS_DAILY_CAP;
-  const nextRaw = nextFocusReward(active, session.focusMinutes);
-  const next = nextRaw && { ...nextRaw, points: focusPointsWithinCap(raw + nextRaw.points, earnedToday) - earned };
+  const active = Math.min(activeMinutesAt(session, nowMs), session.focusMinutes);
+  const earned = focusDayGain(active, today);
+  const capFull = focusDayPoints(today) >= FOCUS_DAILY_CAP;
+  const next = nextFocusReward(active, session.focusMinutes, today);
   const deadline = resumeDeadlineMs(session);
   return (
     <p className="text-center text-xs text-content-muted" aria-live="off">
@@ -83,7 +77,7 @@ function FocusProgressLine({ session, earnedToday }: { session: FocusSession; ea
       {next && next.points > 0 && (
         <>
           {' · '}
-          {next.kind === 'finish' ? 'finish' : 'next'} <span className="figure">+{next.points}</span> at{' '}
+          next <span className="figure">+{next.points}</span> at{' '}
           <span className="figure">{next.atMinutes}</span> min
         </>
       )}
@@ -201,14 +195,15 @@ function ManualTimer({ store }: { store: AppStore }) {
   const nowMs = useSecondTick(Boolean(session && session.mode === 'focus'));
   const activeNow = session && session.mode === 'focus' ? activeMinutesAt(session, nowMs) : 0;
   const canComplete = activeNow >= FOCUS_MIN_MINUTES_TO_SAVE;
-  const earnedToday = focusPointsToday(store.state.focusLogs, nowMs);
-  const completePoints =
-    session && session.mode === 'focus' ? focusPointsWithinCap(focusR1Points(activeNow, session.focusMinutes), earnedToday) : 0;
-  const completeCapFull = earnedToday >= FOCUS_DAILY_CAP;
+  const today = focusDayTally(store.state.focusLogs, todayKey());
+  const todayCapFull = focusDayPoints(today) >= FOCUS_DAILY_CAP;
+  const completePoints = session && session.mode === 'focus' ? focusDayGain(Math.min(activeNow, session.focusMinutes), today) : 0;
   const [permission, setPermission] = useState(notificationPermission);
 
   const focusMinutes = preset.custom ? customFocus : preset.focus;
   const breakMinutes = preset.custom ? customBreak : preset.brk;
+  // A finished session of the chosen length adds this today (the chips show it on its own).
+  const readyGain = focusDayGain(focusMinutes, today);
 
   // Re-read alert permission when the page comes back (it may have been changed in the browser).
   useEffect(() => {
@@ -236,7 +231,7 @@ function ManualTimer({ store }: { store: AppStore }) {
   return (
     <div className="space-y-5">
       {!session && (
-        <div className="grid grid-cols-2 min-[480px]:grid-cols-4 gap-2" role="group" aria-label="Session length">
+        <div className="grid grid-cols-4 min-[480px]:grid-cols-5 gap-1.5 min-[480px]:gap-2" role="group" aria-label="Session length">
           {FOCUS_PRESETS.map((p) => {
             const active = !preset.custom && preset.focus === p.focus;
             return (
@@ -249,11 +244,11 @@ function ManualTimer({ store }: { store: AppStore }) {
                   setCustomError(null);
                 }}
                 className={cx(
-                  'min-h-11 rounded-xl border px-2 py-1.5 text-xs transition-colors flex flex-col items-center justify-center',
+                  'min-h-11 min-w-0 rounded-xl border px-1 py-1.5 text-xs transition-colors flex flex-col items-center justify-center',
                   active ? 'badge-cyan border-cyan-500/40 font-semibold' : 'border-overlay-subtle text-content-muted hover:bg-overlay-subtle'
                 )}
               >
-                <span className="figure text-sm">{p.focus} min</span>
+                <span className="figure text-sm whitespace-nowrap">{p.focus} min</span>
                 <span className="text-2xs opacity-80">{pts(focusFinishedPoints(p.focus))}</span>
               </button>
             );
@@ -263,7 +258,7 @@ function ManualTimer({ store }: { store: AppStore }) {
             aria-pressed={preset.custom}
             onClick={() => setPreset({ focus: customFocus, brk: customBreak, custom: true })}
             className={cx(
-              'min-h-11 rounded-xl border px-2 py-1.5 text-xs transition-colors flex flex-col items-center justify-center',
+              'col-span-4 min-[480px]:col-span-1 min-h-11 min-w-0 rounded-xl border px-1 py-1.5 text-xs transition-colors flex flex-col items-center justify-center',
               preset.custom ? 'badge-cyan border-cyan-500/40 font-semibold' : 'border-overlay-subtle text-content-muted hover:bg-overlay-subtle'
             )}
           >
@@ -271,6 +266,18 @@ function ManualTimer({ store }: { store: AppStore }) {
             <span className="text-2xs opacity-80">{preset.custom ? pts(focusFinishedPoints(customFocus)) : 'any length'}</span>
           </button>
         </div>
+      )}
+
+      {!session && readyGain < focusFinishedPoints(focusMinutes) && (
+        <p className="text-center text-xs text-content-muted">
+          {todayCapFull ? (
+            <>{CAP_REACHED}. It still saves.</>
+          ) : (
+            <>
+              Today's max <span className="figure text-success-text">{pts(readyGain)}</span>
+            </>
+          )}
+        </p>
       )}
 
       {!session && preset.custom && (
@@ -306,7 +313,7 @@ function ManualTimer({ store }: { store: AppStore }) {
 
       <TimerDisplay session={session} readySeconds={Math.max(0, focusMinutes) * 60} />
 
-      {session && !isBreak && <FocusProgressLine session={session} earnedToday={earnedToday} />}
+      {session && !isBreak && <FocusProgressLine session={session} today={today} />}
 
       {session ? (
         <p className="text-center text-xs text-content-muted break-words [overflow-wrap:anywhere]">
@@ -428,7 +435,7 @@ function ManualTimer({ store }: { store: AppStore }) {
         onClose={() => setConfirmComplete(false)}
         title="Complete focus session?"
         description={
-          completeCapFull
+          todayCapFull
             ? `You focused ${activeNow} min. It is saved. ${CAP_REACHED}, so it adds no points.`
             : `You focused ${activeNow} min. It is saved with ${pts(completePoints)}.`
         }

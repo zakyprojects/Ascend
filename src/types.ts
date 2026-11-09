@@ -458,6 +458,12 @@ export interface FocusSessionLog {
   startedAt?: string;
   /** When each milestone (25, 35, ... 85 active min) was crossed, in order. */
   milestonesAt?: string[];
+  /**
+   * 2 = rule 2 (1 pt per 12 min, the day's minutes added up; focusPoints.ts). Stamped by the server
+   * at insert (focus_logs.points_rule) and by this app on the sessions it logs; never uploaded.
+   * Unset = the rule the row was logged under before (R1 with a plan, the old tiers without).
+   */
+  pointsRule?: 2;
 }
 
 export interface DecisionLog {
