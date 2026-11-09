@@ -156,6 +156,7 @@ const guides: [string, HowItWorksGuide, (string | number)[]][] = [
       `Clean today = +${RECOVERY_POINTS.perCheckin} pt`,
       `${RECOVERY_POINTS.seasonCap} pts`,
       'points you already earned stay',
+      'Tap the tick to undo today’s check-in',
     ],
   ],
   [

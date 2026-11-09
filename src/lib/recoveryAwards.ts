@@ -11,8 +11,11 @@ import { getSeasonEnd, getSeasonStart } from './leagueTime';
  *   * Today's check-in, or yesterday's when it was missed (late tap); older or future days are not stored.
  *   * The tracker's first local day (its creation day) and a day the streak (re)started in earn nothing.
  *   * At most RECOVERY_POINTS.seasonCap recovery points a season, old milestone rows included.
- *   * No bonuses, nothing is ever taken back. The award is dated at the tap, a late tap at
- *     yesterday's last millisecond.
+ *   * No bonuses, nothing is ever taken back, except the user's own undo of TODAY's check-in
+ *     (ascend_revoke_recovery_checkin): it removes today's check-in and today's point while that day
+ *     is still today. Yesterday's late tap and earlier days can't be undone. A re-tap after the undo
+ *     brings back the same single point (same id), never a second one.
+ *   * The award is dated at the tap, a late tap at yesterday's last millisecond.
  * The server stamps the tracker's creation time itself; the app uses the tracker's createdAt, which
  * is the same moment unless the tracker was made offline. The app computes the award only to show
  * it at once; it never uploads it. Change both sides together.
@@ -49,6 +52,11 @@ export const recoveryCheckinDays = (nowMs: number) => {
   const today = todayKey(new Date(nowMs));
   return { today, yesterday: addDays(today, -1) };
 };
+
+/** Only today's check-in can be undone (the tick on the done card); yesterday's late tap and older days never. */
+export function canUndoRecoveryCheckin(checkins: { id: string }[] | undefined, day: string, nowMs: number): boolean {
+  return day === recoveryCheckinDays(nowMs).today && (checkins || []).some((c) => c?.id === day);
+}
 
 /** Recovery points held in the season that contains `atMs` (all recovery sources). */
 export function recoveryPointsInSeason(history: PointsEntry[], atMs: number): number {

@@ -847,7 +847,7 @@ export interface AppState {
   recoveryCheckins?: RecoveryCheckin[];
 }
 
-/** One Recovery check-in: the local day 'YYYY-MM-DD' is the row id, never edited once made. */
+/** One Recovery check-in: the local day 'YYYY-MM-DD' is the row id, never edited once made (today's can be undone). */
 export interface RecoveryCheckin {
   id: string;
   trackerId: string;

@@ -124,6 +124,14 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
     store.checkInRecovery(day);
     showSuccessToast(day === today ? 'Checked in for today' : 'Checked in for yesterday', 'One day at a time.');
   };
+  // The tick on the done card undoes today's check-in (only today's), after a small inline confirm.
+  const [undoDay, setUndoDay] = useState<string | null>(null);
+  const confirmingUndo = checkedToday && undoDay === today;
+  const undoCheckIn = () => {
+    store.undoRecoveryCheckin();
+    setUndoDay(null);
+    showSuccessToast('Check-in undone', 'You can check in again today.');
+  };
 
   const sortedCravings = [...cravingLogs].sort((a, b) => (b.date || '').localeCompare(a.date || ''));
   const weekStartKey = todayKey(startOfWeek(parseDate(today)!));
@@ -309,18 +317,43 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
                   checkedToday ? 'border-emerald-500/40 bg-emerald-500/10' : 'border-overlay-subtle'
                 )}
               >
-                <div
-                  className={cx(
-                    'w-9 h-9 rounded-xl flex items-center justify-center shrink-0',
-                    checkedToday ? 'bg-emerald-500/20 text-success-text' : 'bg-overlay-subtle text-content-muted'
-                  )}
-                >
-                  {checkedToday ? <Check size={18} /> : <CalendarCheck size={18} />}
-                </div>
+                {checkedToday ? (
+                  <button
+                    type="button"
+                    onClick={() => setUndoDay(confirmingUndo ? null : today)}
+                    aria-label="Undo today's check-in"
+                    aria-expanded={confirmingUndo}
+                    title="Undo today's check-in"
+                    className={cx(
+                      'w-9 h-9 rounded-xl flex items-center justify-center shrink-0 bg-emerald-500/20 text-success-text hover:bg-emerald-500/30 transition-colors',
+                      TAP_TARGET
+                    )}
+                  >
+                    <Check size={18} />
+                  </button>
+                ) : (
+                  <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 bg-overlay-subtle text-content-muted">
+                    <CalendarCheck size={18} />
+                  </div>
+                )}
                 <div className="min-w-0 flex-1">
-                  <p className="item-name text-sm text-content-secondary">{checkedToday ? 'Checked in today' : 'Stayed clean today?'}</p>
-                  <p className={cx('text-xs', checkedToday && todayPoints > 0 ? 'figure text-success-text' : 'text-content-muted')}>{checkInLine}</p>
+                  <p className="item-name text-sm text-content-secondary">
+                    {confirmingUndo ? "Undo today's check-in?" : checkedToday ? 'Checked in today' : 'Stayed clean today?'}
+                  </p>
+                  <p className={cx('text-xs', !confirmingUndo && checkedToday && todayPoints > 0 ? 'figure text-success-text' : 'text-content-muted')}>
+                    {confirmingUndo ? (todayPoints > 0 ? "Today's point goes too. Your streak stays." : 'Your streak stays.') : checkInLine}
+                  </p>
                 </div>
+                {confirmingUndo && (
+                  <div className="flex gap-2 max-sm:w-full">
+                    <button type="button" onClick={undoCheckIn} className="btn-secondary text-xs max-sm:flex-1">
+                      Undo
+                    </button>
+                    <button type="button" onClick={() => setUndoDay(null)} className="btn-ghost text-xs max-sm:flex-1">
+                      Keep
+                    </button>
+                  </div>
+                )}
                 {!checkedToday && !todayBlock && (
                   <button type="button" onClick={() => checkIn(today)} className="btn-primary max-sm:w-full">
                     <Check size={16} /> Clean today

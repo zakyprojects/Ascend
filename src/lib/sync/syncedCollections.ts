@@ -596,7 +596,13 @@ export const SYNCED_COLLECTIONS = [
   documentCollection('listOrders', 'list_orders', byCreatedAt),
   // Recovery check-ins (one row per local day, id = the day): the server awards the point and keeps
   // each row as first written (recovery_checkins_guard), so a second device's tap changes nothing.
-  documentCollection('recoveryCheckins', 'recovery_checkins', byCreatedAt),
+  // Undo of today's check-in removes the item (mirrored as a soft delete, no tombstone id: a day id
+  // would collide with other tables' day rows); a re-tap brings the same day back (revivable). The
+  // server accepts the delete for today only and the revival for today or yesterday.
+  {
+    ...documentCollection('recoveryCheckins', 'recovery_checkins', byCreatedAt, undefined, true),
+    revivable: true,
+  },
 ] as unknown as SyncedCollection[];
 
 /**

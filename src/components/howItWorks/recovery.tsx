@@ -17,6 +17,7 @@ export const recoveryGuide: HowItWorksGuide = {
   ],
   notes: [
     'A missed check-in never breaks your streak. The streak counts from your start or your last reset.',
+    'Tapped Clean today by mistake? Tap the tick to undo today’s check-in. Only today’s can be undone.',
     'This is a self-help tool, not medical treatment. In a crisis, contact a professional or a helpline.',
   ],
   points: [
@@ -27,6 +28,7 @@ export const recoveryGuide: HowItWorksGuide = {
     <>
       Up to <Fig>{pts(RECOVERY_POINTS.seasonCap)}</Fig> a season. Your streak carries into the next season.
     </>,
+    'Undo today’s check-in and today’s point goes too. Check in again and it comes back, still once a day.',
     'Reset or delete: points you already earned stay. Cravings never change points.',
   ],
 };

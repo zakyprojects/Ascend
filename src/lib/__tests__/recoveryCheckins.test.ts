@@ -2,12 +2,14 @@
 // (computeRecoveryCheckinAward), the recovery_checkins sync collection and the merge branch.
 // The same cases run against the SQL in work/rcc/pglite-test.mjs.
 import { DEFAULT_STATE, type AddictionTracker, type AppState, type PointsEntry, type RecoveryCheckin } from '../../types';
-const { computeRecoveryCheckinAward, recoveryCheckinBlock, recoveryCheckinDays, recoveryDayAwardId, recoveryPointsInSeason } = await import('../recoveryAwards');
+const { canUndoRecoveryCheckin, computeRecoveryCheckinAward, recoveryCheckinBlock, recoveryCheckinDays, recoveryDayAwardId, recoveryPointsInSeason } =
+  await import('../recoveryAwards');
 const { RECOVERY_POINTS } = await import('../pointsConfig');
 const { addDays, localDayStartMs } = await import('../dates');
 const { getSeasonStart } = await import('../leagueTime');
 const { SYNCED_COLLECTIONS } = await import('../sync/syncedCollections');
-const { hashRow } = await import('../sync/outbox');
+const { diffSyncedCollections, hashRow, DELETED } = await import('../sync/outbox');
+const { excisePointsEntriesInternal } = await import('../store');
 const { mergeAppState } = await import('../stateMerger');
 
 function assert(condition: boolean, msg: string) {
@@ -82,5 +84,40 @@ const a: AppState = { ...DEFAULT_STATE, recoveryCheckins: [checkin] };
 const b: AppState = { ...DEFAULT_STATE, recoveryCheckins: [{ id: yesterday, trackerId: 'trk1', createdAt: iso(NOW - HOUR) }] };
 const merged = mergeAppState(a, b);
 assert((merged.recoveryCheckins || []).map((c) => c.id).sort().join(',') === [yesterday, today].sort().join(','), 'merge unions check-in days');
+
+// Undo (the tick): only today's check-in, never yesterday's late tap or an older day.
+const yCheckin: RecoveryCheckin = { id: yesterday, trackerId: 'trk1', createdAt: iso(NOW - HOUR) };
+assert(canUndoRecoveryCheckin([checkin, yCheckin], today, NOW), 'today can be undone');
+assert(!canUndoRecoveryCheckin([checkin, yCheckin], yesterday, NOW), "yesterday's late tap can't be undone");
+assert(!canUndoRecoveryCheckin([yCheckin], today, NOW), 'nothing to undo without a check-in today');
+// After midnight the day checked in is yesterday: undo is gone for it.
+assert(!canUndoRecoveryCheckin([checkin], today, localDayStartMs(addDays(today, 1)) + HOUR), 'after midnight: no undo of that day');
+
+// Undo removes today's preview point (what store.undoRecoveryCheckin excises) and nothing else.
+const yPoint = computeRecoveryCheckinAward(old, yesterday, [], NOW)!;
+const before: AppState = { ...DEFAULT_STATE, recoveryCheckins: [checkin, yCheckin], pointsHistory: [t!, yPoint] };
+const { excisedEntryIds, ...afterPoints } = excisePointsEntriesInternal(
+  { ...before, recoveryCheckins: [yCheckin] },
+  (e) => e.id === recoveryDayAwardId(today) && e.source === 'recovery_checkin'
+);
+assert(excisedEntryIds.join(',') === recoveryDayAwardId(today), "undo excises today's point only");
+assert(afterPoints.pointsHistory.map((e) => e.id).join(',') === yPoint.id, "yesterday's point stays");
+// Re-tap after the undo: the same single point again (same id), never a second one.
+const again = computeRecoveryCheckinAward(old, today, afterPoints.pointsHistory, NOW + HOUR);
+assert(again?.id === recoveryDayAwardId(today) && again.amount === 1, 're-tap earns the same point once');
+assert(!computeRecoveryCheckinAward(old, today, [...afterPoints.pointsHistory, again!], NOW + HOUR), 'a second tap after the re-tap earns nothing');
+
+// Sync: the undo is a soft delete of today's row (no tombstone id), the re-tap an upsert of the same id.
+const synced = diffSyncedCollections({ ...DEFAULT_STATE, recoveryCheckins: [checkin, yCheckin] }, {}, {}, iso(NOW));
+const key = 'recoveryCheckins';
+assert(Object.keys(synced.baseline[key] || {}).sort().join(',') === [yesterday, today].sort().join(','), 'both days synced');
+const undone = diffSyncedCollections({ ...DEFAULT_STATE, recoveryCheckins: [yCheckin] }, synced.baseline, {}, iso(NOW + 1000));
+const undoOps = Object.values(undone.outbox) as { kind: string; table: string; id: string }[];
+assert(undoOps.length === 1 && undoOps[0].kind === 'delete' && undoOps[0].table === 'recovery_checkins' && undoOps[0].id === today, `undo = one delete of today (${JSON.stringify(undoOps)})`);
+assert(undone.baseline[key][today] === DELETED, 'today known as deleted');
+const retapItem: RecoveryCheckin = { id: today, trackerId: 'trk1', createdAt: iso(NOW + 2000) };
+const retapped = diffSyncedCollections({ ...DEFAULT_STATE, recoveryCheckins: [retapItem, yCheckin] }, undone.baseline, undone.outbox, iso(NOW + 2000));
+const retapOps = Object.values(retapped.outbox) as { kind: string; id: string }[];
+assert(retapOps.length === 1 && retapOps[0].kind === 'upsert' && retapOps[0].id === today, `re-tap replaces the pending delete with an upsert (${JSON.stringify(retapOps)})`);
 
 console.log('recoveryCheckins fixtures: all passed');

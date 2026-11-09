@@ -90,7 +90,7 @@ export const recovery: FeatureContent = {
             </p>
             <p>
               Recovery can earn at most {pts(cap)} in a season. Your streak keeps counting into the next season, and each
-              new season can earn {pts(cap)} again. There are no bonuses, and points you earned are never taken back.
+              new season can earn {pts(cap)} again. There are no bonuses, and points you earned are never taken back. Tapped by mistake? You can undo today’s check-in the same day, and its point goes with it.
             </p>
           </>
         }

@@ -93,7 +93,15 @@ import { computeHabitAwards, isHabitAwardEntry, isRetiredAppHabitAward, presetHa
 import { computeWorkoutAwards, isRetiredAppWorkoutAward, isWorkoutDayEntry } from './workoutAwards';
 import { computeSkillAwards, isRetiredAppSkillAward, isSkillDayEntry, skillLateDay } from './skillAwards';
 import { addLogDrills, drillNameProblem, foldClearedCounts, isDrillGoal, keepValidDrillCounts, normalizeDrillName, normalizeDrillUnit, type NewLogDrill } from './skillDrills';
-import { computeRecoveryCheckinAward, RECOVERY_MILESTONES, recoveryCheckinDays, trackerStartMs } from './recoveryAwards';
+import {
+  canUndoRecoveryCheckin,
+  computeRecoveryCheckinAward,
+  RECOVERY_CHECKIN_SOURCE,
+  RECOVERY_MILESTONES,
+  recoveryCheckinDays,
+  recoveryDayAwardId,
+  trackerStartMs,
+} from './recoveryAwards';
 import { computeJournalAward, isJournalDayEntry, isRetiredAppJournalAward, journalEntryEarns } from './journalAwards';
 import { applyJournalEntryEdit } from './journalEdits';
 import { computeFocusAwards, focusFloorDay, isFocusDayEntry, isRetiredAppFocusAward } from './focusAwards';
@@ -5785,7 +5793,7 @@ export function useAppState() {
 
   /**
    * "Clean today": one check-in for `day` (today, or yesterday when it was missed), never edited
-   * afterwards. The server writes the point (ascend_award_recovery_checkin); the app shows the same
+   * afterwards (only today's can be undone, undoRecoveryCheckin). The server writes the point (ascend_award_recovery_checkin); the app shows the same
    * row at once (computeRecoveryCheckinAward) and never uploads it.
    */
   const checkInRecovery = useCallback((day: string) => {
@@ -5802,6 +5810,32 @@ export function useAppState() {
         return award
           ? { ...next, ...addPointsInternal(next, award.amount, award.reason, award.source, award.metadata, award.timestamp, award.id) }
           : next;
+      },
+      { immediate: true }
+    );
+    // False positive: setState is stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  /**
+   * Undo of TODAY's check-in (the tick on the done card): the check-in leaves (synced as a soft
+   * delete) and so does today's preview point. The server removes today's point only while the day
+   * is still today (ascend_revoke_recovery_checkin); yesterday's late tap and older days never go.
+   * Clean today can be tapped again afterwards and earns the same single point once.
+   */
+  const undoRecoveryCheckin = useCallback(() => {
+    void setState(
+      (prev) => {
+        const nowMs = trustedNow().getTime();
+        const { today } = recoveryCheckinDays(nowMs);
+        if (!canUndoRecoveryCheckin(prev.recoveryCheckins, today, nowMs)) return prev;
+        const next = { ...prev, recoveryCheckins: (prev.recoveryCheckins || []).filter((c) => c.id !== today) };
+        const awardId = recoveryDayAwardId(today);
+        const { excisedEntryIds: _gone, ...points } = excisePointsEntriesInternal(
+          next,
+          (e) => e.id === awardId && e.source === RECOVERY_CHECKIN_SOURCE
+        );
+        return { ...next, ...points };
       },
       { immediate: true }
     );
@@ -10242,6 +10276,7 @@ export function useAppState() {
     resetAddictionStreak,
     checkAddictionMilestones,
     checkInRecovery,
+    undoRecoveryCheckin,
     logCraving,
     deleteCravingLog,
     clearCravingLogsBefore,
