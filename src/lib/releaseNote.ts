@@ -50,6 +50,7 @@ export function releaseNoteGroups(note: ReleaseNote): { key: ReleaseNoteGroupKey
 export const RELEASE_NOTE: ReleaseNote | null = {
   id: 1,
   releasedAt: '2026-11-09T21:25:00+05:00',
+  title: "What's new in 1.2.0",
   new: [
     'Reading: switch a book between pages and chapters anytime. 1 chapter counts as 20 pages, and you can edit both numbers.',
     'Recovery: tapped Clean today by mistake? Tap the tick to undo it the same day.',
