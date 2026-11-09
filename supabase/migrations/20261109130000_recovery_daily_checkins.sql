@@ -57,8 +57,14 @@ DROP FUNCTION IF EXISTS public.ascend_recompute_recovery_awards(uuid);
 
 -- 2. Server-stamped tracker creation time (the first local day earns nothing).
 ALTER TABLE public.addiction_trackers ADD COLUMN server_created_at timestamptz;
--- Existing trackers (all created 2026-11-01..03) keep their own creation time.
+-- Existing trackers keep their own creation time. keep_newer would drop the update of a deleted
+-- tracker (and SET NOT NULL would then fail), and stamp would move every row's sync cursor, so both
+-- are off for this one backfill (inside this transaction).
+ALTER TABLE public.addiction_trackers DISABLE TRIGGER addiction_trackers_keep_newer;
+ALTER TABLE public.addiction_trackers DISABLE TRIGGER addiction_trackers_stamp;
 UPDATE public.addiction_trackers SET server_created_at = created_at;
+ALTER TABLE public.addiction_trackers ENABLE TRIGGER addiction_trackers_keep_newer;
+ALTER TABLE public.addiction_trackers ENABLE TRIGGER addiction_trackers_stamp;
 ALTER TABLE public.addiction_trackers
   ALTER COLUMN server_created_at SET DEFAULT clock_timestamp(),
   ALTER COLUMN server_created_at SET NOT NULL;
