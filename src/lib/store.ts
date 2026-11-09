@@ -3722,11 +3722,15 @@ export function useAppState() {
           hadPendingSave ||
           pendingImmediateResolvers.current.length > 0 ||
           Boolean(userId && localStorage.getItem(`ascend_dirty_${userId}`));
+        const dirtyAtSave = userId ? dirtyMark(userId) : null;
         try {
           await Promise.race([
             hasUnsavedChanges ? enqueuePersist(currentState) : writeQueueRef.current,
             timeoutPromise,
           ]);
+          // Saved: the flag no longer stands for unsent changes, so step 3b can clear the device
+          // (an edit made during the save keeps it).
+          if (hasUnsavedChanges && userId) clearDirtyAfterSave(userId, dirtyAtSave);
         } catch (persistErr) {
           persistError = persistErr;
           console.error('Failed to flush state before logout:', persistErr);

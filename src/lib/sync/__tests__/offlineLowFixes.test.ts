@@ -1,6 +1,8 @@
 // Offline audit LOW fixes of 2026-11-09 (knowledge/mode-a-offline-resilience-2026-11-09.md, F4–F8).
 // F4: storage full while queueing: this tab's versions and edit times stay, so the edit is queued
 //     on the next save instead of being read as an old copy and replaced by the server row.
+// F5: the logout save clears the dirty flag, so the device data is removed when nothing is unsent
+//     (the store's logout itself is not run here: its step 3b condition is checked on the helpers).
 // F6: a finished save clears the dirty flag only when no newer change set it meanwhile (or the save
 //     could not queue its changes). The store wiring (state effect, autosaves, logout) is not run here.
 import { DEFAULT_STATE, type AppState } from '@/types';
@@ -35,7 +37,7 @@ const events: Array<{ type: string; detail?: unknown }> = [];
   }
 };
 
-const { diffSyncedCollections, hashRow, readBaseline, recordSyncedChanges, syncStorageFailed } = await import('../outbox');
+const { diffSyncedCollections, hasPendingSyncOps, hashRow, readBaseline, recordSyncedChanges, syncStorageFailed } = await import('../outbox');
 const { SYNCED_COLLECTIONS } = await import('../syncedCollections');
 const { setTabSyncedHashes, clearTabSyncedHashes, tabSyncedHashes } = await import('../tabVersions');
 const { noteEditTimes, readEditTimes } = await import('../editTimes');
@@ -140,6 +142,28 @@ function synced(state: AppState) {
   failWrites = null;
   clearDirtyAfterSave(UID, c);
   assert(store.get(key) === c, 'storage full keeps the flag, so logout keeps the data and reconnect retries');
+}
+
+// ---------------------------------------------------------------- F5: logout right after an edit
+{
+  reset();
+  const s0 = base({ tasks: [task('t1', 'Essay', false)] });
+  synced(s0);
+  // The edit's state effect marked the flag; logout saves before the debounce ran.
+  markDirty(UID);
+  const atLogout = dirtyMark(UID);
+  recordSyncedChanges(base({ tasks: [task('t1', 'Essay v3', false)] }));
+  // The flush is sent and settled (the fake has no session, so it is settled by hand here).
+  store.set(`ascend_outbox_${UID}`, '{}');
+  clearDirtyAfterSave(UID, atLogout);
+  const clearsDevice = !hasPendingSyncOps(UID) && !store.get(`ascend_dirty_${UID}`);
+  assert(clearsDevice, 'after a saved and sent logout nothing holds the device data back (before the fix the flag did)');
+  // An edit made while the logout save ran keeps the data on the device.
+  markDirty(UID);
+  const atLogout2 = dirtyMark(UID);
+  markDirty(UID);
+  clearDirtyAfterSave(UID, atLogout2);
+  assert(Boolean(store.get(`ascend_dirty_${UID}`)), 'an edit during the logout save keeps the flag');
 }
 
 console.log('offlineLowFixes: all passed');
