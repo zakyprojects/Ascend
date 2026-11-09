@@ -840,6 +840,9 @@ export interface AppState {
   /** Highest rank already celebrated this season (lib/rankCelebration); null until first set. */
   rankCelebrated?: RankCelebrated | null;
 
+  /** Id of the newest release note already shown (lib/whatsNew); null until the first one shows. */
+  lastSeenRelease?: number | null;
+
   /** The user's own order of lists (table list_orders, one row per list; lib/listOrder.ts). */
   listOrders?: ListOrder[];
 
@@ -1100,6 +1103,7 @@ export const DEFAULT_STATE: AppState = {
   timeTracker: DEFAULT_TIME_TRACKER_STATE,
   themePreference: 'dark',
   rankCelebrated: null,
+  lastSeenRelease: null,
   listOrders: [],
   recoveryCheckins: [],
 };

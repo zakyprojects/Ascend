@@ -31,6 +31,7 @@ import { isWeeklyGoalSeasonSplitEntryId } from './weeklyGoalSeasons';
 import { computeStateDataWeight, type UserDataWeight } from './dataWeight';
 import { trustedNow, trustedNowMs } from './clock';
 import { mergeRankCelebrated } from './rankCelebration';
+import { mergeLastSeenRelease } from './whatsNew';
 
 /**
  * A stored time as epoch ms, for comparing: an ISO string in any offset (`…Z`, `…+00:00` from
@@ -1346,6 +1347,7 @@ function mergeAppStateInternal(
     timeTracker: mergedTimeTracker,
     ...mergeThemePreference(baseState, incomingState),
     rankCelebrated: mergeRankCelebrated(baseState.rankCelebrated, incomingState.rankCelebrated),
+    lastSeenRelease: mergeLastSeenRelease(baseState.lastSeenRelease, incomingState.lastSeenRelease),
     // Per list, the later reorder wins (without this the final spread let incoming win whole).
     listOrders: mergeEntityArrays(baseState.listOrders || [], incomingState.listOrders || [], tombstoneSet),
     // Check-ins are only ever added (one per day): keep every day either side has.

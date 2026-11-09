@@ -31,6 +31,9 @@ import { cx, FOCUS_RING } from '@/components/ui/primitives/shared';
 import { RankChip } from './ui/RankChip';
 import { RankUpCelebration } from './ui/RankUpCelebration';
 import { useRankUpCelebration } from '@/lib/useRankUpCelebration';
+import { useWhatsNew } from '@/lib/useWhatsNew';
+import { RELEASE_NOTE } from '@/lib/releaseNote';
+import { WhatsNewDialog } from './ui/WhatsNewDialog';
 import { ViewEntrance } from './ViewEntrance';
 import { AppStore } from '@/lib/store';
 import { GuestLogoutWarningModal } from './ui/GuestLogoutWarningModal';
@@ -223,6 +226,8 @@ export function AppShell({ currentView, navigationKind, pendingView = null, onVi
     const id = currentUser?.id;
     if (id && !currentUser?.isAnonymous && isProfileSetupDue(id)) setProfileSetupFor(id);
   }, [currentUser?.id, currentUser?.isAnonymous]);
+  // The release note pops up once, after profile setup and any rank-up.
+  const { whatsNewOpen, closeWhatsNew } = useWhatsNew(store, Boolean(profileSetupFor) || Boolean(celebration));
 
   const handleLogoutClick = () => {
     if (currentUser?.isAnonymous) {
@@ -427,6 +432,8 @@ export function AppShell({ currentView, navigationKind, pendingView = null, onVi
       {celebration && (
         <RankUpCelebration from={celebration.from} to={celebration.to} seasonPoints={seasonPoints} onClose={closeCelebration} />
       )}
+
+      {RELEASE_NOTE && <WhatsNewDialog open={whatsNewOpen} onClose={closeWhatsNew} note={RELEASE_NOTE} />}
 
       <GuestLogoutWarningModal
         open={guestLogoutWarningOpen}

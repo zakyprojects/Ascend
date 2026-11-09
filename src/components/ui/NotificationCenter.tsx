@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useLayoutEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { Bell, Check, CheckCheck, ChevronDown, RotateCw, Settings, Trash2, X } from 'lucide-react';
+import { Bell, Check, CheckCheck, ChevronDown, Megaphone, RotateCw, Settings, Trash2, X } from 'lucide-react';
 import { AppStore } from '@/lib/store';
 import { AppNotification } from '@/types';
 import { cx, FOCUS_RING, TAP_TARGET, TAP_TARGET_Y } from '@/components/ui/primitives/shared';
@@ -21,6 +21,9 @@ import {
   NotificationView,
 } from '@/lib/notificationMeta';
 import { requestSettingsSection, settingsSectionPath } from '@/lib/settingsSections';
+import { DEFAULT_RELEASE_TITLE, RELEASE_NOTE, releaseNoteGroups } from '@/lib/releaseNote';
+import { isReleaseNoteInInbox } from '@/lib/whatsNew';
+import { WhatsNewDialog } from './WhatsNewDialog';
 
 const PANEL_WIDTH = 360;
 
@@ -76,6 +79,11 @@ export function NotificationCenter({
   // The inbox holds the newest NOTIFICATION_WINDOW notices; a full window of unread may hide more (D-N4).
   const unreadLabel = unreadCount >= NOTIFICATION_WINDOW ? `${NOTIFICATION_WINDOW}+` : String(unreadCount);
   const status = store.notificationsStatus;
+  // The release note, once it has popped up, stays here (from the app's own file, not a server row).
+  const releaseNote = isReleaseNoteInInbox(store.state.lastSeenRelease, store.state.currentUser?.createdAt, RELEASE_NOTE)
+    ? RELEASE_NOTE
+    : null;
+  const [releaseNoteOpen, setReleaseNoteOpen] = useState(false);
 
   useEffect(() => {
     const media = window.matchMedia(DESKTOP_QUERY);
@@ -338,6 +346,46 @@ export function NotificationCenter({
     void store.refreshNotifications();
   };
 
+  const openReleaseNote = () => {
+    close(false);
+    setReleaseNoteOpen(true);
+  };
+
+  const renderReleaseNote = () => {
+    if (!releaseNote) return null;
+    const title = releaseNote.title || DEFAULT_RELEASE_TITLE;
+    const firstGroup = releaseNoteGroups(releaseNote)[0];
+    return (
+      <section aria-label={title} className="border-b border-overlay-subtle">
+        <div className={rowClass(false)}>
+          <button type="button" onClick={openReleaseNote} className={mainClass}>
+            <span className="relative shrink-0 mt-0.5">
+              <span
+                className={cx('w-8 h-8 rounded-lg border flex items-center justify-center', NOTIFICATION_TONE_CLASS.neutral)}
+                aria-hidden="true"
+              >
+                <Megaphone size={16} />
+              </span>
+            </span>
+            <span className="flex-1 min-w-0">
+              <span className="flex items-baseline justify-between gap-2">
+                <span className="text-sm font-medium truncate text-content-primary">{title}</span>
+                <span className="text-2xs tabular-nums text-content-muted shrink-0">
+                  {formatNotificationTime(releaseNote.releasedAt, nowMs)}
+                </span>
+              </span>
+              {firstGroup && (
+                <span className="block text-xs leading-snug line-clamp-2 mt-0.5 text-content-secondary">
+                  {firstGroup.label}: {firstGroup.items[0]}
+                </span>
+              )}
+            </span>
+          </button>
+        </div>
+      </section>
+    );
+  };
+
   const renderBody = () => {
     if (notifications.length === 0) {
       if (status === 'loading') {
@@ -482,7 +530,10 @@ export function NotificationCenter({
                 )}
               </div>
             )}
-            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">{renderBody()}</div>
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+              {renderReleaseNote()}
+              {renderBody()}
+            </div>
           </div>
         </>,
         document.body
@@ -522,6 +573,7 @@ export function NotificationCenter({
       </button>
 
       {portalContent}
+      {releaseNote && <WhatsNewDialog open={releaseNoteOpen} onClose={() => setReleaseNoteOpen(false)} note={releaseNote} />}
     </div>
   );
 }

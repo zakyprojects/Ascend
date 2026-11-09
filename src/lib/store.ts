@@ -59,6 +59,7 @@ import {
   RankCelebrated,
 } from '@/types';
 import { mergeRankCelebrated } from './rankCelebration';
+import { mergeLastSeenRelease } from './whatsNew';
 import { isDeviceOffline } from './deviceOffline';
 
 /** The on/off UserProfile settings the Settings switches write to the profile row. */
@@ -4361,6 +4362,14 @@ export function useAppState() {
   const setRankCelebrated = useCallback(
     (memory: RankCelebrated) => {
       setState((prev) => ({ ...prev, rankCelebrated: mergeRankCelebrated(prev.rankCelebrated, memory) }), { immediate: true });
+    },
+    [setState]
+  );
+
+  /** Release-note seen mark (lib/whatsNew), saved at once so a reload or another device never pops it up again. */
+  const setLastSeenRelease = useCallback(
+    (id: number) => {
+      setState((prev) => ({ ...prev, lastSeenRelease: mergeLastSeenRelease(prev.lastSeenRelease, id) }), { immediate: true });
     },
     [setState]
   );
@@ -10215,6 +10224,7 @@ export function useAppState() {
     isSessionLoading,
     isServerDataApplied,
     setRankCelebrated,
+    setLastSeenRelease,
     storedSessionWait,
     setAuthSessionState,
     logout,
