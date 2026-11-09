@@ -890,7 +890,9 @@ function mergeAppStateInternal(
         currentAmount: resolvedCurrentAmount,
         currentPage: resolvedCurrentAmount,
         updatedAt: primary.updatedAt,
-        totalAmount: incB.totalAmount ?? baseB.totalAmount ?? incB.totalPages ?? baseB.totalPages,
+        // Length comes from the same copy as unit and progress, so the three stay one set.
+        totalAmount: primary.totalAmount ?? primary.totalPages ?? secondary.totalAmount ?? secondary.totalPages,
+        totalPages: primary.totalPages ?? primary.totalAmount ?? secondary.totalPages ?? secondary.totalAmount,
         targetFinishDate: incB.targetFinishDate ?? baseB.targetFinishDate,
         dateStarted: incB.dateStarted ?? baseB.dateStarted ?? incB.startedAt ?? baseB.startedAt,
         dateCompleted: incB.dateCompleted ?? baseB.dateCompleted ?? incB.completedAt ?? baseB.completedAt,
