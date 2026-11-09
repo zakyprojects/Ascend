@@ -118,17 +118,9 @@ export const BAD_HABIT_POINTS = {
   dailyPenaltyLimit: 4,
 } as const;
 
-export const SOBRIETY_MILESTONE_POINTS = {
-  '1w': 10,
-  '1m': 25,
-  '90d': 50,
-} as const;
-
-export const RECOVERY_POINTS = { seasonCap: 85 } as const;
-
-export function wouldExceedRecoverySeasonCap(heldSeasonPoints: number, milestonePoints: number): boolean {
-  return heldSeasonPoints + milestonePoints > RECOVERY_POINTS.seasonCap;
-}
+// Recovery: one point per daily "Clean today" check-in, at most seasonCap a season
+// (recoveryAwards.ts and ascend_award_recovery_checkin).
+export const RECOVERY_POINTS = { perCheckin: 1, seasonCap: 90 } as const;
 
 /**
  * Calculates raw points and capped awarded points for a workout.

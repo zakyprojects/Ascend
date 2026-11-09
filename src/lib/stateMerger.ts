@@ -1348,6 +1348,8 @@ function mergeAppStateInternal(
     rankCelebrated: mergeRankCelebrated(baseState.rankCelebrated, incomingState.rankCelebrated),
     // Per list, the later reorder wins (without this the final spread let incoming win whole).
     listOrders: mergeEntityArrays(baseState.listOrders || [], incomingState.listOrders || [], tombstoneSet),
+    // Check-ins are only ever added (one per day): keep every day either side has.
+    recoveryCheckins: mergeEntityArrays(baseState.recoveryCheckins || [], incomingState.recoveryCheckins || [], tombstoneSet),
   };
 }
 

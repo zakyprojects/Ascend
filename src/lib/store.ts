@@ -43,6 +43,7 @@ import {
   Goal,
   Project,
   ListOrder,
+  RecoveryCheckin,
   Task,
   TaskSubtask,
   GoalStatus,
@@ -92,7 +93,7 @@ import { computeHabitAwards, isHabitAwardEntry, isRetiredAppHabitAward, presetHa
 import { computeWorkoutAwards, isRetiredAppWorkoutAward, isWorkoutDayEntry } from './workoutAwards';
 import { computeSkillAwards, isRetiredAppSkillAward, isSkillDayEntry, skillLateDay } from './skillAwards';
 import { addLogDrills, drillNameProblem, foldClearedCounts, isDrillGoal, keepValidDrillCounts, normalizeDrillName, normalizeDrillUnit, type NewLogDrill } from './skillDrills';
-import { computeRecoveryChanges, RECOVERY_MILESTONES, trackerStartMs } from './recoveryAwards';
+import { computeRecoveryCheckinAward, RECOVERY_MILESTONES, recoveryCheckinDays, trackerStartMs } from './recoveryAwards';
 import { computeJournalAward, isJournalDayEntry, isRetiredAppJournalAward, journalEntryEarns } from './journalAwards';
 import { applyJournalEntryEdit } from './journalEdits';
 import { computeFocusAwards, focusFloorDay, isFocusDayEntry, isRetiredAppFocusAward } from './focusAwards';
@@ -1336,22 +1337,6 @@ function applyFocusAwardsInternal(
     l && sessionPoints.has(l.id) && sessionPoints.get(l.id) !== l.pointsAwarded ? { ...l, pointsAwarded: sessionPoints.get(l.id)! } : l
   );
   return { points, focusLogs: nextLogs };
-}
-
-/**
- * Adds the sobriety milestone awards and take-backs the server computes for the state's tracker
- * (computeRecoveryChanges). The rows are shown at once and never uploaded; the server's own rows
- * replace them on the next pull.
- */
-function applyRecoveryAwardsInternal(
-  state: AppState
-): Pick<AppState, 'seasonPoints' | 'totalPoints' | 'seasonId' | 'pointsHistory' | 'leagueArchives'> {
-  let running = state;
-  for (const e of computeRecoveryChanges(state.addictionTracker, state.pointsHistory || [], trustedNow().getTime())) {
-    running = { ...running, ...addPointsInternal(running, e.amount, e.reason, e.source, e.metadata, e.timestamp, e.id) };
-  }
-  const { seasonPoints, totalPoints, seasonId, pointsHistory, leagueArchives } = running;
-  return { seasonPoints, totalPoints, seasonId, pointsHistory, leagueArchives };
 }
 
 /**
@@ -5764,12 +5749,11 @@ export function useAppState() {
     void setState(
       (prev) => {
         if (!prev.addictionTracker) return prev;
-        // A relapse starts a new streak; the server takes back this season's points of the old one.
-        const next = {
+        // A relapse starts a new streak; points already earned stay.
+        return {
           ...prev,
           addictionTracker: { ...prev.addictionTracker, startDate: trustedNow().toISOString(), milestonesUnlocked: [] },
         };
-        return { ...next, ...applyRecoveryAwardsInternal(next) };
       },
       {
         immediate: true,
@@ -5791,18 +5775,37 @@ export function useAppState() {
       for (const m of RECOVERY_MILESTONES) {
         if (hoursElapsed >= m.hours && !unlocked.includes(m.key)) unlocked.push(m.key);
       }
-      const next =
-        unlocked.length === prev.addictionTracker.milestonesUnlocked.length
-          ? prev
-          : { ...prev, addictionTracker: { ...prev.addictionTracker, milestonesUnlocked: unlocked } };
-
-      // Milestone points and their notification come from the server; this only shows them early.
-      if (computeRecoveryChanges(next.addictionTracker, next.pointsHistory || [], trustedNow().getTime()).length === 0) {
-        return next;
-      }
-      return { ...next, ...applyRecoveryAwardsInternal(next) };
+      return unlocked.length === prev.addictionTracker.milestonesUnlocked.length
+        ? prev
+        : { ...prev, addictionTracker: { ...prev.addictionTracker, milestonesUnlocked: unlocked } };
     });
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  /**
+   * "Clean today": one check-in for `day` (today, or yesterday when it was missed), never edited
+   * afterwards. The server writes the point (ascend_award_recovery_checkin); the app shows the same
+   * row at once (computeRecoveryCheckinAward) and never uploads it.
+   */
+  const checkInRecovery = useCallback((day: string) => {
+    void setState(
+      (prev) => {
+        const tracker = prev.addictionTracker;
+        const nowMs = trustedNow().getTime();
+        const { today, yesterday } = recoveryCheckinDays(nowMs);
+        const checkins = prev.recoveryCheckins || [];
+        if (!tracker?.id || (day !== today && day !== yesterday) || checkins.some((c) => c.id === day)) return prev;
+        const checkin: RecoveryCheckin = { id: day, trackerId: tracker.id, createdAt: new Date(nowMs).toISOString() };
+        const next = { ...prev, recoveryCheckins: [...checkins, checkin] };
+        const award = computeRecoveryCheckinAward(tracker, day, prev.pointsHistory || [], nowMs);
+        return award
+          ? { ...next, ...addPointsInternal(next, award.amount, award.reason, award.source, award.metadata, award.timestamp, award.id) }
+          : next;
+      },
+      { immediate: true }
+    );
+    // False positive: setState is stable (useCallback with empty deps array)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -5829,19 +5832,16 @@ export function useAppState() {
           if (!prev.addictionTracker) return prev;
           const tracker = prev.addictionTracker;
 
-          // The server takes back this season's milestone points; earlier seasons stay (Zakria 2026-10-15).
-          const cleared = { ...prev, addictionTracker: null };
-          const runningState = { ...cleared, ...applyRecoveryAwardsInternal(cleared) };
-
+          // Points already earned stay, and so do the check-ins (one per day, whatever the tracker).
           const trackerId = tracker.id;
           const updatedDeletedEntityIds = [
-            ...(runningState.deletedEntityIds || []),
+            ...(prev.deletedEntityIds || []),
             ...(trackerId ? [trackerId] : []),
-            ...runningState.cravingLogs.map((l) => l.id),
+            ...prev.cravingLogs.map((l) => l.id),
           ].slice(-500);
 
           return {
-            ...runningState,
+            ...prev,
             addictionTracker: null,
             cravingLogs: [],
             deletedEntityIds: updatedDeletedEntityIds,
@@ -10238,6 +10238,7 @@ export function useAppState() {
     deleteAddictionTracker,
     resetAddictionStreak,
     checkAddictionMilestones,
+    checkInRecovery,
     logCraving,
     deleteCravingLog,
     clearCravingLogsBefore,

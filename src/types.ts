@@ -836,6 +836,16 @@ export interface AppState {
 
   /** The user's own order of lists (table list_orders, one row per list; lib/listOrder.ts). */
   listOrders?: ListOrder[];
+
+  /** Daily "Clean today" check-ins (table recovery_checkins, one row per local day; lib/recoveryAwards.ts). */
+  recoveryCheckins?: RecoveryCheckin[];
+}
+
+/** One Recovery check-in: the local day 'YYYY-MM-DD' is the row id, never edited once made. */
+export interface RecoveryCheckin {
+  id: string;
+  trackerId: string;
+  createdAt: string;
 }
 
 /** One list's saved order: the list key is the row id, `ids` the item ids in order. */
@@ -1085,6 +1095,7 @@ export const DEFAULT_STATE: AppState = {
   themePreference: 'dark',
   rankCelebrated: null,
   listOrders: [],
+  recoveryCheckins: [],
 };
 
 

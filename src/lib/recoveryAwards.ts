@@ -1,44 +1,37 @@
 import type { AddictionTracker, PointsEntry } from '@/types';
-import { SOBRIETY_MILESTONE_POINTS } from './pointsConfig';
-import { getSeasonNumber, getSeasonStart } from './leagueTime';
+import { RECOVERY_POINTS } from './pointsConfig';
+import { addDays, localDayStartMs, todayKey } from './dates';
+import { getSeasonEnd, getSeasonStart } from './leagueTime';
 
 /**
- * Sobriety milestone points are written by the server
- * (supabase/migrations/20261015240000_server_recovery_awards.sql, take-back id match
- * 20261019120000, rules 20261030090000), from the live tracker's own streak start, on every tracker write and by an
- * hourly job:
- *   * 1 week earns once per season, 7 days after the later of the streak start and the season
- *     start; 1 month and 90 days earn once per streak, when reached in the running season.
- *   * The server only awards a milestone to someone active in the 7 days before it
- *     (20261030090000_recovery_awards_active_week.sql). The app skips that check, since it runs
- *     for the person using it, and a full pull drops a copy the server never wrote.
- *   * A milestone is dated when it was reached.
- *   * When the streak ends (relapse or tracker deleted), this season's awards of every other
- *     streak are taken back (recovery_revoke_<awardId>); earlier seasons stay as they are.
- *   * Milestones reached before RECOVERY_AWARDS_SERVER_SINCE are not backfilled.
- * The app computes the same rows only to show them before the server's copies arrive; it never
- * uploads them. Change both sides together.
+ * Recovery points come from a daily "Clean today" check-in, written by the server
+ * (supabase/migrations/20261109130000_recovery_daily_checkins.sql, ascend_award_recovery_checkin):
+ *   * One check-in per local day across all trackers (recovery_checkins, row id = the day). It earns
+ *     RECOVERY_POINTS.perCheckin, as 'recovery_day_<day>' (source 'recovery_checkin').
+ *   * Today's check-in, or yesterday's when it was missed (late tap); older or future days are not stored.
+ *   * The tracker's first local day (its creation day) and a day the streak (re)started in earn nothing.
+ *   * At most RECOVERY_POINTS.seasonCap recovery points a season, old milestone rows included.
+ *   * No bonuses, nothing is ever taken back. The award is dated at the tap, a late tap at
+ *     yesterday's last millisecond.
+ * The server stamps the tracker's creation time itself; the app uses the tracker's createdAt, which
+ * is the same moment unless the tracker was made offline. The app computes the award only to show
+ * it at once; it never uploads it. Change both sides together.
  */
 
-export const RECOVERY_AWARDS_SERVER_SINCE = '2026-10-15T00:00:00.000Z';
-
+/** Streak markers on the Recovery page (no points). */
 export const RECOVERY_MILESTONES = [
-  { key: '1w', hours: 168, label: '1 Week Clean', reason: 'Sobriety Milestone: 1 Week Clean! 🏅' },
-  { key: '1m', hours: 720, label: '1 Month Clean', reason: 'Sobriety Milestone: 1 Month Clean! 🏆' },
-  { key: '90d', hours: 2160, label: '90 Days Clean', reason: 'Sobriety Milestone: 90 Days Clean! 👑' },
+  { key: '1w', hours: 168, label: '1 Week Clean' },
+  { key: '1m', hours: 720, label: '1 Month Clean' },
+  { key: '90d', hours: 2160, label: '90 Days Clean' },
 ] as const;
 
 export type RecoveryMilestoneKey = (typeof RECOVERY_MILESTONES)[number]['key'];
 
-// Tracker ids never contain an underscore; since the trusted clock they can contain a dot.
-const AWARD_ID = /^recovery_([^_]+)_(1w|1m|90d)_([0-9]+)(?:_s[0-9]+)?$/;
-const REVOKE_PREFIX = 'recovery_revoke_';
+export const RECOVERY_CHECKIN_SOURCE = 'recovery_checkin';
+/** Every source that counts toward the season cap: check-ins and the old milestone rows. */
+const RECOVERY_SOURCES = new Set([RECOVERY_CHECKIN_SOURCE, 'recovery_milestone', 'addiction_recovery']);
 
-/** 1 week is once per season (season 1 ids carry no suffix); 1 month and 90 days once per streak. */
-export const recoveryAwardId = (trackerId: string, key: RecoveryMilestoneKey, startMs: number, season: number) =>
-  `recovery_${trackerId}_${key}_${startMs}${key === '1w' && season > 1 ? `_s${season}` : ''}`;
-
-const isoOf = (ms: number) => new Date(ms).toISOString();
+export const recoveryDayAwardId = (day: string) => `recovery_day_${day}`;
 
 const timeOf = (timestamp: string | undefined): number => {
   const ms = new Date(timestamp || '').getTime();
@@ -51,103 +44,63 @@ export const trackerStartMs = (tracker: AddictionTracker | null | undefined): nu
   return Number.isNaN(ms) ? null : ms;
 };
 
-interface ParsedAward {
-  entry: PointsEntry;
-  trackerId: string;
-  key: RecoveryMilestoneKey;
-  startMs: string;
-}
-
-const parseAward = (entry: PointsEntry): ParsedAward | null => {
-  const m = AWARD_ID.exec(entry.id || '');
-  if (!m || !(entry.amount > 0)) return null;
-  return { entry, trackerId: m[1], key: m[2] as RecoveryMilestoneKey, startMs: m[3] };
+/** The days a check-in can be made for now: today, and yesterday as a late tap. */
+export const recoveryCheckinDays = (nowMs: number) => {
+  const today = todayKey(new Date(nowMs));
+  return { today, yesterday: addDays(today, -1) };
 };
 
-/** The tracker was deleted the old way: one app-written deduction row for the whole tracker. */
-const hasLegacyTrackerDeduction = (history: PointsEntry[], trackerId: string) =>
-  history.some(
-    (e) =>
-      e.source === 'addiction_recovery' &&
-      !(e.id || '').startsWith(REVOKE_PREFIX) &&
-      (e.metadata as { trackerId?: string } | undefined)?.trackerId === trackerId
-  );
-
-/**
- * Mirror of ascend_recompute_recovery_awards: the award and take-back rows the server would add
- * now for this tracker (null when there is none) and these points. Rows already present are skipped.
- */
-export function computeRecoveryChanges(
-  tracker: AddictionTracker | null | undefined,
-  history: PointsEntry[],
-  nowMs: number
-): PointsEntry[] {
-  const now = new Date(nowMs);
-  const season = getSeasonNumber(now);
-  const seasonStartMs = getSeasonStart(now).getTime();
-  const sinceMs = timeOf(RECOVERY_AWARDS_SERVER_SINCE);
-  const ids = new Set(history.map((e) => e.id));
-  const changes: PointsEntry[] = [];
-
-  const startMs = tracker?.id ? trackerStartMs(tracker) : null;
-  if (tracker?.id && startMs !== null) {
-    for (const m of RECOVERY_MILESTONES) {
-      const reachedMs = (m.key === '1w' ? Math.max(startMs, seasonStartMs) : startMs) + m.hours * 3600000;
-      if (m.key !== '1w' && reachedMs < seasonStartMs) continue;
-      if (reachedMs > nowMs) continue;
-      const atMs = reachedMs;
-      if (atMs < sinceMs) continue;
-      const id = recoveryAwardId(tracker.id, m.key, startMs, season);
-      if (ids.has(id)) continue;
-      changes.push({
-        id,
-        amount: SOBRIETY_MILESTONE_POINTS[m.key],
-        reason: m.reason,
-        source: 'recovery_milestone',
-        timestamp: isoOf(atMs),
-        metadata: { trackerId: tracker.id, milestone: m.key, seasonNumber: season, streakStart: isoOf(startMs) },
-      });
-    }
-  }
-
-  for (const entry of history) {
-    const award = parseAward(entry);
-    if (!award) continue;
-    const atMs = timeOf(entry.timestamp);
-    if (Number.isNaN(atMs) || atMs < seasonStartMs) continue;
-    if (tracker?.id && award.trackerId === tracker.id && startMs !== null && award.startMs === String(startMs)) continue;
-    const revokeId = `${REVOKE_PREFIX}${entry.id}`;
-    if (ids.has(revokeId) || hasLegacyTrackerDeduction(history, award.trackerId)) continue;
-    const label = RECOVERY_MILESTONES.find((m) => m.key === award.key)!.label;
-    changes.push({
-      id: revokeId,
-      amount: -entry.amount,
-      reason: `Sobriety milestone taken back: ${label}`,
-      source: 'addiction_recovery',
-      timestamp: isoOf(nowMs),
-      metadata: { trackerId: award.trackerId, milestone: award.key, seasonNumber: season, revokedAwardId: entry.id },
-    });
-  }
-
-  return changes;
-}
-
-/** The tracker's milestones that hold points this season (awarded and not taken back), with their points. */
-export function recoveryAwardsThisSeason(
-  history: PointsEntry[],
-  trackerId: string | undefined,
-  nowMs: number
-): Map<RecoveryMilestoneKey, number> {
-  const held = new Map<RecoveryMilestoneKey, number>();
-  if (!trackerId) return held;
-  const seasonStartMs = getSeasonStart(new Date(nowMs)).getTime();
-  const ids = new Set(history.map((e) => e.id));
-  for (const entry of history) {
-    const award = parseAward(entry);
-    if (!award || award.trackerId !== trackerId) continue;
-    const atMs = timeOf(entry.timestamp);
-    if (Number.isNaN(atMs) || atMs < seasonStartMs || ids.has(`${REVOKE_PREFIX}${entry.id}`)) continue;
-    held.set(award.key, (held.get(award.key) || 0) + entry.amount);
+/** Recovery points held in the season that contains `atMs` (all recovery sources). */
+export function recoveryPointsInSeason(history: PointsEntry[], atMs: number): number {
+  const at = new Date(atMs);
+  const startMs = getSeasonStart(at).getTime();
+  const endMs = getSeasonEnd(at).getTime();
+  let held = 0;
+  for (const e of history) {
+    if (!e || !RECOVERY_SOURCES.has(e.source) || typeof e.amount !== 'number') continue;
+    const ms = timeOf(e.timestamp);
+    if (ms >= startMs && ms < endMs) held += e.amount;
   }
   return held;
+}
+
+/**
+ * Why a check-in for `day` earns nothing with this tracker, or null when it earns: 'first-day'
+ * (the tracker was created that day or later), 'restarted' (the streak started that day).
+ */
+export function recoveryCheckinBlock(tracker: AddictionTracker | null | undefined, day: string): 'first-day' | 'restarted' | null {
+  const startMs = trackerStartMs(tracker);
+  if (!tracker?.id || startMs === null) return 'first-day';
+  const createdMs = timeOf(tracker.createdAt);
+  const createdDay = todayKey(new Date(Number.isNaN(createdMs) ? startMs : createdMs));
+  if (createdDay >= day) return 'first-day';
+  return todayKey(new Date(startMs)) === day ? 'restarted' : null;
+}
+
+/**
+ * Mirror of ascend_award_recovery_checkin: the point row the server writes for a check-in of `day`
+ * made at `nowMs` with this tracker, or null when it earns nothing (blocked, already awarded,
+ * not today or yesterday, or the season cap is reached).
+ */
+export function computeRecoveryCheckinAward(
+  tracker: AddictionTracker | null | undefined,
+  day: string,
+  history: PointsEntry[],
+  nowMs: number
+): PointsEntry | null {
+  const { today, yesterday } = recoveryCheckinDays(nowMs);
+  if ((day !== today && day !== yesterday) || recoveryCheckinBlock(tracker, day)) return null;
+  const id = recoveryDayAwardId(day);
+  if (history.some((e) => e?.id === id)) return null;
+  const atMs = Math.min(nowMs, localDayStartMs(addDays(day, 1)) - 1);
+  const amount = Math.floor(Math.min(RECOVERY_POINTS.perCheckin, Math.max(RECOVERY_POINTS.seasonCap - recoveryPointsInSeason(history, atMs), 0)));
+  if (amount <= 0) return null;
+  return {
+    id,
+    amount,
+    reason: 'Clean day check-in',
+    source: RECOVERY_CHECKIN_SOURCE,
+    timestamp: new Date(atMs).toISOString(),
+    metadata: { date: day, trackerId: tracker!.id },
+  };
 }

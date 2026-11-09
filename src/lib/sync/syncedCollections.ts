@@ -592,6 +592,9 @@ export const SYNCED_COLLECTIONS = [
   lessonReads as unknown as SyncedCollection,
   // The user's order of each list (one row per list key): a reorder writes only this row.
   documentCollection('listOrders', 'list_orders', byCreatedAt),
+  // Recovery check-ins (one row per local day, id = the day): the server awards the point and keeps
+  // each row as first written (recovery_checkins_guard), so a second device's tap changes nothing.
+  documentCollection('recoveryCheckins', 'recovery_checkins', byCreatedAt),
 ] as unknown as SyncedCollection[];
 
 /**
