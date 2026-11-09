@@ -6,6 +6,7 @@ import {
   acceptServerRows,
   clearRefusedRows,
   cursorKey,
+  dropOpsForPurgedRows,
   hashRow,
   knownHashes,
   lastFullPullKey,
@@ -117,10 +118,21 @@ export function prepareRemoteRows(
   // stale (full pull only): a row this device once synced that the server no longer has was
   // purged after a delete this device never saw, so its local copy goes too. Only ids the
   // baseline holds as synced count, so an item that never reached the server is kept.
+  // A waiting op for such a row is dropped first when it edits the purged row (a revivable table
+  // may bring a deleted row back, so its ops are kept); a new row's first upload is kept.
   if (full && stale) {
     const present = new Set(rows.map((row) => String(row.id)));
+    const waitingGone: string[] = [];
     for (const [id, hash] of Object.entries(known)) {
-      if (hash === DELETED || present.has(id) || pending.has(id) || collection.serverOwnedId?.(id)) continue;
+      if (hash === DELETED || present.has(id) || collection.serverOwnedId?.(id)) continue;
+      if (pending.has(id)) {
+        if (!collection.revivable) waitingGone.push(id);
+        continue;
+      }
+      hashes[id] = null;
+      changes.push({ key, id, item: null });
+    }
+    for (const id of dropOpsForPurgedRows(userId, collection.table, waitingGone)) {
       hashes[id] = null;
       changes.push({ key, id, item: null });
     }

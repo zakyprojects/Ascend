@@ -1,6 +1,8 @@
 // Offline audit LOW fixes of 2026-11-09 (knowledge/mode-a-offline-resilience-2026-11-09.md, F4–F8).
 // F4: storage full while queueing: this tab's versions and edit times stay, so the edit is queued
 //     on the next save instead of being read as an old copy and replaced by the server row.
+// F7: a device away 30+ days with a queued edit of a row the server purged drops that edit at the
+//     stale full pull instead of inserting the purged row again; a new row's first upload is kept.
 // F5: the logout save clears the dirty flag, so the device data is removed when nothing is unsent
 //     (the store's logout itself is not run here: its step 3b condition is checked on the helpers).
 // F6: a finished save clears the dirty flag only when no newer change set it meanwhile (or the save
@@ -37,7 +39,10 @@ const events: Array<{ type: string; detail?: unknown }> = [];
   }
 };
 
-const { diffSyncedCollections, hasPendingSyncOps, hashRow, readBaseline, recordSyncedChanges, syncStorageFailed } = await import('../outbox');
+const { diffSyncedCollections, flushOutbox, hasPendingSyncOps, hashRow, lastFullPullKey, readBaseline, recordSyncedChanges, syncStorageFailed } =
+  await import('../outbox');
+const { applyRemoteChanges, pullSyncedRows } = await import('../pull');
+const { trustedNowMs } = await import('../../clock');
 const { SYNCED_COLLECTIONS } = await import('../syncedCollections');
 const { setTabSyncedHashes, clearTabSyncedHashes, tabSyncedHashes } = await import('../tabVersions');
 const { noteEditTimes, readEditTimes } = await import('../editTimes');
@@ -61,7 +66,7 @@ const outbox = () =>
   JSON.parse(store.get(`ascend_outbox_${UID}`) || '{}') as Record<string, { kind: string; updatedAt?: string; row?: Record<string, unknown> }>;
 
 // No session: recordSyncedChanges' flush returns at once.
-const client = supabase as unknown as { auth: { getSession: unknown } };
+const client = supabase as unknown as { from: unknown; auth: { getSession: unknown } };
 client.auth.getSession = async () => ({ data: { session: null } });
 
 function reset() {
@@ -164,6 +169,68 @@ function synced(state: AppState) {
   markDirty(UID);
   clearDirtyAfterSave(UID, atLogout2);
   assert(Boolean(store.get(`ascend_dirty_${UID}`)), 'an edit during the logout save keeps the flag');
+}
+
+// ---------------------------------------------------------------- F7: purged row, queued edit
+{
+  reset();
+  const s0 = base({ tasks: [task('t1', 'Old', false), task('t2', 'Kept', false)] });
+  synced(s0);
+  // Offline: t1 edited (the server held it), t3 created; both saves' ops wait in the outbox.
+  const local = base({ tasks: [task('t1', 'Old, edited', false), task('t2', 'Kept', false), task('t3', 'New', false)] });
+  recordSyncedChanges(local);
+  const queued = outbox();
+  assert((queued['tasks:t1'] as { onServer?: boolean }).onServer === true, 'an edit of a synced row is marked');
+  assert(!(queued['tasks:t3'] as { onServer?: boolean }).onServer, 'a new row is not');
+  // Edited again before its first upload: still a new row.
+  recordSyncedChanges(base({ ...local, tasks: [task('t1', 'Old, edited', false), task('t2', 'Kept', false), task('t3', 'New v2', false)] }));
+  assert(!(outbox()['tasks:t3'] as { onServer?: boolean }).onServer, 'a new row edited before upload stays unmarked');
+  const held = base({ tasks: [task('t1', 'Old, edited', false), task('t2', 'Kept', false), task('t3', 'New v2', false)] });
+  await flushOutbox(UID); // the saves' flushes find no session (still offline)
+
+  // 40 days away; meanwhile another device deleted t1 and the purge removed it.
+  store.set(lastFullPullKey(UID), new Date(trustedNowMs() - 40 * 24 * 60 * 60 * 1000).toISOString());
+  const serverRow = {
+    ...byTable('tasks').toRow(task('t2', 'Kept', false) as never),
+    user_id: UID,
+    updated_at: T0,
+    server_updated_at: T0,
+    deleted_at: null,
+  };
+  client.auth.getSession = async () => ({ data: { session: { user: { id: UID } } } });
+  client.from = (table: string) => {
+    const query = {
+      select: () => query,
+      eq: () => query,
+      in: () => query,
+      gt: () => query,
+      order: () => query,
+      range: () => query,
+      then: (resolve: (r: unknown) => void) => resolve({ data: table === 'tasks' ? [serverRow] : [], error: null }),
+    };
+    return query;
+  };
+  const { changes } = await pullSyncedRows(UID, true);
+  const after = applyRemoteChanges(held, changes, UID);
+  client.auth.getSession = async () => ({ data: { session: null } });
+  assert(!('tasks:t1' in outbox()), 'the queued edit of the purged row is dropped (before the fix it was sent and re-inserted)');
+  assert('tasks:t3' in outbox(), "the new row's first upload still waits");
+  const ids = (after.tasks || []).map((t) => t.id);
+  assert(!ids.includes('t1'), 'the purged row leaves this device too (delete wins)');
+  assert(ids.includes('t2') && ids.includes('t3'), 'the other rows stay');
+
+  // An op from an older bundle (no mark) is still sent, as before.
+  reset();
+  synced(s0);
+  store.set(
+    `ascend_outbox_${UID}`,
+    JSON.stringify({ 'tasks:t1': { kind: 'upsert', table: 'tasks', id: 't1', row: byTable('tasks').toRow(task('t1', 'x', false) as never), updatedAt: T0 } })
+  );
+  store.set(lastFullPullKey(UID), new Date(trustedNowMs() - 40 * 24 * 60 * 60 * 1000).toISOString());
+  client.auth.getSession = async () => ({ data: { session: { user: { id: UID } } } });
+  await pullSyncedRows(UID, true);
+  client.auth.getSession = async () => ({ data: { session: null } });
+  assert('tasks:t1' in outbox(), "an unmarked op is kept (it may be a new row's first upload)");
 }
 
 console.log('offlineLowFixes: all passed');

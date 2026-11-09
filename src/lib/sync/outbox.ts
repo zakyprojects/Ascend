@@ -26,6 +26,11 @@ interface UpsertOp {
   id: string;
   row: Record<string, unknown>;
   updatedAt: string;
+  /**
+   * An edit of a row the server held when it was queued (it was synced, and no upload of it as a
+   * new row was still waiting). Missing on ops written by older bundles: those are always sent.
+   */
+  onServer?: true;
 }
 
 interface DeleteOp {
@@ -146,6 +151,9 @@ export function diffSyncedCollections(
       const key = opKey(collection.table, id);
       // A pending delete wins, except where the table revives rows (a re-award or a restore).
       if (nextOutbox[key]?.kind === 'delete' && !collection.revivable) continue;
+      const waiting = nextOutbox[key];
+      const onServer =
+        id in prev && prev[id] !== DELETED && (!waiting || (waiting.kind === 'upsert' && waiting.onServer === true));
       nextOutbox[key] = {
         kind: 'upsert',
         table: collection.table,
@@ -159,6 +167,7 @@ export function diffSyncedCollections(
         updatedAt: id in prev
           ? collection.editTimestamp?.(item as never) ?? notLater(editTimeOf(editTimes, syncKeyOf(collection), id, hash), nowIso)
           : collection.ownTimestamp(item as never),
+        ...(onServer ? { onServer: true as const } : {}),
       };
       changed = true;
     }
@@ -300,6 +309,31 @@ export function pendingOpIds(userId: string, table: string): Set<string> {
       .filter((op) => op.table === table)
       .map((op) => op.id)
   );
+}
+
+/**
+ * The stale full pull found these synced rows gone from the server (purged 30 days after a delete
+ * this device never saw): drops their waiting deletes and their edits of rows the server held, so
+ * an edit queued on a device away that long does not insert the purged row again. A new row whose
+ * first upload is still waiting (or an op from an older bundle) is kept. Returns the ids dropped.
+ */
+export function dropOpsForPurgedRows(userId: string, table: string, ids: string[]): string[] {
+  if (ids.length === 0) return [];
+  const stored = readJson<Outbox>(outboxKey(userId)) || {};
+  const dropped: string[] = [];
+  for (const id of ids) {
+    const op = stored[opKey(table, id)];
+    if (!op || (op.kind === 'upsert' && op.onServer !== true)) continue;
+    delete stored[opKey(table, id)];
+    dropped.push(id);
+  }
+  if (dropped.length === 0) return [];
+  try {
+    writeJson(outboxKey(userId), stored);
+  } catch {
+    return [];
+  }
+  return dropped;
 }
 
 /** True while any local op is still waiting to be sent. */
