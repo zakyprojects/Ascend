@@ -49,10 +49,13 @@ export function releaseNoteGroups(note: ReleaseNote): { key: ReleaseNoteGroupKey
 
 export const RELEASE_NOTE: ReleaseNote | null = {
   id: 1,
-  releasedAt: '2026-11-09T19:06:00+05:00',
-  new: ['Recovery: tapped Clean today by mistake? Tap the tick to undo it the same day.'],
+  releasedAt: '2026-11-09T21:25:00+05:00',
+  new: [
+    'Reading: switch a book between pages and chapters anytime. 1 chapter counts as 20 pages, and you can edit both numbers.',
+    'Recovery: tapped Clean today by mistake? Tap the tick to undo it the same day.',
+  ],
   changed: [
+    'Recovery: tap "Clean today" once a day to earn 1 point. This daily check-in replaces milestone points.',
     "Focus: every 12 minutes of focus now gives 1 point, and today's sessions add up. No finish bonus.",
-    'Recovery: points now come from a daily "Clean today" check-in, 1 point a day, instead of milestones.',
   ],
 };
