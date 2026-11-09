@@ -86,12 +86,12 @@ export const logPageAmount = (log: ReadingLog, book: Pick<UserBook, 'unit'> | un
   logPages(log) * (logUnit(log, book) === 'chapters' ? PAGES_PER_CHAPTER : 1);
 
 /**
- * The pages a unit switch took off the book's place (before minus after, in pages), so reading
- * them again that day earns nothing. 0 when the switch kept or raised the place.
+ * How far a unit switch moved the book's place, in pages (after minus before): below 0 when it
+ * lowered the place, above 0 when it raised it, 0 for an entry that can't be read.
  */
-export const unitSwitchDebt = (s: BookUnitSwitch): number =>
+export const unitSwitchChange = (s: BookUnitSwitch): number =>
   typeof s?.pagesBefore === 'number' && typeof s?.pagesAfter === 'number' && Number.isFinite(s.pagesBefore) && Number.isFinite(s.pagesAfter)
-    ? Math.max(0, s.pagesBefore - s.pagesAfter)
+    ? s.pagesAfter - s.pagesBefore
     : 0;
 
 /**
@@ -112,10 +112,12 @@ const dayLastMs = (day: string): number => new Date(`${addDayKeys(day, 1)}T00:00
  * day earns nothing), and each counted log's share in log order (shown on the log). Only logs of
  * books still in the library count, and not the pages Finish adds (finish: true); a log in chapters
  * counts each chapter as PAGES_PER_CHAPTER pages (the log's own unit, logUnit).
- * Per book, in time order, each log adds its pages and each unit switch of that day subtracts the
- * pages it took off the book's place (unitSwitchDebt); the book earns for the highest running total
- * it reached (never below 0). So a switch never takes points, and reading the same pages again after
- * a switch earns nothing until the book passes where it was. A day without a switch is the plain sum.
+ * Per book, in time order, each log adds its pages; a unit switch of that day that lowered the
+ * book's place subtracts the pages it took off (and owes them), one that raised it gives back at most
+ * what earlier switches that day still owe (unitSwitchChange). The book earns for the highest running
+ * total it reached (never below 0). So a switch never earns or takes points, reading the same pages
+ * again after a lowering switch earns nothing until the book passes where it was, and switching back
+ * to the old place makes new reading earn again. A day without a switch is the plain sum.
  * Points = floor(the books' pages / pagesPerPoint), capped across all books.
  * The row's time follows the server: a day whose row already exists (existing, the live ledger row)
  * keeps that row's time and only the amount changes; a new row is stamped at the day's first
@@ -135,6 +137,7 @@ export function computeReadingDayAward(
   const bookById = new Map(books.filter(Boolean).map((b) => [b.id, b]));
   const dayLogs = logs.filter((l) => l && l.date === day && l.finish !== true && Boolean(l.bookId && bookById.has(l.bookId)));
 
+  // A log's pages, or a switch's change of the place (unitSwitchChange).
   type DayEvent = { at: number; kind: 0 | 1; key: string; bookId: string; pages: number; log?: ReadingLog };
   const events: DayEvent[] = dayLogs.map((l) => ({
     at: timeOf(l.createdAt),
@@ -147,7 +150,7 @@ export function computeReadingDayAward(
   for (const b of bookById.values()) {
     (Array.isArray(b.unitSwitches) ? b.unitSwitches : []).forEach((s, i) => {
       if (s && s.date === day && typeof s.pagesBefore === 'number' && typeof s.pagesAfter === 'number') {
-        events.push({ at: timeOf(s.at), kind: 1, key: `${b.id}#${i + 1}`, bookId: b.id, pages: -unitSwitchDebt(s) });
+        events.push({ at: timeOf(s.at), kind: 1, key: `${b.id}#${i + 1}`, bookId: b.id, pages: unitSwitchChange(s) });
       }
     });
   }
@@ -155,13 +158,15 @@ export function computeReadingDayAward(
   events.sort((a, b) => a.at - b.at || a.kind - b.kind || (a.key < b.key ? -1 : a.key > b.key ? 1 : 0));
 
   const logPoints = new Map<string, number>();
-  const running = new Map<string, { total: number; best: number }>();
+  const running = new Map<string, { total: number; best: number; owed: number }>();
   let pages = 0;
   let used = 0;
   let firstMs: number | null = null;
   for (const ev of events) {
-    const book = running.get(ev.bookId) ?? { total: 0, best: 0 };
-    book.total += ev.pages;
+    const book = running.get(ev.bookId) ?? { total: 0, best: 0, owed: 0 };
+    if (ev.log || ev.pages < 0) book.total += ev.pages;
+    else book.total += Math.min(ev.pages, book.owed);
+    if (!ev.log) book.owed = Math.max(0, book.owed - ev.pages);
     const best = Math.max(book.best, book.total);
     pages += best - book.best;
     book.best = best;

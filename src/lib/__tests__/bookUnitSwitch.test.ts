@@ -58,7 +58,7 @@ assert(PAGES_PER_CHAPTER === 20, 'config: 1 chapter = 20 pages');
   const back = switched(s, 'pages', 140, 300, 3);
   assert(back.currentAmount === 140 && back.unitSwitches?.length === 1, 'a switch that keeps the place adds nothing');
   const up = switched(book({ currentAmount: 4, totalAmount: 10, unit: 'chapters' }), 'pages', 90, 200, 2);
-  assert(!up.unitSwitches, 'a switch that raises the place adds nothing');
+  assert(up.unitSwitches?.length === 1 && up.unitSwitches[0].pagesBefore === 80 && up.unitSwitches[0].pagesAfter === 90, 'a raising switch is kept too');
   const old = switched(book({ currentAmount: 40, totalAmount: 300, unitSwitches: [{ date: '2026-11-01', at: at(0), pagesBefore: 9, pagesAfter: 0 }] }), 'chapters', 2, 15, 2);
   assert(!old.unitSwitches, 'entries older than yesterday are dropped');
   const done = book({ status: 'completed', currentAmount: 300, totalAmount: 300 });
@@ -146,6 +146,32 @@ assert(PAGES_PER_CHAPTER === 20, 'config: 1 chapter = 20 pages');
   assert(chapterGoal.current === 3, `chapters goal: 25 pages = 1 whole chapter + 2 chapters (${chapterGoal.current})`);
   const anyPages = computeLinkedGoalProgress(goal('pages_read', ''), state(logs), week);
   assert(anyPages.current === 60, 'any-book pages goal counts only logs written in pages');
+}
+
+// 9. Bug round 1 (Zakria 2026-11-09): switch back right away. 10 pages -> 0 chapters -> back to pages
+//    starts at 10 pages again (not 0), new reading after that earns, and a raising switch earns nothing.
+{
+  const b0 = book({ currentAmount: 10, totalAmount: 256, curatedBookId: 'curated-psychology-of-money' });
+  const logs = [log('p1', 10, 1, { unit: 'pages' })];
+  const d1 = unitSwitchDefaults(b0, 'chapters');
+  assert(d1.current === 0 && d1.total === 13, `10/256 pages -> 0/13 chapters (${JSON.stringify(d1)})`);
+  const b1 = switched(b0, 'chapters', d1.current, d1.total, 2);
+  const d2 = unitSwitchDefaults(b1, 'pages');
+  assert(d2.current === 10 && d2.total === 256, `back to pages restores 10/256 (${JSON.stringify(d2)})`);
+  const b2 = switched(b1, 'pages', d2.current, d2.total, 3);
+  assert(b2.currentAmount === 10 && b2.totalAmount === 256 && b2.unitSwitches?.length === 2, 'round trip: 10/256 pages, both switches kept');
+  assert(points(logs, [b2]) === 5, 'round trip keeps 5');
+  assert(points([...logs, log('p2', 6, 4, { unit: 'pages' })], [b2]) === 8, 'new pages after switching back earn (10 + 6 = 8)');
+  // Again to chapters and back: still exact.
+  const b3 = switched(b2, 'chapters', unitSwitchDefaults(b2, 'chapters').current, 13, 5);
+  assert(unitSwitchDefaults(b3, 'pages').current === 10, 'second round trip restores 10 again');
+  // The place moved after the switch (a chapter logged): plain conversion, no restore.
+  assert(unitSwitchDefaults({ ...b1, currentAmount: 1 }, 'pages').current === 20, 'moved since the switch -> chapters × 20');
+  // A raise beyond what earlier switches took earns nothing.
+  const big = switched(b1, 'pages', 200, 256, 3);
+  assert(points([...logs, log('p2', 6, 4, { unit: 'pages' })], [big]) === 8, 'raising by a switch earns nothing extra');
+  const upOnly = switched(book({ currentAmount: 10, totalAmount: 256 }), 'chapters', 5, 13, 2);
+  assert(points([...logs, log('c1', 1, 3, { unit: 'chapters' })], [upOnly]) === 10, 'a raise with nothing owed adds nothing; real reading still earns');
 }
 
 console.log('All book unit switch tests passed.');

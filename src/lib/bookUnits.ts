@@ -19,6 +19,8 @@ export const bookLogIds = (book: Pick<UserBook, 'id' | 'linkedBookId' | 'curated
  *   else chapters × 20.
  * - to chapters: place = whole chapters read (pages / 20 rounded down, never a chapter not finished);
  *   length = the chapter count saved before, else pages / 20 rounded up (at least 1).
+ * - switching back while the place is still where the last switch put it: the place before that
+ *   switch (so 10 pages -> 0 chapters -> back gives 10 pages, not 0).
  * The length is never below the place.
  */
 export function unitSwitchDefaults(book: UserBook, next: BookUnitName): { current: number; total: number } {
@@ -26,13 +28,16 @@ export function unitSwitchDefaults(book: UserBook, next: BookUnitName): { curren
   const current = Math.max(0, book.currentAmount ?? book.currentPage ?? 0);
   const total = Math.max(1, book.totalAmount ?? book.totalPages ?? 1);
   if (next === from) return { current, total };
+  const last = Array.isArray(book.unitSwitches) ? book.unitSwitches[book.unitSwitches.length - 1] : undefined;
+  const back =
+    last && typeof last.pagesBefore === 'number' && last.pagesAfter === toPages(current, from) ? Math.max(0, last.pagesBefore) : null;
   if (next === 'pages') {
     const curated = findCuratedBook(book.curatedBookId || book.linkedBookId || '');
     const pages = positive(book.lengthByUnit?.pages) ?? positive(curated?.totalPages) ?? total * PAGES_PER_CHAPTER;
-    const place = current * PAGES_PER_CHAPTER;
+    const place = back ?? current * PAGES_PER_CHAPTER;
     return { current: place, total: Math.max(pages, place) };
   }
-  const place = Math.floor(current / PAGES_PER_CHAPTER);
+  const place = Math.floor((back ?? current) / PAGES_PER_CHAPTER);
   const chapters = positive(book.lengthByUnit?.chapters) ?? Math.max(1, Math.ceil(total / PAGES_PER_CHAPTER));
   return { current: place, total: Math.max(chapters, place) };
 }
@@ -45,9 +50,10 @@ export const rememberLength = (book: UserBook, unit: BookUnitName, total: number
 
 /**
  * Switches a book to the other unit at the place and length the user confirmed. Writes the book
- * only, never a log, so it earns and takes no points. A switch that lowers the place (in pages) is
- * kept for today (unitSwitches) so reading those pages again today earns nothing
- * (computeReadingDayAward); entries older than yesterday are dropped. A finished book never switches.
+ * only, never a log, so it earns and takes no points. A switch that moves the place (in pages) is
+ * kept for today (unitSwitches): after a lowering one, reading those pages again today earns
+ * nothing; a raising one gives back what an earlier one took (computeReadingDayAward). Entries
+ * older than yesterday are dropped. A finished book never switches.
  */
 export function switchBookUnit(
   book: UserBook,
@@ -63,7 +69,7 @@ export function switchBookUnit(
   const pagesAfter = toPages(current, change.unit);
   const yesterday = addDays(today, -1);
   const kept = (Array.isArray(book.unitSwitches) ? book.unitSwitches : []).filter((s) => s && s.date >= yesterday);
-  const unitSwitches = pagesAfter < pagesBefore ? [...kept, { date: today, at: nowIso, pagesBefore, pagesAfter }] : kept;
+  const unitSwitches = pagesAfter !== pagesBefore ? [...kept, { date: today, at: nowIso, pagesBefore, pagesAfter }] : kept;
   const lengthByUnit = { ...rememberLength(book, from, Math.max(1, book.totalAmount ?? book.totalPages ?? 1)), [change.unit]: total };
   const next: UserBook = {
     ...book,

@@ -343,7 +343,7 @@ export interface UserBook {
   linkedBookId?: string;
   /** The length last saved for each unit, so switching units back and forth keeps both (switchBookUnit). */
   lengthByUnit?: { pages?: number; chapters?: number };
-  /** Unit switches of today and yesterday that lowered the book's place; the points rule reads them (unitSwitchDebt). */
+  /** Unit switches of today and yesterday that moved the book's place; the points rule reads them (unitSwitchChange). */
   unitSwitches?: BookUnitSwitch[];
   /** @deprecated Book deadline penalties removed. Field retained for schema/backward compatibility. */
   consecutiveMisses?: number;
