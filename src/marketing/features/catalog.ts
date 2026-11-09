@@ -158,7 +158,7 @@ export const FEATURES: Record<FeatureSlug, FeatureMeta> = {
     description:
       'A sobriety tracker that counts your days clean, with a craving log and quick support when an urge hits. Free self-help in AscendDay, not medical treatment.',
     h1: 'A sobriety tracker that counts every clean day',
-    summary: 'A clean-streak clock, a craving log and quick support. Milestones earn points.',
+    summary: 'A clean-streak clock, a daily check-in, a craving log and quick support.',
     ogAlt: 'AscendDay recovery tracker: clean streak clock and craving log',
   },
   'brain-lessons': {

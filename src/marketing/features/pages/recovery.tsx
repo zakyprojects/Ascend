@@ -1,13 +1,13 @@
 import { RECOVERY_MILESTONES } from '@/lib/recoveryAwards';
-import { RECOVERY_POINTS, SOBRIETY_MILESTONE_POINTS } from '@/lib/pointsConfig';
+import { RECOVERY_POINTS } from '@/lib/pointsConfig';
 import { LINK_CLASS } from '../../components/MarketingLayout';
 import { featurePath } from '../catalog';
 import { Block, Cards, Note, Rules, Steps, type FeatureContent } from '../blocks';
 import { pts } from '../format';
 
-/* /features/recovery. Sources: lib/recoveryAwards.ts RECOVERY_MILESTONES (hours, labels, which
-   milestone re-earns each season), lib/pointsConfig.ts SOBRIETY_MILESTONE_POINTS + RECOVERY_POINTS,
-   components/views/AddictionRecovery.tsx (one tracker, clock starts when it is created, craving
+/* /features/recovery. Sources: lib/recoveryAwards.ts (check-in rules, RECOVERY_MILESTONES streak
+   markers), lib/pointsConfig.ts RECOVERY_POINTS (perCheckin, seasonCap),
+   components/views/AddictionRecovery.tsx (one tracker, clock starts when it is created, Clean today, craving
    form, emergency support with box breathing and distraction ideas, reset/delete wording, the
    medical disclaimer and its SAMHSA example), the Privacy Policy ("Only you: ... cravings and
    recovery tracker"; "Not medical advice") and the point_entries owner-only read policy.
@@ -15,7 +15,7 @@ import { pts } from '../format';
 
 const days = (hours: number) => hours / 24;
 const [week, month, ninety] = RECOVERY_MILESTONES;
-const milestonePoints = (key: keyof typeof SOBRIETY_MILESTONE_POINTS) => SOBRIETY_MILESTONE_POINTS[key];
+const perDay = RECOVERY_POINTS.perCheckin;
 const cap = RECOVERY_POINTS.seasonCap;
 const SAMHSA_URL = 'https://www.samhsa.gov/find-help/helplines/national-helpline';
 const SAMHSA_PHONE = '1-800-662-4357';
@@ -26,8 +26,8 @@ export const recovery: FeatureContent = {
       <p>
         AscendDay’s recovery tracker is a free sobriety tracker on the web. Name the one thing you are stepping away from,
         like smoking, alcohol, sugar or social media, and a clean streak counter starts counting your days, hours and
-        minutes. Log a craving when it hits, open emergency support for a breathing exercise, and earn points at{' '}
-        {days(week.hours)}, {days(month.hours)} and {days(ninety.hours)} days clean.
+        minutes. Tap Clean today once a day to earn a point, log a craving when it hits, and open emergency support
+        for a breathing exercise.
       </p>
       <p>
         It is a private self-help tool: nobody else sees your tracker or your cravings. It is not treatment, and both this page
@@ -39,7 +39,7 @@ export const recovery: FeatureContent = {
     name: 'recovery-phone',
     width: 540,
     height: 1246,
-    alt: `The Recovery page on a phone: 46 days smoking free, 43 days 11 hours left to the ${days(ninety.hours)}-day milestone, 35 of ${cap} recovery points this season and 2 cravings this week`,
+    alt: `The Recovery page on a phone: 46 days smoking free, 43 days 11 hours left to the ${days(ninety.hours)}-day milestone and 2 cravings this week`,
   },
   body: (
     <>
@@ -53,6 +53,10 @@ export const recovery: FeatureContent = {
             {
               title: 'Watch the clock',
               text: `The page shows your clean time in days, hours and minutes, and a ring counting down to the next milestone: ${week.label}, ${month.label} and ${ninety.label}.`,
+            },
+            {
+              title: 'Check in each day',
+              text: 'Tap Clean today once a day. If you forgot yesterday, you can still check in for yesterday today. A missed day never breaks your streak; it only earns no point.',
             },
             {
               title: 'Log cravings as they come',
@@ -80,15 +84,13 @@ export const recovery: FeatureContent = {
         lead={
           <>
             <p>
-              Points come from milestones only. They are written by AscendDay’s server from your streak’s start time, so
-              they arrive within the hour of reaching a milestone even if the app is closed, as long as you used AscendDay
-              at least once in the 7 days before it.
+              Each day you tap Clean today earns {pts(perDay)}. AscendDay’s server writes it the moment your check-in
+              arrives. One check-in counts per day, and the day you start a tracker or reset your streak earns nothing,
+              so points start the next day.
             </p>
             <p>
-              One streak can hold at most {pts(cap)} in a season, which is all three milestones together. When a new
-              season starts and your streak is still going, the {week.label.replace(' Clean', '').toLowerCase()} milestone
-              counts again after {days(week.hours)} clean days in the new season; the{' '}
-              {month.label.replace(' Clean', '').toLowerCase()} and {days(ninety.hours)}-day milestones pay once per streak.
+              Recovery can earn at most {pts(cap)} in a season. Your streak keeps counting into the next season, and each
+              new season can earn {pts(cap)} again. There are no bonuses, and points you earned are never taken back.
             </p>
           </>
         }
@@ -96,22 +98,16 @@ export const recovery: FeatureContent = {
         <Rules
           caption="What earns recovery points"
           rows={[
-            { what: `${days(week.hours)} days clean (${week.label})`, amount: `+${pts(milestonePoints('1w'))}`, note: 'Once per season.' },
-            { what: `${days(month.hours)} days clean (${month.label})`, amount: `+${pts(milestonePoints('1m'))}`, note: 'Once per streak.' },
-            { what: `${days(ninety.hours)} days clean (${ninety.label})`, amount: `+${pts(milestonePoints('90d'))}`, note: 'Once per streak.' },
+            { what: 'Clean today, once a day', amount: `+${pts(perDay)}`, note: 'Yesterday can still be checked in today.' },
+            { what: 'A day without a check-in', amount: 'no points', tone: 'none', note: 'Your streak keeps going.' },
+            { what: 'The day you start the tracker or reset the streak', amount: 'no points', tone: 'none' },
             { what: 'Logging or deleting a craving', amount: 'no points', tone: 'none' },
-            {
-              what: 'Resetting the streak or deleting the tracker',
-              amount: 'taken back',
-              tone: 'loss',
-              note: 'The streak’s milestone points from this season come off. Earlier seasons keep theirs, and a new streak can earn the milestones again.',
-            },
+            { what: 'Resetting the streak or deleting the tracker', amount: 'points stay', tone: 'none', note: 'Only the streak starts again.' },
           ]}
         />
         <Note title="A reset is not the end.">
-          If you slip, Reset streak starts the clock again from now. Before it does, AscendDay tells you exactly how many of
-          this season’s milestone points will come off, so nothing happens by surprise. As the reset screen puts it, a
-          slip is a setback, not the end.
+          If you slip, Reset streak starts the clock again from now. The points you earned stay, and your next check-in
+          counts from tomorrow. As the reset screen puts it, a slip is a setback, not the end.
         </Note>
       </Block>
 
@@ -158,7 +154,7 @@ export const recovery: FeatureContent = {
               lists them under what only you can see.
             </p>
             <p>
-              Milestone points join your season total like any other points. Others see that total in league tables, never
+              Check-in points join your season total like any other points. Others see that total in league tables, never
               the entries behind it: your point history can only be read by you.
             </p>
           </>
@@ -191,12 +187,12 @@ export const recovery: FeatureContent = {
     name: 'recovery-desktop',
     width: 1400,
     height: 924,
-    alt: `The Recovery page on a computer: ${week.label} (+${milestonePoints('1w')}) and ${month.label} (+${milestonePoints('1m')}) earned this season, ${ninety.label} next for +${milestonePoints('90d')}, the medical disclaimer with the SAMHSA helpline, and the latest cravings with their triggers and what helped`,
+    alt: `The Recovery page on a computer: the ${week.label}, ${month.label} and ${ninety.label} milestones, the medical disclaimer with the SAMHSA helpline, and the latest cravings with their triggers and what helped`,
     caption: 'The Recovery page on a computer, with the demo user Ali’s tracker.',
   },
   facts: [
     ['Milestones', `${days(week.hours)}, ${days(month.hours)} and ${days(ninety.hours)} days clean`],
-    ['Points', `${milestonePoints('1w')}, ${milestonePoints('1m')} and ${milestonePoints('90d')}`],
+    ['Points', `${pts(perDay)} per daily check-in`],
     ['Season limit', pts(cap)],
     ['Trackers', 'One at a time'],
     ['Cravings', 'Logged privately, no points'],
@@ -207,7 +203,7 @@ export const recovery: FeatureContent = {
   fitsIf: [
     'You are quitting one thing and want a days clean counter that shows every clean day add up.',
     'You want a private place to note cravings, their triggers and what helped.',
-    'Points and milestones help you keep going on the hard days.',
+    'A daily check-in and a point for each clean day help you keep going on the hard days.',
   ],
   notFor: [
     'You need treatment, detox or medical supervision; AscendDay can sit next to that care, never replace it.',
@@ -216,11 +212,11 @@ export const recovery: FeatureContent = {
   faq: [
     {
       q: 'Why use AscendDay for a sobriety streak instead of a separate sobriety app?',
-      a: `Because the clean streak sits next to what you are building in its place: habits, workouts, reading and a journal, in one app. Milestones at ${days(week.hours)}, ${days(month.hours)} and ${days(ninety.hours)} days earn points toward your rank and the leagues, while the tracker and your cravings stay private and others only ever see a points total. It is a self-help tool; if you need treatment or a recovery programme, that comes first.`,
+      a: `Because the clean streak sits next to what you are building in its place: habits, workouts, reading and a journal, in one app. Each daily check-in earns ${pts(perDay)} toward your rank and the leagues, while the tracker and your cravings stay private and others only ever see a points total. It is a self-help tool; if you need treatment or a recovery programme, that comes first.`,
     },
     {
-      q: 'Why does recovery earn points only at milestones?',
-      a: `So counting clean time never feels like a grind. The milestones earn ${milestonePoints('1w')}, ${milestonePoints('1m')} and ${milestonePoints('90d')} points, at most ${pts(cap)} from recovery in a season, and a reset only takes back what the current streak earned this season. Cravings never cost anything, so logging one honestly is always safe.`,
+      q: 'Why does recovery need a daily check-in?',
+      a: `Because a tap each day keeps you looking at the streak on purpose, not just letting a clock run. Each check-in earns ${pts(perDay)}, at most ${pts(cap)} from recovery in a season. Forgetting a day costs only that day’s point, never the streak, and yesterday can still be checked in today. Cravings never cost anything, so logging one honestly is always safe.`,
     },
     {
       q: 'Is the recovery tracker private?',
@@ -232,7 +228,7 @@ export const recovery: FeatureContent = {
     },
     {
       q: 'What happens to my points if I relapse?',
-      a: `Reset streak starts the clock again. The milestone points this streak earned this season come off; earlier seasons keep theirs, and the new streak can earn ${days(week.hours)}, ${days(month.hours)} and ${days(ninety.hours)} days again.`,
+      a: 'Reset streak starts the clock again. Every point you already earned stays. The reset day earns nothing, and your check-ins earn again from the next day.',
     },
     {
       q: 'Do cravings cost points?',

@@ -113,7 +113,7 @@ export const ranks: FeatureContent = {
               what: 'Weekly goals and the weekend reflection',
               amount: `up to ${WEEKLY_GOALS_POINTS.maxWeeklyPoints + WEEKLY_REFLECTION_POINTS.awarded} a week`,
             },
-            { what: 'Recovery milestones', amount: `up to ${RECOVERY_POINTS.seasonCap} a season` },
+            { what: 'Recovery check-ins', amount: `up to ${RECOVERY_POINTS.seasonCap} a season` },
             { what: 'Missed library habits, slips, unlogged bad-habit days', amount: 'lose points', tone: 'loss' },
           ]}
         />

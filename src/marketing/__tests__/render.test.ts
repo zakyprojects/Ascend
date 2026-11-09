@@ -7,8 +7,7 @@ import appShell from '../../../index.html?raw';
 import { absoluteUrl, SITE_FORMER_NAME, SITE_NAME, SITE_TAGLINE } from '../site';
 import { TIERS } from '@/lib/tiers';
 import { LESSONS } from '@/lib/lessons';
-import { SOBRIETY_MILESTONE_POINTS } from '@/lib/pointsConfig';
-import { RECOVERY_MILESTONES } from '@/lib/recoveryAwards';
+import { RECOVERY_POINTS } from '@/lib/pointsConfig';
 import { fmt, pts } from '../features/format';
 import { FUEL_MENU, fuelMailto, MAKER_STORY } from '@/components/settings/makerContent';
 import { faqItemsFor } from '../head';
@@ -148,11 +147,15 @@ assert(featureTexts.length === FEATURE_SLUGS.length, 'every feature page is chec
 // The ranks page's ladder is the app's own (lib/tiers.ts), rank for rank.
 const ranksPage = renderMarketingPage(MARKETING_ROUTES.find((r) => r.slug === 'ranks')!, assets);
 TIERS.forEach((tier, i) => assert(ranksPage.includes(`${i + 1}. ${tier.name}`) && ranksPage.includes(pts(fmt(tier.minPoints))), `ranks page lists ${tier.name} at ${tier.minPoints}`));
-// Health-adjacent pages carry their not-medical-advice note; recovery also its milestones and a helpline.
+// Health-adjacent pages carry their not-medical-advice note; recovery also its check-in points and a helpline.
 const pageOf = (slug: string) => renderMarketingPage(MARKETING_ROUTES.find((r) => r.slug === slug)!, assets);
 const recoveryPage = pageOf('recovery');
 assert(recoveryPage.includes('AscendDay is not treatment, therapy or medical advice.') && recoveryPage.includes('1-800-662-4357'), 'recovery page: not-treatment note and helpline');
-for (const m of RECOVERY_MILESTONES) assert(recoveryPage.includes(`${m.hours / 24} days clean (${m.label})`) && recoveryPage.includes(`+${pts(SOBRIETY_MILESTONE_POINTS[m.key])}`), `recovery page lists ${m.label}`);
+assert(
+  recoveryPage.includes('Clean today, once a day') && recoveryPage.includes(`+${pts(RECOVERY_POINTS.perCheckin)}`) && recoveryPage.includes(`at most ${pts(RECOVERY_POINTS.seasonCap)} in a season`),
+  'recovery page: daily check-in point and season cap'
+);
+assert(!/milestone points|come off/i.test(recoveryPage), 'recovery page: no milestone points or take-backs');
 const brainPage = pageOf('brain-lessons');
 assert(brainPage.includes('General education, not medical advice.') && brainPage.includes(`${LESSONS.length} short lessons`), 'brain-lessons page: note and lesson count');
 // No page is another with the names swapped: most of each page's sentences are its own.

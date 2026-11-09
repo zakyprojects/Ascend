@@ -1,14 +1,15 @@
 import { useState, useEffect } from 'react';
-import { HeartPulse, AlertTriangle, RefreshCw, Activity, PhoneCall, Play, Pause, RotateCcw, Trash2, Medal, Trophy, Crown, Check, Plus, Pencil } from 'lucide-react';
+import { HeartPulse, AlertTriangle, RefreshCw, Activity, PhoneCall, Play, Pause, RotateCcw, Trash2, Medal, Trophy, Crown, Check, Plus, Pencil, CalendarCheck } from 'lucide-react';
 import { AppStore, CLEAR_CRAVING_LOGS_MAX } from '@/lib/store';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { useToast } from '@/components/ui/Toast';
 import { useAsyncActionKey } from '@/lib/useAsyncAction';
 import { CravingLog } from '@/types';
-import { recoveryAwardsThisSeason, RecoveryMilestoneKey, RECOVERY_MILESTONES } from '@/lib/recoveryAwards';
-import { formatDateLong, todayKey, startOfWeek, parseDate } from '@/lib/dates';
+import { recoveryCheckinBlock, recoveryDayAwardId, recoveryPointsInSeason, RecoveryMilestoneKey, RECOVERY_MILESTONES } from '@/lib/recoveryAwards';
+import { addDays, formatDateLong, todayKey, startOfWeek, parseDate } from '@/lib/dates';
 import { useLocalDayKey } from '@/lib/useLocalDayKey';
-import { wouldExceedRecoverySeasonCap, RECOVERY_POINTS, SOBRIETY_MILESTONE_POINTS } from '@/lib/pointsConfig';
+import { RECOVERY_POINTS } from '@/lib/pointsConfig';
+import { pts } from '@/components/ui/HowItWorks';
 import { CapMeter } from '@/components/ui/CapMeter';
 import { HowItWorksButton, HowItWorksDialog, useHowItWorks } from '@/components/ui/HowItWorks';
 import { recoveryGuide } from '@/components/howItWorks/recovery';
@@ -69,9 +70,9 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
   const tracker = store.state.addictionTracker;
   const cravingLogs = store.state.cravingLogs;
 
-  // Milestone points come from the server's ledger rows, not from the tracker document.
-  const seasonAwards = recoveryAwardsThisSeason(store.state.pointsHistory || [], tracker?.id, trustedNow().getTime());
-  const heldSeasonPoints = Array.from(seasonAwards.values()).reduce((sum, p) => sum + p, 0);
+  // Recovery points this season (check-ins, plus old milestone rows) from the server's ledger rows.
+  const pointsHistory = store.state.pointsHistory || [];
+  const heldSeasonPoints = recoveryPointsInSeason(pointsHistory, trustedNow().getTime());
 
   useEffect(() => {
     store.checkAddictionMilestones();
@@ -99,6 +100,31 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
   // Cravings: newest first; "Clear older cravings" removes those before this week's Monday.
   // The week follows local midnight, so "this week" rolls over on Monday without a reload.
   const today = useLocalDayKey();
+
+  // Daily check-in: today, or yesterday as a late tap (one per day, whatever the tracker).
+  const yesterday = addDays(today, -1);
+  const checkins = store.state.recoveryCheckins || [];
+  const checkedToday = checkins.some((c) => c.id === today);
+  const todayBlock = recoveryCheckinBlock(tracker, today);
+  const yesterdayOpen = !checkins.some((c) => c.id === yesterday) && !recoveryCheckinBlock(tracker, yesterday);
+  const todayPoints = pointsHistory.find((e) => e.id === recoveryDayAwardId(today))?.amount ?? 0;
+  const capReached = heldSeasonPoints >= RECOVERY_POINTS.seasonCap;
+  const checkInLine = checkedToday
+    ? todayPoints > 0
+      ? `+${pts(todayPoints)} for today.`
+      : 'No point for today.'
+    : todayBlock === 'first-day'
+      ? 'Check-ins earn from tomorrow, your first full day.'
+      : todayBlock === 'restarted'
+        ? 'Your streak restarted today. Check-ins earn from tomorrow.'
+        : capReached
+          ? 'Season cap reached. You can still check in.'
+          : `Tap once a day for ${pts(RECOVERY_POINTS.perCheckin)}.`;
+  const checkIn = (day: string) => {
+    store.checkInRecovery(day);
+    showSuccessToast(day === today ? 'Checked in for today' : 'Checked in for yesterday', 'One day at a time.');
+  };
+
   const sortedCravings = [...cravingLogs].sort((a, b) => (b.date || '').localeCompare(a.date || ''));
   const weekStartKey = todayKey(startOfWeek(parseDate(today)!));
   const cravingsThisWeek = cravingLogs.filter((l) => (cravingDay(l) ?? '') >= weekStartKey).length;
@@ -163,10 +189,7 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
     showSuccessToast('Craving logged', 'Well done for noticing it.');
   };
 
-  const pointsLine =
-    heldSeasonPoints > 0
-      ? `This streak's ${heldSeasonPoints} milestone points from this season come off. Earlier seasons keep theirs, and your new streak can earn the milestones again.`
-      : 'No points change: this streak holds no milestone points this season.';
+  const pointsLine = 'Points you already earned stay.';
 
   return (
     <div className="space-y-6">
@@ -257,8 +280,8 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
           <div className="space-y-6">
             <div className="card p-5 space-y-4">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <h2 className="section-title">Milestones</h2>
-                <div className="flex items-center gap-1">
+                <h2 className="section-title">Daily check-in</h2>
+                <div className="flex flex-wrap items-center gap-1 [&>button]:whitespace-nowrap">
                   <button
                     type="button"
                     onClick={openRename}
@@ -280,25 +303,55 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
                   </button>
                 </div>
               </div>
+              <div
+                className={cx(
+                  'rounded-xl border p-3 flex flex-wrap items-center gap-3',
+                  checkedToday ? 'border-emerald-500/40 bg-emerald-500/10' : 'border-overlay-subtle'
+                )}
+              >
+                <div
+                  className={cx(
+                    'w-9 h-9 rounded-xl flex items-center justify-center shrink-0',
+                    checkedToday ? 'bg-emerald-500/20 text-success-text' : 'bg-overlay-subtle text-content-muted'
+                  )}
+                >
+                  {checkedToday ? <Check size={18} /> : <CalendarCheck size={18} />}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="item-name text-sm text-content-secondary">{checkedToday ? 'Checked in today' : 'Stayed clean today?'}</p>
+                  <p className={cx('text-xs', checkedToday && todayPoints > 0 ? 'figure text-success-text' : 'text-content-muted')}>{checkInLine}</p>
+                </div>
+                {!checkedToday && !todayBlock && (
+                  <button type="button" onClick={() => checkIn(today)} className="btn-primary max-sm:w-full">
+                    <Check size={16} /> Clean today
+                  </button>
+                )}
+              </div>
+              {yesterdayOpen && (
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-xs text-content-muted">Missed yesterday? You can still check in for it today.</p>
+                  <button type="button" onClick={() => checkIn(yesterday)} className="btn-secondary text-xs max-sm:w-full">
+                    <CalendarCheck size={14} /> Check in for yesterday
+                  </button>
+                </div>
+              )}
+              <h3 className="item-name text-sm text-content-secondary pt-1">Milestones</h3>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 {RECOVERY_MILESTONES.map((m) => {
                   const Icon = MILESTONE_ICON[m.key];
-                  const points = SOBRIETY_MILESTONE_POINTS[m.key];
-                  const held = seasonAwards.has(m.key);
                   const reached = elapsedHours >= m.hours;
-                  const capped = !held && !reached && wouldExceedRecoverySeasonCap(heldSeasonPoints, points);
                   return (
                     <div
                       key={m.key}
                       className={cx(
                         'rounded-xl border p-3 flex items-center gap-3',
-                        held ? 'border-emerald-500/40 bg-emerald-500/10' : 'border-overlay-subtle'
+                        reached ? 'border-emerald-500/40 bg-emerald-500/10' : 'border-overlay-subtle'
                       )}
                     >
                       <div
                         className={cx(
                           'w-9 h-9 rounded-xl flex items-center justify-center shrink-0',
-                          held ? 'bg-emerald-500/20 text-success-text' : 'bg-overlay-subtle text-content-muted'
+                          reached ? 'bg-emerald-500/20 text-success-text' : 'bg-overlay-subtle text-content-muted'
                         )}
                       >
                         <Icon size={18} />
@@ -306,15 +359,11 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
                       <div className="min-w-0">
                         <p className="item-name text-sm text-content-secondary">{m.label}</p>
                         <p className="text-xs text-content-muted">
-                          {held ? (
-                            <span className="figure text-success-text">+{seasonAwards.get(m.key)} pts this season</span>
-                          ) : reached ? (
+                          {reached ? (
                             'Reached'
-                          ) : capped ? (
-                            'Season cap reached'
                           ) : (
                             <>
-                              +{points} pts in <span className="figure">{formatSpan(m.hours - elapsedHours)}</span>
+                              In <span className="figure">{formatSpan(m.hours - elapsedHours)}</span>
                             </>
                           )}
                         </p>
@@ -532,7 +581,7 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
         onClose={() => setRenameOpen(false)}
         dirty={renameForm.dirty}
         title="Rename tracker"
-        description="Your clock, milestones and points stay as they are."
+        description="Your clock, check-ins and points stay as they are."
         footer={
           <>
             <button type="button" onClick={() => renameForm.confirmDiscard(() => setRenameOpen(false))} className="btn-secondary">
@@ -598,7 +647,7 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
         isDeleting={isKeyLoading('delete_addiction_tracker')}
         title="Delete tracker?"
         itemName={tracker?.title}
-        description={`This ends your streak and deletes all ${cravingLogs.length} logged ${cravingLogs.length === 1 ? 'craving' : 'cravings'}. ${pointsLine.replace('your new streak', 'a new tracker')}`}
+        description={`This ends your streak and deletes all ${cravingLogs.length} logged ${cravingLogs.length === 1 ? 'craving' : 'cravings'}. ${pointsLine}`}
         confirmText="Delete tracker"
       />
 

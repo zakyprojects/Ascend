@@ -23,7 +23,6 @@ import {
   READING_POINTS,
   RECOVERY_POINTS,
   SKILLS_POINTS,
-  SOBRIETY_MILESTONE_POINTS,
   TIME_TRACKER_POINTS,
   WEEKLY_GOALS_POINTS,
   WEEKLY_REFLECTION_POINTS,
@@ -153,10 +152,9 @@ const guides: [string, HowItWorksGuide, (string | number)[]][] = [
     'recovery',
     recoveryGuide,
     [
-      `+${SOBRIETY_MILESTONE_POINTS['1w']} pts`,
-      `+${SOBRIETY_MILESTONE_POINTS['1m']} pts`,
-      `+${SOBRIETY_MILESTONE_POINTS['90d']} pts`,
+      `Clean today = +${RECOVERY_POINTS.perCheckin} pt`,
       `${RECOVERY_POINTS.seasonCap} pts`,
+      'points you already earned stay',
     ],
   ],
   [

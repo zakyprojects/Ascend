@@ -161,7 +161,7 @@ export function NotificationsSection({ store }: { store: AppStore }) {
         </p>
       )}
       <p className="border-t border-overlay-subtle pt-3 text-xs leading-relaxed text-content-muted">
-        Penalty notices, recovery milestones and partner invites and replies always show in your inbox. Penalty notices are never
+        Penalty notices and partner invites and replies always show in your inbox. Penalty notices are never
         pushed.
       </p>
     </SettingsCard>

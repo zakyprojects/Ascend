@@ -9,8 +9,8 @@ import {
   PFC_POINTS,
   PRESET_HABIT_POINTS,
   READING_POINTS,
+  RECOVERY_POINTS,
   SKILLS_POINTS,
-  SOBRIETY_MILESTONE_POINTS,
   TIME_TRACKER_POINTS,
   WEEKLY_GOALS_POINTS,
   WEEKLY_REFLECTION_POINTS,
@@ -43,7 +43,6 @@ const lessonPoints = range(LESSONS.map((l) => l.points));
 const timeHigh = TIME_TRACKER_POINTS.tiers.high;
 const timeMid = TIME_TRACKER_POINTS.tiers.medium;
 const topRank = TIERS[TIERS.length - 1];
-const milestones = SOBRIETY_MILESTONE_POINTS;
 
 const EARNS: { what: string; rule: string; href: string }[] = [
   {
@@ -93,7 +92,7 @@ const EARNS: { what: string; rule: string; href: string }[] = [
   },
   {
     what: 'Recovery',
-    rule: `${milestones['1w']}, ${milestones['1m']} and ${milestones['90d']} points at one week, one month and 90 days clean`,
+    rule: `${pts(RECOVERY_POINTS.perCheckin)} for each day you check in clean, up to ${RECOVERY_POINTS.seasonCap} a season`,
     href: featurePath('recovery'),
   },
   {
