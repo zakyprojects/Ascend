@@ -4,13 +4,13 @@ import { MIN_JOURNAL_CONTENT_LENGTH } from '@/lib/journalRules';
 
 /**
  * Journal. Rules from lib/pointsConfig.ts JOURNAL_POINTS (one entry a day, server-written),
- * lib/journalRules.ts MIN_JOURNAL_CONTENT_LENGTH, Journal.tsx (today only, mood chart).
+ * lib/journalRules.ts MIN_JOURNAL_CONTENT_LENGTH, Journal.tsx (write today only, edit any entry's mood and notes, mood chart).
  */
 export const journalGuide: HowItWorksGuide = {
   title: 'How the journal works',
   intro: 'One entry a day: a mood and a few lines.',
   steps: [
-    { title: 'Write today', text: 'Pick a mood and write what’s on your mind. You can write and edit only today’s entry.' },
+    { title: 'Write today', text: 'Pick a mood and write what’s on your mind. You can only write today’s entry. You can edit the mood and notes of any entry later; that never changes its day or its points.' },
     { title: 'Your mood', text: 'The mood chart shows how your days have been and how many days you wrote.' },
   ],
   notes: [
@@ -22,6 +22,6 @@ export const journalGuide: HowItWorksGuide = {
       Today’s entry with at least <Fig>{MIN_JOURNAL_CONTENT_LENGTH}</Fig> characters = <Gain>{pts(JOURNAL_POINTS.entryCompleted, true)}</Gain>,
       once a day.
     </>,
-    'Editing today’s entry earns nothing extra.',
+    'Editing an entry earns nothing extra.',
   ],
 };

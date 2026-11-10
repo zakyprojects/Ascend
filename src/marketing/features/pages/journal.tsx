@@ -59,7 +59,7 @@ export const journal: FeatureContent = {
             },
             {
               title: 'Save, and come back tomorrow',
-              text: `The first save of the day earns ${pts(award)}. You can edit today’s entry as often as you like; tomorrow it moves to your earlier entries.`,
+              text: `The first save of the day earns ${pts(award)}. You can edit today’s entry as often as you like; tomorrow it moves to your earlier entries, where you can still edit its mood and notes.`,
             },
           ]}
         />
@@ -91,7 +91,7 @@ export const journal: FeatureContent = {
         lead={
           <p>
             The top of the Journal page shows your journal streak, how many of the last 7 days you wrote, your total
-            entries and the points they earned. Next to today’s entry, the mood chart shows one square per day for the
+            entries and the journal points you earned this season. Next to today’s entry, the mood chart shows one square per day for the
             last 7 or 30 days, how many days you felt each mood, and an average from {lowMood.score} ({lowMood.label}) to {topMood.score}{' '}
             ({topMood.label}).
           </p>
@@ -120,6 +120,7 @@ export const journal: FeatureContent = {
           rows={[
             { what: 'Today’s entry saved', amount: `+${award}`, note: `At least ${MIN_JOURNAL_CONTENT_LENGTH} characters, once per day.` },
             { what: 'Editing today’s entry', amount: '0', tone: 'none', note: 'Change it as often as you like; it earns nothing extra.' },
+            { what: 'Editing an earlier entry', amount: '0', tone: 'none', note: 'Mood and notes only; its day and its points stay the same.' },
             { what: 'Deleting today’s entry', amount: `−${award}`, tone: 'loss', note: 'Today’s points come off, and the streak may drop.' },
             { what: 'Deleting an earlier entry', amount: 'Kept', tone: 'none', note: 'That day keeps its points, but leaves your streak and mood chart.' },
           ]}
@@ -127,8 +128,9 @@ export const journal: FeatureContent = {
         <Note title="Small, on purpose.">
           {pts(award)} a day is a small part of a season next to habits and workouts, so nobody pads a journal for the
           score. It still counts toward your rank (from {TIERS[0].name} to {TIERS[TIERS.length - 1].name}) and your league
-          totals, and a streak of entries keeps you honest about the days you skipped. Only today’s entry can be written
-          or edited, so a streak can’t be filled in afterwards.
+          totals, and a streak of entries keeps you honest about the days you skipped. Only today’s entry can be written,
+          so a streak can’t be filled in afterwards. You can still fix the mood or notes of an earlier entry; that never
+          changes its day or its points.
         </Note>
       </Block>
 
@@ -160,7 +162,7 @@ export const journal: FeatureContent = {
     caption: 'The Journal page on a computer, with the demo user Ali’s entries.',
   },
   facts: [
-    ['Entries', 'One per day, editable all day'],
+    ['Entries', 'One per day, editable later'],
     ['Points', `${pts(award)} for today’s entry`],
     ['Minimum', `${MIN_JOURNAL_CONTENT_LENGTH} characters`],
     ['Moods', list(moodNames)],
@@ -198,11 +200,11 @@ export const journal: FeatureContent = {
     },
     {
       q: 'Can I write more than one entry a day?',
-      a: `There is one entry per day. You can edit it as often as you like until the day ends, and it earns ${pts(award)} once.`,
+      a: `There is one entry per day. You can edit it as often as you like, and it earns ${pts(award)} once.`,
     },
     {
       q: 'Can I write an entry for yesterday?',
-      a: 'No. Only today’s entry can be written or changed, which keeps the journal streak honest.',
+      a: 'No. Only today’s entry can be written, which keeps the journal streak honest. You can still edit the mood and notes of an earlier entry later; its day and its points stay the same.',
     },
     {
       q: 'Is it free, and does it work on Windows or Mac?',
