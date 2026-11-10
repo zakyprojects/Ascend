@@ -87,7 +87,7 @@ function RankNumber({ rank }: { rank: number | null }) {
         rank !== null && rank <= 3 ? 'font-semibold text-content-primary' : 'text-content-muted'
       )}
     >
-      {rank ?? '–'}
+      {rank ?? '—'}
     </span>
   );
 }
@@ -219,7 +219,10 @@ export function Leagues({ store, onOpenAuth }: LeaguesProps) {
               value: hasPlace ? (
                 <>#<CountUp value={board.userRank} /></>
               ) : (
-                <span aria-label="No place yet">—</span>
+                <>
+                  <span aria-hidden="true">—</span>
+                  <span className="sr-only">No place yet</span>
+                </>
               ),
               hint: !loaded
                 ? failed
@@ -227,7 +230,8 @@ export function Leagues({ store, onOpenAuth }: LeaguesProps) {
                   : 'Loading the table…'
                 : hasPlace
                   ? `of ${memberCount} ${memberCount === 1 ? 'member' : 'members'}`
-                  : 'No points yet',
+                  : // 0 can also be points that penalties took back down, so never "No points yet".
+                    'Earn points to get a place',
             }}
             stats={[
               {
@@ -246,8 +250,8 @@ export function Leagues({ store, onOpenAuth }: LeaguesProps) {
 
         {activeLeague === 'ninetyDay' && (
           <Disclosure title="Why 90 days" icon={Brain}>
-            A new habit usually takes about 66–90 days of steady repetition to become automatic. For some people it
-            can take as little as 18 days, for others up to 254. This league rewards that long-term consistency.
+            In one well-known study (Lally, 2010), a new daily habit took a median of 66 days to feel automatic,
+            anywhere from 18 to 254 days. A 90-day season gives a new habit time to settle in.
           </Disclosure>
         )}
 
@@ -388,7 +392,7 @@ export function Leagues({ store, onOpenAuth }: LeaguesProps) {
         onClose={() => setOpenArchiveId(null)}
         title={
           openArchive
-            ? `${LEAGUE_CONFIG[openArchive.type].name}: ${isProvisional(openArchive) ? 'standings' : 'final standings'}`
+            ? `${LEAGUE_TAB_LABEL[openArchive.type]} league: ${isProvisional(openArchive) ? 'standings' : 'final standings'}`
             : ''
         }
         maxWidth="max-w-lg"

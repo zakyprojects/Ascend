@@ -94,7 +94,8 @@ export function CompetitorProfileModal({
                 <>ID: #{competitor.uid}</>
               ) : (
                 <>
-                  ID: <span aria-label="not available">—</span>
+                  ID: <span aria-hidden="true">—</span>
+                  <span className="sr-only">not available</span>
                 </>
               )}
             </div>
