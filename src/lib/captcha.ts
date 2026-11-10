@@ -23,7 +23,8 @@ export const CAPTCHA_SLOW_MESSAGE =
   'Your internet is too slow or dropped, so the security check couldn’t finish. Try again on a better connection.';
 export const CAPTCHA_BLOCKED_MESSAGE =
   'Your browser couldn’t pass the security check. Turn off any VPN or ad blocker, or try another browser.';
-export const CAPTCHA_CONFIG_MESSAGE = 'Sign-in is having a problem on our side. Try again in a little while.';
+// Neutral wording: the same check guards sign-in and the public /contact form (no sign-in there).
+export const CAPTCHA_CONFIG_MESSAGE = 'The security check is having a problem on our side. Try again in a little while.';
 
 /**
  * Why one solve failed: `network` (script or iframe never loaded, or the check ran out of time),
