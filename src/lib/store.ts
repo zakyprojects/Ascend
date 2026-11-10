@@ -1407,6 +1407,18 @@ function applyReadingAwardsInternal(
 }
 
 /** Local midnight of a day key, in ms (the start of "today" for the earlier-day rule). */
+/**
+ * Whether a block's done tick can change now: any block of today, or until 02:00 (the grace
+ * window) yesterday's last block when it isn't skipped. Past days are read-only otherwise.
+ */
+function canToggleTimeBlock(blocks: TimeTrackerBlock[], dateKey: string, blockId: string): boolean {
+  const inGrace = dateKey === timeTrackerGraceDay(trustedNow());
+  if (dateKey !== todayKey() && !inGrace) return false;
+  const target = blocks.find((b) => b.id === blockId);
+  if (!target) return false;
+  return !inGrace || (!target.skipped && lastBlockOfDay(blocks)?.id === blockId);
+}
+
 const localDayStartMs = (day: string): number => new Date(`${day}T00:00:00`).getTime();
 
 /** The week's reflection award row is live and was earned on today's local day. */
@@ -9676,17 +9688,16 @@ export function useAppState() {
       .sort((a, b) => timeStringToMinutes(a.startTime) - timeStringToMinutes(b.startTime));
   };
 
+  /** Returns false when the tick can't change now (a past day, or after the grace window), so the caller shows no "Done". */
   const toggleDailyTimeBlockCompleted = useCallback(
-    (dateKey: string, blockId: string, passedTimeStr?: string) => {
+    (dateKey: string, blockId: string, passedTimeStr?: string): boolean => {
+      const blocksOf = (s: AppState) => (s.timeTracker || DEFAULT_TIME_TRACKER_STATE).dailyLogs?.[dateKey] || [];
+      if (!canToggleTimeBlock(blocksOf(get()), dateKey, blockId)) return false;
       setState((prev) => {
-        // Until 02:00, yesterday's last block can still be ticked or unticked (the grace window).
-        const inGrace = dateKey === timeTrackerGraceDay(trustedNow());
-        if (dateKey !== todayKey() && !inGrace) return prev;
+        if (!canToggleTimeBlock(blocksOf(prev), dateKey, blockId)) return prev;
         const prevTT = prev.timeTracker || DEFAULT_TIME_TRACKER_STATE;
         const prevDailyBlocks = prevTT.dailyLogs?.[dateKey] || [];
-        const target = prevDailyBlocks.find((b) => b.id === blockId);
-        if (!target) return prev;
-        if (inGrace && (target.skipped || lastBlockOfDay(prevDailyBlocks)?.id !== blockId)) return prev;
+        const target = prevDailyBlocks.find((b) => b.id === blockId)!;
 
         const isCurrentlyCompleted = target.completed;
 
@@ -9746,6 +9757,7 @@ export function useAppState() {
           ...pointsUpdate,
         };
       });
+      return true;
     },
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
     // eslint-disable-next-line react-hooks/exhaustive-deps

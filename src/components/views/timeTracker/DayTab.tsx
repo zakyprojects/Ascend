@@ -114,9 +114,10 @@ export function DayTab({
 
   const toggleDone = (block: TimeTrackerBlock) =>
     run(() => {
-      store.toggleDailyTimeBlockCompleted(selectedDateKey, block.id);
-      if (!block.completed) actionFeedback('tick');
-      if (!block.completed) showSuccessToast('Done', blockName(block, activityMap.get(block.activityId)));
+      // A refused tick (the day closed or the grace window ended since this render) shows no "Done".
+      const changed = store.toggleDailyTimeBlockCompleted(selectedDateKey, block.id);
+      if (changed && !block.completed) actionFeedback('tick');
+      if (changed && !block.completed) showSuccessToast('Done', blockName(block, activityMap.get(block.activityId)));
     }, "Couldn't update block");
 
   const skip = (block: TimeTrackerBlock) =>
