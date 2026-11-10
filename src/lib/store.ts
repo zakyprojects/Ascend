@@ -1969,6 +1969,20 @@ export function useAppState() {
   const applySignedOutRef = useRef<(() => void) | null>(null);
   const stateRef = useRef<AppState>(state);
   stateRef.current = state;
+  // Work that reads what a setState updater decided runs here, after the commit that ran the
+  // updater: React 18 runs most updaters during the next render, not inside the setState call, so
+  // a value assigned in an updater is still empty on the next line. Declared before the other
+  // effects so queued work runs first in the same commit.
+  const afterCommitQueue = useRef<Array<() => void>>([]);
+  const afterCommit = useCallback((fn: () => void) => {
+    afterCommitQueue.current.push(fn);
+  }, []);
+  useEffect(() => {
+    if (afterCommitQueue.current.length === 0) return;
+    const queued = afterCommitQueue.current;
+    afterCommitQueue.current = [];
+    for (const fn of queued) fn();
+  });
 
   /**
    * The app shows an account whose sign-in this tab no longer holds (storage cleared outside the
@@ -2993,9 +3007,12 @@ export function useAppState() {
                   };
                   return resultingState;
                 });
-                if (!hasStateData(resultingState)) {
-                  canPersistLocally.current = true;
-                }
+                afterCommit(() => {
+                  if (myGeneration !== authGenerationRef.current) return;
+                  if (!hasStateData(resultingState)) {
+                    canPersistLocally.current = true;
+                  }
+                });
               }
             }
           } finally {
@@ -4081,7 +4098,7 @@ export function useAppState() {
   const toggleHabit = useCallback(
     (habitId: string) => {
       if (inFlightHabitToggles.current.has(habitId)) {
-        return false;
+        return;
       }
       inFlightHabitToggles.current.add(habitId);
 
@@ -4160,11 +4177,10 @@ export function useAppState() {
           { immediate: true }
         );
 
-        sendLinkedPactTicks(pactTicks, 'Your habit is saved.');
+        afterCommit(() => sendLinkedPactTicks(pactTicks, 'Your habit is saved.'));
       } finally {
         inFlightHabitToggles.current.delete(habitId);
       }
-      return completed;
     },
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -4732,7 +4748,7 @@ export function useAppState() {
     },
     { immediate: true }
   );
-    sendLinkedPactTicks(pactTicks, 'Your reading is saved.');
+    afterCommit(() => sendLinkedPactTicks(pactTicks, 'Your reading is saved.'));
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -4854,7 +4870,7 @@ export function useAppState() {
       },
       { immediate: true }
     );
-    sendLinkedPactTicks(pactTicks, 'Your reading is saved.');
+    afterCommit(() => sendLinkedPactTicks(pactTicks, 'Your reading is saved.'));
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -4964,7 +4980,7 @@ export function useAppState() {
       { immediate: true, actionLabel: 'Book deletion', entityId: bookId }
     )
   );
-  sendLinkedPactTicks(pactTicks, 'Your reading is saved.');
+  afterCommit(() => sendLinkedPactTicks(pactTicks, 'Your reading is saved.'));
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
     // eslint-disable-next-line react-hooks/exhaustive-deps
 }, []);
@@ -5631,7 +5647,7 @@ export function useAppState() {
         sharedChallenges: linked.challenges,
       };
     });
-    sendLinkedPactTicks(pactTicks, 'Your log is saved.');
+    afterCommit(() => sendLinkedPactTicks(pactTicks, 'Your log is saved.'));
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -5659,7 +5675,7 @@ export function useAppState() {
         sharedChallenges: linked.challenges,
       };
     });
-    sendLinkedPactTicks(pactTicks, 'Your log is saved.');
+    afterCommit(() => sendLinkedPactTicks(pactTicks, 'Your log is saved.'));
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -7358,12 +7374,13 @@ export function useAppState() {
         };
       });
 
-      if (newPlan) {
-        const planToSync = newPlan as ImprovementPlan;
-        syncBroadcaster.broadcast('PLAN_CREATED', planToSync);
-        handlePlanSyncExecution(planToSync);
-      }
-      return newPlan;
+      afterCommit(() => {
+        if (newPlan) {
+          const planToSync = newPlan as ImprovementPlan;
+          syncBroadcaster.broadcast('PLAN_CREATED', planToSync);
+          handlePlanSyncExecution(planToSync);
+        }
+      });
     },
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -7388,10 +7405,12 @@ export function useAppState() {
       return { ...prev, improvementPlans: updatedPlans };
     });
 
-    if (updatedPlan) {
-      syncBroadcaster.broadcast('PLAN_UPDATED', updatedPlan);
-      handlePlanSyncExecution(updatedPlan);
-    }
+    afterCommit(() => {
+      if (updatedPlan) {
+        syncBroadcaster.broadcast('PLAN_UPDATED', updatedPlan);
+        handlePlanSyncExecution(updatedPlan);
+      }
+    });
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -7415,10 +7434,12 @@ export function useAppState() {
       return { ...prev, improvementPlans: updatedPlans };
     });
 
-    if (updatedPlan) {
-      syncBroadcaster.broadcast('PLAN_UPDATED', updatedPlan);
-      handlePlanSyncExecution(updatedPlan);
-    }
+    afterCommit(() => {
+      if (updatedPlan) {
+        syncBroadcaster.broadcast('PLAN_UPDATED', updatedPlan);
+        handlePlanSyncExecution(updatedPlan);
+      }
+    });
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -7456,10 +7477,12 @@ export function useAppState() {
       return { ...prev, improvementPlans: updatedPlans };
     });
 
-    if (updatedPlan) {
-      syncBroadcaster.broadcast('PLAN_UPDATED', updatedPlan);
-      handlePlanSyncExecution(updatedPlan);
-    }
+    afterCommit(() => {
+      if (updatedPlan) {
+        syncBroadcaster.broadcast('PLAN_UPDATED', updatedPlan);
+        handlePlanSyncExecution(updatedPlan);
+      }
+    });
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -7493,10 +7516,12 @@ export function useAppState() {
       return { ...prev, improvementPlans: updatedPlans };
     });
 
-    if (updatedPlan) {
-      syncBroadcaster.broadcast('PLAN_UPDATED', updatedPlan);
-      handlePlanSyncExecution(updatedPlan);
-    }
+    afterCommit(() => {
+      if (updatedPlan) {
+        syncBroadcaster.broadcast('PLAN_UPDATED', updatedPlan);
+        handlePlanSyncExecution(updatedPlan);
+      }
+    });
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -7520,9 +7545,11 @@ export function useAppState() {
       return { ...prev, followedPlans: updatedFollows };
     });
 
-    if (updatedFollow) {
-      handleFollowSyncExecution(updatedFollow);
-    }
+    afterCommit(() => {
+      if (updatedFollow) {
+        handleFollowSyncExecution(updatedFollow);
+      }
+    });
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -7560,10 +7587,12 @@ export function useAppState() {
       return { ...prev, followedPlans: updatedFollows };
     });
 
-    if (updatedFollow) {
-      const follow = updatedFollow as UserPlanFollow;
-      handleFollowSyncExecution(follow);
-    }
+    afterCommit(() => {
+      if (updatedFollow) {
+        const follow = updatedFollow as UserPlanFollow;
+        handleFollowSyncExecution(follow);
+      }
+    });
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -7597,9 +7626,11 @@ export function useAppState() {
       return { ...prev, followedPlans: updatedFollows };
     });
 
-    if (updatedFollow) {
-      handleFollowSyncExecution(updatedFollow);
-    }
+    afterCommit(() => {
+      if (updatedFollow) {
+        handleFollowSyncExecution(updatedFollow);
+      }
+    });
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -7628,10 +7659,12 @@ export function useAppState() {
       return { ...prev, improvementPlans: updatedPlans };
     });
 
-    if (updatedPlan) {
-      syncBroadcaster.broadcast('PLAN_UPDATED', updatedPlan);
-      handlePlanSyncExecution(updatedPlan);
-    }
+    afterCommit(() => {
+      if (updatedPlan) {
+        syncBroadcaster.broadcast('PLAN_UPDATED', updatedPlan);
+        handlePlanSyncExecution(updatedPlan);
+      }
+    });
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -7674,11 +7707,13 @@ export function useAppState() {
       return { ...prev, improvementPlans: updatedPlans };
     });
 
-    if (updatedPlan) {
-      const p = updatedPlan as ImprovementPlan;
-      syncBroadcaster.broadcast('PLAN_UPDATED', p);
-      handlePlanSyncExecution(p);
-    }
+    afterCommit(() => {
+      if (updatedPlan) {
+        const p = updatedPlan as ImprovementPlan;
+        syncBroadcaster.broadcast('PLAN_UPDATED', p);
+        handlePlanSyncExecution(p);
+      }
+    });
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -7709,11 +7744,13 @@ export function useAppState() {
       { immediate: true }
     );
 
-    if (updatedPlan) {
-      const planToSync = updatedPlan as ImprovementPlan;
-      syncBroadcaster.broadcast('PLAN_UPDATED', planToSync);
-      handlePlanSyncExecution(planToSync);
-    }
+    afterCommit(() => {
+      if (updatedPlan) {
+        const planToSync = updatedPlan as ImprovementPlan;
+        syncBroadcaster.broadcast('PLAN_UPDATED', planToSync);
+        handlePlanSyncExecution(planToSync);
+      }
+    });
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -7748,11 +7785,13 @@ export function useAppState() {
       return { ...prev, improvementPlans: updatedPlans };
     });
 
-    if (updatedPlan) {
-      const planToSync = updatedPlan as ImprovementPlan;
-      syncBroadcaster.broadcast('PLAN_UPDATED', planToSync);
-      handlePlanSyncExecution(planToSync);
-    }
+    afterCommit(() => {
+      if (updatedPlan) {
+        const planToSync = updatedPlan as ImprovementPlan;
+        syncBroadcaster.broadcast('PLAN_UPDATED', planToSync);
+        handlePlanSyncExecution(planToSync);
+      }
+    });
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -7782,9 +7821,11 @@ export function useAppState() {
       return { ...prev, followedPlans: updatedFollows };
     });
 
-    if (updatedFollow) {
-      handleFollowSyncExecution(updatedFollow);
-    }
+    afterCommit(() => {
+      if (updatedFollow) {
+        handleFollowSyncExecution(updatedFollow);
+      }
+    });
     // False positive: setState is stable (useCallback with empty deps array)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -7820,11 +7861,13 @@ export function useAppState() {
       return { ...prev, improvementPlans: updatedPlans };
     });
 
-    if (updatedPlan) {
-      syncBroadcaster.broadcast('PLAN_UPDATED', updatedPlan);
-      // An older save still queued would carry the old setting; this one goes after it.
-      if (!reachedTable || isUnconfirmed) handlePlanSyncExecution(updatedPlan);
-    }
+    afterCommit(() => {
+      if (updatedPlan) {
+        syncBroadcaster.broadcast('PLAN_UPDATED', updatedPlan);
+        // An older save still queued would carry the old setting; this one goes after it.
+        if (!reachedTable || isUnconfirmed) handlePlanSyncExecution(updatedPlan);
+      }
+    });
     // False positive: setState and stateRef are stable
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -7946,9 +7989,11 @@ export function useAppState() {
       return nextState;
     });
 
-    if (updatedFollow) {
-      handleFollowSyncExecution(updatedFollow);
-    }
+    afterCommit(() => {
+      if (updatedFollow) {
+        handleFollowSyncExecution(updatedFollow);
+      }
+    });
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -7974,9 +8019,11 @@ export function useAppState() {
       return { ...prev, followedPlans: updatedFollows };
     });
 
-    if (updatedFollow) {
-      handleFollowSyncExecution(updatedFollow);
-    }
+    afterCommit(() => {
+      if (updatedFollow) {
+        handleFollowSyncExecution(updatedFollow);
+      }
+    });
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -8019,10 +8066,12 @@ export function useAppState() {
       return { ...prev, followedPlans: updatedFollows };
     });
 
-    if (updatedFollow) {
-      const f = updatedFollow as UserPlanFollow;
-      handleFollowSyncExecution(f);
-    }
+    afterCommit(() => {
+      if (updatedFollow) {
+        const f = updatedFollow as UserPlanFollow;
+        handleFollowSyncExecution(f);
+      }
+    });
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -8051,9 +8100,11 @@ export function useAppState() {
       return { ...prev, followedPlans: updatedFollows };
     });
 
-    if (updatedFollow) {
-      handleFollowSyncExecution(updatedFollow);
-    }
+    afterCommit(() => {
+      if (updatedFollow) {
+        handleFollowSyncExecution(updatedFollow);
+      }
+    });
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -8083,9 +8134,11 @@ export function useAppState() {
       { immediate: true }
     );
 
-    if (updatedFollow) {
-      handleFollowSyncExecution(updatedFollow);
-    }
+    afterCommit(() => {
+      if (updatedFollow) {
+        handleFollowSyncExecution(updatedFollow);
+      }
+    });
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -8147,11 +8200,13 @@ export function useAppState() {
       return nextState;
     });
 
-    if (updatedPlan) {
-      const planToSync = updatedPlan as ImprovementPlan;
-      syncBroadcaster.broadcast('PLAN_UPDATED', planToSync);
-      handlePlanSyncExecution(planToSync);
-    }
+    afterCommit(() => {
+      if (updatedPlan) {
+        const planToSync = updatedPlan as ImprovementPlan;
+        syncBroadcaster.broadcast('PLAN_UPDATED', planToSync);
+        handlePlanSyncExecution(planToSync);
+      }
+    });
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
