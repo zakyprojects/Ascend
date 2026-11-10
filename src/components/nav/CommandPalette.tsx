@@ -49,7 +49,8 @@ interface CommandPaletteProps {
 
 /**
  * Ctrl/Cmd+K opens a "go to page" search; "g" + a letter jumps straight to a common page.
- * Shortcuts never fire while the user types in a field or while another dialog is open.
+ * Shortcuts never fire while the user types in a field, while another dialog is open, or on a key a
+ * focused control already used (preventDefault, such as the dropdown's typeahead).
  */
 export function CommandPalette({ open, onOpenChange, currentView, onViewChange }: CommandPaletteProps) {
   const [query, setQuery] = useState('');
@@ -72,7 +73,8 @@ export function CommandPalette({ open, onOpenChange, currentView, onViewChange }
         setOpen(!isOpen);
         return;
       }
-      if (event.metaKey || event.ctrlKey || event.altKey || isTypingTarget(event.target) || anyDialogOpen()) {
+      // A key a focused control already used (the dropdown's typeahead) is never a shortcut.
+      if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey || isTypingTarget(event.target) || anyDialogOpen()) {
         pendingG = 0;
         return;
       }

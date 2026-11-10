@@ -13,7 +13,8 @@ function isTyping(target: EventTarget | null): boolean {
 /**
  * Desktop keyboard navigation: 1–9 open the pages of the shown zone. "G then a letter" belongs to
  * the command palette alone (one owner, so two handlers never fight over the same keystroke).
- * Silent while typing, with a modifier held, or while a modal is open.
+ * Silent while typing, with a modifier held, while a modal is open, or when a focused control has
+ * already used the key (the custom dropdown's typeahead calls preventDefault on printable keys).
  */
 export function useNavShortcuts(handlers: NavShortcutHandlers) {
   const handlersRef = useRef(handlers);
@@ -24,6 +25,10 @@ export function useNavShortcuts(handlers: NavShortcutHandlers) {
     const onKeyDown = (event: KeyboardEvent) => {
       // Browser autofill fires keydown events without a key; they are never a shortcut.
       if (typeof event.key !== 'string') return;
+      if (event.defaultPrevented) {
+        goPressedAt = 0;
+        return;
+      }
       if (event.metaKey || event.ctrlKey || event.altKey || event.repeat || isTyping(event.target)) return;
       if (document.querySelector('[aria-modal="true"]')) return;
       if (!window.matchMedia('(min-width: 1024px)').matches) return;
