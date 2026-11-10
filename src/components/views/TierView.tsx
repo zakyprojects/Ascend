@@ -10,8 +10,10 @@ import { TIER_ICONS } from '@/components/ui/TierBadge';
 import { LeagueCountdown } from '@/components/ui/LeagueCountdown';
 import { getLocalResetDetail, sortPointsNewestFirst } from '@/lib/leagues';
 import { getSeasonNumber, getSeasonStart, leagueNow } from '@/lib/leagueTime';
+import { leaguePeriodKey } from '@/lib/leagueStandingsRefresh';
 import { formatDateKeyHuman, getNow, isTodayLocal, isYesterdayLocal, todayKey } from '@/lib/dates';
 import { entryDay } from '@/lib/weeklyActivity';
+import { pointsReasonText } from '@/lib/pointsReasonText';
 import { useLocalDayKey } from '@/lib/useLocalDayKey';
 
 /** Entries the Recent points list shows (newest first). */
@@ -51,7 +53,11 @@ export function TierView({ store }: { store: AppStore }) {
   const leagueClock = leagueNow();
   const seasonStart = getSeasonStart(leagueClock);
   const personalNow = getNow();
-  const seasonPoints = store.getLeagueData('ninetyDay').userPoints;
+  // The board rebuilds every member: once per state change or new period, not on every render.
+  const { getLeagueData } = store;
+  const periodKey = leaguePeriodKey(leagueClock);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const seasonPoints = useMemo(() => getLeagueData('ninetyDay').userPoints, [getLeagueData, periodKey]);
   const currentTier = getCurrentTier(seasonPoints);
   const nextTier = getNextTier(seasonPoints);
   const progress = getProgressToNextTier(seasonPoints);
@@ -234,7 +240,7 @@ export function TierView({ store }: { store: AppStore }) {
                         </span>
                       </span>
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm text-content-secondary">{entry.reason}</p>
+                        <p className="truncate text-sm text-content-secondary">{pointsReasonText(entry)}</p>
                         <p className="text-xs text-content-muted">{formatEntryTime(entry, personalNow, seasonStart)}</p>
                       </div>
                     </li>
