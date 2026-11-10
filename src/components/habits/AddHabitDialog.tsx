@@ -110,7 +110,7 @@ export function AddHabitDialog({ open, onClose, habits, onAddPreset, onAddCustom
                 Preset habits earn the points shown, daily custom habits{' '}
                 <span className="figure">{ptsText(CUSTOM_HABIT_POINTS, true)}</span>, up to{' '}
                 <span className="figure">{ptsText(PRESET_HABIT_POINTS.dailyCap)}</span> a day for all of them together. The ones
-                you tick first count first.
+                you tick first count first. A library habit you leave unticked costs its points, from the day you add it.
               </p>
               {PRESET_CATEGORIES.map((category) => (
                 <section key={category.name} aria-labelledby={`preset-cat-${category.name}`}>

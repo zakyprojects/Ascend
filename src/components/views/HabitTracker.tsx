@@ -165,21 +165,16 @@ export function HabitTracker({ store }: { store: AppStore }) {
                   ? 'All clear for today.'
                   : undefined,
           }}
-          stats={[
-            { label: 'Habits', value: <CountUp value={habits.length} /> },
-            ...(hasDailyHabits
-              ? [{ label: 'Last 7 days', value: <><CountUp value={activeDays} />/{WEEK_DAYS}</>, hint: 'active days' }]
-              : []),
-          ]}
+          stats={[{ label: 'Habits', value: <CountUp value={habits.length} /> }]}
           side={<CapMeterConnected state={store.state} capId="presetHabits" bare onExplain={guide.showPoints} />}
         />
       </Reveal>
 
+      {/* The habit list is the page's daily action, so it is `lead`: first on phones, before the 7-day card. */}
       <PageColumns
         stickyAside
         aside={hasDailyHabits && <WeekConsistencyCard days={weekDays} activeDays={activeDays} />}
-      >
-        {habits.length === 0 ? (
+        lead={habits.length === 0 ? (
           <EmptyState
             icon={ListChecks}
             title="No habits yet"
@@ -227,7 +222,7 @@ export function HabitTracker({ store }: { store: AppStore }) {
             )}
           </div>
         )}
-      </PageColumns>
+      />
 
       <AddHabitDialog
         open={showAdd}
