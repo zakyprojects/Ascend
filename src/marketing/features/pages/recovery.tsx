@@ -254,7 +254,7 @@ export const recovery: FeatureContent = {
     },
     {
       q: 'Is AscendDay an addiction treatment?',
-      a: `No. It is a self-help tool, not treatment, therapy or medical advice. In Pakistan, call Rescue ${RESCUE_PHONE} in an emergency, or Umang (${UMANG_PHONE}), a free mental health helpline. In the United States the SAMHSA National Helpline (${SAMHSA_PHONE}) is free and open 24/7. Anywhere else, contact a qualified professional or your local emergency number.`,
+      a: `No. It is a self-help tool, not treatment, therapy or medical advice. In Pakistan, call Rescue ${RESCUE_PHONE} in an emergency, or Umang (${UMANG_PHONE}), a mental health helpline. In the United States the SAMHSA National Helpline (${SAMHSA_PHONE}) is free and open 24/7. Anywhere else, contact a qualified professional or your local emergency number.`,
     },
   ],
   related: ['bad-habits', 'journal', 'brain-lessons', 'habits'],

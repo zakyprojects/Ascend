@@ -15,7 +15,7 @@ export interface CrisisLine {
 
 export const CRISIS_LINES: readonly CrisisLine[] = [
   { place: 'Pakistan', name: 'Rescue', number: '1122', tel: '1122', note: 'emergency' },
-  { place: 'Pakistan', name: 'Umang', number: '0311 7786264', tel: '+923117786264', note: 'free mental health helpline' },
+  { place: 'Pakistan', name: 'Umang', number: '0311 7786264', tel: '+923117786264', note: 'mental health helpline' },
   { place: 'US', name: 'SAMHSA Helpline', number: '1-800-662-4357', tel: '+18006624357' },
 ];
 
