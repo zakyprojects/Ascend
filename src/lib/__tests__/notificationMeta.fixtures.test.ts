@@ -103,6 +103,33 @@ function runFixtures() {
   const groupIndex = entries.findIndex((e) => e.kind === 'group');
   assert(groupIndex === 9, 'group sits where its newest row was');
 
+  // 20261110150000 (GLB-L5): the new server texts (the push words) give the app the same view as
+  // the old ones: the challenge name still comes from the straight-quoted part of the message.
+  const pairs: Array<[AppNotification, AppNotification]> = [
+    [
+      n({ type: 'partner_pledge_done', actorUsername: 'ali', title: 'Partner Completed Challenge Today', message: 'ali completed today\'s target for "Run 5k"! Don\'t break your joint streak!' }),
+      n({ type: 'partner_pledge_done', actorUsername: 'ali', title: "ali did today's part", message: 'ali finished today\'s target for "Run 5k". Your turn.' }),
+    ],
+    [
+      n({ type: 'challenge_completed', actorUsername: 'ali', title: 'Shared Challenge Completed! 🎉', message: 'Congratulations! You and ali completed the "Run 5k" challenge!' }),
+      n({ type: 'challenge_completed', actorUsername: 'ali', title: 'Challenge complete', message: 'You and ali finished "Run 5k".' }),
+    ],
+    [
+      n({ type: 'challenge_created', actorUsername: 'ali', title: 'New challenge', message: 'ali started the challenge "Run 5k" with you.' }),
+      n({ type: 'challenge_created', actorUsername: 'ali', title: 'New challenge', message: 'ali started "Run 5k" with you.' }),
+    ],
+    [
+      n({ type: 'daily_reminder', actorUsername: 'Ascend System', title: 'Evening Tracker Check-in 🌙', message: "Don't break your momentum!", payload: { missing: ['journal entry'] } }),
+      n({ type: 'daily_reminder', actorUsername: 'Ascend System', title: 'Evening check-in', message: 'Still open today: journal entry.', payload: { missing: ['journal entry'] } }),
+    ],
+  ];
+  for (const [before, after] of pairs) {
+    const a = describeNotification(before);
+    const b = describeNotification(after);
+    assert(a.title === b.title && a.message === b.message, `${before.type}: same app text after the push-text change (${b.message})`);
+  }
+  assert(describeNotification(pairs[0][1]).message.includes('“Run 5k”'), 'pledge: challenge name read from the new message');
+
   console.log('\nAll notificationMeta fixture assertions PASSED successfully!');
 }
 
