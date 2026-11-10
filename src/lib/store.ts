@@ -172,13 +172,9 @@ import { toSeasonHistory } from './seasonArchive';
 import { addPointsInternal } from './pointsLedger';
 import { clockReady, trustedNow, trustedNowMs } from './clock';
 import { editedPlanStructure, type PlanStructureEdits } from './planStructure';
-export { addPointsInternal };
 import {
-  PresetHabitCapItem,
-  recomputeTodayPresetPoints,
   WEEKLY_REFLECTION_POINTS,
   READING_POINTS,
-  WEEKLY_GOALS_POINTS,
   calculateWeeklyGoalsPoints,
   calculateWeeklyGoalsPointsBefore,
   POINTS_V2_START_DATE_KEY,
@@ -195,8 +191,6 @@ import {
   isBadHabitDayEntry,
   isRetiredAppBadHabitAward,
 } from './badHabitAwards';
-export { recomputeTodayPresetPoints, calculateWeeklyGoalsPoints, WEEKLY_GOALS_POINTS };
-export type { PresetHabitCapItem };
 import { buildMemberStats } from './memberStats';
 import { hasStateData, isGuardedKey } from './dataWeight';
 import {
@@ -3684,17 +3678,6 @@ export function useAppState() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const setAuthSessionState = useCallback((user: UserProfile | null, newState: AppState) => {
-    setState(
-      reconcileWeeklyGoalsPointsForAllWeeks(
-        reconcileLinkedWeeklyGoals(sanitizeLoadedState(newState, user), getNow()),
-        getNow()
-      )
-    );
-    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   // `accountDeleted`: the account is already gone on the server, so unsaved state is
   // discarded (a flush would try to recreate the user's rows) and only the local session is cleared.
   const logout = useCallback(async ({ accountDeleted = false }: { accountDeleted?: boolean } = {}) => {
@@ -3942,32 +3925,6 @@ export function useAppState() {
       { immediate: true }
     );
     return habit;
-    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const updateHabit = useCallback((habitId: string, updates: Partial<Habit>) => {
-    setState(
-      (prev) => {
-        const habit = prev.habits.find((h) => h.id === habitId);
-        if (!habit) return prev;
-
-
-        return {
-          ...prev,
-          habits: prev.habits.map((h) =>
-            h.id === habitId
-              ? {
-                  ...h,
-                  ...updates,
-                  updatedAt: trustedNow().toISOString(),
-                }
-              : h
-          ),
-        };
-      },
-      { immediate: true }
-    );
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -4534,88 +4491,6 @@ export function useAppState() {
   }, []);
 
   // --- MODULE 2: UNIFIED READING HUB & LIBRARY ACTIONS ---
-  const addBook = useCallback(
-    (
-      title: string,
-      author: string,
-      totalPages: number,
-      unit: 'pages' | 'chapters' = 'pages',
-      targetFinishDate?: string,
-      category?: BookCategory | string,
-      description?: string
-    ) => {
-      const now = trustedNow().toISOString();
-      const id = `custom-book-${trustedNowMs()}-${Math.random().toString(36).substring(2, 9)}`;
-      const numPages = Math.max(1, totalPages || 200);
-
-      const userBook: UserBook = {
-        id,
-        title: title.trim(),
-        author: author.trim() || 'Unknown Author',
-        description: description?.trim(),
-        category,
-        isCurated: false,
-        isCustom: true,
-        pointsReward: 0,
-        pointsAwarded: 0,
-        status: 'reading',
-        totalAmount: numPages,
-        totalPages: numPages,
-        currentAmount: 0,
-        currentPage: 0,
-        unit,
-        targetFinishDate: targetFinishDate?.trim() || undefined,
-        addedAt: now,
-        updatedAt: now,
-        dateStarted: now,
-        startedAt: now,
-        isFinished: false,
-      };
-
-      const trackerBook: Book = {
-        id,
-        title: title.trim(),
-        author: author.trim() || 'Unknown Author',
-        totalPages: numPages,
-        unit,
-        currentPage: 0,
-        isFinished: false,
-        targetFinishDate: targetFinishDate?.trim() || undefined,
-        createdAt: now,
-      };
-
-      setState((prev) => {
-        return {
-          ...prev,
-          libraryBooks: [userBook, ...prev.libraryBooks.filter((lb) => lb.id !== id)],
-          books: [],
-        };
-      });
-
-      return trackerBook;
-    },
-    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    []
-  );
-
-  const updateBookTargetDate = useCallback((bookId: string, targetFinishDate?: string) => {
-    const formatted = targetFinishDate?.trim() || undefined;
-    setState((prev) => {
-      return {
-        ...prev,
-        libraryBooks: prev.libraryBooks.map((lb) =>
-          lb.id === bookId || lb.linkedBookId === bookId
-            ? { ...lb, targetFinishDate: formatted, updatedAt: trustedNow().toISOString() }
-            : lb
-        ),
-        books: [],
-      };
-    });
-    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   const updateReadingProgress = useCallback((bookId: string, pagesDelta: number, newCurrentPage: number) => {
     const date = todayKey();
     const nowIso = trustedNow().toISOString();
@@ -5247,18 +5122,6 @@ export function useAppState() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const removeBookFromLibrary = useCallback((userBookId: string) => {
-    deleteBook(userBookId);
-  }, [deleteBook]);
-
-  const getUserBookStatus = useCallback(
-    (curatedBookId: string): UserBookStatus | null => {
-      const found = state.libraryBooks.find((lb) => lb.curatedBookId === curatedBookId);
-      return found ? found.status : null;
-    },
-    [state.libraryBooks]
-  );
-
   // --- MODULE 3: SKILL LEARNING TRACKER ACTIONS ---
   const addSkill = useCallback((name: string, category?: string, manualLevel?: SkillLevel) => {
     const skill: Skill = {
@@ -5324,17 +5187,6 @@ export function useAppState() {
         skillLogs: awards.skillLogs,
         ...awards.points,
       });
-    });
-    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const updateSkillLevel = useCallback((skillId: string, manualLevel: SkillLevel) => {
-    setState((prev) => {
-      return {
-        ...prev,
-        skills: prev.skills.map((s) => (s.id === skillId ? { ...s, manualLevel, updatedAt: trustedNow().toISOString() } : s)),
-      };
     });
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -5705,24 +5557,6 @@ export function useAppState() {
         { immediate: true, actionLabel: 'Bad habit deletion', entityId: badHabitId }
       )
     );
-    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const updateBadHabit = useCallback((badHabitId: string, updates: Partial<BadHabit>) => {
-    setState((prev) => {
-      const bh = prev.badHabits.find((b) => b.id === badHabitId);
-      if (!bh) return prev;
-
-      return {
-        ...prev,
-        badHabits: prev.badHabits.map((b) =>
-          b.id === badHabitId
-            ? { ...b, ...updates }
-            : b
-        ),
-      };
-    });
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -6939,24 +6773,6 @@ export function useAppState() {
       { immediate: true }
     );
     // False positive: setState is stable (useCallback with empty deps array)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const moveProjectStatus = useCallback((id: string, newStatus: ProjectStatus) => {
-    setState(
-      (prev) => {
-        return {
-          ...prev,
-          projects: prev.projects.map((p) => {
-            if (p.id !== id) return p;
-            const completedAt = resolveProjectCompletedAt(p.status, newStatus, p.completedAt);
-            return { ...p, status: newStatus, completedAt };
-          }),
-        };
-      },
-      { immediate: true }
-    );
-    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -9048,11 +8864,6 @@ export function useAppState() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const clearNotification = useCallback(
-    (notificationId: string) => clearNotifications([notificationId]),
-    [clearNotifications]
-  );
-
   /** Clears every read notice in the inbox window. */
   const clearReadNotifications = useCallback(() => {
     clearNotifications((get().notifications || []).filter((n) => n.read).map((n) => n.id));
@@ -9382,39 +9193,6 @@ export function useAppState() {
             timeTracker: {
               ...currentTT,
               templates: (currentTT.templates || []).filter((t) => t.id !== id),
-            },
-            deletedEntityIds: updatedDeleted,
-            restoredEntityIds: updatedRestored,
-          };
-        },
-        { immediate: true }
-      );
-    },
-    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    []
-  );
-
-  const restoreTimeTrackerTemplate = useCallback(
-    (id: string) => {
-      setState(
-        (prev) => {
-          const currentTT = prev.timeTracker || DEFAULT_TIME_TRACKER_STATE;
-          const updatedDeleted = (prev.deletedEntityIds || []).filter((dId) => dId !== id);
-          const updatedRestored = [...(prev.restoredEntityIds || []), id].slice(-500);
-          const exists = (currentTT.templates || []).some((t) => t.id === id);
-          let newTemplates = currentTT.templates || [];
-          if (!exists) {
-            const defaultTpl = DEFAULT_TIME_TRACKER_STATE.templates.find((t) => t.id === id);
-            if (defaultTpl) {
-              newTemplates = [...newTemplates, defaultTpl];
-            }
-          }
-          return {
-            ...prev,
-            timeTracker: {
-              ...currentTT,
-              templates: newTemplates,
             },
             deletedEntityIds: updatedDeleted,
             restoredEntityIds: updatedRestored,
@@ -10291,13 +10069,11 @@ export function useAppState() {
     setRankCelebrated,
     setLastSeenRelease,
     storedSessionWait,
-    setAuthSessionState,
     logout,
     deleteAccount,
     logoutGuest,
     addPresetHabit,
     addCustomHabit,
-    updateHabit,
     renameHabit,
     deleteHabit,
     toggleHabit,
@@ -10325,14 +10101,11 @@ export function useAppState() {
     deleteWorkout,
     updateWorkout,
     clearWorkoutsBefore,
-    addBook,
-    updateBookTargetDate,
     updateReadingProgress,
     finishBook,
     deleteBook,
     addSkill,
     logSkillPractice,
-    updateSkillLevel,
     updateSkill,
     deleteSkill,
     deleteSkillLog,
@@ -10344,7 +10117,6 @@ export function useAppState() {
     logBadHabitDay,
     undoTodayBadHabitLog,
     deleteBadHabit,
-    updateBadHabit,
     renameBadHabit,
     setAddictionTracker,
     renameAddictionTracker,
@@ -10381,8 +10153,6 @@ export function useAppState() {
     updateUserBookStatus,
     updateBookDetails,
     restartBook,
-    removeBookFromLibrary,
-    getUserBookStatus,
     // Social Features Actions
     createImprovementPlan,
     updateImprovementPlan,
@@ -10420,7 +10190,6 @@ export function useAppState() {
     markNotificationRead,
     markNotificationsRead,
     markAllNotificationsRead,
-    clearNotification,
     clearNotifications,
     clearReadNotifications,
     refreshNotifications,
@@ -10435,7 +10204,6 @@ export function useAppState() {
     updateProject,
     saveProjectOrder,
     saveListOrder,
-    moveProjectStatus,
     deleteProject,
     createTask,
     updateTask,
@@ -10454,7 +10222,6 @@ export function useAppState() {
     updateTimeTrackerTemplate,
     previewTemplateEditReach,
     deleteTimeTrackerTemplate,
-    restoreTimeTrackerTemplate,
     toggleTemplateAutoApplyDay,
     addDailyTimeBlock,
     updateDailyTimeBlock,
