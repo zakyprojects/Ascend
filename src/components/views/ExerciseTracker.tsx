@@ -3,6 +3,7 @@ import { Activity, Calendar, Dumbbell, Flame, Pencil, Plus, Trash2 } from 'lucid
 import { AppStore, CLEAR_WORKOUTS_MAX } from '@/lib/store';
 import { ledgerPointsByDay } from '@/lib/ledgerDayPoints';
 import { isRetiredAppWorkoutAward } from '@/lib/workoutAwards';
+import { PREVIEW_EARN_LABEL, PREVIEW_MAX_LABEL, previewCapReachedText, workoutEditPreview } from '@/lib/practicePreviews';
 import { ptsText } from '@/lib/leagues';
 import { useLocalDayKey } from '@/lib/useLocalDayKey';
 import { pointsResumeText, useTimezoneWait } from '@/lib/useTimezoneWait';
@@ -126,9 +127,22 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
 
   // Points preview for the dialog (none while a timezone change waits: the server awards 0 today)
   const timezoneWait = useTimezoneWait();
-  // While editing, the workout's own points are free again (its new amount replaces them).
-  const remainingCap = Math.max(0, WORKOUT_POINTS.dailyCap - pointsEarnedToday + (editWorkout?.pointsAwarded || 0));
-  const { rawPoints: previewRaw, pointsToAward: previewPoints } = calculateWorkoutPoints(measure, amount, measure === 'mins' ? amount : 0, remainingCap);
+  const remainingCap = Math.max(0, WORKOUT_POINTS.dailyCap - pointsEarnedToday);
+  const newLogPreview = calculateWorkoutPoints(measure, amount, measure === 'mins' ? amount : 0, remainingCap);
+  // An edit: the points this workout shows after saving. The cap is shared in log order, so an
+  // earlier workout made bigger can take points from a later one (computeWorkoutAwards).
+  const editPreview = editWorkout
+    ? workoutEditPreview(
+        workouts,
+        editWorkout.id,
+        { type: workoutName, durationMinutes: measure === 'mins' ? amount : 0, amount, unit: measure },
+        editWorkout.date,
+        calculateWorkoutPoints(measure, amount, measure === 'mins' ? amount : 0).rawPoints
+      )
+    : null;
+  const previewRaw = editPreview ? editPreview.raw : newLogPreview.rawPoints;
+  const previewPoints = editPreview ? editPreview.points : newLogPreview.pointsToAward;
+  const previewCapFull = editPreview ? previewRaw > 0 && previewPoints === 0 : remainingCap === 0;
 
   // A goal this week on this workout (or on any workout) that counts another measure: logs in
   // this measure add nothing to it, so the form says so (minutes, reps, sets or km goals only).
@@ -489,14 +503,21 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
             <span>
               {timezoneWait
                 ? `${pointsResumeText(timezoneWait)} It still saves.`
-                : remainingCap === 0
-                ? `Today's ${WORKOUT_POINTS.dailyCap} pts are reached. It still saves.`
+                : previewCapFull
+                ? previewCapReachedText(WORKOUT_POINTS.dailyCap)
                 : previewRaw > previewPoints
-                ? "Today's max"
-                : 'You earn'}
+                ? PREVIEW_MAX_LABEL
+                : PREVIEW_EARN_LABEL}
             </span>
             {!timezoneWait && <span className="figure text-success-text shrink-0">{ptsText(previewPoints, true)}</span>}
           </div>
+          {!timezoneWait && editPreview && editWorkout && editPreview.dayAfter - editPreview.dayBefore !== previewPoints - (workouts.find((x) => x && x.id === editWorkout.id)?.pointsAwarded || 0) && (
+            // The cap moved points between workouts: say what the day really gets.
+            <p className="text-xs text-content-muted">
+              Today&apos;s total goes from <span className="figure">{editPreview.dayBefore}</span> to{' '}
+              <span className="figure">{editPreview.dayAfter}</span> pts. Later workouts get what is left of the {WORKOUT_POINTS.dailyCap}.
+            </p>
+          )}
         </Form>
       </Dialog>
 
