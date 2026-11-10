@@ -13,6 +13,7 @@ import { toUserMessage } from '@/lib/userMessage';
 import { AppStore } from '@/lib/store';
 import { addDays } from '@/lib/dates';
 import { useLocalDayKey } from '@/lib/useLocalDayKey';
+import { percentOf } from '@/lib/linkedGoalMetrics';
 import type { Goal, GoalStatus, Project, ProjectStatus, Task, TaskPriority, TaskSubtask } from '@/types';
 import { EmptyState } from '@/components/views/ProjectsGoalsEmptyState';
 import { goalStatusPatch, lockStatusOf, projectStatusPatch, sortBySequence, useHierarchy } from '@/components/projects/hierarchy';
@@ -206,7 +207,7 @@ export function ProjectsGoalsView({
   const stats = useMemo(() => {
     const activeGoals = goals.filter((g) => g.status === 'active');
     const avgGoal = activeGoals.length
-      ? Math.round(activeGoals.reduce((sum, g) => sum + h.getGoalProgress(g).percent, 0) / activeGoals.length)
+      ? percentOf(activeGoals.reduce((sum, g) => sum + h.getGoalProgress(g).percent, 0), activeGoals.length * 100)
       : 0;
     const openTasks = tasks.filter((t) => !t.completed && !h.isLockedId(t.projectId));
     return {

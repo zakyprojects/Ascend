@@ -258,7 +258,7 @@ export type GoalProgressResult =
     };
 
 /** Percent of the target, 100 only once it is reached (99.6% of 550 reps is not done). */
-const percentOf = (current: number, target: number): number =>
+export const percentOf = (current: number, target: number): number =>
   current >= target ? 100 : Math.min(99, Math.max(0, Math.round((current / target) * 100)));
 
 export function computeLinkedGoalProgress(

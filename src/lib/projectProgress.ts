@@ -1,10 +1,13 @@
 import type { Goal, GoalStatus, Project, ProjectStatus, Task } from '@/types';
+import { percentOf } from './linkedGoalMetrics';
 
 /**
  * Bottom-up progress and automatic status for Projects & Goals, computed from the three lists:
  * subtasks → task, tasks → project, projects → goal. A project with no tasks and a goal with
  * no projects are updated by hand (manualProgress). The Projects page reads the progress through
  * useHierarchy; the store applies the automatic status on every change (autoStatusChanges).
+ * A project or goal with parts shows 100% only when every part is done (percentOf): rounding
+ * never makes it done early, so an open task or project always keeps it below 100.
  */
 
 export interface ProjectProgress {
@@ -37,7 +40,7 @@ export function projectProgressOf(project: Project, linkedTasks: Task[]): Projec
     const subtasks = t.subtasks || [];
     sum += subtasks.length > 0 ? subtasks.filter((st) => st.completed).length / subtasks.length : t.completed ? 1 : 0;
   }
-  return { total: linkedTasks.length, completed, percent: Math.round((sum / linkedTasks.length) * 100), isManual: false };
+  return { total: linkedTasks.length, completed, percent: percentOf(sum, linkedTasks.length), isManual: false };
 }
 
 /** A goal's progress from its own projects; a done project counts as 100%. */
@@ -69,7 +72,7 @@ export function goalProgressOf(goal: Goal, linkedProjects: Project[], progressOf
     completedProjectsCount,
     totalTasksCount,
     completedTasksCount,
-    percent: Math.round(sum / linkedProjects.length),
+    percent: percentOf(sum, linkedProjects.length * 100),
     isManual: false,
   };
 }
