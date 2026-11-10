@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Dialog, FieldErrorBubble, Input } from '@/components/ui/primitives';
 import { AscendLoadingIndicator } from '@/components/ui/AscendLoadingIndicator';
 import { PasswordInput } from '@/components/ui/PasswordInput';
@@ -11,6 +11,8 @@ interface DeleteAccountDialogProps {
   email: string;
   isDeleting: boolean;
   error: string | null;
+  /** The error is about the typed password (wrong password): shown under that field, which takes focus. */
+  errorOnPassword?: boolean;
   onClose: () => void;
   /** Gets the typed password; empty for a Google account (`confirmWith="google"`). */
   onConfirm: (password: string) => void;
@@ -19,6 +21,8 @@ interface DeleteAccountDialogProps {
   /** The Google check is done (back from Google within the server's 5 minutes). */
   googleConfirmed?: boolean;
 }
+
+const PASSWORD_ID = 'delete-account-password';
 
 /**
  * Delete account: the button unlocks only once the exact username and the password are typed
@@ -32,6 +36,7 @@ export function DeleteAccountDialog({
   email,
   isDeleting,
   error,
+  errorOnPassword = false,
   onClose,
   onConfirm,
   confirmWith = 'password',
@@ -52,6 +57,12 @@ export function DeleteAccountDialog({
   const usesGoogle = confirmWith === 'google';
   const ready = matches && (usesGoogle || password.length > 0);
   const toGoogle = usesGoogle && !googleConfirmed;
+  const passwordError = error && errorOnPassword && !usesGoogle ? error : undefined;
+
+  // A wrong password: back to the field once it is enabled again, ready to retype.
+  useEffect(() => {
+    if (passwordError && !isDeleting) document.getElementById(PASSWORD_ID)?.focus();
+  }, [passwordError, isDeleting]);
 
   return (
     <Dialog
@@ -108,8 +119,9 @@ export function DeleteAccountDialog({
                 into the "type your username" field above. */}
             <input type="hidden" autoComplete="username" value={email} readOnly />
             <PasswordInput
-              id="delete-account-password"
+              id={PASSWORD_ID}
               label="Your password"
+              error={passwordError}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               disabled={isDeleting}
@@ -117,7 +129,7 @@ export function DeleteAccountDialog({
             />
           </>
         )}
-        {error ? <FieldErrorBubble message={error} attached={false} /> : null}
+        {error && !passwordError ? <FieldErrorBubble message={error} attached={false} /> : null}
         <CaptchaSlot />
       </form>
     </Dialog>

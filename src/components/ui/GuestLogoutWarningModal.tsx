@@ -1,6 +1,7 @@
 import { AlertTriangle, LogOut } from 'lucide-react';
 import { Dialog } from './primitives';
 import { AscendLoadingIndicator } from './AscendLoadingIndicator';
+import { usePendingGuestEmail } from '@/lib/usePendingGuestEmail';
 
 interface GuestLogoutWarningModalProps {
   open: boolean;
@@ -17,6 +18,9 @@ export function GuestLogoutWarningModal({
   onLogoutAnyway,
   isLoggingOut = false,
 }: GuestLogoutWarningModalProps) {
+  // "Save progress" sent a link that is not opened yet: logging out deletes this guest account, so
+  // the link would save nothing afterwards.
+  const pendingEmail = usePendingGuestEmail(open);
   if (!open) return null;
 
   return (
@@ -27,7 +31,9 @@ export function GuestLogoutWarningModal({
           <div className="space-y-1">
             <h3 className="text-base font-semibold leading-tight text-warning-text">Your guest progress will be lost</h3>
             <p className="text-xs text-content-tertiary leading-relaxed">
-              Logging out as a guest erases your habits, points, and league rank for good. Create an account first to keep them.
+              {pendingEmail
+                ? `You haven’t opened the link sent to ${pendingEmail} yet. Logging out now erases your habits, points, and league rank for good, and the link won’t save them afterwards. Open the link first.`
+                : 'Logging out as a guest erases your habits, points, and league rank for good. Create an account first to keep them.'}
             </p>
           </div>
         </div>
@@ -38,11 +44,11 @@ export function GuestLogoutWarningModal({
             disabled={isLoggingOut}
             onClick={() => {
               onClose();
-              onSaveProgressFirst();
+              if (!pendingEmail) onSaveProgressFirst();
             }}
             className="btn-primary w-full min-h-11"
           >
-            <span>Create an account first</span>
+            <span>{pendingEmail ? 'Stay logged in' : 'Create an account first'}</span>
           </button>
 
           <button

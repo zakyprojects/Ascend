@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
 import { LogOut, Trash2 } from 'lucide-react';
 import { AppStore } from '@/lib/store';
-import { accountHasPassword, changeUserPassword, startGoogleDeleteReauth, takeGoogleDeleteReauth, WrongCurrentPasswordError } from '@/lib/auth';
+import { accountHasPassword, changeUserPassword, resendConfirmationEmail, startGoogleDeleteReauth, takeGoogleDeleteReauth, WrongCurrentPasswordError } from '@/lib/auth';
+import { withCaptcha } from '@/lib/captcha';
+import { usePendingGuestEmail } from '@/lib/usePendingGuestEmail';
 import { settingsSectionPath } from '@/lib/settingsSections';
 import { verifyAccountPassword } from '@/lib/supabase';
 import { newPasswordProblem } from '@/lib/passwordRules';
@@ -28,19 +30,40 @@ export function AccountSection({ store, onOpenAuth }: AccountSectionProps) {
   const currentUser = store.state.currentUser;
   const isGuest = Boolean(currentUser?.isAnonymous);
   const userId = currentUser?.id;
-  const { showSuccessToast } = useToast();
+  const { showSuccessToast, showErrorToast, showWarningToast } = useToast();
 
   // A Google-only account has no password: no Change password, and Delete confirms through Google.
-  const [hasPassword, setHasPassword] = useState(true);
+  // Unknown (null) until read for this account, so neither shows the wrong way in the meantime.
+  const [passwordCheck, setPasswordCheck] = useState<{ userId: string | undefined; hasPassword: boolean } | null>(null);
+  const hasPassword = passwordCheck && passwordCheck.userId === userId ? passwordCheck.hasPassword : null;
   useEffect(() => {
     let cancelled = false;
     void accountHasPassword().then((yes) => {
-      if (!cancelled) setHasPassword(yes);
+      if (!cancelled) setPasswordCheck({ userId, hasPassword: yes });
     });
     return () => {
       cancelled = true;
     };
   }, [userId]);
+
+  // ── Guest with a "Save progress" email waiting for its link ──
+  const pendingEmail = usePendingGuestEmail(isGuest);
+  const [resendState, setResendState] = useState<'idle' | 'sending' | 'sent'>('idle');
+  const resendLink = async () => {
+    if (!pendingEmail || resendState !== 'idle') return;
+    setResendState('sending');
+    try {
+      await withCaptcha('sign_up', (captchaToken) => resendConfirmationEmail(pendingEmail, 'email_change', captchaToken));
+      setResendState('sent');
+      showSuccessToast('Link sent again', `Check ${pendingEmail} (and spam).`);
+    } catch (err) {
+      console.error('Save-progress link resend failed:', err);
+      setResendState('idle');
+      const authErr = err as { code?: string; status?: number; message?: string };
+      const limited = authErr.code === 'over_email_send_rate_limit' || authErr.status === 429 || authErr.message?.includes('rate limit');
+      showErrorToast("Couldn't send the link", limited ? 'Too many emails right now. Try again in about an hour.' : toUserMessage(err, 'Try again.'));
+    }
+  };
 
   // ── Password (asks for the current one first, D-S3) ──
   const [showPasswordForm, setShowPasswordForm] = useState(false);
@@ -132,6 +155,8 @@ export function AccountSection({ store, onOpenAuth }: AccountSectionProps) {
   // dialog stays open with the error; on success the session is cleared locally.
   // Back from Google's check for this account: the dialog reopens ready to delete.
   const [googleConfirmed, setGoogleConfirmed] = useState(false);
+  // Back without a finished check (cancelled at Google, Back, or reopened later): the dialog says so.
+  const [googleNotice, setGoogleNotice] = useState<string | null>(null);
   // Supabase starts the trip to Google with location.assign and returns at once, so the button
   // stays busy until the page leaves; a Back from Google (page restored from cache) frees it.
   const [openingGoogle, setOpeningGoogle] = useState(false);
@@ -143,13 +168,29 @@ export function AccountSection({ store, onOpenAuth }: AccountSectionProps) {
     return () => window.removeEventListener('pageshow', onPageShow);
   }, []);
   useEffect(() => {
-    if (userId && takeGoogleDeleteReauth(userId)) {
-      setGoogleConfirmed(true);
-      setShowDeleteConfirm(true);
-    }
-  }, [userId]);
+    if (!userId) return;
+    // Not cancelled on cleanup: the mark is read once, and a second effect run would find it gone.
+    void takeGoogleDeleteReauth(userId).then((result) => {
+      if (result === 'confirmed') {
+        setGoogleNotice(null);
+        setGoogleConfirmed(true);
+        setShowDeleteConfirm(true);
+      } else if (result === 'not-finished') {
+        setGoogleNotice('The Google check didn’t finish. Continue with Google again.');
+        setShowDeleteConfirm(true);
+      } else if (result === 'other-account') {
+        // Another Google account was picked at Google: this is that account, so nothing was deleted.
+        showWarningToast(
+          'Signed in with a different Google account',
+          'Nothing was deleted. To delete your other account, log out and sign in to it first.'
+        );
+      }
+    });
+  }, [userId, showWarningToast]);
 
   const handleDeleteAccount = async (password: string) => {
+    setGoogleNotice(null);
+    if (hasPassword === null) return;
     if (!hasPassword) {
       try {
         await executeDeleteAccount(async () => {
@@ -201,8 +242,28 @@ export function AccountSection({ store, onOpenAuth }: AccountSectionProps) {
   return (
     <SettingsCard title="Account">
       <Input id="settings-email" label="Email" readOnly value={currentUser?.email || (isGuest ? 'Guest (no email)' : '')} className="text-content-muted" />
+      {pendingEmail && (
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-xs text-content-muted">
+            Waiting for you to open the link sent to <span className="break-words font-medium text-content-secondary">{pendingEmail}</span>. Your progress is saved to it once you do.
+          </p>
+          <Button variant="secondary" size="sm" onClick={resendLink} disabled={resendState !== 'idle'} className="shrink-0">
+            {resendState === 'sending' ? (
+              <>
+                <AscendLoadingIndicator size="sm" />
+                <span>Sending…</span>
+              </>
+            ) : resendState === 'sent' ? (
+              'Sent'
+            ) : (
+              'Resend link'
+            )}
+          </Button>
+          <CaptchaSlot />
+        </div>
+      )}
 
-      {!isGuest && hasPassword && (
+      {!isGuest && hasPassword === true && (
         <div className="border-t border-overlay-subtle pt-2">
           <SettingRow
             title="Password"
@@ -299,11 +360,12 @@ export function AccountSection({ store, onOpenAuth }: AccountSectionProps) {
           <LogOut size={16} aria-hidden="true" />
           Log out
         </Button>
-        {!isGuest && (
+        {!isGuest && hasPassword !== null && (
           <button
             type="button"
             onClick={() => {
               resetDeleteAccountError();
+              setGoogleNotice(null);
               setShowDeleteConfirm(true);
             }}
             className="btn-danger min-h-11 sm:min-h-10 inline-flex items-center justify-center gap-2"
@@ -329,13 +391,14 @@ export function AccountSection({ store, onOpenAuth }: AccountSectionProps) {
         onConfirm={handleConfirmLogout}
         isLoggingOut={isLoggingOut}
       />
-      {!isGuest && (
+      {!isGuest && hasPassword !== null && (
         <DeleteAccountDialog
           open={showDeleteConfirm}
           username={currentUser?.username || ''}
           email={currentUser?.email || ''}
           isDeleting={isDeletingAccount || openingGoogle}
-          error={deleteAccountError ? toUserMessage(deleteAccountError, "Couldn't delete your account. Try again.") : null}
+          error={deleteAccountError ? toUserMessage(deleteAccountError, "Couldn't delete your account. Try again.") : googleNotice}
+          errorOnPassword={deleteAccountError instanceof WrongCurrentPasswordError}
           onClose={() => setShowDeleteConfirm(false)}
           onConfirm={handleDeleteAccount}
           confirmWith={hasPassword ? 'password' : 'google'}

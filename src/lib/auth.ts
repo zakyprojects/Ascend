@@ -19,6 +19,7 @@ import { flushOps, supabaseFocusTransport } from './focusServerSession';
 import { FunctionRegion, FunctionsHttpError } from '@supabase/supabase-js';
 import { CaptchaRejectedError, isCaptchaRejection } from './captcha';
 import { TERMS_VERSION } from './legal';
+import { googleDeleteReauthResult, parseGoogleDeleteMark, type GoogleDeleteMark, type GoogleDeleteReauthResult } from './googleDeleteReauth';
 
 let cachedProfiles: any[] = [];
 
@@ -484,17 +485,7 @@ export async function upgradeAnonymousUser(
     }
   }
 
-  // 4. Clear stale local cache
-  if (typeof window !== 'undefined') {
-    try {
-      localStorage.removeItem("ascend_user_cache_" + user.id);
-      localStorage.removeItem('ascend_guest_state_v2');
-    } catch {
-      /* ignore */
-    }
-  }
-
-  // 5. FINALLY, update auth user. This fires USER_UPDATED when DB and cache are already correct
+  // 4. FINALLY, update auth user. USER_UPDATED re-loads the account in store.ts.
   const userMetadata: Record<string, any> = {};
   if (trimmedUsername) userMetadata.username = trimmedUsername;
   if (newAvatar) userMetadata.avatar = newAvatar;
@@ -506,6 +497,17 @@ export async function upgradeAnonymousUser(
 
   if (error) {
     throw new Error(signUpErrorMessage(error.message));
+  }
+
+  // 5. Accepted: clear the stale device cache. Only now, so a refused email (already used, network)
+  // leaves the guest with its cache. Synchronous, so it runs before the deferred USER_UPDATED load.
+  if (typeof window !== 'undefined') {
+    try {
+      localStorage.removeItem("ascend_user_cache_" + user.id);
+      localStorage.removeItem('ascend_guest_state_v2');
+    } catch {
+      /* ignore */
+    }
   }
   // new_email = the email waits for its link; without confirmation Supabase sets it at once.
   return data.user?.new_email ? 'pending' : 'saved';
@@ -694,6 +696,8 @@ export async function changeUserPassword(newPassword: string, current?: { email:
     }
   }
 
+  // Supabase Auth signs every other session of the account out with the password change itself
+  // (UpdatePassword → LogoutAllExceptMe); this device stays signed in.
   const { error } = await supabase.auth.updateUser({ password: newPassword });
   if (error) {
     throw new Error(error.message || "Couldn't change your password. Try again.");
@@ -720,6 +724,7 @@ export async function requestPasswordReset(email: string, captchaToken?: string)
 export async function setRecoveredPassword(newPassword: string): Promise<void> {
   const problem = newPasswordProblem(newPassword);
   if (problem) throw new Error(`${problem}.`);
+  // As in changeUserPassword: Supabase Auth signs the account's other sessions out with it.
   const { error } = await supabase.auth.updateUser({ password: newPassword });
   if (error) throw error;
 }
@@ -752,14 +757,16 @@ export async function accountHasPassword(): Promise<boolean> {
 }
 
 // delete_own_account accepts a member only within 5 minutes of a fresh sign-in; a Google sign-in
-// stamps it like a password check. The mark says this device went to Google to delete `userId`.
+// stamps it like a password check. The mark says this device went to Google to delete `userId`
+// (googleDeleteReauth.ts decides what it means on the way back).
 const DELETE_REAUTH_KEY = 'ascend_delete_reauth';
-const DELETE_REAUTH_MS = 5 * 60 * 1000;
 
 /** Sends a Google account to Google to confirm it is them, then back to Settings → Account. */
 export async function startGoogleDeleteReauth(userId: string, returnPath: string): Promise<void> {
+  const { data } = await supabase.auth.getSession();
+  const mark: GoogleDeleteMark = { userId, at: trustedNowMs(), signedInAt: data.session?.user?.last_sign_in_at ?? null };
   try {
-    sessionStorage.setItem(DELETE_REAUTH_KEY, JSON.stringify({ userId, at: trustedNowMs() }));
+    sessionStorage.setItem(DELETE_REAUTH_KEY, JSON.stringify(mark));
   } catch {
     throw new Error("Couldn't start the Google check. Try again.");
   }
@@ -771,22 +778,28 @@ export async function startGoogleDeleteReauth(userId: string, returnPath: string
   }
 }
 
-/** True once, on the return from Google, for the same account and within the server's 5 minutes. */
-export function takeGoogleDeleteReauth(userId: string): boolean {
+/**
+ * Once, on the return from Google (or the next open of Settings › Account): whether the Google
+ * check of this device finished for `userId`. Confirmed only after a new sign-in of that same
+ * account with no error from Google, within the server's 5 minutes.
+ */
+export async function takeGoogleDeleteReauth(userId: string): Promise<GoogleDeleteReauthResult> {
   let raw: string | null = null;
   try {
     raw = sessionStorage.getItem(DELETE_REAUTH_KEY);
     sessionStorage.removeItem(DELETE_REAUTH_KEY);
   } catch {
-    return false;
+    return null;
   }
-  if (!raw) return false;
-  try {
-    const mark = JSON.parse(raw) as { userId?: string; at?: number };
-    return mark.userId === userId && typeof mark.at === 'number' && trustedNowMs() - mark.at < DELETE_REAUTH_MS;
-  } catch {
-    return false;
-  }
+  const mark = parseGoogleDeleteMark(raw);
+  if (!mark) return null;
+  const { data } = await supabase.auth.getSession();
+  return googleDeleteReauthResult(mark, {
+    userId,
+    lastSignInAt: data.session?.user?.id === userId ? data.session.user.last_sign_in_at : null,
+    redirectError: Boolean(authRedirectError()),
+    nowMs: trustedNowMs(),
+  });
 }
 
 /** Removes everything this device keeps for one account (cache, sync queue, ids). */

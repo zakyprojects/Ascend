@@ -20,6 +20,7 @@ import { NotificationsSection } from '@/components/settings/NotificationsSection
 import { AppInfoSection, AppearanceSection, PrivacySection } from '@/components/settings/PreferenceSections';
 import { AboutUsSection, FeedbackSection, SupportSection } from '@/components/settings/MakerSections';
 import { SoundVibrationSection } from '@/components/settings/SoundVibrationSection';
+import { usePendingGuestEmail } from '@/lib/usePendingGuestEmail';
 
 interface SettingsViewProps {
   store: AppStore;
@@ -46,6 +47,7 @@ const SECTION_IDS = SECTIONS.map(({ id }) => id);
 export function SettingsView({ store, onOpenAuth, onNavigate }: SettingsViewProps) {
   const currentUser = store.state.currentUser;
   const isGuest = Boolean(currentUser?.isAnonymous);
+  const pendingEmail = usePendingGuestEmail(isGuest);
 
   // The section lives in the address (`?section=notifications`): reload keeps it and other
   // screens can open it directly (D-S2). It replaces the entry, so Back still leaves Settings.
@@ -89,7 +91,11 @@ export function SettingsView({ store, onOpenAuth, onNavigate }: SettingsViewProp
       {isGuest && (
         <GuestSaveBanner
           title={`Guest account (${currentUser?.username})`}
-          description="Create an account to keep your habits and points."
+          description={
+            pendingEmail
+              ? `Open the link sent to ${pendingEmail} to keep your habits and points.`
+              : 'Create an account to keep your habits and points.'
+          }
           onCreateAccount={onOpenAuth}
         />
       )}
