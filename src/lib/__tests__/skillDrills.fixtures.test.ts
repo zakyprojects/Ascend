@@ -24,7 +24,7 @@ import { LINKED_GOAL_METRICS, computeLinkedGoalProgress, linkedGoalCrossing, lin
 import { computeSkillAwards } from '../skillAwards';
 import { mergeAppState } from '../stateMerger';
 import { getWeekDates, weekKey } from '../dates';
-import { reconcileLinkedWeeklyGoals } from '../store';
+import { reconcileLinkedWeeklyGoals } from '../weeklyGoalPoints';
 
 function assert(condition: boolean, msg: string) {
   if (!condition) {

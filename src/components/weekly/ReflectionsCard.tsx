@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { Check, Edit3, PenLine, Plus, Trash2 } from 'lucide-react';
 import type { WeeklyGoalReflection } from '@/types';
-import { AppStore, getWeeklyReflectionNetPoints, isWeeklyReflectionAwarded, weeklyReflectionAwardedToday } from '@/lib/store';
+import { AppStore } from '@/lib/store';
+import { getWeeklyReflectionNetPoints, isWeeklyReflectionAwarded, weeklyReflectionAwardedToday } from '@/lib/weeklyGoalPoints';
 import { WEEKLY_REFLECTION_POINTS } from '@/lib/pointsConfig';
 import { reflectionWindow } from '@/lib/weeklyAwards';
 import { getNow, parseDate } from '@/lib/dates';
