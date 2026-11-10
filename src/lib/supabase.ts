@@ -1496,6 +1496,12 @@ export async function fetchNotificationsSupabase(recipientId: string): Promise<A
   }
 }
 
+/**
+ * Asks the server for a notification (create_notification_atomic). Returns the notice, or null
+ * when the server chose not to create one (the recipient turned these notices off, the 24-hour
+ * cap, a type members can't send). Throws when the request itself failed, so a caller never
+ * reports a failed send as sent.
+ */
 export async function createNotificationSupabase(
   notif: Omit<AppNotification, 'id' | 'createdAt' | 'read'>
 ): Promise<AppNotification | null> {
@@ -1518,7 +1524,7 @@ export async function createNotificationSupabase(
 
     if (rpcErr) {
       console.error('[createNotificationSupabase] RPC create_notification_atomic failed:', rpcErr.message, 'Code:', rpcErr.code);
-      return null;
+      throw rpcErr;
     }
 
     if (!rpcData) return null; // Deduplicated or preference-suppressed by atomic Postgres RPC
@@ -1543,7 +1549,7 @@ export async function createNotificationSupabase(
     };
   } catch (e) {
     console.error('createNotificationSupabase error:', e);
-    return null;
+    throw e;
   }
 }
 

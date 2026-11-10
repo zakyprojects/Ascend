@@ -14,9 +14,10 @@ import { HowItWorksButton, HowItWorksDialog, useHowItWorks } from '@/components/
 import { partnersGuide } from '@/components/howItWorks/partners';
 import { FOCUS_RING, TAP_TARGET, TAP_TARGET_Y, cx } from '@/components/ui/primitives/shared';
 import { leagueNow } from '@/lib/leagueTime';
-import { getProfileSeasonPointsByUsername } from '@/lib/auth';
+import { leaguePeriodKey } from '@/lib/leagueStandingsRefresh';
+import { getCurrentTier } from '@/lib/tiers';
 import { isPartnershipUser1 } from '@/lib/partnershipSide';
-import { CHALLENGE_LENGTH_OPTIONS, MAX_PARTNERS } from '@/lib/partnerRules';
+import { CHALLENGE_LENGTH_OPTIONS, MAX_PARTNERS, partnerLimitText } from '@/lib/partnerRules';
 import { addDays, calculateElapsedDays, todayKey } from '@/lib/dates';
 import { useLocalDayKey } from '@/lib/useLocalDayKey';
 import { usePartnerDayKeys } from '@/lib/usePartnerDayKeys';
@@ -92,7 +93,6 @@ function initial(name: string | null | undefined): string {
 export function AccountabilityPartner({ store, onNavigate }: { store: AppStore; onNavigate?: (view: View) => void }) {
   const guide = useHowItWorks();
   const { showSuccessToast, showInfoToast, showErrorToast } = useToast();
-  const { isLoading: isStatsLoading, executeFn: executeStatsFetch } = useAsyncAction();
   const { isLoading: isSubmittingInvite, executeFn: executeSendInvite } = useAsyncAction();
   const { isLoading: isSubmittingChallenge, executeFn: executeCreateChallenge } = useAsyncAction();
   const { isKeyLoading, executeWithKey } = useAsyncActionKey();
@@ -168,41 +168,74 @@ export function AccountabilityPartner({ store, onNavigate }: { store: AppStore; 
   const partnerDayKeys = usePartnerDayKeys(otherUserIds);
   const partnerToday = (partnerUserId && partnerDayKeys[partnerUserId]) || today;
 
-  // Partner's published season points + streak
-  const [partnerStats, setPartnerStats] = useState<{ seasonPoints?: number; streak: number; avatar?: string } | null>(null);
+  // The partner's season points, streak and avatar from the server, kept with the partner they are
+  // for: a tab switch never shows the previous partner's numbers, and a failed fetch is never zeros.
+  const [partnerStats, setPartnerStats] = useState<{
+    name: string;
+    status: 'ready' | 'failed';
+    seasonPoints?: number;
+    streak?: number;
+    avatar?: string;
+  } | null>(null);
+  const [statsAttempt, setStatsAttempt] = useState(0);
   const { getPartnerProfileStats } = store;
   useEffect(() => {
+    if (!partnerName) return;
     let mounted = true;
-    if (partnerName) {
-      executeStatsFetch(async () => {
-        try {
-          const res = await getPartnerProfileStats(partnerName);
-          if (!mounted) return;
-          setPartnerStats(
-            res
-              ? {
-                  seasonPoints: res.seasonPoints,
-                  streak: res.stats?.currentStreakDays ?? res.stats?.streakDays ?? 0,
-                  avatar: res.avatar,
-                }
-              : null
-          );
-        } catch {
-          if (mounted) setPartnerStats(null);
-        }
+    getPartnerProfileStats(partnerName)
+      .then((res) => {
+        if (!mounted) return;
+        setPartnerStats(
+          res
+            ? {
+                name: partnerName,
+                status: 'ready',
+                seasonPoints: res.seasonPoints,
+                streak: res.stats?.currentStreakDays ?? res.stats?.streakDays ?? 0,
+                avatar: res.avatar,
+              }
+            : { name: partnerName, status: 'failed' }
+        );
+      })
+      .catch((err) => {
+        console.error('[Partners] partner stats fetch failed:', err);
+        if (mounted) setPartnerStats({ name: partnerName, status: 'failed' });
       });
-    } else {
-      setPartnerStats(null);
-    }
     return () => {
       mounted = false;
     };
-  }, [partnerName, getPartnerProfileStats, executeStatsFetch]);
+  }, [partnerName, getPartnerProfileStats, statsAttempt]);
+  const shownStats = partnerStats && partnerStats.name === partnerName ? partnerStats : null;
+  const retryPartnerStats = () => {
+    setPartnerStats(null);
+    setStatsAttempt((n) => n + 1);
+  };
+  const statsLoading = !!partnerName && !shownStats;
 
-  const mySeasonPoints = store.getLeagueData('ninetyDay').userPoints;
-  const myStreak = useMemo(() => calculateUnifiedStreak(store.state).currentStreakDays || 0, [store.state]);
-  const partnerSeasonPoints =
-    partnerStats?.seasonPoints ?? (partnerName ? getProfileSeasonPointsByUsername(partnerName, 'ninetyDay', leagueNow()) : 0);
+  // The season board rebuilds every member: once per state change or new period, not every render.
+  const { getLeagueData } = store;
+  const periodKey = leaguePeriodKey(leagueNow());
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const seasonBoard = useMemo(() => getLeagueData('ninetyDay'), [getLeagueData, periodKey]);
+  const mySeasonPoints = seasonBoard.userPoints;
+  // Same sources as your member card (ascend_member_card): habit check-ins counted per habit,
+  // never ledger rows, so a habit deleted and added again under its name starts a new run.
+  const { habits: myHabits, workouts, readingLogs, badHabits: myBadHabits, badHabitLogs: myBadHabitLogs, skillLogs } = store.state;
+  const myStreak = useMemo(
+    () =>
+      calculateUnifiedStreak({ habits: myHabits, workouts, readingLogs, badHabits: myBadHabits, badHabitLogs: myBadHabitLogs, skillLogs }, today)
+        .currentStreakDays || 0,
+    [myHabits, workouts, readingLogs, myBadHabits, myBadHabitLogs, skillLogs, today]
+  );
+  // The league table's cached copy of the partner, while (or if) the server fetch has nothing.
+  const cachedPartner = partnerName
+    ? seasonBoard.competitors.find((c) => !c.isUser && ((partnerUserId && c.id === partnerUserId) || sameName(c.name, partnerName)))
+    : undefined;
+  const partnerSeasonPoints: number | null =
+    shownStats?.status === 'ready' && shownStats.seasonPoints !== undefined ? shownStats.seasonPoints : cachedPartner?.points ?? null;
+  const partnerStreak: number | null = shownStats?.status === 'ready' ? shownStats.streak ?? 0 : null;
+  const partnerAvatar = shownStats?.avatar ?? cachedPartner?.avatar;
+  const partnerStatsFailed = shownStats?.status === 'failed';
 
   // Requests (pending only, never with someone who is already a partner)
   const partnerNames = useMemo(
@@ -331,7 +364,7 @@ export function AccountabilityPartner({ store, onNavigate }: { store: AppStore; 
         setPartnerUidInput('');
         showSuccessToast('Invite sent', "You'll be partners once they accept.");
       } catch (err: any) {
-        const message = toUserMessage(err, "Couldn't send the invite. Try again.");
+        const message = partnerLimitText(err?.message ?? '') ?? toUserMessage(err, "Couldn't send the invite. Try again.");
         inviteIssues.showError(message, /\bID\b/.test(message) ? 'partner-invite-uid' : undefined);
       }
     });
@@ -412,7 +445,8 @@ export function AccountabilityPartner({ store, onNavigate }: { store: AppStore; 
         await store.acceptPartnerInvite(inviteId);
         showSuccessToast('Partner added', "You're partners now. Start a challenge together.");
       } catch (err: any) {
-        showErrorToast("Couldn't accept", toUserMessage(err, 'Try again.'));
+        const from = incomingInvites.find((i) => i.id === inviteId)?.fromUsername;
+        showErrorToast("Couldn't accept", partnerLimitText(err?.message ?? '', from) ?? toUserMessage(err, 'Try again.'));
       }
     });
 
@@ -519,9 +553,11 @@ export function AccountabilityPartner({ store, onNavigate }: { store: AppStore; 
         } catch {
           // storage full or blocked: the nudge itself was sent
         }
-        if (partnerMissedYesterday) showSuccessToast('Support sent', `${partnerName} got your message.`);
-        else showSuccessToast('Nudge sent', `${partnerName} got a reminder.`);
+        // The server may not deliver it (their partner notices are off): neutral words, never
+        // "they got it", and never their setting. A failed request throws and is reported below.
+        showSuccessToast(partnerMissedYesterday ? 'Support sent' : 'Nudge sent');
       } catch (err: any) {
+        console.error('[Partners] nudge failed:', err);
         showErrorToast("Couldn't send nudge", toUserMessage(err, 'Try again later.'));
       }
     });
@@ -913,17 +949,28 @@ export function AccountabilityPartner({ store, onNavigate }: { store: AppStore; 
               <div className="card p-5 space-y-4">
                 <div className="flex items-center gap-3">
                   <div className="w-12 h-12 rounded-2xl bg-primary-500/20 text-brand-text flex items-center justify-center text-lg font-semibold shrink-0">
-                    {partnerStats?.avatar && partnerStats.avatar !== '🧑' ? partnerStats.avatar : initial(partnerName)}
+                    {partnerAvatar && partnerAvatar !== '🧑' ? partnerAvatar : initial(partnerName)}
                   </div>
                   <div className="flex-1 min-w-0">
                     <h2 className="section-title truncate">{partnerName}</h2>
-                    <p className="text-xs text-content-muted">
-                      {mySeasonPoints === partnerSeasonPoints
-                        ? 'Level on points this season'
-                        : mySeasonPoints > partnerSeasonPoints
-                        ? `You're ahead by ${ptsText(mySeasonPoints - partnerSeasonPoints)} this season`
-                        : `${partnerName} is ahead by ${ptsText(partnerSeasonPoints - mySeasonPoints)} this season`}
-                    </p>
+                    {partnerSeasonPoints !== null ? (
+                      <p className="text-xs text-content-muted">
+                        {mySeasonPoints === partnerSeasonPoints
+                          ? 'Level on points this season'
+                          : mySeasonPoints > partnerSeasonPoints
+                          ? `You're ahead by ${ptsText(mySeasonPoints - partnerSeasonPoints)} this season`
+                          : `${partnerName} is ahead by ${ptsText(partnerSeasonPoints - mySeasonPoints)} this season`}
+                      </p>
+                    ) : partnerStatsFailed ? (
+                      <p className="flex flex-wrap items-center gap-x-2 text-xs text-content-muted">
+                        <span>Couldn't load {partnerName}'s points.</span>
+                        <button type="button" onClick={retryPartnerStats} className={cx('font-medium text-brand-text hover:underline', TAP_TARGET_Y, FOCUS_RING)}>
+                          Retry
+                        </button>
+                      </p>
+                    ) : (
+                      <Skeleton className="mt-1 h-3 w-40" />
+                    )}
                   </div>
                   <button
                     type="button"
@@ -938,30 +985,56 @@ export function AccountabilityPartner({ store, onNavigate }: { store: AppStore; 
 
                 <div className="grid grid-cols-2 gap-3">
                   {[
-                    { label: 'You', points: mySeasonPoints, streak: myStreak, loading: false },
-                    { label: partnerName || 'Partner', points: partnerSeasonPoints, streak: partnerStats?.streak ?? 0, loading: isStatsLoading && !partnerStats },
-                  ].map((side) => (
-                    <div key={side.label} className="rounded-xl border border-overlay-subtle p-3 space-y-1.5 min-w-0">
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-xs text-content-muted truncate">{side.label}</span>
-                        {!side.loading && <TierBadge totalPoints={side.points} size="sm" />}
+                    { label: 'You', points: mySeasonPoints, streak: myStreak as number | null, loading: false },
+                    {
+                      label: partnerName || 'Partner',
+                      points: partnerSeasonPoints,
+                      streak: partnerStreak,
+                      loading: statsLoading && partnerSeasonPoints === null,
+                    },
+                  ].map((side) => {
+                    const tier = side.points !== null ? getCurrentTier(side.points) : null;
+                    return (
+                      <div key={side.label} className="rounded-xl border border-overlay-subtle p-3 space-y-1.5 min-w-0">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-xs text-content-muted truncate">{side.label}</span>
+                          {!side.loading && side.points !== null && (
+                            <span aria-hidden="true">
+                              <TierBadge totalPoints={side.points} size="sm" />
+                            </span>
+                          )}
+                        </div>
+                        {side.loading ? (
+                          <Skeleton className="h-6 w-20" />
+                        ) : (
+                          <>
+                            {side.points !== null && tier ? (
+                              <>
+                                <p className="text-base">
+                                  <CountUp value={side.points} className="figure text-content-primary" />
+                                  <span className="text-xs text-content-muted"> {ptUnit(side.points)}</span>
+                                </p>
+                                <p className="truncate text-xs font-medium" style={{ color: `var(--rank-${tier.name.toLowerCase()}-text)` }}>
+                                  {tier.name}
+                                </p>
+                              </>
+                            ) : (
+                              <p className="text-base text-content-muted">
+                                <span aria-hidden="true">—</span>
+                                <span className="sr-only">Points not loaded</span>
+                              </p>
+                            )}
+                            {side.streak !== null && (
+                              <p className="flex items-center gap-1 text-xs text-content-muted">
+                                <Flame size={12} className="text-brand-text" aria-hidden="true" />
+                                <span className="figure">{side.streak}</span> day streak
+                              </p>
+                            )}
+                          </>
+                        )}
                       </div>
-                      {side.loading ? (
-                        <Skeleton className="h-6 w-20" />
-                      ) : (
-                        <>
-                          <p className="text-base">
-                            <CountUp value={side.points} className="figure text-content-primary" />
-                            <span className="text-xs text-content-muted"> {ptUnit(side.points)}</span>
-                          </p>
-                          <p className="flex items-center gap-1 text-xs text-content-muted">
-                            <Flame size={12} className="text-brand-text" />
-                            <span className="figure">{side.streak}</span> day streak
-                          </p>
-                        </>
-                      )}
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
 
                 {runningChallenges.length > 0 && (
