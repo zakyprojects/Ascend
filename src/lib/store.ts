@@ -1384,6 +1384,11 @@ export function useAppState() {
                           sanitizedState,
                           readBaseline(userId)
                         );
+                        // A signed-out state on screen belongs to no account, so it is merged in too
+                        // (as signInMergeBase does on the clean path); else its items would be dropped.
+                        if (!stateRef.current.currentUser) {
+                          baseCurrentState = mergeAppState(stateRef.current, baseCurrentState, 'hydration');
+                        }
                       } else {
                         localStorage.removeItem(`ascend_dirty_${userId}`);
                       }
