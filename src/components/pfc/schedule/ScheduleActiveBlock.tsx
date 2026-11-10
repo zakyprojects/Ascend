@@ -252,9 +252,10 @@ export function ScheduleActiveBlock({
             onClick={() =>
               act(() => {
                 const at = hhmm(now);
-                store.toggleDailyTimeBlockCompleted(day, block.id, at);
-                if (!block.completed) actionFeedback('tick');
-                if (!block.completed) showSuccessToast('Block completed', `Ended at ${formatTime12h(at)}.`);
+                // A refused tick (the day closed or the grace window ended since this render) shows no "Block completed".
+                const changed = store.toggleDailyTimeBlockCompleted(day, block.id, at);
+                if (changed && !block.completed) actionFeedback('tick');
+                if (changed && !block.completed) showSuccessToast('Block completed', `Ended at ${formatTime12h(at)}.`);
               }, "Couldn't complete block")
             }
             className={cx(ACTION, 'bg-primary-600 hover:bg-primary-700 text-on-brand')}

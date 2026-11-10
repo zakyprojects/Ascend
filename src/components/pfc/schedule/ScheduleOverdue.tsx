@@ -30,9 +30,12 @@ export function ScheduleOverdue({
 
   const complete = () => {
     try {
-      store.toggleDailyTimeBlockCompleted(day, block.id);
-      actionFeedback('tick');
-      showSuccessToast('Block completed', 'Marked as completed.');
+      // A refused tick (the day closed or the grace window ended since this render) shows no "Block completed".
+      const changed = store.toggleDailyTimeBlockCompleted(day, block.id);
+      if (changed && !block.completed) {
+        actionFeedback('tick');
+        showSuccessToast('Block completed', 'Marked as completed.');
+      }
     } catch (err) {
       showErrorToast("Couldn't complete block", toUserMessage(err, 'Try again.'));
     }
