@@ -12,7 +12,8 @@ import { installCardSpotlight } from '@/lib/cardSpotlight';
 import { installPressGlow } from '@/lib/pressGlow';
 import { installScrollRise } from '@/lib/scrollRise';
 
-const THEME_KEY = 'ascend_theme_preference'; // lib/store.ts LOCAL_THEME_STORAGE_KEY
+const THEME_KEY = 'ascend_theme'; // lib/theme.ts LOCAL_THEME_STORAGE_KEY ('system' | 'dark' | 'light')
+const LEGACY_THEME_KEY = 'ascend_theme_preference'; // lib/theme.ts: only its 'light' counts
 const REVEAL_DURATION_MS = 450; // lib/themeTransition.ts
 
 type Theme = 'light' | 'dark';
@@ -21,15 +22,36 @@ const prefersReducedMotion = () => window.matchMedia('(prefers-reduced-motion: r
 
 const currentTheme = (): Theme => (document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark');
 
-function applyTheme(theme: Theme) {
+const systemLight = () => window.matchMedia('(prefers-color-scheme: light)');
+
+/** The saved Light/Dark choice, or null to follow the device (same rule as the head script). */
+function savedTheme(): Theme | null {
+  try {
+    const value = localStorage.getItem(THEME_KEY);
+    if (value === 'light' || value === 'dark') return value;
+    if (value === 'system') return null;
+    return localStorage.getItem(LEGACY_THEME_KEY) === 'light' ? 'light' : null;
+  } catch {
+    return null;
+  }
+}
+
+function paintTheme(theme: Theme) {
   document.documentElement.setAttribute('data-theme', theme);
   document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme === 'light' ? '#f6f8f7' : '#0a0b0f');
+  syncToggleLabels();
+}
+
+const paintSavedOrSystem = () => paintTheme(savedTheme() ?? (systemLight().matches ? 'light' : 'dark'));
+
+/** The toggle: the user's own choice, kept for these pages and the app. */
+function applyTheme(theme: Theme) {
   try {
     localStorage.setItem(THEME_KEY, theme);
   } catch {
     // Private mode: the choice lasts for this page only.
   }
-  syncToggleLabels();
+  paintTheme(theme);
 }
 
 function syncToggleLabels() {
@@ -69,10 +91,11 @@ function installThemeToggle() {
   });
   // Another tab (or the app) changed the theme.
   window.addEventListener('storage', (event) => {
-    if (event.key === THEME_KEY && (event.newValue === 'light' || event.newValue === 'dark')) {
-      document.documentElement.setAttribute('data-theme', event.newValue);
-      syncToggleLabels();
-    }
+    if (event.key === THEME_KEY) paintSavedOrSystem();
+  });
+  // The device switched light/dark while the page is open: followed unless a choice is saved.
+  systemLight().addEventListener('change', () => {
+    if (savedTheme() === null) paintSavedOrSystem();
   });
 }
 

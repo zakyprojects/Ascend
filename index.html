@@ -52,12 +52,13 @@
     <script>
       (function() {
         try {
-          var t = localStorage.getItem('ascend_theme_preference');
-          if (t === 'light' || t === 'dark') {
-            document.documentElement.setAttribute('data-theme', t);
-            var meta = document.querySelector('meta[name="theme-color"]');
-            if (meta) meta.setAttribute('content', t === 'light' ? '#f6f8f7' : '#0a0b0f');
-          }
+          // KEEP IN SYNC with src/lib/theme.ts and marketing/head.ts THEME_SCRIPT.
+          var t = localStorage.getItem('ascend_theme');
+          if (t !== 'light' && t !== 'dark' && t !== 'system') t = localStorage.getItem('ascend_theme_preference') === 'light' ? 'light' : 'system';
+          if (t === 'system') t = window.matchMedia && matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+          document.documentElement.setAttribute('data-theme', t);
+          var meta = document.querySelector('meta[name="theme-color"]');
+          if (meta) meta.setAttribute('content', t === 'light' ? '#f6f8f7' : '#0a0b0f');
         } catch (e) {}
       })();
     </script>

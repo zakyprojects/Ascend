@@ -22,7 +22,7 @@ interface ActivitiesTabProps {
 }
 
 export function ActivitiesTab({ store, activities, today, onCreateCategory, onEditCategory }: ActivitiesTabProps) {
-  const theme = store.state.themePreference || 'dark';
+  const theme = store.resolvedTheme;
   const [deleting, setDeleting] = useState<TimeTrackerActivity | null>(null);
   const names = useMemo(() => categoryDisplayNames(activities), [activities]);
   const [reordering, setReordering] = useState(false);
@@ -213,7 +213,7 @@ function DeleteCategoryDialog({ store, activities, today, category, onClose }: D
             names={names}
             value={replacementId}
             onChange={setReplacementId}
-            theme={store.state.themePreference || 'dark'}
+            theme={store.resolvedTheme}
           />
         </FieldGroup>
         <p className="text-xs text-content-secondary" aria-live="polite">

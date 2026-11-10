@@ -1,4 +1,4 @@
-import { Moon, Sun } from 'lucide-react';
+import { Monitor, Moon, Sun } from 'lucide-react';
 import { AppStore } from '@/lib/store';
 import type { View } from '@/lib/views';
 import { NAV_GROUPS, NAV_HELP, type NavGroup } from '@/components/nav/navConfig';
@@ -6,6 +6,7 @@ import { cx, FOCUS_RING, Switch } from '@/components/ui/primitives';
 import { useAsyncActionKey } from '@/lib/useAsyncAction';
 import { pageLinkProps } from '@/lib/pageLink';
 import { pathForLegalRoute } from '@/lib/routes';
+import { resolveTheme } from '@/lib/theme';
 import { toggleThemeWithReveal } from '@/lib/themeTransition';
 import { pillLayout, setBlockPillEnabled, setBlockPillPosition, useBlockPillPrefs } from '@/lib/blockPill';
 import { SettingRow, SettingsCard } from './SettingRow';
@@ -59,18 +60,19 @@ export function PrivacySection({ store }: { store: AppStore }) {
 }
 
 const THEME_OPTIONS = [
+  { id: 'system', label: 'System', icon: Monitor },
   { id: 'dark', label: 'Dark', icon: Moon },
   { id: 'light', label: 'Light', icon: Sun },
 ] as const;
 
 export function AppearanceSection({ store }: { store: AppStore }) {
-  const theme = store.state.themePreference === 'light' ? 'light' : 'dark';
+  const theme = store.state.themePreference ?? 'system';
   return (
     <SettingsCard title="Appearance">
       <div className="-my-1 divide-y divide-overlay-subtle">
         <SettingRow
           title="Theme"
-          description="Dark is the default."
+          description="System follows your device."
           control={
             <div role="group" aria-label="Theme" className="inline-flex rounded-xl border border-overlay-default bg-bg-700 p-1">
               {THEME_OPTIONS.map(({ id, label, icon: Icon }) => {
@@ -81,7 +83,11 @@ export function AppearanceSection({ store }: { store: AppStore }) {
                     type="button"
                     aria-pressed={active}
                     onClick={(event) => {
-                      if (!active) toggleThemeWithReveal(event.currentTarget, store.toggleThemePreference);
+                      if (active) return;
+                      const pick = () => store.setThemePreference(id);
+                      // The reveal only when the screen changes (System can match what is shown).
+                      if (resolveTheme(id) === store.resolvedTheme) pick();
+                      else toggleThemeWithReveal(event.currentTarget, pick);
                     }}
                     className={cx(
                       'inline-flex min-h-9 items-center gap-1.5 rounded-lg px-3 text-xs font-medium transition-colors',
@@ -89,7 +95,8 @@ export function AppearanceSection({ store }: { store: AppStore }) {
                       FOCUS_RING
                     )}
                   >
-                    <Icon size={14} aria-hidden="true" />
+                    {/* Icons from sm up: three labelled options fit next to the title on a phone. */}
+                    <Icon size={14} aria-hidden="true" className="hidden sm:block" />
                     {label}
                   </button>
                 );

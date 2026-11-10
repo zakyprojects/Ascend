@@ -10,7 +10,7 @@ import {
   getActivityDisplayColor,
 } from '@/lib/timeTracker';
 import { addDays, formatDateKeyHuman, formatWeekdayDate } from '@/lib/dates';
-import { getLocalThemePreference } from '@/lib/store';
+import { appliedTheme } from '@/lib/theme';
 import { ActivityIcon } from './ActivityIcon';
 import { AscendLoadingIndicator } from '@/components/ui/AscendLoadingIndicator';
 import { Clock, MoonStar, Check } from 'lucide-react';
@@ -119,7 +119,7 @@ export function TimeBlockModal({
   const span = describeBlockSpan(startTime, endTime);
   const duration = calculateBlockDurationMinutes(startTime, endTime);
   const selectedActivity = activities.find((a) => a.id === activityId);
-  const theme = getLocalThemePreference() || 'dark';
+  const theme = appliedTheme();
   const nextDayLabel = context.kind === 'day' ? formatWeekdayDate(addDays(context.dateKey, 1)) : '';
   const dayLabel = context.kind === 'day' ? formatWeekdayDate(context.dateKey) : '';
 

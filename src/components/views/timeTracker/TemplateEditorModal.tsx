@@ -17,7 +17,7 @@ import {
   templateDays,
   suggestNewBlockTimes,
 } from '@/lib/timeTracker';
-import { getLocalThemePreference } from '@/lib/store';
+import { appliedTheme } from '@/lib/theme';
 import { ActivityIcon } from './ActivityIcon';
 import { TimeBlockModal, type BlockDraft } from './TimeBlockModal';
 import { AscendLoadingIndicator } from '@/components/ui/AscendLoadingIndicator';
@@ -349,7 +349,7 @@ export function TemplateEditorModal({
                 {blocks.map((block) => {
                   const act = activities.find((a) => a.id === block.activityId);
                   const duration = calculateBlockDurationMinutes(block.startTime, block.endTime);
-                  const theme = getLocalThemePreference() || 'dark';
+                  const theme = appliedTheme();
                   const resolvedColor = getActivityDisplayColor(act, theme);
                   return (
                     <div

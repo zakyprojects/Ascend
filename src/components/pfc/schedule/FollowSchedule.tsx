@@ -67,7 +67,7 @@ export function FollowSchedule({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- store methods are stable; runs per day
   }, [day]);
 
-  const theme = store.state.themePreference || 'dark';
+  const theme = store.resolvedTheme;
   const timeTracker = store.state.timeTracker;
   const activities = useMemo(() => ensureDefaultActivities(timeTracker?.activities || []), [timeTracker?.activities]);
   const activityMap = useMemo(() => new Map(activities.map((a) => [a.id, a])), [activities]);

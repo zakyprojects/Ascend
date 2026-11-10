@@ -9,7 +9,7 @@ import {
   AVAILABLE_ACTIVITY_ICONS,
   AVAILABLE_ACTIVITY_COLORS,
 } from '@/lib/timeTracker';
-import { getLocalThemePreference } from '@/lib/store';
+import { appliedTheme } from '@/lib/theme';
 import { AscendLoadingIndicator } from '@/components/ui/AscendLoadingIndicator';
 import { Shapes, Check } from 'lucide-react';
 import { toUserMessage } from '@/lib/userMessage';
@@ -52,7 +52,7 @@ export function ActivityModal({
   const [ascendModule, setAscendModule] = useState<string>('');
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const formIssues = useFormController();
-  const theme = getLocalThemePreference() || 'dark';
+  const theme = appliedTheme();
   const resolvedPreviewColor = color ? getActivityThemeColor(color, theme) : '';
   const form = useUnsavedChanges(open ? (editingActivity?.id ?? 'new') : null, [name, color, icon, ascendModule]);
 

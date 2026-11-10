@@ -65,7 +65,7 @@ export function DayTab({
 }: DayTabProps) {
   const { showSuccessToast, showErrorToast } = useToast();
   const now = useNowTick();
-  const theme = store.state.themePreference || 'dark';
+  const theme = store.resolvedTheme;
   const timeTracker = store.state.timeTracker;
   const mode: 'today' | 'future' | 'past' = selectedDateKey === today ? 'today' : selectedDateKey > today ? 'future' : 'past';
   const blocks = planned.blocks;

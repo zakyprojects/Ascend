@@ -36,7 +36,7 @@ const hasDay = (days: string[], day: string) => days.some((d) => d.toLowerCase()
 
 export function TemplatesTab({ store, templates, activities, onCreateTemplate, onEditTemplate, onApplyTemplate }: TemplatesTabProps) {
   const { showSuccessToast } = useToast();
-  const theme = store.state.themePreference || 'dark';
+  const theme = store.resolvedTheme;
   const [deleting, setDeleting] = useState<TimeTrackerTemplate | null>(null);
   const [moveDay, setMoveDay] = useState<{ day: string; template: TimeTrackerTemplate; from: string } | null>(null);
   const [reordering, setReordering] = useState(false);

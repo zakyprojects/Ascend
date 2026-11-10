@@ -250,6 +250,15 @@ import { toUserMessage } from './userMessage';
 import { ilikeExact } from './usernameRules';
 import { disablePush } from './push';
 import { keepIfUnchanged } from './stateEquality';
+import {
+  applyTheme,
+  deviceThemeFields,
+  normalizeThemePreference,
+  resolveTheme,
+  setLocalThemePreference,
+  useSystemTheme,
+  type ThemePreference,
+} from './theme';
 
 // Cross-tab real-time state synchronization channel
 export const STATE_SYNC_CHANNEL_NAME = 'ascend-state-sync';
@@ -443,48 +452,22 @@ const STORED_SESSION_WAIT_MS = 8000;
 export const CLEAR_WORKOUTS_MAX = 300;
 export const CLEAR_SKILL_LOGS_MAX = 300;
 export const CLEAR_CRAVING_LOGS_MAX = 300;
-export const LOCAL_THEME_STORAGE_KEY = 'ascend_theme_preference';
-
-export function getLocalThemePreference(): 'dark' | 'light' | null {
-  if (typeof window === 'undefined') return null;
-  try {
-    const rawVal = localStorage.getItem(LOCAL_THEME_STORAGE_KEY);
-    if (rawVal === 'light' || rawVal === 'dark') return rawVal;
-  } catch (err) {
-    // ignore local storage errors
-  }
-  return null;
-}
-
-export function setLocalThemePreference(theme: 'dark' | 'light'): void {
-  if (typeof window === 'undefined') return;
-  try {
-    localStorage.setItem(LOCAL_THEME_STORAGE_KEY, theme);
-  } catch (err) {
-    // ignore local storage errors
-  }
-}
 
 function loadInitialState(): AppState {
-  const localTheme = getLocalThemePreference() || 'dark';
   try {
     const raw = localStorage.getItem(GUEST_STORAGE_KEY);
     if (!raw) {
       return {
         ...DEFAULT_STATE,
-        themePreference: localTheme,
+        ...deviceThemeFields(),
       };
     }
-    const parsed = JSON.parse(raw);
-    const sanitized = sanitizeLoadedState(parsed, null);
-    return {
-      ...sanitized,
-      themePreference: parsed.themePreference || localTheme,
-    };
+    // The saved guest theme (normalized there), else this device's.
+    return sanitizeLoadedState(JSON.parse(raw), null);
   } catch {
     return {
       ...DEFAULT_STATE,
-      themePreference: localTheme,
+      ...deviceThemeFields(),
     };
   }
 }
@@ -821,7 +804,8 @@ export function sanitizeLoadedState(loaded: Partial<AppState>, profile: UserProf
   const activeDeletedEntityIds = (st.deletedEntityIds ?? [])
     .filter((id) => isLegitimateTombstoneId(id) && !(st.restoredEntityIds || []).includes(id));
 
-  const resolvedTheme = st.themePreference || (getLocalThemePreference() || 'dark');
+  const savedTheme = normalizeThemePreference(st.themePreference, st.themeUpdatedAt);
+  const themeFields = savedTheme ? { themePreference: savedTheme } : deviceThemeFields();
 
   const rawSanitizedHabits = (st.habits ?? []).map((h) => {
     let normalizedCompletions: Record<string, { done: boolean; updatedAt: string; pointsAwarded?: number }> = {};
@@ -937,7 +921,7 @@ export function sanitizeLoadedState(loaded: Partial<AppState>, profile: UserProf
   const baseState: AppState = {
     ...DEFAULT_STATE,
     ...st,
-    themePreference: resolvedTheme,
+    ...themeFields,
     currentUser: profile,
     username: profile ? profile.username : (st.username ?? 'Guest User'),
     habits: sanitizedHabits,
@@ -2696,15 +2680,13 @@ export function useAppState() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state, tabId]);
 
-  // Reactively apply data-theme attribute on document.documentElement based on themePreference
+  // Paint the theme (data-theme + browser bar colour); 'system' follows the device, live.
+  const systemTheme = useSystemTheme();
+  const resolvedTheme = resolveTheme(state.themePreference, systemTheme);
   useEffect(() => {
-    const local = getLocalThemePreference();
-    const theme = state.themePreference || local || 'dark';
-    if (typeof document !== 'undefined') {
-      document.documentElement.setAttribute('data-theme', theme);
-    }
-    setLocalThemePreference(theme);
-  }, [state.themePreference, state.currentUser]);
+    applyTheme(resolvedTheme);
+    setLocalThemePreference(state.themePreference ?? 'system');
+  }, [state.themePreference, resolvedTheme, state.currentUser]);
 
   // Initial Supabase data load & auth listener (single source of truth for session state)
   useEffect(() => {
@@ -2784,7 +2766,7 @@ export function useAppState() {
           /* ignore */
         }
       }
-      const localTheme = getLocalThemePreference() || 'dark';
+      const deviceTheme = deviceThemeFields();
       const guestRaw = localStorage.getItem(GUEST_STORAGE_KEY);
       let guestState = DEFAULT_STATE;
       if (guestRaw) {
@@ -2797,11 +2779,9 @@ export function useAppState() {
       const sanitized = sanitizeLoadedState(guestState, null);
       const nextGuestState: AppState = {
         ...sanitized,
-        themePreference: localTheme,
+        ...deviceTheme,
       };
-      if (typeof document !== 'undefined') {
-        document.documentElement.setAttribute('data-theme', localTheme);
-      }
+      applyTheme(resolveTheme(deviceTheme.themePreference));
       if (myGeneration !== authGenerationRef.current) return;
       setState(nextGuestState);
       setIsAuthChecking(false);
@@ -2893,9 +2873,7 @@ export function useAppState() {
               void syncTables(userId, false);
               if (sanitizedState.themePreference) {
                 setLocalThemePreference(sanitizedState.themePreference);
-                if (typeof document !== 'undefined') {
-                  document.documentElement.setAttribute('data-theme', sanitizedState.themePreference);
-                }
+                applyTheme(resolveTheme(sanitizedState.themePreference));
               }
 
               let baseCurrentState = signInMergeBase(stateRef.current, sanitizedState, userId);
@@ -3007,7 +2985,7 @@ export function useAppState() {
                     resultingState = prev;
                     return prev;
                   }
-                  const emptyState: AppState = { ...DEFAULT_STATE, themePreference: getLocalThemePreference() || 'dark' };
+                  const emptyState: AppState = { ...DEFAULT_STATE, ...deviceThemeFields() };
                   resultingState = {
                     ...signInMergeBase(prev, emptyState, userId),
                     currentUser: fallbackUser,
@@ -3710,7 +3688,7 @@ export function useAppState() {
 
     try {
       const currentState = stateRef.current;
-      const localTheme = getLocalThemePreference() || 'dark';
+      const deviceTheme = deviceThemeFields();
 
       // 2. Cancel pending debounce timer if one exists
       const hadPendingSave = Boolean(debounceTimer.current);
@@ -3794,7 +3772,7 @@ export function useAppState() {
       const sanitized = sanitizeLoadedState(guestState, null);
       setState({
         ...sanitized,
-        themePreference: localTheme,
+        ...deviceTheme,
       });
 
       // 6. Surface user-facing notifications for any failures that occurred
@@ -4348,11 +4326,10 @@ export function useAppState() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const setThemePreference = useCallback((theme: 'dark' | 'light') => {
+  /** The user's own pick ('system' = follow the device again), stamped so it syncs to every device. */
+  const setThemePreference = useCallback((theme: ThemePreference) => {
     setLocalThemePreference(theme);
-    if (typeof document !== 'undefined') {
-      document.documentElement.setAttribute('data-theme', theme);
-    }
+    applyTheme(resolveTheme(theme));
     setState(
       (prev) => ({
         ...prev,
@@ -4363,22 +4340,10 @@ export function useAppState() {
     );
   }, [setState]);
 
+  /** Header / account menu switch: the other theme than the one on screen, as the user's pick. */
   const toggleThemePreference = useCallback(() => {
-    const currentTheme = getLocalThemePreference() || stateRef.current.themePreference || 'dark';
-    const nextTheme: 'dark' | 'light' = currentTheme === 'light' ? 'dark' : 'light';
-    setLocalThemePreference(nextTheme);
-    if (typeof document !== 'undefined') {
-      document.documentElement.setAttribute('data-theme', nextTheme);
-    }
-    setState(
-      (prev) => ({
-        ...prev,
-        themePreference: nextTheme,
-        themeUpdatedAt: trustedNow().toISOString(),
-      }),
-      { immediate: true }
-    );
-  }, [setState]);
+    setThemePreference(resolveTheme(stateRef.current.themePreference) === 'light' ? 'dark' : 'light');
+  }, [setThemePreference]);
 
   /** Rank-up memory (lib/rankCelebration), saved at once so a reload or another device never shows it again. */
   const setRankCelebrated = useCallback(
@@ -10288,6 +10253,7 @@ export function useAppState() {
     setUsername,
     updateProfileUsername,
     updateProfileAvatar,
+    resolvedTheme,
     setThemePreference,
     toggleThemePreference,
     toggleProfilePrivacy,

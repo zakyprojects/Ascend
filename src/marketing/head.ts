@@ -25,12 +25,12 @@ export const escapeHtml = (value: string): string =>
   value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
 /**
- * Theme before first paint: the theme saved in the app (the key the app's own theme script and
- * store use), else the device's light/dark setting. The toggle (client.ts) saves the choice under
- * the same key, so the app opens in it too. Inline, so its sha256 is in vercel.json's CSP
- * (checkSeo fails on a missing hash).
+ * Theme before first paint: the Light/Dark choice saved on this device (app or toggle, lib/theme.ts
+ * key; the pre-2026-11-10 key counts only for 'light'), else the device's light/dark setting.
+ * The toggle (client.ts) saves the choice under the same key, so the app opens in it too. Inline,
+ * so its sha256 is in vercel.json's CSP (checkSeo fails on a missing hash).
  */
-export const THEME_SCRIPT = `(function(){try{var t=localStorage.getItem('ascend_theme_preference');if(t!=='light'&&t!=='dark')t=window.matchMedia&&matchMedia('(prefers-color-scheme: light)').matches?'light':'dark';document.documentElement.setAttribute('data-theme',t);var m=document.querySelector('meta[name="theme-color"]');if(m)m.setAttribute('content',t==='light'?'#f6f8f7':'#0a0b0f');}catch(e){}})();`;
+export const THEME_SCRIPT = `(function(){try{var t=localStorage.getItem('ascend_theme');if(t!=='light'&&t!=='dark'&&t!=='system')t=localStorage.getItem('ascend_theme_preference')==='light'?'light':'system';if(t==='system')t=window.matchMedia&&matchMedia('(prefers-color-scheme: light)').matches?'light':'dark';document.documentElement.setAttribute('data-theme',t);var m=document.querySelector('meta[name="theme-color"]');if(m)m.setAttribute('content',t==='light'?'#f6f8f7':'#0a0b0f');}catch(e){}})();`;
 
 /**
  * Landing page only, first thing in <head>: a visit that belongs to the app goes there before

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
+import { applyTheme, setLocalThemePreference } from '@/lib/theme';
 import { ToastProvider } from '@/components/ui/Toast';
 import { DiscardChangesDialog } from '@/components/ui/DiscardChangesDialog';
 import { GALLERY_GROUPS } from './gallery/registry';
@@ -103,12 +104,8 @@ function GalleryContent() {
   // ThemeToggle runs this inside the app's reveal transition (lib/themeTransition).
   const toggleTheme = () => {
     const next = theme === 'dark' ? 'light' : 'dark';
-    document.documentElement.setAttribute('data-theme', next);
-    try {
-      localStorage.setItem('ascend_theme_preference', next);
-    } catch {
-      // ignore
-    }
+    applyTheme(next);
+    setLocalThemePreference(next);
     setTheme(next);
   };
 

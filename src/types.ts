@@ -849,8 +849,8 @@ export interface AppState {
   // Time Tracker Module
   timeTracker?: TimeTrackerState;
 
-  // Theme Preference
-  themePreference?: 'dark' | 'light';
+  // Theme Preference ('system' follows the device; lib/theme.ts)
+  themePreference?: 'system' | 'dark' | 'light';
   /** When themePreference was last changed on any device; the later change wins between devices. */
   themeUpdatedAt?: string;
 
@@ -1118,7 +1118,7 @@ export const DEFAULT_STATE: AppState = {
   deletedEntityIds: [],
   restoredEntityIds: [],
   timeTracker: DEFAULT_TIME_TRACKER_STATE,
-  themePreference: 'dark',
+  themePreference: 'system',
   rankCelebrated: null,
   lastSeenRelease: null,
   listOrders: [],

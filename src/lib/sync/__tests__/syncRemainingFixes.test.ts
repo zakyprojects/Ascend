@@ -223,7 +223,9 @@ function fakeClient(server: Map<string, Record<string, unknown>>, refuse: Set<st
     'equal stamps, different values (an old app changed it): the server theme'
   );
   assert(mergeThemePreference({}, { themePreference: 'light' }).themePreference === 'light', 'no server theme: the device theme');
-  assert(mergeThemePreference({}, {}).themePreference === 'dark', 'neither: dark');
+  assert(mergeThemePreference({}, {}).themePreference === 'system', 'neither: follow the device');
+  assert(mergeThemePreference({ themePreference: 'dark' }, {}).themePreference === 'system', 'unstamped dark is the old default: follow the device');
+  assert(mergeThemePreference({ themePreference: 'system', themeUpdatedAt: LATER }, darkOld).themePreference === 'system', 'a newer System pick wins');
 }
 
 console.log('syncRemainingFixes: all passed');

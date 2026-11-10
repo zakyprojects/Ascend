@@ -31,6 +31,7 @@ import { isWeeklyGoalSeasonSplitEntryId } from './weeklyGoalSeasons';
 import { computeStateDataWeight, type UserDataWeight } from './dataWeight';
 import { trustedNow, trustedNowMs } from './clock';
 import { mergeRankCelebrated } from './rankCelebration';
+import { normalizeThemePreference } from './theme';
 import { mergeLastSeenRelease } from './whatsNew';
 
 /**
@@ -1363,18 +1364,20 @@ function mergeAppStateInternal(
  * copy as base and this device's as incoming, and a device that changed its theme stamped it, so an
  * unstamped difference here is another device's change (also an older app version's, which does not
  * stamp). Before this, incoming always won, so each device kept and re-saved its own theme.
+ * Both sides are normalized first (an unstamped 'dark' is the old default: 'system').
  */
 export function mergeThemePreference(
   baseState: Pick<AppState, 'themePreference' | 'themeUpdatedAt'>,
   incomingState: Pick<AppState, 'themePreference' | 'themeUpdatedAt'>
 ): Pick<AppState, 'themePreference' | 'themeUpdatedAt'> {
+  const basePreference = normalizeThemePreference(baseState.themePreference, baseState.themeUpdatedAt);
+  const incomingPreference = normalizeThemePreference(incomingState.themePreference, incomingState.themeUpdatedAt);
   const baseAt = timeMs(baseState.themeUpdatedAt);
   const incomingAt = timeMs(incomingState.themeUpdatedAt);
-  const incomingWins = incomingState.themePreference !== undefined && (baseState.themePreference === undefined || incomingAt > baseAt);
-  const winner = incomingWins ? incomingState : baseState;
+  const incomingWins = incomingPreference !== undefined && (basePreference === undefined || incomingAt > baseAt);
   const themeUpdatedAt = incomingAt > baseAt ? incomingState.themeUpdatedAt : baseState.themeUpdatedAt ?? incomingState.themeUpdatedAt;
   return {
-    themePreference: winner.themePreference || 'dark',
+    themePreference: (incomingWins ? incomingPreference : basePreference) ?? 'system',
     ...(themeUpdatedAt ? { themeUpdatedAt } : {}),
   };
 }

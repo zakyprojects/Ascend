@@ -213,7 +213,7 @@ export function AppShell({ currentView, navigationKind, pendingView = null, onVi
     document.title = currentView === 'dashboard' ? 'Today · AscendDay' : `${getViewLabel(currentView)} · AscendDay`;
   }, [currentView]);
 
-  const isDarkTheme = store.state.themePreference !== 'light';
+  const isDarkTheme = store.resolvedTheme === 'dark';
   const currentUser = store.state.currentUser;
   const username = store.state.username;
   // eslint-disable-next-line react-hooks/exhaustive-deps -- `minute` follows the season clock
