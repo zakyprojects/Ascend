@@ -440,6 +440,14 @@ export function applyPresetHabitRemovalMigration(state: AppState, currentWeekKey
 }
 
 const GUEST_STORAGE_KEY = 'ascend_guest_state_v2';
+/**
+ * Writes the account's device cache. The tab's synced row versions are stored with it, so the cached
+ * state keeps the versions it was built on (sync/tabVersions). Throws what localStorage throws.
+ */
+function writeUserDeviceCache(userId: string, cached: AppState): void {
+  localStorage.setItem(`ascend_user_cache_${userId}`, JSON.stringify(cached));
+  storeTabSyncedHashes(userId);
+}
 /** How long the boot loader waits on a saved sign-in before offering Retry (offline). */
 const STORED_SESSION_WAIT_MS = 8000;
 /** Most logs one "Clear older logs" removes (tombstones must fit the 500-id list). */
@@ -2125,8 +2133,7 @@ export function useAppState() {
       if (typeof window !== 'undefined') {
         try {
           if (stateToSave.currentUser?.id) {
-            localStorage.setItem(`ascend_user_cache_${stateToSave.currentUser.id}`, JSON.stringify(stateToSave));
-            storeTabSyncedHashes(stateToSave.currentUser.id);
+            writeUserDeviceCache(stateToSave.currentUser.id, stateToSave);
             localStorage.removeItem(`ascend_dirty_${stateToSave.currentUser.id}`);
           } else {
             localStorage.setItem(GUEST_STORAGE_KEY, JSON.stringify(stateToSave));
@@ -2175,8 +2182,7 @@ export function useAppState() {
       if (typeof window !== 'undefined') {
         try {
           if (preDeleteState.currentUser?.id) {
-            localStorage.setItem(`ascend_user_cache_${preDeleteState.currentUser.id}`, JSON.stringify(preDeleteState));
-            storeTabSyncedHashes(preDeleteState.currentUser.id);
+            writeUserDeviceCache(preDeleteState.currentUser.id, preDeleteState);
             localStorage.removeItem(`ascend_dirty_${preDeleteState.currentUser.id}`);
           } else {
             localStorage.setItem(GUEST_STORAGE_KEY, JSON.stringify(preDeleteState));
@@ -2510,8 +2516,7 @@ export function useAppState() {
         try {
           if (state.currentUser?.id) {
             const uid = state.currentUser.id;
-            localStorage.setItem(`ascend_user_cache_${uid}`, JSON.stringify(state));
-            storeTabSyncedHashes(uid);
+            writeUserDeviceCache(uid, state);
             if (hasStateData(state)) {
               markDirty(uid);
             }
