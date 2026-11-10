@@ -58,6 +58,17 @@ export interface DayHabits {
 }
 
 /**
+ * The habits "today" counts on the Dashboard (its ring and "All done for today"): every daily
+ * habit, and a weekly habit once it is done this week or on Sunday, the last day of its week (the
+ * week it is missed in ends that night). Earlier in the week an open weekly habit does not hold up
+ * today, the same as the Last 7 days chart, which counts daily habits only.
+ */
+export function habitsDueToday(habits: Habit[], isDone: (habit: Habit) => boolean, today = todayKey()): Habit[] {
+  const lastDayOfWeek = parseDate(today)?.getDay() === 0;
+  return habits.filter((h) => h.frequency !== 'weekly' || lastDayOfWeek || isDone(h));
+}
+
+/**
  * Daily habits completed per local day. Weekly habits are left out: they are done once per
  * week, so they have no per-day completion to count.
  */

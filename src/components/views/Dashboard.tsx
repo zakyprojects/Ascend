@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { applyListOrder, byCreatedAsc, LIST_ORDER_KEYS, savedOrderIds } from '@/lib/listOrder';
 import {
   BookOpen,
@@ -42,7 +42,7 @@ import { useLocalDayKey } from '@/lib/useLocalDayKey';
 import { useMinuteTick } from '@/lib/useMinuteTick';
 import { useCompletionPop } from '@/lib/useCompletionPop';
 import { pageLinkProps } from '@/lib/pageLink';
-import { dailyHabitCompletions, dailyPoints, lastDayKeys } from '@/lib/weeklyActivity';
+import { dailyHabitCompletions, dailyPoints, habitsDueToday, lastDayKeys } from '@/lib/weeklyActivity';
 import { HabitCheck } from '@/components/habits/HabitCheck';
 import { MoodBadge } from '@/components/journal/moods';
 import { WeekActivityCard } from './WeekActivityCard';
@@ -172,6 +172,15 @@ export function Dashboard({ store, onViewChange, onOpenAuth }: DashboardProps) {
     [getLeagueData, periodKeyNow]
   );
   const seasonPoints = boards.ninetyDay.userPoints;
+  // A new week, month or season: other members' cached points are last period's, so fetch them
+  // again (the mount fetch above covers the first render).
+  const { refreshLeagueStandings } = store;
+  const shownPeriodKey = useRef(periodKeyNow);
+  useEffect(() => {
+    if (shownPeriodKey.current === periodKeyNow) return;
+    shownPeriodKey.current = periodKeyNow;
+    void refreshLeagueStandings({ full: true });
+  }, [periodKeyNow, refreshLeagueStandings]);
 
   const [retrying, setRetrying] = useState(false);
   const standings = store.getLeagueStandingsStatus();
@@ -187,8 +196,10 @@ export function Dashboard({ store, onViewChange, onOpenAuth }: DashboardProps) {
 
   const todayEntry = store.getTodayJournalEntry();
   const isDone = (h: Habit) => store.isHabitDone(h);
-  const doneCount = habits.filter(isDone).length;
-  const pendingCount = habits.length - doneCount;
+  // The ring and "All done for today" count what is due today (an open weekly habit waits until Sunday).
+  const dueToday = habitsDueToday(habits, isDone, today);
+  const doneCount = dueToday.filter(isDone).length;
+  const allDoneToday = dueToday.length > 0 && doneCount === dueToday.length;
 
   // Today card: pending first, then done. A habit ticked or unticked here keeps its place until
   // the next visit, so it never jumps or slips out of view under the tap.
@@ -279,14 +290,14 @@ export function Dashboard({ store, onViewChange, onOpenAuth }: DashboardProps) {
             <div className="flex items-center gap-5">
               <ProgressRing
                 value={doneCount}
-                max={Math.max(habits.length, 1)}
-                label={`Habits done: ${doneCount} of ${habits.length}`}
+                max={Math.max(dueToday.length, 1)}
+                label={`Habits done today: ${doneCount} of ${dueToday.length}`}
                 size={116}
                 thickness={9}
               >
                 <span className="text-4xl font-medium text-content-primary tabular-nums leading-none">
                   {doneCount}
-                  <span className="text-lg text-content-muted">/{habits.length}</span>
+                  <span className="text-lg text-content-muted">/{dueToday.length}</span>
                 </span>
                 <span className="mt-1 text-2xs text-content-muted">habits done</span>
               </ProgressRing>
@@ -331,14 +342,20 @@ export function Dashboard({ store, onViewChange, onOpenAuth }: DashboardProps) {
                   />
                 ) : (
                   <div className="card overflow-hidden">
-                    {pendingCount === 0 && (
+                    {allDoneToday && (
                       <p className="flex items-center gap-2 border-b border-overlay-subtle px-4 py-3 text-sm font-medium text-brand-text">
                         <Check size={16} aria-hidden="true" /> All done for today.
                       </p>
                     )}
                     <ul className="divide-y divide-overlay-subtle">
                       {todayRows.map((habit) => (
-                        <TodayHabitRow key={habit.id} habit={habit} done={isDone(habit)} onToggle={() => toggleFromToday(habit)} />
+                        <TodayHabitRow
+                          key={habit.id}
+                          habit={habit}
+                          done={isDone(habit)}
+                          onToggle={() => toggleFromToday(habit)}
+                          onOpenReading={() => onViewChange('reading')}
+                        />
                       ))}
                     </ul>
                     {moreCount > 0 && (
@@ -542,8 +559,18 @@ export function Dashboard({ store, onViewChange, onOpenAuth }: DashboardProps) {
   );
 }
 
-/** One habit in the Today card: tick or untick in place, with its points. */
-function TodayHabitRow({ habit, done, onToggle }: { habit: Habit; done: boolean; onToggle: () => void }) {
+/** One habit in the Today card: tick or untick in place, with its points (the Reading habit opens Reading). */
+function TodayHabitRow({
+  habit,
+  done,
+  onToggle,
+  onOpenReading,
+}: {
+  habit: Habit;
+  done: boolean;
+  onToggle: () => void;
+  onOpenReading: () => void;
+}) {
   const { arm, popClass } = useCompletionPop(done);
   const { text: meta, earns } = habitPointsMeta(habit, done);
 
@@ -558,6 +585,7 @@ function TodayHabitRow({ habit, done, onToggle }: { habit: Habit; done: boolean;
           if (!done) arm();
           onToggle();
         }}
+        onOpenLinked={onOpenReading}
       />
       <span
         className={cx(
@@ -602,7 +630,7 @@ interface LeagueRowProps {
 
 /**
  * Your place in one league. The place needs the other members' standings: a skeleton while they
- * load, "—" when they failed or you have no points yet (an empty place is never "#1").
+ * load, "—" when they failed or you are at 0 points (an empty place is never "#1").
  */
 function LeagueRow({ type, rank, points, status, navigate }: LeagueRowProps) {
   const tone = LEAGUE_TONE[type];
@@ -610,7 +638,7 @@ function LeagueRow({ type, rank, points, status, navigate }: LeagueRowProps) {
   const label = LEAGUE_LABEL[type];
   const hasPlace = status === 'ready' && points > 0;
   const placeText =
-    points <= 0 ? 'no points yet' : status === 'ready' ? `place ${rank}` : status === 'failed' ? 'place not loaded' : 'loading place';
+    points <= 0 ? 'no place yet' : status === 'ready' ? `place ${rank}` : status === 'failed' ? 'place not loaded' : 'loading place';
 
   return (
     <li>
@@ -641,7 +669,8 @@ function LeagueRow({ type, rank, points, status, navigate }: LeagueRowProps) {
             </span>
           )}
           <span className="mt-1 block figure text-2xs text-content-muted">
-            {points > 0 ? <><CountUp value={points} /> {points === 1 ? 'pt' : 'pts'}</> : 'No points yet'}
+            {/* 0 can also be points that penalties took back down, so never "No points yet". */}
+            <CountUp value={points} /> {points === 1 ? 'pt' : 'pts'}
           </span>
         </span>
       </a>
