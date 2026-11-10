@@ -94,7 +94,12 @@ export function GoalRow({
     <div className="enter-item space-y-3 py-4 first:pt-0 last:pb-0">
       <div className="flex items-start gap-3">
         {linked ? (
-          <span className="mt-0.5 shrink-0" title="Ticks itself from linked activity">
+          <span
+            className="mt-0.5 shrink-0"
+            role="img"
+            aria-label={achieved ? 'Achieved' : 'Not achieved yet, ticks itself from linked activity'}
+            title="Ticks itself from linked activity"
+          >
             {mark}
           </span>
         ) : (

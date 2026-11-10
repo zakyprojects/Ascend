@@ -54,14 +54,6 @@ export function WeeklyGoalsView({
   const today = useLocalDayKey();
   const currentWeekKey = weekKey(parseDate(today) ?? undefined);
   const [selectedWeekKey, setSelectedWeekKey] = useState<string>(currentWeekKey);
-  // A page that was on "this week" moves to the new week (like Time Tracker's day).
-  const previousWeekKeyRef = useRef(currentWeekKey);
-  useEffect(() => {
-    const previous = previousWeekKeyRef.current;
-    if (previous === currentWeekKey) return;
-    previousWeekKeyRef.current = currentWeekKey;
-    setSelectedWeekKey((selected) => (selected === previous ? currentWeekKey : selected));
-  }, [currentWeekKey]);
 
   const isPastWeek = selectedWeekKey < currentWeekKey;
   const isFutureWeek = selectedWeekKey > currentWeekKey;
@@ -212,6 +204,16 @@ export function WeeklyGoalsView({
   const requestedWeek = new URLSearchParams(search).get(WEEK_PARAM);
   const handledWeekRef = useRef<string | null>(null);
   const goalDialogOpen = formOpen || Boolean(deletingGoal);
+  // A page that was on "this week" moves to the new week (like Time Tracker's day). Not while the
+  // goal form or the delete dialog is open: it acts on the week it was opened on (now past, so a
+  // save there says so), and the page moves once it closes.
+  const previousWeekKeyRef = useRef(currentWeekKey);
+  useEffect(() => {
+    const previous = previousWeekKeyRef.current;
+    if (previous === currentWeekKey || goalDialogOpen) return;
+    previousWeekKeyRef.current = currentWeekKey;
+    setSelectedWeekKey((selected) => (selected === previous ? currentWeekKey : selected));
+  }, [currentWeekKey, goalDialogOpen]);
   useEffect(() => {
     if (requestedWeek === null) {
       handledWeekRef.current = null;
@@ -324,7 +326,9 @@ export function WeeklyGoalsView({
           }}
           stats={[
             { label: 'Average progress', value: <><CountUp value={stats.averagePercent} />%</>, valueClassName: 'text-brand-text' },
-            { label: 'High priority', value: <>{stats.highAchieved}/{stats.highTotal}</>, hint: 'achieved', valueClassName: 'text-brand-text' },
+            stats.highTotal > 0
+              ? { label: 'High priority', value: <>{stats.highAchieved}/{stats.highTotal}</>, hint: 'achieved', valueClassName: 'text-brand-text' }
+              : { label: 'High priority', value: 'None' },
           ]}
           side={
             isFutureWeek ? undefined : (

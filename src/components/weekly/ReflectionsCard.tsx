@@ -11,16 +11,17 @@ import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { useToast } from '@/components/ui/Toast';
 import { useAsyncActionKey } from '@/lib/useAsyncAction';
 import { useUnsavedChanges } from '@/lib/unsavedChanges';
+import { useMinuteTick } from '@/lib/useMinuteTick';
 import { toUserMessage } from '@/lib/userMessage';
 
 /** Where the week's Reflection Window stands, with the time left while it is open. */
 function windowStatus(targetWeekKey: string, now: Date): { open: boolean; text: string } {
   const { opensAt, closesAt } = reflectionWindow(targetWeekKey);
   if (now < opensAt) {
-    const when = opensAt.toLocaleString('en-US', { weekday: 'long', hour: 'numeric', minute: '2-digit' });
+    const when = opensAt.toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
     return { open: false, text: `Opens ${when}.` };
   }
-  if (now >= closesAt) return { open: false, text: 'Closed for this week.' };
+  if (now >= closesAt) return { open: false, text: 'Closed.' };
   const hoursLeft = Math.ceil((closesAt.getTime() - now.getTime()) / 3600000);
   const left = hoursLeft > 24 ? `${Math.floor(hoursLeft / 24)}d ${hoursLeft % 24}h` : `${hoursLeft}h`;
   return { open: true, text: `Open now, closes in ${left}.` };
@@ -53,6 +54,8 @@ export function ReflectionsCard({
 }) {
   const { showSuccessToast } = useToast();
   const { isKeyLoading, executeWithKey } = useAsyncActionKey();
+  // Re-checked every minute, so a page left open shows the window opening and closing on time.
+  useMinuteTick();
   const status = windowStatus(weekKey, getNow());
   const reflections = store.state.weeklyGoals.find((w) => w.weekKey === weekKey)?.reflections || [];
   const notYetRewarded = getWeeklyReflectionNetPoints(store.state, weekKey) <= 0;
