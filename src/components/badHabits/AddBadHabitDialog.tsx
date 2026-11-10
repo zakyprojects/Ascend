@@ -87,7 +87,7 @@ export function AddBadHabitDialog({ open, onClose, habits, onAddPreset, onAddCus
               <p className="text-xs text-content-muted">
                 Each day you resist one earns its points, up to{' '}
                 <span className="figure">{ptsText(BAD_HABIT_POINTS.dailyCap)}</span> a day for all of them together. The ones
-                you log first count first.
+                you log first count first. A slip, or a day you don&apos;t log, costs the Slipped points.
               </p>
               <ul className="divide-y divide-overlay-subtle rounded-xl border border-overlay-subtle">
                 {PRESET_BAD_HABITS.map((preset) => {

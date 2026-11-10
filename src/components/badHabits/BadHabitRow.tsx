@@ -278,7 +278,7 @@ export function BadHabitRow({
             <div className="flex items-start gap-3">
               <h3
                 className={cx(
-                  'item-name min-w-0 flex-1 break-words line-clamp-2',
+                  'item-name min-w-0 flex-1 break-words',
                   status ? '!text-content-tertiary' : '!text-content-primary'
                 )}
               >
@@ -309,10 +309,17 @@ export function BadHabitRow({
             <BadHabitSlipWarning habit={habit} logs={logs} today={today} logged={Boolean(status)} seasonPoints={seasonPoints} className="mt-1.5" />
 
             <BadHabitHistory habit={habit} logs={logs} today={today} className="mt-2 flex sm:hidden" />
+
+            {/* On phones Slipped/Undo sits under the row's details, so the name keeps the row's width. */}
+            <div className="mt-2 sm:hidden">
+              <BadHabitDayAction name={habit.name} logged={Boolean(status)} onSlip={onSlip} onUndo={onUndo} />
+            </div>
           </div>
 
           <div className="flex shrink-0 items-center gap-2">
-            <BadHabitDayAction name={habit.name} logged={Boolean(status)} onSlip={onSlip} onUndo={onUndo} />
+            <div className="hidden sm:block">
+              <BadHabitDayAction name={habit.name} logged={Boolean(status)} onSlip={onSlip} onUndo={onUndo} />
+            </div>
             {onEdit && (
               <button
                 type="button"
