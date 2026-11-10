@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import {
+import type {
   AppState,
-  DEFAULT_STATE,
   Habit,
   JournalEntry,
   LeagueArchive,
@@ -53,11 +52,10 @@ import {
   TimeTrackerTemplate,
   TimeTrackerState,
   TimeTrackerBlock,
-  DEFAULT_TIME_TRACKER_ACTIVITIES,
-  DEFAULT_TIME_TRACKER_STATE,
   NotificationPreferenceKey,
   RankCelebrated,
 } from '@/types';
+import { DEFAULT_STATE, DEFAULT_TIME_TRACKER_ACTIVITIES, DEFAULT_TIME_TRACKER_STATE } from '@/types';
 import { mergeRankCelebrated } from './rankCelebration';
 import { mergeLastSeenRelease } from './whatsNew';
 import { isDeviceOffline } from './deviceOffline';
@@ -88,7 +86,7 @@ import { singleFlight } from './singleFlight';
 import { timezoneWaitHoldsPreview } from './useTimezoneWait';
 import { reconcileSharedChallengeLifecycle, applyPledgeToggle, mergeSharedChallenge, linkedHabitFor, linkedBadHabitFor, badHabitStatusOn, habitDoneOn, planLinkedPactRepairs, pactTickRefused, tickLinkedPacts, tickLinkedBadHabitPacts, type LinkedPactTick } from './pactLifecycle';
 import { isPartnershipUser1 } from './partnershipSide';
-import { PresetHabit } from './presets';
+import type { PresetHabit } from './presets';
 import { sameName } from './uniqueNames';
 import { computeHabitAwards, isHabitAwardEntry, isRetiredAppHabitAward, presetHabitPoints } from './habitAwards';
 import { computeWorkoutAwards, isRetiredAppWorkoutAward, isWorkoutDayEntry } from './workoutAwards';
