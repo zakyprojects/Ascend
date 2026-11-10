@@ -97,6 +97,18 @@ export async function isUsernameAvailable(
 
   if (isSupabaseConfigured) {
     try {
+      // The server's answer (works signed out; own profile never counts as taken). The RPC is
+      // 20261110150100; until it is applied (PGRST202), the old direct read, which anon loses in
+      // 20261110150200.
+      const { data: free, error: rpcError } = await supabase.rpc('ascend_username_available', { p_username: trimmed });
+      if (!rpcError && typeof free === 'boolean') {
+        return free ? { available: true } : { available: false, reason: USERNAME_TAKEN };
+      }
+      if (rpcError && rpcError.code !== 'PGRST202') {
+        console.warn('Username check RPC error:', rpcError.message);
+        return { available: true, unknown: true };
+      }
+
       const { data, error } = await supabase
         .from('profiles')
         .select('id, username')
