@@ -27,7 +27,11 @@ const failed = [];
 for (const file of files) {
   const name = relative(root, file);
   console.log(`\n▶ ${name}`);
-  const result = spawnSync(process.execPath, [viteNode, file], { cwd: root, stdio: 'inherit' });
+  // *.hook.test.ts talk to the in-process fake Supabase; every other file runs in local mode. Set
+  // here because process env beats .env / .env.local, so a developer's real keys cannot leak in.
+  const fakeMode = file.endsWith('.hook.test.ts');
+  const env = { ...process.env, VITE_SUPABASE_URL: fakeMode ? 'https://fakeproj.supabase.co' : '', VITE_SUPABASE_PUBLISHABLE_KEY: fakeMode ? 'sb_publishable_fake' : '' };
+  const result = spawnSync(process.execPath, [viteNode, file], { cwd: root, stdio: 'inherit', env });
   if (result.status !== 0) failed.push(name);
 }
 
