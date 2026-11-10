@@ -11,7 +11,8 @@ import { syncPushSubscription } from '@/lib/push';
 import { WEEK_PARAM } from '@/lib/weekParam';
 import { setPendingFeedbackStart } from '@/lib/feedback';
 import { isFeedbackView } from '@/components/nav/navConfig';
-import { loadedAppShell, preloadAppShell, type AppShellParts } from '@/components/lazyAppShell';
+import { AppShell } from '@/components/AppShell';
+import { FocusSessionProvider } from '@/components/pfc/FocusSessionProvider';
 import {
   AccountabilityPartner,
   AddictionRecovery,
@@ -143,35 +144,6 @@ function App() {
     };
   }, [needsAuthPage, AuthPageView]);
 
-  // The app itself: not while a sign-in page is up, nor for the one frame a redirect away from
-  // a sign-in page takes (signed in, or local-only mode).
-  const showApp = authReady && !authScreen && !auth && !legal;
-
-  // The signed-in frame's code (preloaded behind the splash by main.tsx on app pages). On a sign-in
-  // page it starts loading once someone is signed in (during the success screen and the data load).
-  const [shellParts, setShellParts] = useState<AppShellParts | null>(() => loadedAppShell());
-  // Set when that code could not load while the app is due and no reload was started.
-  const [shellFailed, setShellFailed] = useState(false);
-  const needsShell = showApp && !shellParts;
-  const wantsShell = !shellParts && (showApp || Boolean(currentUser));
-  useEffect(() => {
-    if (!wantsShell) return;
-    let cancelled = false;
-    preloadAppShell().then(
-      (parts) => {
-        if (!cancelled) setShellParts(parts);
-      },
-      () => {
-        // Before the app is due (mid sign-in) a failure is only retried once it is, with no reload from
-        // here (the vite:preloadError recovery of lib/assetRecovery.ts still applies, as to every chunk).
-        if (needsShell && !reloadOnceForStaleChunk() && !cancelled) setShellFailed(true);
-      }
-    );
-    return () => {
-      cancelled = true;
-    };
-  }, [wantsShell, needsShell]);
-
   // Blocking loader: the initial session check (and the sign-in page's code if it is somehow not
   // here yet), then any later sign-in that is still loading the user's data once the success
   // screen is done (never an empty guest view). It stays mounted for its exit animation,
@@ -180,7 +152,6 @@ function App() {
   const showLoader =
     store.isAuthChecking ||
     (needsAuthPage && !AuthPageView) ||
-    needsShell ||
     (store.isSessionLoading && !authHold);
   const [loaderShown, setLoaderShown] = useState(showLoader);
   const [loaderExiting, setLoaderExiting] = useState(false);
@@ -200,9 +171,7 @@ function App() {
   // offer a fresh try (a reload starts a new attempt) or, for a real account, signing in afresh.
   // A guest is never offered that: dropping its sign-in would lose the guest account.
   const bootOffline = store.storedSessionWait === 'failed';
-  // Same for the signed-in frame's code.
-  const authPageOffline =
-    !bootOffline && ((authPageFailed && needsAuthPage && !AuthPageView) || (shellFailed && needsShell));
+  const authPageOffline = !bootOffline && authPageFailed && needsAuthPage && !AuthPageView;
   const offlineActions = authPageOffline ? (
     <Button onClick={() => window.location.reload()}>Retry</Button>
   ) : bootOffline && (
@@ -269,11 +238,15 @@ function App() {
         confirmLeave(() => goToPath(authPathWithNext(currentUser ? 'signup' : 'login', pathForView(view) + search)))
     : undefined;
 
+  // The app itself: not while a sign-in page is up, nor for the one frame a redirect away from
+  // a sign-in page takes (signed in, or local-only mode).
+  const showApp = authReady && !authScreen && !auth && !legal;
+
   // The home-screen shortcut "Quick log" (public/manifest.json) opens `/dashboard?quick-log`. Once the app
   // and the account's data are on screen (a signed-out launch first signs in: `next` keeps the
   // query), the shell opens Quick log and the flag leaves the address, so a refresh, back, or a
   // later sign-in redirect never opens it again.
-  const quickLogLaunch = showApp && Boolean(shellParts) && !store.isSessionLoading && new URLSearchParams(search).has(QUICK_LOG_PARAM);
+  const quickLogLaunch = showApp && !store.isSessionLoading && new URLSearchParams(search).has(QUICK_LOG_PARAM);
   useEffect(() => {
     if (!quickLogLaunch) return;
     const params = new URLSearchParams(search);
@@ -315,9 +288,6 @@ function App() {
     return () => navigator.serviceWorker.removeEventListener('message', onMessage);
   }, [showApp, setView]);
 
-  const AppShell = shellParts?.AppShell;
-  const FocusSessionProvider = shellParts?.FocusSessionProvider;
-
   return (
     <>
       {authReady && (
@@ -356,7 +326,7 @@ function App() {
               </Suspense>
             </ErrorBoundary>
           )}
-          {showApp && AppShell && FocusSessionProvider && (
+          {showApp && (
             <FocusSessionProvider store={store} onOpenFocus={() => setView('prefrontal')}>
             <AppShell
               currentView={view}
