@@ -210,7 +210,7 @@ This means:
 
 This is why doing 5 minutes of meditation daily for 90 days is far more powerful than doing 2 hours once a week. The daily repetition keeps those neurons firing together, wiring them into a strong, lasting pathway.
 
-**How long it takes:** In a well-known study (Lally, 2009), a new daily habit took a median of 66 days to feel automatic, with a range from 18 to 254 days. Simple habits come sooner; harder ones take longer. A 90-day season gives most habits time to settle in, which is why the 90-Day League is 90 days long.`,
+**How long it takes:** In a well-known study (Lally, 2009), a new daily habit took a median of 66 days to feel automatic, with a range from 18 to 254 days. Simple habits come sooner; harder ones take longer. A 90-day season gives most habits time to settle in, which is why the Season league is 90 days long.`,
   },
   {
     id: 'neuro-2',

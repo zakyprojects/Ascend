@@ -110,7 +110,7 @@ const ASCEND_LINKS: { icon: LucideIcon; tone: Tone; title: string; text: string;
   { icon: Flame, tone: 'emerald', title: 'Habits', text: 'Daily repeats that strengthen the path.', view: 'habits' },
   { icon: GraduationCap, tone: 'cyan', title: 'Skills', text: 'Track focused practice minutes.', view: 'skills' },
   { icon: Dumbbell, tone: 'rose', title: 'Exercise', text: 'Feed the brain BDNF.', view: 'exercise' },
-  { icon: Trophy, tone: 'purple', title: '90-Day League', text: 'A season long enough for change to stick.', view: 'leagues' },
+  { icon: Trophy, tone: 'purple', title: 'Season league', text: 'A season long enough for change to stick.', view: 'leagues' },
 ];
 
 function Tile({ icon: Icon, tone, size = 'md' }: { icon: LucideIcon; tone: Tone; size?: 'sm' | 'md' }) {
