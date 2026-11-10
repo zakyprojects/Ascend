@@ -8,6 +8,7 @@ import { isRetiredAppSkillAward } from '@/lib/skillAwards';
 import { ptsText } from '@/lib/leagues';
 import { useLocalDayKey } from '@/lib/useLocalDayKey';
 import { LATE_POINTS_TEXT, useTimezoneWait } from '@/lib/useTimezoneWait';
+import { PREVIEW_EARN_LABEL, PREVIEW_MAX_LABEL, previewCapReachedText } from '@/lib/practicePreviews';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { useToast } from '@/components/ui/Toast';
 import { useAsyncAction } from '@/lib/useAsyncAction';
@@ -50,6 +51,8 @@ import type { View } from '@/lib/views';
 
 const DAYS_PAGE = 7;
 const QUICK_MINUTES = [45, 60, 120, 180];
+/** Log practice's minutes limit. A focus session can make a longer log (up to 600 min); editing its note still saves. */
+const SKILL_LOG_MAX_MINUTES = 300;
 const quickLabel = (m: number) => (m >= 120 && m % 60 === 0 ? `${m / 60} hrs` : `${m} min`);
 
 const LEVEL_BADGE: Record<SkillLevel, string> = {
@@ -411,6 +414,14 @@ export function SkillTracker({ store, onNavigate }: { store: AppStore; onNavigat
       return;
     }
     if (editLog) {
+      // Opened before midnight, saved after: the minutes can't change any more (the store and the
+      // server keep the old ones), so say so instead of a quiet "Practice updated". The field goes
+      // back to the saved minutes; a second Save keeps the note and counts.
+      if (editLog.date !== todayKey() && Number(duration) !== minutesOf(editLog)) {
+        setDuration(minutesOf(editLog));
+        logIssues.showError('Minutes can only change on the day you logged them. Save again to keep your other changes.');
+        return;
+      }
       try {
         store.updateSkillLog(editLog.id, { durationMinutes: Number(duration), note: note.trim(), counts: cleaned.counts, newDrills: cleaned.newDrills });
         setLogModalOpen(false);
@@ -454,7 +465,7 @@ export function SkillTracker({ store, onNavigate }: { store: AppStore; onNavigat
           )}
           <button
             onClick={() => openEditLog(log)}
-            aria-label="Edit practice log"
+            aria-label={`Edit practice log: ${nameOf(log.skillId)}, ${minutesOf(log)} min`}
             title="Edit practice log"
             className={`p-1.5 rounded-lg text-content-muted hover:text-content-secondary hover:bg-overlay-subtle transition-colors ${TAP_TARGET}`}
           >
@@ -462,7 +473,7 @@ export function SkillTracker({ store, onNavigate }: { store: AppStore; onNavigat
           </button>
           <button
             onClick={() => setDeleteModalLog(log)}
-            aria-label="Delete practice log"
+            aria-label={`Delete practice log: ${nameOf(log.skillId)}, ${minutesOf(log)} min`}
             title="Delete practice log"
             className={`p-1.5 rounded-lg text-content-muted hover:text-rose-theme hover:bg-rose-500/10 transition-colors ${TAP_TARGET}`}
           >
@@ -877,7 +888,7 @@ export function SkillTracker({ store, onNavigate }: { store: AppStore; onNavigat
               id="skill-duration-input"
               label="How many minutes?"
               min={1}
-              max={300}
+              max={editLog ? Math.max(SKILL_LOG_MAX_MINUTES, minutesOf(editLog)) : SKILL_LOG_MAX_MINUTES}
               value={duration}
               onValueChange={setDuration}
               enterKeyHint="done"
@@ -1035,10 +1046,10 @@ export function SkillTracker({ store, onNavigate }: { store: AppStore; onNavigat
                 {timezoneWait
                   ? `It saves now. ${LATE_POINTS_TEXT}`
                   : remainingCap === 0
-                    ? `${SKILLS_POINTS.dailyCap} pts reached today. It still saves.`
+                    ? previewCapReachedText(SKILLS_POINTS.dailyCap)
                     : previewRaw > previewPoints
-                      ? "Today's max"
-                      : 'Points to earn'}
+                      ? PREVIEW_MAX_LABEL
+                      : PREVIEW_EARN_LABEL}
               </span>
               {!timezoneWait && <span className="figure text-brand-text shrink-0">{ptsText(previewPoints, true)}</span>}
             </div>
