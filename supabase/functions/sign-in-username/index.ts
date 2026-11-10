@@ -87,9 +87,17 @@ function corsHeaders(req: Request): Record<string, string> {
   };
 }
 
-/** The caller's address (first x-forwarded-for hop), or '' when unknown. */
+/**
+ * The caller's address, or '' when unknown. Hosted functions are reached through Cloudflare, which
+ * sets cf-connecting-ip to the connecting client. x-forwarded-for keeps whatever the caller sent at
+ * its front (Cloudflare appends the real address), so its first hop could be faked to dodge the
+ * per-IP brake; only its last hop is used, as a fallback.
+ */
 function clientIp(req: Request): string {
-  return (req.headers.get('x-forwarded-for') ?? '').split(',')[0].trim().slice(0, 64);
+  const direct = req.headers.get('cf-connecting-ip')?.trim();
+  if (direct) return direct.slice(0, 64);
+  const hops = (req.headers.get('x-forwarded-for') ?? '').split(',');
+  return hops[hops.length - 1].trim().slice(0, 64);
 }
 
 /** Best effort: a failed write never changes the answer. */
