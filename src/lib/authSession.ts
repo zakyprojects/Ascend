@@ -5,7 +5,7 @@ import { reconcileSharedChallengeLifecycle } from './pactLifecycle';
 import { cachedSyncedCollections } from './sync/syncedCollections';
 import { cachedDeviceLocalState } from './deviceLocalState';
 import { applyRemoteChanges, pullSyncedRows, type PullResult } from './sync/pull';
-import { applyPresetHabitRemovalMigration } from './store';
+import { applyPresetHabitRemovalMigration } from './loadedState';
 import {
   fetchUserDataWithStatusFromSupabase,
   setUserDataWatermark,
