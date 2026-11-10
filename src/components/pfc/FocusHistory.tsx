@@ -5,6 +5,7 @@ import type { FocusSessionLog } from '@/types';
 import { formatDateLong, localDayStartMs } from '@/lib/dates';
 import { trustedNowMs } from '@/lib/clock';
 import { computeFocusAwards } from '@/lib/focusAwards';
+import { focusSkillLogId } from '@/lib/focusSkillLog';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { useToast } from '@/components/ui/Toast';
 import { useAsyncActionKey } from '@/lib/useAsyncAction';
@@ -33,12 +34,18 @@ export function FocusHistory({ store, today }: { store: AppStore; today: string 
 
   const deleteDescription = (() => {
     if (!toDelete) return '';
-    if (toDelete.date !== today) return 'Points already earned for that day stay.';
+    // The session's practice log on Skills stays (decision 2026-11-05), with its own skill points.
+    const skillLogNote = store.state.skillLogs.some((l) => l && l.id === focusSkillLogId(toDelete.id))
+      ? ' Its practice log on Skills stays; delete it there if you want.'
+      : '';
+    if (toDelete.date !== today) return `Points already earned for that day stay.${skillLogNote}`;
     const before = todaysFocusPoints(logs, today);
     const after = todaysFocusPoints(logs.filter((l) => l.id !== toDelete.id), today);
-    return before > after
-      ? `Today's focus points go down by ${before - after} (from ${before} to ${after}).`
-      : "Today's focus points don't change.";
+    return (
+      (before > after
+        ? `Today's focus points go down by ${before - after} (from ${before} to ${after}).`
+        : "Today's focus points don't change.") + skillLogNote
+    );
   })();
 
   const row = (log: FocusSessionLog) => {

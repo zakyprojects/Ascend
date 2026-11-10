@@ -421,18 +421,22 @@ const focusLog: FocusSessionLog = {
   reflection: 'major scales', createdAt: '2026-11-05T10:00:00.000Z', plannedMinutes: 50,
   startedAt: '2026-11-05T09:10:00.000Z', milestonesAt: [],
 };
-const sl = K.focusSkillLogFor(focusLog, skills, [], []);
+const sl = K.focusSkillLogFor(focusLog, skills, [], [], '2026-11-05');
 eq(sl?.id, 'skill_focus_a1', '10: deterministic id');
 eq(sl?.durationMinutes, 50, '10: credited minutes');
 eq(sl?.date, '2026-11-05', '10: session day');
 eq(sl?.note, 'major scales', '10: reflection as note');
 eq(sl?.skillId, 'sk', '10: same skill');
 eq(sl?.pointsAwarded, 0, '10: points from the normal skill award');
-eq(K.focusSkillLogFor(focusLog, skills, [sl!], []), null, '10: second write is the same row (not added twice)');
-eq(K.focusSkillLogFor(focusLog, skills, [], ['skill_focus_a1']), null, '10: deleted skill log is not re-created');
-eq(K.focusSkillLogFor({ ...focusLog, skillId: undefined }, skills, [], []), null, '10: no skill, no log');
-eq(K.focusSkillLogFor({ ...focusLog, skillId: 'gone' }, skills, [], []), null, '10: deleted skill, no log');
-eq(K.focusSkillLogFor({ ...focusLog, startedAt: '2026-11-05T09:30:00.000Z' }, skills, [], [])?.durationMinutes, 30, '10: never more than the wall time');
+eq(K.focusSkillLogFor(focusLog, skills, [sl!], [], '2026-11-05'), null, '10: second write is the same row (not added twice)');
+eq(K.focusSkillLogFor(focusLog, skills, [], ['skill_focus_a1'], '2026-11-05'), null, '10: deleted skill log is not re-created');
+eq(K.focusSkillLogFor({ ...focusLog, skillId: undefined }, skills, [], [], '2026-11-05'), null, '10: no skill, no log');
+eq(K.focusSkillLogFor({ ...focusLog, skillId: 'gone' }, skills, [], [], '2026-11-05'), null, '10: deleted skill, no log');
+eq(K.focusSkillLogFor({ ...focusLog, startedAt: '2026-11-05T09:30:00.000Z' }, skills, [], [], '2026-11-05')?.durationMinutes, 30, '10: never more than the wall time');
+// A session closed 2+ days late adds no skill log (skill_logs_guard_today keeps only today and a new yesterday).
+eq(K.focusSkillLogFor(focusLog, skills, [], [], '2026-11-06')?.id, 'skill_focus_a1', '10: a session of yesterday still adds its log');
+eq(K.focusSkillLogFor(focusLog, skills, [], [], '2026-11-07'), null, '10: a session of 2 days ago adds none');
+eq(K.focusSkillLogFor(focusLog, skills, [], [], '2026-12-01'), null, '10: a much older session adds none');
 const logs: SkillSessionLog[] = [{ ...sl!, note: '' }];
 eq(K.withReflectionNote(logs, 'focus_a1', undefined, 'later')[0].note, 'later', '10: reflection saved after Complete goes on the note');
 eq(K.withReflectionNote([{ ...sl!, note: 'my edit' }], 'focus_a1', 'major scales', 'new')[0].note, 'my edit', '10: an edited note is kept');

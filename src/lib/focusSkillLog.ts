@@ -1,5 +1,6 @@
 import type { FocusSessionLog, Skill, SkillSessionLog } from '@/types';
 import { creditedFocusMinutes } from './focusAwards';
+import { addDays, todayKey } from './dates';
 
 /**
  * A Deep Focus session with a skill chosen adds a normal skill practice log (Zakria 2026-11-05):
@@ -11,13 +12,20 @@ import { creditedFocusMinutes } from './focusAwards';
  */
 export const focusSkillLogId = (focusLogId: string): string => `skill_${focusLogId}`;
 
-/** The skill log for a new focus log, or null (no skill, skill deleted, no minutes, already made or deleted). */
+/**
+ * The skill log for a new focus log, or null (no skill, skill deleted, no minutes, already made or
+ * deleted, or a session of before yesterday). The server stores a skill log only when it is dated
+ * today or is a new log dated yesterday (skill_logs_guard_today), so an older one would stay on this
+ * device alone: a session that closes 2+ days late (paused and opened days later) adds none.
+ */
 export function focusSkillLogFor(
   focusLog: FocusSessionLog,
   skills: readonly Skill[],
   skillLogs: readonly SkillSessionLog[],
-  deletedIds: readonly string[]
+  deletedIds: readonly string[],
+  today: string = todayKey()
 ): SkillSessionLog | null {
+  if (!focusLog.date || focusLog.date < addDays(today, -1)) return null;
   if (!focusLog.skillId || !skills.some((s) => s && s.id === focusLog.skillId)) return null;
   const id = focusSkillLogId(focusLog.id);
   if (skillLogs.some((l) => l && l.id === id) || deletedIds.includes(id)) return null;

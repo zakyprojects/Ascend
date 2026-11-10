@@ -22,6 +22,7 @@ import {
 } from './focusSession';
 import { useFocusCountdown, useFocusSession } from './FocusSessionProvider';
 import { notificationPermission, requestNotificationPermission } from './focusNotifications';
+import { previewCapReachedText } from '@/lib/practicePreviews';
 
 /** Projects' "Start focus" hands its task title over once (the page clears it after its first render). */
 function pendingTask(): string | null {
@@ -35,7 +36,19 @@ function pendingTask(): string | null {
 
 const pts = (n: number) => `${n} ${n === 1 ? 'pt' : 'pts'}`;
 
-const CAP_REACHED = `Today's focus cap of ${FOCUS_DAILY_CAP} pts is reached`;
+const CAP_REACHED = `Today's ${FOCUS_DAILY_CAP} pts are reached`;
+
+/** Custom lengths the server keeps (ascend_focus_session_start: least(600, …) focus, least(120, …) break). */
+const CUSTOM_FOCUS_MAX = 600;
+const CUSTOM_BREAK_MAX = 120;
+const customProblem = (focus: number, brk: number): string | null =>
+  !(focus >= 1)
+    ? 'Enter 1 or more.'
+    : focus > CUSTOM_FOCUS_MAX
+      ? `Focus can be up to ${CUSTOM_FOCUS_MAX} min.`
+      : brk > CUSTOM_BREAK_MAX
+        ? `Break can be up to ${CUSTOM_BREAK_MAX} min.`
+        : null;
 
 /** Re-renders the caller once a second while `on` (pause countdown, points so far). */
 function useSecondTick(on: boolean): number {
@@ -215,8 +228,9 @@ function ManualTimer({ store }: { store: AppStore }) {
   }, []);
 
   const handleStart = () => {
-    if (!(focusMinutes >= 1)) {
-      setCustomError('Enter 1 or more.');
+    const problem = preset.custom ? customProblem(focusMinutes, breakMinutes) : null;
+    if (problem) {
+      setCustomError(problem);
       return;
     }
     setCustomError(null);
@@ -271,7 +285,7 @@ function ManualTimer({ store }: { store: AppStore }) {
       {!session && readyGain < focusFinishedPoints(focusMinutes) && (
         <p className="text-center text-xs text-content-muted">
           {todayCapFull ? (
-            <>{CAP_REACHED}. It still saves.</>
+            <>{previewCapReachedText(FOCUS_DAILY_CAP)}</>
           ) : (
             <>
               Today's max <span className="figure text-success-text">{pts(readyGain)}</span>
@@ -287,11 +301,12 @@ function ManualTimer({ store }: { store: AppStore }) {
               id="pfc-custom-focus-mins"
               label="Focus (min)"
               min={1}
+              max={CUSTOM_FOCUS_MAX}
               value={customFocus}
               onValueChange={(v) => {
                 const m = Math.floor(v);
                 setCustomFocus(m);
-                setCustomError(m >= 1 ? null : 'Enter 1 or more.');
+                setCustomError(customProblem(m, customBreak));
               }}
               className="tabular-nums"
             />
@@ -299,12 +314,19 @@ function ManualTimer({ store }: { store: AppStore }) {
               id="pfc-custom-break-mins"
               label="Break (min)"
               min={1}
+              max={CUSTOM_BREAK_MAX}
               value={customBreak}
-              onValueChange={(v) => setCustomBreak(Math.max(1, Math.floor(v)))}
+              onValueChange={(v) => {
+                const b = Math.max(1, Math.floor(v));
+                setCustomBreak(b);
+                setCustomError(customProblem(customFocus, b));
+              }}
               className="tabular-nums"
             />
           </div>
-          <p className="text-2xs text-content-muted">At least 1 min. {FOCUS_RULE_SHORT}.</p>
+          <p className="text-2xs text-content-muted">
+            Focus 1 to {CUSTOM_FOCUS_MAX} min, break 1 to {CUSTOM_BREAK_MAX} min. {FOCUS_RULE_SHORT}.
+          </p>
           {customError && <FieldErrorBubble message={customError} attached={false} />}
         </div>
       )}

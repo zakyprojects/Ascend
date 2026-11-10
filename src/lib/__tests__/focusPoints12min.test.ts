@@ -216,7 +216,7 @@ eq(amount([r1('o', at(DAY, 8), 90, 90), r2('n', at(DAY, 14), 50)]), 10, 'R1 10 +
   // The tagged skill still gets its practice log from the credited minutes (focusSkillLog unchanged).
   const log = r2('focus_x', at(DAY, 9), 50, 50, { skillId: 'sk1' });
   const skill = { id: 'sk1', name: 'Python', createdAt: iso(at(PREV, 9)) } as unknown as Parameters<typeof focusSkillLogFor>[1][number];
-  const sl = focusSkillLogFor(log, [skill], [], []);
+  const sl = focusSkillLogFor(log, [skill], [], [], DAY);
   eq(sl?.durationMinutes, 50, 'skill log gets the 50 credited minutes');
   eq(A.creditedFocusMinutes(log), 50, 'creditedFocusMinutes unchanged');
 }
