@@ -7,15 +7,17 @@ export interface MoodMeta {
   label: string;
   score: number; // 1 to 4, for the average
   icon: typeof Smile;
-  color: string; // Hex for inline styles
+  color: string; // Hex for fills and borders (inline styles with an alpha suffix)
+  /** Text and icon colour: a theme token, darker on the light theme so it reads at 4.5:1 on the tinted fill. */
+  text: string;
 }
 
 /** One mood scale for every page that shows a mood (Journal, Dashboard). */
 export const MOODS: MoodMeta[] = [
-  { value: 'sad', label: 'Sad', score: 1, icon: Frown, color: '#38bdf8' },
-  { value: 'neutral', label: 'Neutral', score: 2, icon: Meh, color: '#94a3b8' },
-  { value: 'happy', label: 'Happy', score: 3, icon: Smile, color: '#10b981' },
-  { value: 'motivated', label: 'Motivated', score: 4, icon: Zap, color: '#f59e0b' },
+  { value: 'sad', label: 'Sad', score: 1, icon: Frown, color: '#38bdf8', text: 'var(--badge-sky-text)' },
+  { value: 'neutral', label: 'Neutral', score: 2, icon: Meh, color: '#94a3b8', text: 'var(--color-content-muted)' },
+  { value: 'happy', label: 'Happy', score: 3, icon: Smile, color: '#10b981', text: 'var(--color-success-text)' },
+  { value: 'motivated', label: 'Motivated', score: 4, icon: Zap, color: '#f59e0b', text: 'var(--color-warning-text)' },
 ];
 
 export const MOOD_MAP: Record<Mood, MoodMeta> = MOODS.reduce((acc, m) => {
@@ -30,7 +32,7 @@ export function MoodBadge({ mood }: { mood: Mood }) {
   return (
     <span
       className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-lg border"
-      style={{ backgroundColor: `${meta.color}15`, borderColor: `${meta.color}30`, color: meta.color }}
+      style={{ backgroundColor: `${meta.color}15`, borderColor: `${meta.color}30`, color: meta.text }}
     >
       <Icon size={12} aria-hidden="true" />
       {meta.label}
@@ -55,7 +57,7 @@ export function MoodPicker({ value, onChange }: { value: Mood; onChange: (mood: 
               'flex items-center justify-center gap-2 min-h-11 px-2 rounded-xl border text-sm font-medium transition-colors',
               !selected && 'border-overlay-subtle text-content-muted hover:bg-overlay-subtle'
             )}
-            style={selected ? { borderColor: m.color, backgroundColor: `${m.color}15`, color: m.color } : undefined}
+            style={selected ? { borderColor: m.color, backgroundColor: `${m.color}15`, color: m.text } : undefined}
           >
             <Icon size={18} />
             {m.label}

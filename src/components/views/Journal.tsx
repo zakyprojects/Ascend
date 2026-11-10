@@ -6,7 +6,8 @@ import { Mood, JournalEntry } from '@/types';
 import { formatDateLong, calculateStreak, formatWeekdayShort, formatWeekdayDate } from '@/lib/dates';
 import { JOURNAL_POINTS } from '@/lib/pointsConfig';
 import { ptsText } from '@/lib/leagues';
-import { isRetiredAppJournalAward } from '@/lib/journalAwards';
+import { journalPointsInSeason } from '@/lib/journalAwards';
+import { trustedNow } from '@/lib/clock';
 import { MIN_JOURNAL_CONTENT_LENGTH } from '@/lib/journalRules';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { useAsyncAction } from '@/lib/useAsyncAction';
@@ -197,19 +198,13 @@ export function Journal({ store }: { store: AppStore }) {
   };
   const byDate = useMemo(() => new Map(entries.map((e) => [e.date, e])), [entries]);
 
-  // Hero numbers (live). Points come from the points ledger, so deleting an older entry never
-  // lowers them: that day's points stay on the server.
+  // Hero numbers (live). Points come from the points ledger (this season only, like every page), so
+  // deleting an older entry never lowers them: that day's points stay on the server.
   const entryDates = entries.map((e) => e.date);
   const journalStreak = calculateStreak(entryDates, 'daily');
   const last7Keys = lastDayKeys(7);
   const writtenLast7 = last7Keys.filter((k) => byDate.has(k)).length;
-  const journalPoints = useMemo(
-    () =>
-      store.state.pointsHistory
-        .filter((e) => e.source === 'journal' && !isRetiredAppJournalAward(e))
-        .reduce((sum, e) => sum + (Number(e.amount) || 0), 0),
-    [store.state.pointsHistory]
-  );
+  const journalPoints = journalPointsInSeason(store.state.pointsHistory || [], trustedNow().getTime());
 
   // Mood over the chosen range: one cell per day.
   const rangeKeys = lastDayKeys(chartRange === '7d' ? 7 : 30);
@@ -275,7 +270,7 @@ export function Journal({ store }: { store: AppStore }) {
           lead={{ label: 'Journal streak', value: <CountUp value={journalStreak} />, hint: journalStreak === 1 ? 'day in a row' : 'days in a row', valueClassName: 'text-warning-text' }}
           stats={[
             { label: 'Entries', value: <CountUp value={entries.length} />, valueClassName: 'text-brand-text' },
-            { label: 'Points earned', value: <>{journalPoints > 0 && '+'}<CountUp value={Math.max(0, journalPoints)} /></>, valueClassName: 'text-brand-text' },
+            { label: 'Points this season', value: <>{journalPoints > 0 && '+'}<CountUp value={Math.max(0, journalPoints)} /></>, valueClassName: 'text-brand-text' },
           ]}
           side={<CapMeterConnected state={store.state} capId="journal" bare onExplain={guide.showPoints} />}
         />
@@ -322,7 +317,7 @@ export function Journal({ store }: { store: AppStore }) {
                           meta ? 'hover:brightness-110' : 'border-dashed border-overlay-default',
                           k === today && 'ring-1 ring-primary-500/50'
                         )}
-                        style={meta ? { backgroundColor: `${meta.color}20`, borderColor: `${meta.color}40`, color: meta.color } : undefined}
+                        style={meta ? { backgroundColor: `${meta.color}20`, borderColor: `${meta.color}40`, color: meta.text } : undefined}
                         aria-label={name}
                         title={name}
                       >
@@ -340,7 +335,7 @@ export function Journal({ store }: { store: AppStore }) {
                   const count = moodCounts[m.value] || 0;
                   return (
                     <div key={m.value} className="flex items-center gap-2 text-xs">
-                      <Icon size={14} style={{ color: m.color }} />
+                      <Icon size={14} style={{ color: m.text }} />
                       <span className="text-content-muted">{m.label}</span>
                       <span className="figure ml-auto text-content-secondary">
                         {count} {count === 1 ? 'day' : 'days'}
@@ -363,8 +358,8 @@ export function Journal({ store }: { store: AppStore }) {
             </Reveal>
           </>
         }
-      >
-        <div className="space-y-6">
+        // The Today editor is the page's daily action, so it is `lead`: first on phones, before the Mood card.
+        lead={
           <div className="card p-5">
             <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
               <h2 className="section-title">Today</h2>
@@ -498,22 +493,22 @@ export function Journal({ store }: { store: AppStore }) {
               </Form>
             )}
           </div>
-
-          <div className="space-y-3">
-            <h2 className="section-title">Earlier</h2>
-            {earlier.length === 0 ? (
-              <EmptyState icon={BookOpen} title="No earlier entries yet" description="Your past entries show here, newest first." />
-            ) : (
-              <>
-                <div className="card overflow-hidden divide-y divide-overlay-subtle">{earlier.slice(0, entriesShown).map(renderRow)}</div>
-                {earlier.length > entriesShown && (
-                  <button type="button" onClick={() => setEntriesShown((n) => n + ENTRIES_PAGE)} className="btn-secondary w-full">
-                    Show older entries
-                  </button>
-                )}
-              </>
-            )}
-          </div>
+        }
+      >
+        <div className="space-y-3">
+          <h2 className="section-title">Earlier</h2>
+          {earlier.length === 0 ? (
+            <EmptyState icon={BookOpen} title="No earlier entries yet" description="Your past entries show here, newest first." />
+          ) : (
+            <>
+              <div className="card overflow-hidden divide-y divide-overlay-subtle">{earlier.slice(0, entriesShown).map(renderRow)}</div>
+              {earlier.length > entriesShown && (
+                <button type="button" onClick={() => setEntriesShown((n) => n + ENTRIES_PAGE)} className="btn-secondary w-full">
+                  Show older entries
+                </button>
+              )}
+            </>
+          )}
         </div>
       </PageColumns>
 

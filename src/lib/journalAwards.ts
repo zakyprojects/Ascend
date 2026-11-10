@@ -1,6 +1,7 @@
 import type { JournalEntry, PointsEntry } from '@/types';
 import { JOURNAL_POINTS } from './pointsConfig';
 import { todayKey } from './dates';
+import { getSeasonEnd, getSeasonStart } from './leagueTime';
 
 /**
  * Journal points are written by the server (supabase/migrations/20261015190000_server_journal_awards.sql):
@@ -36,6 +37,23 @@ export const isRetiredAppJournalAward = (entry: PointsEntry): boolean => {
   const day = appWrittenRowDay(entry);
   return day !== null && day >= JOURNAL_AWARDS_SERVER_SINCE;
 };
+
+/**
+ * Journal points held in the season `atMs` falls in, from the ledger rows (the app shows season
+ * points only; pointsHistory holds every season). Retired app rows are left out, as on the server.
+ */
+export function journalPointsInSeason(history: PointsEntry[], atMs: number): number {
+  const at = new Date(atMs);
+  const startMs = getSeasonStart(at).getTime();
+  const endMs = getSeasonEnd(at).getTime();
+  let held = 0;
+  for (const e of history) {
+    if (!e || e.source !== 'journal' || isRetiredAppJournalAward(e)) continue;
+    const ms = new Date(e.timestamp).getTime();
+    if (ms >= startMs && ms < endMs) held += Number(e.amount) || 0;
+  }
+  return held;
+}
 
 /** Mirror of the server's content check: anything but whitespace counts. */
 export const journalEntryEarns = (entry: JournalEntry): boolean => (entry.content ?? '').trim().length > 0;

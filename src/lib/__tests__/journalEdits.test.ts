@@ -17,7 +17,8 @@ const mem = new Map<string, string>();
 } as Storage;
 
 const { applyJournalEntryEdit, journalEditNotesOk } = await import('../journalEdits');
-const { computeJournalAward } = await import('../journalAwards');
+const { computeJournalAward, journalPointsInSeason } = await import('../journalAwards');
+const { getSeasonStart } = await import('../leagueTime');
 
 function assert(condition: boolean, msg: string) {
   if (!condition) throw new Error(`Assertion failed: ${msg}`);
@@ -90,6 +91,21 @@ const entries = [todayEntry, pastEntry, moodOnly];
   eq(journalEditNotesOk('', ''), true, 'a mood-only entry may stay without notes');
   eq(journalEditNotesOk(undefined, ''), true, 'missing content counts as mood only');
   eq(journalEditNotesOk('', 'abc'), false, 'adding notes needs the minimum');
+}
+
+// 7. The hero's journal points count this season only (pointsHistory holds every season).
+{
+  const now = new Date('2027-02-10T12:00:00Z').getTime(); // Season 2 (starts 2027-01-30 00:00 UTC)
+  const seasonStart = getSeasonStart(new Date(now)).getTime();
+  const row = (id: string, source: string, ms: number): PointsEntry => ({ id, amount: 2, reason: 'Journal', source, timestamp: new Date(ms).toISOString() });
+  const history = [
+    row('journal_award_old', 'journal', seasonStart - 1), // last ms of the season before
+    row('journal_award_a', 'journal', seasonStart),
+    row('journal_award_b', 'journal', now),
+    row('habit_x', 'habits', now),
+  ];
+  eq(journalPointsInSeason(history, now), 4, 'only this season\'s journal rows');
+  eq(journalPointsInSeason(history, seasonStart - 1), 2, 'the season before has its own row');
 }
 
 console.log('journalEdits: all assertions passed');
