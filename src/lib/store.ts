@@ -4264,7 +4264,10 @@ export function useAppState() {
         if (isLessonReadInSeason(prev.readLessonIds, lessonId, activeSeasonNum)) return prev;
 
         // The server writes the award from its own catalog (computeLessonAward shows the same row now).
-        const award = computeLessonAward(lessonId, activeSeasonNum, trustedNow().toISOString());
+        // Offline there is no preview: the read is judged by the season it reaches the server in,
+        // and a later season awards nothing for it. The server's row shows once it lands.
+        const online = typeof navigator === 'undefined' || navigator.onLine !== false;
+        const award = online ? computeLessonAward(lessonId, activeSeasonNum, trustedNow().toISOString()) : null;
         const pointsUpdate = award
           ? addPointsInternal(prev, award.amount, award.reason, award.source, award.metadata, award.timestamp, award.id)
           : {};

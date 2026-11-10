@@ -118,10 +118,11 @@ export function Lessons({ store }: { store: AppStore }) {
               })),
             ]}
           />
-          <div className="flex shrink-0 items-center gap-2 text-xs text-content-muted">
+          {/* A label, so a tap on the words toggles the switch too. */}
+          <label className="flex shrink-0 cursor-pointer items-center gap-2 text-xs text-content-muted">
             <Switch checked={unreadOnly} onChange={() => setUnreadOnly(!unreadOnly)} label="Unread only" />
             <span>Unread only</span>
-          </div>
+          </label>
         </div>
       </div>
 

@@ -103,7 +103,7 @@ const MYTHS: { myth: string; fact: string }[] = [
   { myth: 'I’m too old to change.', fact: 'The brain stays plastic all your life. Change is slower later, not impossible.' },
   { myth: 'One big push will do it.', fact: 'Rewiring comes from many small repeats over weeks, not one intense day.' },
   { myth: 'I missed a day, so it’s ruined.', fact: 'Missing one day barely matters. Just don’t let it become a run of misses.' },
-  { myth: 'Some people are just wired that way.', fact: 'Your starting point differs; your ability to change does not.' },
+  { myth: 'Some people are just wired that way.', fact: 'Your starting point differs, but everyone can still change.' },
 ];
 
 const ASCEND_LINKS: { icon: LucideIcon; tone: Tone; title: string; text: string; view: View }[] = [
