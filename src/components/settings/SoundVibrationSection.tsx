@@ -98,7 +98,7 @@ export function SoundVibrationSection() {
   };
 
   return (
-    <SettingsCard title="Sound and vibration">
+    <SettingsCard title="Sound & vibration">
       <div className="-my-1 divide-y divide-overlay-subtle">
         {ACTIONS.map(({ kind, title, description }) => (
           <SettingRow

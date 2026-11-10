@@ -2,8 +2,8 @@ import { Coffee, CupSoda, Flame, type LucideIcon } from 'lucide-react';
 import { LEGAL_CONTACT_EMAIL } from '@/lib/legal';
 
 /**
- * The maker's story and the "buy us a coffee" menu, written once and shown in two places:
- * Settings > About us / Support (MakerSections.tsx) and the public /about page
+ * The maker's story and the "buy me a coffee" menu, written once and shown in two places:
+ * Settings > About the maker / Support (MakerSections.tsx) and the public /about page
  * (marketing/pages/About.tsx). Plain data only: the public page renders it at build time in Node.
  */
 
@@ -41,6 +41,6 @@ export const FUEL_MENU: { name: string; line: string; icon: LucideIcon }[] = [
 ];
 
 export function fuelMailto(name: string): string {
-  const subject = encodeURIComponent(`Buy us a coffee: ${name}`);
+  const subject = encodeURIComponent(`Buy me a coffee: ${name}`);
   return `mailto:${LEGAL_CONTACT_EMAIL}?subject=${subject}`;
 }

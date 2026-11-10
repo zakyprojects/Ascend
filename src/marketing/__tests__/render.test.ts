@@ -115,7 +115,7 @@ for (const href of ['/signup', '/login', '/features', '/privacy', '/about']) ass
 
 const wordsOf = (html: string) => textOf(html).split(/\s+/).filter(Boolean).length;
 
-// /about is a real page with the maker's story (the same text as Settings > About us) and the support menu.
+// /about is a real page with the maker's story (the same text as Settings > About the maker) and the support menu.
 const about = renderMarketingPage(MARKETING_ROUTES.find((r) => r.kind === 'about')!, assets);
 for (const part of MAKER_STORY) for (const text of part.paragraphs) assert(textOf(about).includes(text), `/about has: ${text.slice(0, 30)}`);
 for (const { name } of FUEL_MENU) assert(about.includes(fuelMailto(name).replace(/&/g, '&amp;')), `/about support links ${name}`);

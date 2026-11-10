@@ -17,7 +17,7 @@ function Email() {
   );
 }
 
-/** /about: who makes Ascend and why (the same story as Settings > About us), and how to support it. */
+/** /about: who makes Ascend and why (the same story as Settings > About the maker), and how to support it. */
 export function About() {
   return (
     <MarketingLayout>
@@ -71,7 +71,7 @@ export function About() {
       </Section>
 
       <Section labelledBy="support-title">
-        <SectionHeading id="support-title" kicker="Support AscendDay" title="Buy us a coffee">
+        <SectionHeading id="support-title" kicker="Support AscendDay" title="Buy me a coffee">
           {SUPPORT_INTRO}
         </SectionHeading>
         <ul className="mt-8 grid gap-4 sm:grid-cols-3">

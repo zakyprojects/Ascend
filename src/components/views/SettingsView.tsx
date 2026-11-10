@@ -25,7 +25,7 @@ import { usePendingGuestEmail } from '@/lib/usePendingGuestEmail';
 interface SettingsViewProps {
   store: AppStore;
   onOpenAuth?: () => void;
-  /** Opens another page (the Help links under App info, About us and Support). */
+  /** Opens another page (the Help links under App info, About the maker and Support). */
   onNavigate: (view: View) => void;
 }
 
@@ -38,8 +38,8 @@ const SECTIONS: { id: SettingsSection; label: string; icon: LucideIcon }[] = [
   { id: 'privacy', label: 'Privacy', icon: Eye },
   { id: 'account', label: 'Account', icon: KeyRound },
   { id: 'feedback', label: 'Send feedback', icon: MessageSquare },
-  { id: 'support', label: 'Support us', icon: Coffee },
-  { id: 'about-us', label: 'About us', icon: UserRound },
+  { id: 'support', label: 'Support', icon: Coffee },
+  { id: 'about-us', label: 'About the maker', icon: UserRound },
   { id: 'app', label: 'App info', icon: Info },
 ];
 const SECTION_IDS = SECTIONS.map(({ id }) => id);

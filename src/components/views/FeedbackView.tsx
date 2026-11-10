@@ -55,10 +55,12 @@ interface ChoiceGroupProps {
   options: ReadonlyArray<{ value: string; label: string; hint: string }>;
   value: string;
   onChange: (value: string) => void;
+  /** An optional choice: a second tap on the chosen card clears it (as the rating does). */
+  clearable?: boolean;
 }
 
 /** Native radios (keyboard and screen readers for free) drawn as three cards. */
-function ChoiceGroup({ legend, name, options, value, onChange }: ChoiceGroupProps) {
+function ChoiceGroup({ legend, name, options, value, onChange, clearable = false }: ChoiceGroupProps) {
   return (
     <fieldset>
       <legend className="label block mb-1.5">{legend}</legend>
@@ -71,6 +73,7 @@ function ChoiceGroup({ legend, name, options, value, onChange }: ChoiceGroupProp
               value={option.value}
               checked={value === option.value}
               onChange={() => onChange(option.value)}
+              onClick={() => clearable && value === option.value && onChange('')}
               className="peer sr-only"
             />
             <span
@@ -314,9 +317,9 @@ export function FeedbackView({ initialKind, store, fromView, onNavigate }: Feedb
             </h2>
             <p className="text-sm text-content-secondary max-w-sm">
               Your reference is <span className="figure font-semibold text-content-primary">{sentRef}</span>. Mention it
-              if you write to us about this.
+              if you write to me about this.
             </p>
-            {replyOk && accountEmail && <p className="text-sm text-content-secondary max-w-sm">We may reply to {accountEmail}.</p>}
+            {replyOk && accountEmail && <p className="text-sm text-content-secondary max-w-sm">I may reply to {accountEmail}.</p>}
             <div className="flex flex-wrap justify-center gap-2 pt-2">
               <Button variant="secondary" size="sm" onClick={resetForm}>
                 Send another
@@ -390,7 +393,7 @@ export function FeedbackView({ initialKind, store, fromView, onNavigate }: Feedb
                   rows={2}
                   maxLength={4000}
                 />
-                <ChoiceGroup legend="How bad is it?" name="severity" options={SEVERITY_OPTIONS} value={severity} onChange={setSeverity} />
+                <ChoiceGroup legend="How bad is it?" name="severity" options={SEVERITY_OPTIONS} value={severity} onChange={setSeverity} clearable />
               </>
             ) : (
               <>
@@ -411,7 +414,7 @@ export function FeedbackView({ initialKind, store, fromView, onNavigate }: Feedb
                   maxLength={4000}
                   required
                 />
-                <ChoiceGroup legend="How useful would it be?" name="impact" options={IMPACT_OPTIONS} value={impact} onChange={setImpact} />
+                <ChoiceGroup legend="How useful would it be?" name="impact" options={IMPACT_OPTIONS} value={impact} onChange={setImpact} clearable />
               </>
             )}
 

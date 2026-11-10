@@ -35,10 +35,10 @@ function Email() {
   );
 }
 
-/** Settings > About us: the person who makes Ascend, and why. */
+/** Settings > About the maker: the person who makes Ascend, and why. */
 export function AboutUsSection({ onNavigate }: { onNavigate: (view: View) => void }) {
   return (
-    <SettingsCard title="About us">
+    <SettingsCard title="About the maker">
       <div className="space-y-8 text-sm leading-relaxed text-content-secondary">
         <div className="space-y-2">
           <p className="text-base font-medium text-content-primary">{MAKER_LEAD}</p>
@@ -73,7 +73,7 @@ export function FeedbackSection({ onNavigate }: { onNavigate: (view: View) => vo
   return (
     <SettingsCard title="Send feedback">
       <div className="space-y-5 text-sm leading-relaxed text-content-secondary">
-        <p>A bug, an idea, or anything else. Every message is read, and you can ask for a reply.</p>
+        <p>A bug, an idea, or anything else. Every message is read, and with an account you can ask for a reply.</p>
         <ul className="grid gap-3 sm:grid-cols-3">
           {FEEDBACK_KINDS.map(({ value, label, hint }) => {
             const Icon = KIND_ICONS[value];
@@ -107,7 +107,7 @@ export function FeedbackSection({ onNavigate }: { onNavigate: (view: View) => vo
 /** Settings > Support: a "buy me a coffee" menu (by email, no payments in the app) and free ways to help. */
 export function SupportSection({ onNavigate }: { onNavigate: (view: View) => void }) {
   return (
-    <SettingsCard title="Buy us a coffee">
+    <SettingsCard title="Buy me a coffee">
       <div className="space-y-8 text-sm leading-relaxed text-content-secondary">
         <p>{SUPPORT_INTRO}</p>
 
