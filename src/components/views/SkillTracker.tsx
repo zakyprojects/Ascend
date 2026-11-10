@@ -7,7 +7,7 @@ import { ledgerPointsByDay } from '@/lib/ledgerDayPoints';
 import { isRetiredAppSkillAward } from '@/lib/skillAwards';
 import { ptsText } from '@/lib/leagues';
 import { useLocalDayKey } from '@/lib/useLocalDayKey';
-import { pointsResumeText, useTimezoneWait } from '@/lib/useTimezoneWait';
+import { LATE_POINTS_TEXT, useTimezoneWait } from '@/lib/useTimezoneWait';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { useToast } from '@/components/ui/Toast';
 import { useAsyncAction } from '@/lib/useAsyncAction';
@@ -1033,7 +1033,7 @@ export function SkillTracker({ store, onNavigate }: { store: AppStore; onNavigat
             <div className="rounded-xl p-3 text-xs text-content-muted flex items-center justify-between gap-3 border border-overlay-default">
               <span>
                 {timezoneWait
-                  ? `${pointsResumeText(timezoneWait)} It still saves.`
+                  ? `It saves now. ${LATE_POINTS_TEXT}`
                   : remainingCap === 0
                     ? `${SKILLS_POINTS.dailyCap} pts reached today. It still saves.`
                     : previewRaw > previewPoints

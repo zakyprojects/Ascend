@@ -95,7 +95,8 @@ function subscribe(listener: () => void): () => void {
 
 const getSnapshot = () => current;
 
-/** The server-side timezone wait, if any: while it is set, today's ticks earn no points. */
+/** The server-side timezone wait, if any: while it is set, today's ticks earn no points (reading,
+ * skills and focus still earn, a little later: LATE_POINTS_TEXT). */
 export function useTimezoneWait(): TimezoneWait | null {
   return useSyncExternalStore(subscribe, getSnapshot);
 }
@@ -116,3 +117,12 @@ export function formatTimezoneResume(resumesAt: Date): string {
 export function pointsResumeText(wait: TimezoneWait): string {
   return `Earns points from about ${formatTimezoneResume(wait.resumesAt)}.`;
 }
+
+/**
+ * The same line for reading, skills and focus. During the wait the device's today is the server's
+ * yesterday, and the server still credits a new log of yesterday (reading_logs_guard_today /
+ * skill_logs_guard_today accept the INSERT; reading_award_points, skill_logs_award_points and
+ * focus_logs_award_points raise that day in floor mode, within the daily cap). The app holds the
+ * reading and focus preview until the next pull, so the points arrive later, not never.
+ */
+export const LATE_POINTS_TEXT = 'Points for today come a little later.';

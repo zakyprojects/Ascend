@@ -4,7 +4,10 @@ import { capLabels, capReachedText } from '@/lib/capCopy';
 import { CapMeter } from '@/components/ui/CapMeter';
 import { getNow } from '@/lib/dates';
 import { useLocalDayKey } from '@/lib/useLocalDayKey';
-import { pointsResumeText, useTimezoneWait } from '@/lib/useTimezoneWait';
+import { LATE_POINTS_TEXT, pointsResumeText, useTimezoneWait } from '@/lib/useTimezoneWait';
+
+/** Caps whose logs the server still credits during a timezone wait (see LATE_POINTS_TEXT). */
+const LATE_POINTS_CAPS: ReadonlySet<CapId> = new Set<CapId>(['reading', 'skills', 'pfc']);
 
 export interface CapMeterConnectedProps {
   state: Pick<
@@ -27,9 +30,10 @@ export interface CapMeterConnectedProps {
 export function CapMeterConnected({ state, capId, bare = false, onExplain }: CapMeterConnectedProps) {
   // Re-render when the local day changes, so the cap resets at midnight.
   useLocalDayKey();
-  // While a timezone change waits on the server, today's logs earn nothing: say when they will
-  // instead of announcing a cap.
+  // While a timezone change waits on the server, say when today's logs earn instead of announcing
+  // a cap. Reading, skills and focus still earn on that day, the points just show up later.
   const timezoneWait = useTimezoneWait();
+  const waitText = timezoneWait && (LATE_POINTS_CAPS.has(capId) ? LATE_POINTS_TEXT : pointsResumeText(timezoneWait));
 
   const status = getCapStatus(state, capId, getNow());
   const variant = capId === 'journal' ? 'slots' : 'bar';
@@ -46,7 +50,7 @@ export function CapMeterConnected({ state, capId, bare = false, onExplain }: Cap
         onExplain={onExplain}
       />
       {timezoneWait ? (
-        <div className="mt-1.5 text-micro text-content-muted">{pointsResumeText(timezoneWait)}</div>
+        <div className="mt-1.5 text-micro text-content-muted">{waitText}</div>
       ) : (
         status.isCapped && (
           <div className="mt-1.5 text-micro text-warning-text">
