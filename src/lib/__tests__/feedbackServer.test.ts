@@ -3,7 +3,7 @@
 // defused), and the signed-out gate (no Turnstile secret = refused, bad or missing token = refused
 // before anything reaches GitHub, a good token files an issue labelled "contact"). The signed-in
 // path never needs the Turnstile secret.
-import { POST, buildIssue, defuseMentions, issueTitle, parseKind, parseRating } from '../../../api/feedback';
+import { POST, PUBLIC_SENDER_NOTE, buildIssue, defuseMentions, issueTitle, parseKind, parseRating } from '../../../api/feedback';
 
 function assert(condition: boolean, msg: string) {
   if (!condition) throw new Error(`Assertion failed: ${msg}`);
@@ -54,6 +54,7 @@ env.SUPABASE_URL = 'https://db.example';
 env.SUPABASE_PUBLISHABLE_KEY = 'pk';
 
 let calls: Call[] = [];
+let issueList: Array<{ title: string; body: string; created_at: string; labels: string[] }> = [];
 let siteverify: { success: boolean; action?: string } = { success: true, action: 'contact' };
 globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
   const url = String(input);
@@ -64,7 +65,7 @@ globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
     return new Response('{}', { status: 401 });
   }
   if (url.includes('turnstile/v0/siteverify')) return Response.json(siteverify);
-  if (url.includes('/issues?')) return Response.json([]);
+  if (url.includes('/issues?')) return Response.json(issueList);
   if (url.endsWith('/issues')) return Response.json({ number: 1 }, { status: 201 });
   return new Response('not found', { status: 404 });
 }) as typeof fetch;
@@ -132,6 +133,21 @@ const publicIssue = JSON.parse(String(githubPosts()[0]?.init?.body)) as { body: 
 assert(publicIssue.labels.includes('contact') && publicIssue.labels.includes('feedback'), 'signed out: labelled contact');
 assert(publicIssue.body.includes('Ali · visitor@example.com') && publicIssue.body.includes('Hello from the site'), 'signed out: sender and message');
 assert(!calls.some((c) => c.url.includes('/contents/')), 'signed out: screenshots are not uploaded');
+
+// Signed-out daily cap: an issue re-filed without labels (422) still counts by its body note.
+// eslint-disable-next-line no-restricted-syntax -- the server compares with its own clock
+const createdNow = new Date(Date.now() - 60_000).toISOString();
+const unlabelled = { title: '[ASC-OLD] x', body: `### Reply to\nvisitor@example.com ${PUBLIC_SENDER_NOTE}`, created_at: createdNow, labels: [] };
+issueList = Array.from({ length: 20 }, () => unlabelled);
+calls = [];
+assert((await status(await POST(request(contactBody())))) === '429 daily_limit', 'signed out: 20 unlabelled contact issues today hit the cap');
+assert(githubPosts().length === 0, 'signed out at the cap: nothing filed');
+calls = [];
+assert((await status(await POST(request(contactBody(), 'good')))) === '200 ok', 'signed in: the signed-out cap does not apply');
+issueList = Array.from({ length: 20 }, () => ({ ...unlabelled, body: 'signed-in report' }));
+calls = [];
+assert((await status(await POST(request(contactBody())))) === '200 ok', 'signed out: signed-in issues do not count toward the cap');
+issueList = [];
 
 // Bots: the honeypot still answers a quiet ok and files nothing.
 calls = [];

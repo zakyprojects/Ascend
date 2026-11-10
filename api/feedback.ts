@@ -36,13 +36,18 @@ const MIN_FILL_MS = 3_000;
 const RATE_WINDOW_MS = 10 * 60_000;
 const RATE_MAX = 5;
 const DAILY_MAX = 50; // issues filed in the last 24 hours, by everyone
-const PUBLIC_DAILY_MAX = 20; // of those, from signed-out senders (label "contact")
+const PUBLIC_DAILY_MAX = 20; // of those, from signed-out senders (label "contact" or PUBLIC_SENDER_NOTE)
 const DAY_MS = 24 * 60 * 60_000;
 const SITEVERIFY_URL = 'https://challenges.cloudflare.com/turnstile/v0/siteverify';
 /** The Turnstile action the /contact page solves (src/marketing/contactForm.ts). */
 export const CONTACT_CAPTCHA_ACTION = 'contact';
 /** Label on issues from signed-out senders (counted for PUBLIC_DAILY_MAX). */
 export const CONTACT_LABEL = 'contact';
+/**
+ * Written after a signed-out sender's address in the issue body. Counted too, because an issue
+ * re-filed without labels (GitHub refused them, 422) has no CONTACT_LABEL.
+ */
+export const PUBLIC_SENDER_NOTE = '(signed out, from the contact page)';
 
 export type FeedbackKind = 'bug' | 'idea' | 'other';
 
@@ -235,8 +240,10 @@ async function findIssueByRef(token: string, repo: string, ref: string): Promise
       const since = Date.now() - DAY_MS;
       const today = issues.filter((i) => Date.parse(i.created_at ?? '') > since);
       filedToday = today.length;
-      publicToday = today.filter((i) =>
-        (i.labels ?? []).some((label) => (typeof label === 'string' ? label : label?.name) === CONTACT_LABEL)
+      publicToday = today.filter(
+        (i) =>
+          (i.labels ?? []).some((label) => (typeof label === 'string' ? label : label?.name) === CONTACT_LABEL) ||
+          (i.body ?? '').includes(PUBLIC_SENDER_NOTE)
       ).length;
     }
     if (issues.some((i) => (i.title ?? '').startsWith(titlePrefix) || (i.body ?? '').includes(bodyMarker))) {
@@ -327,7 +334,7 @@ export function buildIssue(input: IssueInput): { title: string; body: string; la
   let replyTo = '';
   if (sender.type === 'public') {
     const name = defuseMentions(text(sender.name, 80)).replace(/[<>]/g, '');
-    replyTo = `${name ? `${name} · ` : ''}${sender.email} (signed out, from the contact page)`;
+    replyTo = `${name ? `${name} · ` : ''}${sender.email} ${PUBLIC_SENDER_NOTE}`;
   } else if (input.replyOk && sender.email) {
     replyTo = `${sender.email} (account email, the sender asked for a reply)`;
   }
