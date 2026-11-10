@@ -18,7 +18,7 @@ import { CountUp, Reveal } from '@/components/ui/Motion';
 import { Dialog, EmptyState, Form, Input, PageColumns, useFormController } from '@/components/ui/primitives';
 import { toUserMessage } from '@/lib/userMessage';
 import { useUnsavedChanges } from '@/lib/unsavedChanges';
-import { TAP_TARGET, cx } from '@/components/ui/primitives/shared';
+import { FOCUS_RING, TAP_TARGET, cx } from '@/components/ui/primitives/shared';
 import { trustedNow } from '@/lib/clock';
 
 const CRAVINGS_PAGE = 10;
@@ -32,6 +32,38 @@ const DISTRACTION_ACTIVITIES = [
   'Wash your hands or face with cold water',
   'Call or message a trusted friend or family member',
 ];
+
+/** Who to call in a crisis, Pakistan first (most users). Shown in the disclaimer and the Emergency dialog. */
+const CRISIS_LINES: { place: string; name: string; number: string; tel: string; note?: string }[] = [
+  { place: 'Pakistan', name: 'Rescue', number: '1122', tel: '1122', note: 'emergency' },
+  { place: 'Pakistan', name: 'Umang', number: '0311 7786264', tel: '+923117786264', note: 'free mental health helpline' },
+  { place: 'US', name: 'SAMHSA Helpline', number: '1-800-662-4357', tel: '+18006624357' },
+];
+
+const CRISIS_LINK_CLASS = cx('figure font-medium text-brand-text underline underline-offset-2 rounded', FOCUS_RING);
+
+/** The crisis numbers as tappable tel: links, plus the fallback for every other country. */
+function CrisisLines({ className }: { className?: string }) {
+  return (
+    <ul className={cx('space-y-1', className)}>
+      {CRISIS_LINES.map((line) => (
+        <li key={line.tel}>
+          {line.place}: {line.name}{' '}
+          <a href={`tel:${line.tel}`} className={CRISIS_LINK_CLASS}>
+            {line.number}
+          </a>
+          {line.note && ` (${line.note})`}
+        </li>
+      ))}
+      <li>Elsewhere: call your local emergency number.</li>
+    </ul>
+  );
+}
+
+/** Hero label for the tracker. Titles answer "What are you stepping away from?" ("Smoking" → "Smoking free");
+ *  the old default "Sobriety" would read as "Sobriety free", so it shows as "Sober". Display only. */
+const streakLabel = (title: string): string =>
+  /^sobriety( tracker)?$/i.test(title.trim()) ? 'Sober' : `${title} free`;
 
 const MILESTONE_ICON: Record<RecoveryMilestoneKey, typeof Medal> = { '1w': Medal, '1m': Trophy, '90d': Crown };
 
@@ -61,7 +93,7 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
   const [cravingsShown, setCravingsShown] = useState(CRAVINGS_PAGE);
 
   // Form states
-  const [trackerTitle, setTrackerTitle] = useState('Sobriety');
+  const [trackerTitle, setTrackerTitle] = useState('');
   const [intensity, setIntensity] = useState(5);
   const [triggerText, setTriggerText] = useState('');
   const [copingText, setCopingText] = useState('');
@@ -234,7 +266,7 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
           action={
             <button
               onClick={() => {
-                setTrackerTitle('Sobriety');
+                setTrackerTitle('');
                 setSetupTrackerModalOpen(true);
               }}
               className="btn-primary mx-auto"
@@ -255,7 +287,7 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
               caption: nextMilestone ? `to ${nextMilestone.label.replace(' Clean', '')}` : 'all reached',
             }}
             lead={{
-              label: `${tracker.title} free`,
+              label: streakLabel(tracker.title),
               value: <CountUp value={days} />,
               hint: `${days === 1 ? 'day' : 'days'}, ${hours}h ${minutes}m`,
               valueClassName: 'text-success-text',
@@ -275,17 +307,20 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
           <>
             <div className="rounded-2xl border border-warning/30 bg-warning/5 p-4 flex gap-3">
               <AlertTriangle size={16} className="text-warning-text shrink-0 mt-0.5" />
-              <p className="text-xs text-content-tertiary leading-relaxed">
-                <span className="font-semibold text-warning-text">Medical disclaimer:</span> This is a self-help tool. It does not replace
-                medical treatment or therapy. If you are in crisis, have severe withdrawal, or a serious addiction, contact a licensed
-                professional or a helpline (e.g. SAMHSA Helpline: 1-800-662-4357).
-              </p>
+              <div className="text-xs text-content-tertiary leading-relaxed">
+                <p>
+                  <span className="font-semibold text-warning-text">Medical disclaimer:</span> This is a self-help tool. It does not replace
+                  medical treatment or therapy. If you are in crisis, have severe withdrawal, or a serious addiction, contact a licensed
+                  professional or a helpline:
+                </p>
+                <CrisisLines className="mt-2" />
+              </div>
             </div>
           </>
         }
-      >
-        {tracker && (
-          <div className="space-y-6">
+        // The check-in is the page's daily action, so it is `lead`: first on phones, before the disclaimer.
+        lead={
+          tracker && (
             <div className="card p-5 space-y-4">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <h2 className="section-title">Daily check-in</h2>
@@ -407,79 +442,81 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
               </div>
               <p className="text-xs text-content-muted">Started {formatDateLong(todayKey(new Date(tracker.startDate)))}</p>
             </div>
-
-            <div className="space-y-3">
-              <div className="flex items-center justify-between gap-2">
-                <h2 className="section-title">Cravings</h2>
-                <div className="flex items-center gap-1">
-                  {olderCravingCount > 0 && (
-                    <button
-                      type="button"
-                      onClick={() => setClearOpen(true)}
-                      className="btn-ghost text-xs text-content-muted hover:text-rose-theme max-sm:px-2 max-sm:py-1"
-                    >
-                      <Trash2 size={14} /> Clear older cravings
-                    </button>
-                  )}
-                  <button onClick={openCravingModal} className="btn-secondary text-xs sm:hidden">
-                    <Plus size={14} /> Log craving
+          )
+        }
+      >
+        {tracker && (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between gap-2">
+              <h2 className="section-title">Cravings</h2>
+              <div className="flex items-center gap-1">
+                {olderCravingCount > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setClearOpen(true)}
+                    className="btn-ghost text-xs text-content-muted hover:text-rose-theme max-sm:px-2 max-sm:py-1"
+                  >
+                    <Trash2 size={14} /> Clear older cravings
                   </button>
-                </div>
+                )}
+                <button onClick={openCravingModal} className="btn-secondary text-xs sm:hidden">
+                  <Plus size={14} /> Log craving
+                </button>
               </div>
-              {sortedCravings.length === 0 ? (
-                <EmptyState
-                  icon={Activity}
-                  title="No cravings logged yet"
-                  description="Log a craving when it hits. Over time you'll see what triggers it and what helps."
-                  action={
-                    <button onClick={openCravingModal} className="btn-secondary mx-auto">
-                      <Plus size={16} /> Log craving
-                    </button>
-                  }
-                />
-              ) : (
-                <>
-                  <div className="card overflow-hidden divide-y divide-overlay-subtle">
-                    {sortedCravings.slice(0, cravingsShown).map((log) => (
-                      <div key={log.id} className="enter-item p-3.5 flex items-start gap-3 transition-colors hover:bg-overlay-subtle">
-                        <span
-                          className={cx(
-                            'figure w-9 h-9 rounded-xl flex items-center justify-center shrink-0 text-sm',
-                            log.intensity >= 7
-                              ? 'bg-rose-500/15 text-rose-theme'
-                              : log.intensity >= 4
-                                ? 'bg-overlay-subtle text-content-secondary'
-                                : 'bg-emerald-500/15 text-success-text'
-                          )}
-                          title={`Intensity ${log.intensity} of 10`}
-                          aria-label={`Intensity ${log.intensity} of 10`}
-                        >
-                          {log.intensity}
-                        </span>
-                        <div className="min-w-0 flex-1 text-xs space-y-0.5">
-                          <p className="item-name text-sm text-content-secondary truncate">{log.trigger || 'Craving'}</p>
-                          {log.copingStrategy && <p className="text-content-muted truncate">Helped: {log.copingStrategy}</p>}
-                          <p className="text-content-muted">{cravingDay(log) ? formatDateLong(cravingDay(log)!) : ''}</p>
-                        </div>
-                        <button
-                          onClick={() => setDeleteCravingModalLog(log)}
-                          className={`p-1.5 rounded-lg text-content-muted hover:text-rose-theme hover:bg-rose-500/10 transition-colors shrink-0 ${TAP_TARGET}`}
-                          title="Delete craving"
-                          aria-label="Delete craving"
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                  {sortedCravings.length > cravingsShown && (
-                    <button type="button" onClick={() => setCravingsShown((n) => n + CRAVINGS_PAGE)} className="btn-secondary w-full">
-                      Show older cravings
-                    </button>
-                  )}
-                </>
-              )}
             </div>
+            {sortedCravings.length === 0 ? (
+              <EmptyState
+                icon={Activity}
+                title="No cravings logged yet"
+                description="Log a craving when it hits. Over time you'll see what triggers it and what helps."
+                action={
+                  <button onClick={openCravingModal} className="btn-secondary mx-auto">
+                    <Plus size={16} /> Log craving
+                  </button>
+                }
+              />
+            ) : (
+              <>
+                <div className="card overflow-hidden divide-y divide-overlay-subtle">
+                  {sortedCravings.slice(0, cravingsShown).map((log) => (
+                    <div key={log.id} className="enter-item p-3.5 flex items-start gap-3 transition-colors hover:bg-overlay-subtle">
+                      <span
+                        className={cx(
+                          'figure w-9 h-9 rounded-xl flex items-center justify-center shrink-0 text-sm',
+                          log.intensity >= 7
+                            ? 'bg-rose-500/15 text-rose-theme'
+                            : log.intensity >= 4
+                              ? 'bg-overlay-subtle text-content-secondary'
+                              : 'bg-emerald-500/15 text-success-text'
+                        )}
+                        title={`Intensity ${log.intensity} of 10`}
+                        aria-label={`Intensity ${log.intensity} of 10`}
+                      >
+                        {log.intensity}
+                      </span>
+                      <div className="min-w-0 flex-1 text-xs space-y-0.5">
+                        <p className="item-name text-sm text-content-secondary truncate">{log.trigger || 'Craving'}</p>
+                        {log.copingStrategy && <p className="text-content-muted truncate">Helped: {log.copingStrategy}</p>}
+                        <p className="text-content-muted">{cravingDay(log) ? formatDateLong(cravingDay(log)!) : ''}</p>
+                      </div>
+                      <button
+                        onClick={() => setDeleteCravingModalLog(log)}
+                        className={`p-1.5 rounded-lg text-content-muted hover:text-rose-theme hover:bg-rose-500/10 transition-colors shrink-0 ${TAP_TARGET}`}
+                        title="Delete craving"
+                        aria-label="Delete craving"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                {sortedCravings.length > cravingsShown && (
+                  <button type="button" onClick={() => setCravingsShown((n) => n + CRAVINGS_PAGE)} className="btn-secondary w-full">
+                    Show older cravings
+                  </button>
+                )}
+              </>
+            )}
           </div>
         )}
       </PageColumns>
@@ -497,6 +534,10 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
         }
       >
         <div className="space-y-6">
+          <div className="space-y-2">
+            <h3 className="item-name text-sm">Talk to someone now</h3>
+            <CrisisLines className="text-sm text-content-secondary" />
+          </div>
           <div className="rounded-2xl border border-overlay-default p-5 text-center space-y-2">
             <h3 className="section-title">4-4-4-4 box breathing</h3>
             <BreathingCircle />
@@ -644,7 +685,9 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
         open={resetConfirmOpen}
         onClose={() => setResetConfirmOpen(false)}
         title="Reset your streak?"
-        description={`Your clock starts again from now. ${pointsLine} A slip is a setback, not the end.`}
+        description={`Your clock starts again from now. ${pointsLine} A slip is a setback, not the end.${
+          checkedToday ? ' Checked in today by mistake? Undo it first.' : ''
+        }`}
         footer={
           <>
             <button type="button" onClick={() => setResetConfirmOpen(false)} className="btn-secondary">
@@ -761,7 +804,7 @@ function BreathingCircle() {
   return (
     <div className="flex flex-col items-center justify-center space-y-4 py-4">
       <div className="relative w-36 h-36 flex items-center justify-center">
-        <div className={`w-28 h-28 rounded-full border-2 transition-all duration-1000 flex flex-col items-center justify-center ${circleClass}`}>
+        <div className={`w-28 h-28 rounded-full border-2 transition-all duration-1000 motion-reduce:transition-none motion-reduce:scale-100 flex flex-col items-center justify-center ${circleClass}`}>
           <span className="text-xs font-medium text-purple-hierarchy">{phase}</span>
           <span className="figure text-2xl text-content-primary mt-0.5">{seconds}s</span>
         </div>
