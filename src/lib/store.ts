@@ -74,7 +74,6 @@ import {
   findSplitPartner,
   plannedBlocksForDate,
   templateDays,
-  lastBlockOfDay,
 } from './timeTracker';
 import { findCuratedBook } from './books';
 import { uid, generateUUID, generateNumericUID, periodKey, todayKey, isPlanJourneyDoneThisPeriod, calculateActivePlanStreak, getWeekDates, parseDate, getNow, getNextDateKey, weekKey, addDays, formatWeekdayDate } from './dates';
@@ -83,14 +82,13 @@ import { autoStatusChanges } from './projectProgress';
 import { applyListOrder, nextSequenceOrder, sameOrder, topStandaloneOrder } from './listOrder';
 import { adoptServerInviteId } from './partnerInvites';
 import { singleFlight } from './singleFlight';
-import { timezoneWaitHoldsPreview } from './useTimezoneWait';
 import { reconcileSharedChallengeLifecycle, applyPledgeToggle, mergeSharedChallenge, linkedHabitFor, linkedBadHabitFor, badHabitStatusOn, habitDoneOn, planLinkedPactRepairs, pactTickRefused, tickLinkedBadHabitPacts, type LinkedPactTick, runningPactsLinkedTo, tickPactsLinkedTo, pactSideIn, runningPactsLinkedToBadHabit } from './pactLifecycle';
 import { isPartnershipUser1 } from './partnershipSide';
 import type { PresetHabit } from './presets';
 import { sameName } from './uniqueNames';
-import { computeHabitAwards, isHabitAwardEntry, isRetiredAppHabitAward, presetHabitPoints } from './habitAwards';
-import { computeWorkoutAwards, isRetiredAppWorkoutAward, isWorkoutDayEntry } from './workoutAwards';
-import { computeSkillAwards, isRetiredAppSkillAward, isSkillDayEntry, skillLateDay } from './skillAwards';
+import { isRetiredAppHabitAward, presetHabitPoints } from './habitAwards';
+import { isRetiredAppWorkoutAward } from './workoutAwards';
+import { isRetiredAppSkillAward, skillLateDay } from './skillAwards';
 import { addLogDrills, drillNameProblem, foldClearedCounts, isDrillGoal, keepValidDrillCounts, normalizeDrillName, normalizeDrillUnit, type NewLogDrill } from './skillDrills';
 import {
   canUndoRecoveryCheckin,
@@ -101,9 +99,9 @@ import {
   recoveryDayAwardId,
   trackerStartMs,
 } from './recoveryAwards';
-import { computeJournalAward, isJournalDayEntry, isRetiredAppJournalAward, journalEntryEarns } from './journalAwards';
+import { isRetiredAppJournalAward, journalEntryEarns } from './journalAwards';
 import { applyJournalEntryEdit } from './journalEdits';
-import { computeFocusAwards, focusFloorDay, isFocusDayEntry, isRetiredAppFocusAward } from './focusAwards';
+import { focusFloorDay, isFocusDayEntry, isRetiredAppFocusAward } from './focusAwards';
 import { focusSkillLogFor, withReflectionNote } from './focusSkillLog';
 import { editWorkoutIn, renameBadHabitIn, renameHabitIn, renameSkillIn, renameSubtaskIn, renameTracker, workoutFields } from './itemEdits';
 import { editDecisionText, editEmotionNote, editFocusLogText } from './pfcLogEdits';
@@ -122,9 +120,7 @@ import {
 import { computeLessonAward, isLessonReadInSeason, lessonReadId } from './lessonAwards';
 import { stampLogUnits, switchBookUnit, takeBackTodaysReading, unitSwitchDefaults } from './bookUnits';
 import {
-  computeReadingDayAward,
   isChapterBook,
-  isReadingDayEntry,
   isRetiredAppReadingAward,
   meetsReadingBonusGates,
   readingBonusCooldown,
@@ -160,10 +156,10 @@ import {
   fetchProfileByUidFromSupabase,
 } from './auth';
 import { hydrateUserSession } from './authSession';
+import { excisePointsEntriesInternal, withHydratedPoints, applyHabitAwardsInternal, applyJournalAwardInternal, applyWorkoutAwardsInternal, applyReadingAwardsInternal, applySkillAwardsInternal, applyBadHabitAwardsInternal, applyFocusAwardsInternal, canToggleTimeBlock } from './stateAwards';
 import { createLeagueStandingsRefresher, leaguePeriodKey } from './leagueStandingsRefresh';
 import {
   badHabitCreatedDay,
-  getAppStateSeasonPoints,
   getBadHabitBadDaysBefore,
 } from './habitPenalties';
 import { toSeasonHistory } from './seasonArchive';
@@ -185,8 +181,6 @@ import {
   isWeekBeforeSeason,
 } from './weeklyGoalSeasons';
 import {
-  computeBadHabitAwards,
-  isBadHabitDayEntry,
   isRetiredAppBadHabitAward,
 } from './badHabitAwards';
 import { buildMemberStats } from './memberStats';
@@ -1028,52 +1022,6 @@ async function persistState(state: AppState, options?: { allowDestructiveWipe?: 
   }
 }
 
-export function excisePointsEntriesInternal(
-  prev: AppState,
-  matcher: (entry: PointsEntry) => boolean,
-  maxExciseCount: number = Infinity
-): Pick<AppState, 'seasonPoints' | 'totalPoints' | 'seasonId' | 'pointsHistory' | 'leagueArchives'> & {
-  excisedEntryIds: string[];
-} {
-  const now = leagueNow();
-  const activeSeasonNumber = getSeasonNumber(now);
-  const activeSeasonStart = getSeasonStart(now);
-
-  let seasonId = typeof prev.seasonId === 'number' ? prev.seasonId : 1;
-  const leagueArchives: LeagueArchive[] = prev.leagueArchives ? [...prev.leagueArchives] : [];
-
-  // Season Rollover Check (the closing season's archive comes from the server)
-  if (seasonId < activeSeasonNumber) {
-    seasonId = activeSeasonNumber;
-  }
-
-  const excisedEntryIds: string[] = [];
-  const keptHistory: PointsEntry[] = [];
-  let excisedCount = 0;
-
-  for (const entry of prev.pointsHistory || []) {
-    if (excisedCount < maxExciseCount && matcher(entry)) {
-      if (entry.id) {
-        excisedEntryIds.push(entry.id);
-      }
-      excisedCount++;
-    } else {
-      keptHistory.push(entry);
-    }
-  }
-
-  const newSeasonPoints = calculateSeasonalTotal(keptHistory, activeSeasonStart);
-
-  return {
-    seasonId,
-    seasonPoints: newSeasonPoints,
-    totalPoints: newSeasonPoints,
-    pointsHistory: keptHistory,
-    leagueArchives,
-    excisedEntryIds,
-  };
-}
-
 /**
  * Every point entry is the server's (20261015250000). The hydrated state already holds exactly the
  * server's rows (the boot table read drops app previews the server never wrote), so after the boot
@@ -1091,289 +1039,6 @@ function countRemoteRemovals(state: AppState, changes: RemoteChange[]): number {
     const collection = SYNCED_COLLECTIONS.find((c) => syncKeyOf(c) === change.key);
     return Boolean(collection && itemsOf(collection, state).some((item) => rowIdOf(collection, item) === change.id));
   }).length;
-}
-
-function withHydratedPoints(merged: AppState, hydrated: AppState): AppState {
-  const serverPoints = hydrated.pointsHistory || [];
-  if (serverPoints.length === 0) return merged;
-  const live = new Set(serverPoints.map((entry) => entry.id));
-  const pointsHistory = (merged.pointsHistory || []).filter((entry) => live.has(entry.id));
-  if (pointsHistory.length === (merged.pointsHistory || []).length) return merged;
-  const seasonPoints = calculateSeasonalTotal(pointsHistory, getSeasonStart(leagueNow()));
-  return { ...merged, pointsHistory, seasonPoints, totalPoints: seasonPoints };
-}
-
-/** The state's points as they are: what a preview returns while a timezone wait holds the day. */
-function unchangedPoints(
-  state: AppState
-): Pick<AppState, 'seasonPoints' | 'totalPoints' | 'seasonId' | 'pointsHistory' | 'leagueArchives'> {
-  const { seasonPoints, totalPoints, seasonId, pointsHistory, leagueArchives } = state;
-  return { seasonPoints, totalPoints, seasonId, pointsHistory, leagueArchives };
-}
-
-/**
- * Replaces one local day's habit award entries with the ones the server computes for these
- * habits (computeHabitAwards), and stamps each checked preset's pointsAwarded. The entries
- * are shown at once and never uploaded; the server's own rows replace them on the next pull.
- * While a timezone wait holds the day (the server awards nothing for it), nothing changes.
- */
-function applyHabitAwardsInternal(
-  state: AppState,
-  habits: Habit[],
-  day: string
-): { points: Pick<AppState, 'seasonPoints' | 'totalPoints' | 'seasonId' | 'pointsHistory' | 'leagueArchives'>; habits: Habit[] } {
-  if (timezoneWaitHoldsPreview(day)) return { points: unchangedPoints(state), habits };
-  const { allocation, entries } = computeHabitAwards(
-    habits,
-    day,
-    new Date(`${day}T00:00:00`).getTime(),
-    trustedNow().getTime()
-  );
-
-  const { excisedEntryIds: _excised, ...excised } = excisePointsEntriesInternal(
-    state,
-    (entry) => isHabitAwardEntry(entry) && entry.metadata?.periodKey === day
-  );
-  let points: Pick<AppState, 'seasonPoints' | 'totalPoints' | 'seasonId' | 'pointsHistory' | 'leagueArchives'> = excised;
-  for (const entry of entries) {
-    points = addPointsInternal(
-      { ...state, ...points },
-      entry.amount,
-      entry.reason,
-      entry.source,
-      entry.metadata,
-      entry.timestamp,
-      entry.id
-    );
-  }
-
-  const nextHabits = habits.map((h) => {
-    if (!h || !(h.id in allocation) || Array.isArray(h.completions)) return h;
-    const comp = h.completions?.[day];
-    if (!comp) return h;
-    return { ...h, completions: { ...h.completions, [day]: { ...comp, pointsAwarded: allocation[h.id] } } };
-  });
-  return { points, habits: nextHabits };
-}
-
-/**
- * Replaces one local day's bad-habit resist/occurred entries with the ones the server computes
- * (computeBadHabitAwards), and stamps the day's logs with their points. The entries are shown
- * at once and never uploaded; the server's own rows replace them on the next pull.
- */
-function applyBadHabitAwardsInternal(
-  state: AppState,
-  badHabits: BadHabit[],
-  logs: BadHabitLog[],
-  day: string
-): { points: Pick<AppState, 'seasonPoints' | 'totalPoints' | 'seasonId' | 'pointsHistory' | 'leagueArchives'>; logs: BadHabitLog[] } {
-  const { entries, logPoints } = computeBadHabitAwards(
-    badHabits,
-    logs,
-    state.pointsHistory || [],
-    day,
-    new Date(`${day}T00:00:00`).getTime(),
-    trustedNow().getTime(),
-    getAppStateSeasonPoints(state, leagueNow())
-  );
-
-  const { excisedEntryIds: _excised, ...excised } = excisePointsEntriesInternal(state, (entry) =>
-    isBadHabitDayEntry(entry, day)
-  );
-  let points: Pick<AppState, 'seasonPoints' | 'totalPoints' | 'seasonId' | 'pointsHistory' | 'leagueArchives'> = excised;
-  for (const entry of entries) {
-    points = addPointsInternal(
-      { ...state, ...points },
-      entry.amount,
-      entry.reason,
-      entry.source,
-      entry.metadata,
-      entry.timestamp,
-      entry.id
-    );
-  }
-
-  const nextLogs = logs.map((l) =>
-    l && logPoints.has(l.id) && logPoints.get(l.id) !== l.pointsAwardedOrDeducted
-      ? { ...l, pointsAwardedOrDeducted: logPoints.get(l.id)! }
-      : l
-  );
-  return { points, logs: nextLogs };
-}
-
-/**
- * Replaces one local day's workout award entry with the one the server computes for these
- * workouts (computeWorkoutAwards), and stamps each of the day's workouts with its points. The
- * entry is shown at once and never uploaded; the server's own row replaces it on the next pull.
- */
-function applyWorkoutAwardsInternal(
-  state: AppState,
-  workouts: WorkoutLog[],
-  day: string
-): { points: Pick<AppState, 'seasonPoints' | 'totalPoints' | 'seasonId' | 'pointsHistory' | 'leagueArchives'>; workouts: WorkoutLog[] } {
-  const { entry, workoutPoints } = computeWorkoutAwards(
-    workouts,
-    day,
-    new Date(`${day}T00:00:00`).getTime(),
-    trustedNow().getTime(),
-    (state.pointsHistory || []).find((e) => isWorkoutDayEntry(e, day))
-  );
-
-  const { excisedEntryIds: _excised, ...excised } = excisePointsEntriesInternal(state, (e) => isWorkoutDayEntry(e, day));
-  const points = entry
-    ? addPointsInternal({ ...state, ...excised }, entry.amount, entry.reason, entry.source, entry.metadata, entry.timestamp, entry.id)
-    : excised;
-
-  const nextWorkouts = workouts.map((w) =>
-    w && workoutPoints.has(w.id) && workoutPoints.get(w.id) !== w.pointsAwarded ? { ...w, pointsAwarded: workoutPoints.get(w.id)! } : w
-  );
-  return { points, workouts: nextWorkouts };
-}
-
-/**
- * Replaces one local day's skill award entry with the one the server computes for these
- * sessions and skills (computeSkillAwards), and stamps each counted session with its points.
- * The entry is shown at once and never uploaded; the server's own row replaces it on the next pull.
- */
-function applySkillAwardsInternal(
-  state: AppState,
-  skillLogs: SkillSessionLog[],
-  skills: Skill[],
-  day: string,
-  opts: { floor?: boolean } = {}
-): { points: Pick<AppState, 'seasonPoints' | 'totalPoints' | 'seasonId' | 'pointsHistory' | 'leagueArchives'>; skillLogs: SkillSessionLog[] } {
-  const { entry, sessionPoints } = computeSkillAwards(
-    skillLogs,
-    skills,
-    day,
-    new Date(`${day}T00:00:00`).getTime(),
-    trustedNow().getTime(),
-    (state.pointsHistory || []).find((e) => isSkillDayEntry(e, day)),
-    opts
-  );
-
-  const { excisedEntryIds: _excised, ...excised } = excisePointsEntriesInternal(state, (e) => isSkillDayEntry(e, day));
-  const points = entry
-    ? addPointsInternal({ ...state, ...excised }, entry.amount, entry.reason, entry.source, entry.metadata, entry.timestamp, entry.id)
-    : excised;
-
-  const nextLogs = skillLogs.map((l) =>
-    l && sessionPoints.has(l.id) && sessionPoints.get(l.id) !== l.pointsAwarded ? { ...l, pointsAwarded: sessionPoints.get(l.id)! } : l
-  );
-  return { points, skillLogs: nextLogs };
-}
-
-/**
- * Replaces one local day's focus award entry with the one the server computes for these
- * sessions (computeFocusAwards), and stamps each session of the day with its points. The entry
- * is shown at once and never uploaded; the server's own row replaces it on the next pull.
- * While a timezone wait holds the day, nothing changes.
- */
-function applyFocusAwardsInternal(
-  state: AppState,
-  focusLogs: FocusSessionLog[],
-  day: string,
-  opts: { floor?: boolean } = {}
-): { points: Pick<AppState, 'seasonPoints' | 'totalPoints' | 'seasonId' | 'pointsHistory' | 'leagueArchives'>; focusLogs: FocusSessionLog[] } {
-  if (timezoneWaitHoldsPreview(day)) return { points: unchangedPoints(state), focusLogs };
-  const existing = (state.pointsHistory || []).find((e) => isFocusDayEntry(e, day));
-  const { entry, sessionPoints } = computeFocusAwards(
-    focusLogs,
-    day,
-    new Date(`${day}T00:00:00`).getTime(),
-    trustedNow().getTime(),
-    existing,
-    opts
-  );
-  // The day before (a session across midnight): the server only ever raises it, and its
-  // sessions keep the points they show.
-  if (opts.floor) {
-    if (!entry || entry === existing) return { points: unchangedPoints(state), focusLogs };
-    const { excisedEntryIds: _gone, ...without } = excisePointsEntriesInternal(state, (e) => isFocusDayEntry(e, day));
-    return {
-      points: addPointsInternal({ ...state, ...without }, entry.amount, entry.reason, entry.source, entry.metadata, entry.timestamp, entry.id),
-      focusLogs,
-    };
-  }
-
-  const { excisedEntryIds: _excised, ...excised } = excisePointsEntriesInternal(state, (e) => isFocusDayEntry(e, day));
-  const points = entry
-    ? addPointsInternal({ ...state, ...excised }, entry.amount, entry.reason, entry.source, entry.metadata, entry.timestamp, entry.id)
-    : excised;
-
-  const nextLogs = focusLogs.map((l) =>
-    l && sessionPoints.has(l.id) && sessionPoints.get(l.id) !== l.pointsAwarded ? { ...l, pointsAwarded: sessionPoints.get(l.id)! } : l
-  );
-  return { points, focusLogs: nextLogs };
-}
-
-/**
- * Replaces one local day's journal award entry with the one the server computes for these
- * entries (computeJournalAward). The entry is shown at once and never uploaded; the server's own
- * row replaces it on the next pull.
- */
-function applyJournalAwardInternal(
-  state: AppState,
-  journalEntries: JournalEntry[],
-  day: string
-): Pick<AppState, 'seasonPoints' | 'totalPoints' | 'seasonId' | 'pointsHistory' | 'leagueArchives'> {
-  const entry = computeJournalAward(
-    journalEntries,
-    day,
-    new Date(`${day}T00:00:00`).getTime(),
-    trustedNow().getTime(),
-    (state.pointsHistory || []).find((e) => isJournalDayEntry(e, day))
-  );
-  const { excisedEntryIds: _excised, ...excised } = excisePointsEntriesInternal(state, (e) => isJournalDayEntry(e, day));
-  return entry
-    ? addPointsInternal({ ...state, ...excised }, entry.amount, entry.reason, entry.source, entry.metadata, entry.timestamp, entry.id)
-    : excised;
-}
-
-/**
- * Replaces one local day's reading page award entry with the one the server computes for these
- * logs and books (computeReadingDayAward), and stamps each counted log with its points. The entry
- * is shown at once and never uploaded; the server's own row replaces it on the next pull.
- * While a timezone wait holds the day, nothing changes.
- */
-function applyReadingAwardsInternal(
-  state: AppState,
-  readingLogs: ReadingLog[],
-  books: UserBook[],
-  day: string
-): { points: Pick<AppState, 'seasonPoints' | 'totalPoints' | 'seasonId' | 'pointsHistory' | 'leagueArchives'>; readingLogs: ReadingLog[] } {
-  if (timezoneWaitHoldsPreview(day)) return { points: unchangedPoints(state), readingLogs };
-  const { entry, logPoints } = computeReadingDayAward(
-    readingLogs,
-    books,
-    day,
-    new Date(`${day}T00:00:00`).getTime(),
-    trustedNow().getTime(),
-    (state.pointsHistory || []).find((e) => isReadingDayEntry(e, day))
-  );
-
-  const { excisedEntryIds: _excised, ...excised } = excisePointsEntriesInternal(state, (e) => isReadingDayEntry(e, day));
-  const points = entry
-    ? addPointsInternal({ ...state, ...excised }, entry.amount, entry.reason, entry.source, entry.metadata, entry.timestamp, entry.id)
-    : excised;
-
-  const nextLogs = readingLogs.map((l) =>
-    l && logPoints.has(l.id) && logPoints.get(l.id) !== l.pointsAwarded ? { ...l, pointsAwarded: logPoints.get(l.id)! } : l
-  );
-  return { points, readingLogs: nextLogs };
-}
-
-/** Local midnight of a day key, in ms (the start of "today" for the earlier-day rule). */
-/**
- * Whether a block's done tick can change now: any block of today, or until 02:00 (the grace
- * window) yesterday's last block when it isn't skipped. Past days are read-only otherwise.
- */
-function canToggleTimeBlock(blocks: TimeTrackerBlock[], dateKey: string, blockId: string): boolean {
-  const inGrace = dateKey === timeTrackerGraceDay(trustedNow());
-  if (dateKey !== todayKey() && !inGrace) return false;
-  const target = blocks.find((b) => b.id === blockId);
-  if (!target) return false;
-  return !inGrace || (!target.skipped && lastBlockOfDay(blocks)?.id === blockId);
 }
 
 const localDayStartMs = (day: string): number => new Date(`${day}T00:00:00`).getTime();

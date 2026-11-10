@@ -9,7 +9,7 @@ const { addDays, localDayStartMs } = await import('../dates');
 const { getSeasonStart } = await import('../leagueTime');
 const { SYNCED_COLLECTIONS } = await import('../sync/syncedCollections');
 const { diffSyncedCollections, hashRow, DELETED } = await import('../sync/outbox');
-const { excisePointsEntriesInternal } = await import('../store');
+const { excisePointsEntriesInternal } = await import('../stateAwards');
 const { mergeAppState } = await import('../stateMerger');
 
 function assert(condition: boolean, msg: string) {
