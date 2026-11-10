@@ -20,7 +20,7 @@ import {
   workoutFields,
 } from '../itemEdits';
 import { computeWorkoutAwards } from '../workoutAwards';
-import { runningPactsLinkedTo, runningPactsLinkedToBadHabit } from '../store';
+import { runningPactsLinkedTo, runningPactsLinkedToBadHabit } from '../pactLifecycle';
 
 function assert(condition: boolean, msg: string) {
   if (!condition) throw new Error(`Assertion failed: ${msg}`);

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Plus, ShieldAlert } from 'lucide-react';
-import { AppStore, runningPactsLinkedToBadHabit } from '@/lib/store';
-import { pactUnlinkNote } from '@/lib/pactLifecycle';
+import { AppStore } from '@/lib/store';
+import { pactUnlinkNote, runningPactsLinkedToBadHabit } from '@/lib/pactLifecycle';
 import { useToast } from '@/components/ui/Toast';
 import { BadHabit } from '@/types';
 import { getNow, todayKey } from '@/lib/dates';

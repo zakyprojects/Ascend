@@ -84,7 +84,7 @@ import { applyListOrder, nextSequenceOrder, sameOrder, topStandaloneOrder } from
 import { adoptServerInviteId } from './partnerInvites';
 import { singleFlight } from './singleFlight';
 import { timezoneWaitHoldsPreview } from './useTimezoneWait';
-import { reconcileSharedChallengeLifecycle, applyPledgeToggle, mergeSharedChallenge, linkedHabitFor, linkedBadHabitFor, badHabitStatusOn, habitDoneOn, planLinkedPactRepairs, pactTickRefused, tickLinkedPacts, tickLinkedBadHabitPacts, type LinkedPactTick } from './pactLifecycle';
+import { reconcileSharedChallengeLifecycle, applyPledgeToggle, mergeSharedChallenge, linkedHabitFor, linkedBadHabitFor, badHabitStatusOn, habitDoneOn, planLinkedPactRepairs, pactTickRefused, tickLinkedBadHabitPacts, type LinkedPactTick, runningPactsLinkedTo, tickPactsLinkedTo, pactSideIn, runningPactsLinkedToBadHabit } from './pactLifecycle';
 import { isPartnershipUser1 } from './partnershipSide';
 import type { PresetHabit } from './presets';
 import { sameName } from './uniqueNames';
@@ -259,33 +259,6 @@ export const STATE_SYNC_CHANNEL_NAME = 'ascend-state-sync';
 const pendingPledgeRequests = new Set<string>();
 /** How many times a day a linked pact's failed save is resent (while online) before it waits for tomorrow. */
 const PACT_RETRY_LIMIT = 3;
-
-/** The viewer's side of a pact in this state (its partnership, else the current one), or null. */
-function pactSideIn(state: AppState): (challenge: SharedChallenge) => boolean | null {
-  return (challenge) => {
-    const partnership = (state.partnerships || []).find((p) => p.id === challenge.partnershipId) || state.partnership;
-    return partnership ? isPartnershipUser1(partnership, state.currentUser?.id, state.username) : null;
-  };
-}
-
-/** Running pacts linked to this habit, ticked with its new state for today (inside a state update). */
-function tickPactsLinkedTo(state: AppState, habit: Habit, done: boolean) {
-  return tickLinkedPacts(state.sharedChallenges || [], pactSideIn(state), habit, done);
-}
-
-/** How many running pacts this habit ticks (the delete / stop warnings: they become hand-ticked). */
-export function runningPactsLinkedTo(state: AppState, habit: Habit): number {
-  return tickPactsLinkedTo(state, habit, true).ticks.length;
-}
-
-/** How many running resist pacts this bad habit ticks (the delete warning: they become hand-ticked). */
-export function runningPactsLinkedToBadHabit(state: AppState, badHabit: BadHabit): number {
-  const sideOf = pactSideIn(state);
-  return (state.sharedChallenges || []).filter((c) => {
-    const isUser1 = c.status === 'active' ? sideOf(c) : null;
-    return isUser1 !== null && linkedBadHabitFor(c, isUser1, [badHabit]) !== null;
-  }).length;
-}
 
 export interface StateSyncMessage {
   type: 'ASCEND_STATE_SYNC';

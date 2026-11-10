@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { BookOpen, CheckCircle2, ListTodo, Pause, Pencil, PlayCircle, Plus, RotateCcw, Search, Trash2 } from 'lucide-react';
-import { AppStore, runningPactsLinkedTo } from '@/lib/store';
-import { pactUnlinkNote } from '@/lib/pactLifecycle';
+import { AppStore } from '@/lib/store';
+import { pactUnlinkNote, runningPactsLinkedTo } from '@/lib/pactLifecycle';
 import { applyListOrder, applyListOrderTouchedFirst, LIST_ORDER_KEYS, reorderInSlots, savedOrderIds } from '@/lib/listOrder';
 import { LazyReorderList, ReorderButton } from '@/components/ui/Reorder';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';

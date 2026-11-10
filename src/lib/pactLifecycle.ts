@@ -1,4 +1,5 @@
-import { BadHabit, BadHabitLog, Habit, SharedChallenge } from '@/types';
+import { AppState, BadHabit, BadHabitLog, Habit, SharedChallenge } from '@/types';
+import { isPartnershipUser1 } from './partnershipSide';
 import { todayKey, previousPeriodKey, calculateElapsedDays, getNow, addDays, parseDate } from './dates';
 import { sameName } from './uniqueNames';
 import { PRESET_BAD_HABITS, PRESET_CATEGORIES, type PresetBadHabit, type PresetHabit } from './presets';
@@ -593,4 +594,31 @@ export function pactTickRefused(
   deviceToday: string
 ): boolean {
   return pactSideDoneOn(sent, isUser1, deviceToday) !== pactSideDoneOn(stored, isUser1, deviceToday);
+}
+
+/** The viewer's side of a pact in this state (its partnership, else the current one), or null. */
+export function pactSideIn(state: AppState): (challenge: SharedChallenge) => boolean | null {
+  return (challenge) => {
+    const partnership = (state.partnerships || []).find((p) => p.id === challenge.partnershipId) || state.partnership;
+    return partnership ? isPartnershipUser1(partnership, state.currentUser?.id, state.username) : null;
+  };
+}
+
+/** Running pacts linked to this habit, ticked with its new state for today (inside a state update). */
+export function tickPactsLinkedTo(state: AppState, habit: Habit, done: boolean) {
+  return tickLinkedPacts(state.sharedChallenges || [], pactSideIn(state), habit, done);
+}
+
+/** How many running pacts this habit ticks (the delete / stop warnings: they become hand-ticked). */
+export function runningPactsLinkedTo(state: AppState, habit: Habit): number {
+  return tickPactsLinkedTo(state, habit, true).ticks.length;
+}
+
+/** How many running resist pacts this bad habit ticks (the delete warning: they become hand-ticked). */
+export function runningPactsLinkedToBadHabit(state: AppState, badHabit: BadHabit): number {
+  const sideOf = pactSideIn(state);
+  return (state.sharedChallenges || []).filter((c) => {
+    const isUser1 = c.status === 'active' ? sideOf(c) : null;
+    return isUser1 !== null && linkedBadHabitFor(c, isUser1, [badHabit]) !== null;
+  }).length;
 }
