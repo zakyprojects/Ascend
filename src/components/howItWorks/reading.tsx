@@ -23,7 +23,7 @@ export const readingGuide: HowItWorksGuide = {
   notes: [
     'Removing a book takes back its finish bonus and today’s points from it. Earlier days keep their points.',
     'The Reading habit earns no points and has no penalty.',
-    'Tap Reorder to put your To read list, or the books you are reading, in your own order. A book you log goes to the top of Currently reading.',
+    'Tap Reorder to put your To read list, or the books you are reading, in your own order. A book you log goes to the top of Reading.',
   ],
   points: [
     <>

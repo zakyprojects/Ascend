@@ -27,6 +27,8 @@ export interface ProgressUpdateDialogProps {
   /** Amounts may have decimals (a plan target like 21.1 km). Whole numbers by default. */
   decimal?: boolean;
   tone?: ProgressTone;
+  /** An extra line under the live preview for the total being entered (Reading: the points it earns). */
+  preview?: (next: number) => React.ReactNode;
   /** Gets the new total. Throw to keep the dialog open with the reason shown. */
   onSave: (next: number) => void | Promise<void>;
 }
@@ -52,6 +54,7 @@ export function ProgressUpdateDialog({
   step = 1,
   decimal = false,
   tone = 'brand',
+  preview,
   onSave,
 }: ProgressUpdateDialogProps) {
   const remaining = Math.max(0, target - current);
@@ -174,6 +177,7 @@ export function ProgressUpdateDialog({
           <ProgressBar value={next} max={target} label="Progress after saving" tone={next >= target ? 'success' : tone} size="lg" />
           <p className="text-xs text-content-muted">Goal: {format(target)}</p>
         </div>
+        {preview?.(next)}
 
         <div className="relative isolate grid grid-cols-2 gap-1 rounded-xl border border-overlay-default bg-bg-700 p-1">
           <SlidingPill active={mode} className="rounded-lg bg-primary-500/15 border border-primary-500/40" />

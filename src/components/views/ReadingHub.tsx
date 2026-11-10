@@ -13,6 +13,10 @@ import { formatDateLong, getNow, weekKey, formatWeekdayDate, formatWeekdayShort,
 import { READING_POINTS } from '@/lib/pointsConfig';
 import { bookRemovalPoints, isRetiredAppReadingAward, logUnit } from '@/lib/readingAwards';
 import { getCapStatus } from '@/lib/capStatus';
+import { ptsText } from '@/lib/leagues';
+import { trustedNow } from '@/lib/clock';
+import { PREVIEW_EARN_LABEL, PREVIEW_MAX_LABEL, previewCapReachedText, readingProgressPreview } from '@/lib/practicePreviews';
+import { LATE_POINTS_TEXT, useTimezoneWait } from '@/lib/useTimezoneWait';
 import { CapMeterConnected } from '@/components/ui/CapMeterConnected';
 import { HowItWorksButton, HowItWorksDialog, useHowItWorks } from '@/components/ui/HowItWorks';
 import { readingGuide } from '@/components/howItWorks/reading';
@@ -226,6 +230,34 @@ export function ReadingHub({ store }: { store: AppStore }) {
     if (newCurrent >= total) openFinish(progressBook);
   };
 
+  // Log progress: what the new total does to today's reading points, as updateReadingProgress
+  // saves it (readingProgressPreview mirrors the server's day award). While a timezone change
+  // waits the app holds the reading preview, so the line says the points come later.
+  const timezoneWait = useTimezoneWait();
+  const progressPointsLine = (next: number) => {
+    if (!progressBook) return null;
+    const line = (text: string, value?: string) => (
+      <div className="rounded-xl p-3 text-xs text-content-muted flex items-center justify-between gap-3 border border-overlay-default">
+        <span>{text}</span>
+        {value !== undefined && <span className="figure text-brand-text shrink-0">{value}</span>}
+      </div>
+    );
+    if (timezoneWait) return line(`It saves now. ${LATE_POINTS_TEXT}`);
+    const { before, after } = readingProgressPreview(
+      store.state.readingLogs || [],
+      store.state.libraryBooks || [],
+      progressBook.id,
+      next,
+      today,
+      trustedNow().toISOString()
+    );
+    const cap = READING_POINTS.dailyCap;
+    if (after < before) return line(`Today's reading points go down by ${before - after}.`);
+    if (next <= bookProgress(progressBook).current) return null;
+    if (before >= cap) return line(previewCapReachedText(cap));
+    return line(after >= cap ? PREVIEW_MAX_LABEL : PREVIEW_EARN_LABEL, ptsText(after - before, true));
+  };
+
   const showFilters = activeTab !== 'reading';
 
   return (
@@ -431,10 +463,10 @@ export function ReadingHub({ store }: { store: AppStore }) {
                       category={book.category}
                       controls={
                         <>
-                          <IconAction label="Edit book" onClick={() => openEdit(book)}>
+                          <IconAction label={`Edit ${book.title}`} onClick={() => openEdit(book)}>
                             <Pencil size={15} />
                           </IconAction>
-                          <IconAction label="Remove book" danger onClick={() => setDeleteBookId(book.id)}>
+                          <IconAction label={`Remove ${book.title}`} danger onClick={() => setDeleteBookId(book.id)}>
                             <Trash2 size={15} />
                           </IconAction>
                         </>
@@ -533,10 +565,10 @@ export function ReadingHub({ store }: { store: AppStore }) {
                       category={book.category}
                       controls={
                         <>
-                          <IconAction label="Edit book" onClick={() => openEdit(book)}>
+                          <IconAction label={`Edit ${book.title}`} onClick={() => openEdit(book)}>
                             <Pencil size={15} />
                           </IconAction>
-                          <IconAction label="Remove book" danger onClick={() => setDeleteBookId(book.id)}>
+                          <IconAction label={`Remove ${book.title}`} danger onClick={() => setDeleteBookId(book.id)}>
                             <Trash2 size={15} />
                           </IconAction>
                         </>
@@ -594,10 +626,10 @@ export function ReadingHub({ store }: { store: AppStore }) {
                       }
                       controls={
                         <>
-                          <IconAction label="Edit book" onClick={() => openEdit(book)}>
+                          <IconAction label={`Edit ${book.title}`} onClick={() => openEdit(book)}>
                             <Pencil size={15} />
                           </IconAction>
-                          <IconAction label="Remove book" danger onClick={() => setDeleteBookId(book.id)}>
+                          <IconAction label={`Remove ${book.title}`} danger onClick={() => setDeleteBookId(book.id)}>
                             <Trash2 size={15} />
                           </IconAction>
                         </>
@@ -674,7 +706,8 @@ export function ReadingHub({ store }: { store: AppStore }) {
                             <button
                               type="button"
                               onClick={() => changeTab(owned.status === 'completed' ? 'finished' : owned.status === 'reading' ? 'reading' : 'library')}
-                              className="text-xs font-medium text-content-tertiary hover:text-content-primary"
+                              aria-label={`Open ${curated.title}`}
+                              className={cx('rounded-lg px-2 text-xs font-medium text-content-tertiary hover:text-content-primary hover:bg-overlay-subtle', TAP_TARGET)}
                             >
                               Open
                             </button>
@@ -757,6 +790,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
         format={(n) => formatAmount(n, progressBook ? bookProgress(progressBook).unit : 'pages')}
         addLabel={progressBook && bookProgress(progressBook).unit === 'chapters' ? 'Chapters read' : 'Pages read'}
         setLabel={progressBook && bookProgress(progressBook).unit === 'chapters' ? 'Chapter you’re on' : 'Page you’re on'}
+        preview={progressPointsLine}
         onSave={handleProgressSave}
       />
 
