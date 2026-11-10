@@ -22,6 +22,8 @@ import { installListExit } from './lib/listExit';
 import { authRouteFromPath, legalRouteFromPath, nextFromSearch, viewFromLocation, viewFromPath } from './lib/routes';
 import { installPagePrefetch, preloadView } from './components/views/lazyViews';
 import { preloadAuthPage } from './components/auth/lazyAuthPage';
+import { preloadAppShell } from './components/lazyAppShell';
+import { isSupabaseConfigured, storedAuthSession } from './lib/supabase';
 import { preloadLegalPage } from './components/legal/lazyLegalPage';
 
 // Before anything else: a page whose build files failed to load reloads once with fresh ones.
@@ -59,7 +61,9 @@ if (import.meta.env.DEV && devParams.has('splash-preview')) {
   // The page in the address bar (on a sign-in page: the page it returns to) starts loading now,
   // alongside the session check behind the splash. So does the sign-in page: whether it is
   // needed is only known after the check, and it must not flash in late. A legal page loads its
-  // own code instead of a page's.
+  // own code instead of a page's. The signed-in frame loads too when this device holds a sign-in
+  // (or there is no sign-in at all: local-only mode), except on a legal page; a signed-out visit
+  // never downloads it (App loads it once someone signs in).
   const legacyHash = window.location.hash.startsWith('#/');
   const onAuthPage = authRouteFromPath(window.location.pathname) && !legacyHash;
   const onLegalPage = Boolean(legalRouteFromPath(window.location.pathname)) && !legacyHash;
@@ -69,6 +73,7 @@ if (import.meta.env.DEV && devParams.has('splash-preview')) {
       ? viewFromPath(nextFromSearch(window.location.search).split('?')[0])
       : viewFromLocation();
   if (firstView) preloadView(firstView).catch(() => undefined);
+  if (!onLegalPage && (!isSupabaseConfigured || storedAuthSession())) preloadAppShell().catch(() => undefined);
   if (onLegalPage) preloadLegalPage().catch(() => undefined);
   preloadAuthPage().catch(() => undefined);
   installPagePrefetch();
