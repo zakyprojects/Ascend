@@ -248,9 +248,22 @@ export function AccountabilityPartner({ store, onNavigate }: { store: AppStore; 
   const { isLoading: isRetrying, executeFn: executeRetry } = useAsyncAction();
   const retry = () => executeRetry(() => store.refreshPartners());
 
+  // A running challenge with a missed day can't finish any more: the "ticked today" ring and the
+  // tab badges leave it out (it still counts in Running and stays in the list with its note).
+  const canStillFinishWith = useCallback(
+    (p: Partnership, c: SharedChallenge) => {
+      const u1 = isPartnershipUser1(p, currentUser?.id, currentUsername);
+      const otherId = u1 ? p.user2Id : p.user1Id;
+      const theirToday = (otherId && partnerDayKeys[otherId]) || today;
+      return pactCanStillFinish(pactDayCells(c, u1, today, theirToday));
+    },
+    [currentUser?.id, currentUsername, partnerDayKeys, today]
+  );
+
   // Hero: today's ticks across every partner's running challenges.
   const heroNumbers = useMemo(() => {
     let running = 0;
+    let finishable = 0;
     let doneToday = 0;
     let together = 0;
     for (const p of partnerships) {
@@ -259,11 +272,13 @@ export function AccountabilityPartner({ store, onNavigate }: { store: AppStore; 
         if (c.status !== 'active') continue;
         running++;
         together += c.totalJointDaysCompleted ?? 0;
+        if (!canStillFinishWith(p, c)) continue;
+        finishable++;
         if (doneDates(c, u1).includes(today)) doneToday++;
       }
     }
-    return { running, doneToday, together };
-  }, [partnerships, challengesFor, currentUser?.id, currentUsername, today]);
+    return { running, finishable, doneToday, together };
+  }, [partnerships, challengesFor, canStillFinishWith, currentUser?.id, currentUsername, today]);
 
   const habits = store.state.habits;
   // Habits a challenge can link to (daily ones, Reading included), in Habits page order.
@@ -767,15 +782,15 @@ export function AccountabilityPartner({ store, onNavigate }: { store: AppStore; 
         <PageHero
           ariaLabel="Your partners today"
           ring={
-            heroNumbers.running > 0
+            heroNumbers.finishable > 0
               ? {
                   value: heroNumbers.doneToday,
-                  max: heroNumbers.running,
-                  label: `Challenges ticked today: ${heroNumbers.doneToday} of ${heroNumbers.running}`,
+                  max: heroNumbers.finishable,
+                  label: `Challenges ticked today: ${heroNumbers.doneToday} of ${heroNumbers.finishable}`,
                   center: (
                     <>
                       {heroNumbers.doneToday}
-                      <span className="text-sm font-medium text-content-muted">/{heroNumbers.running}</span>
+                      <span className="text-sm font-medium text-content-muted">/{heroNumbers.finishable}</span>
                     </>
                   ),
                   caption: 'ticked today',
@@ -885,9 +900,9 @@ export function AccountabilityPartner({ store, onNavigate }: { store: AppStore; 
               onChange={(id) => setSelectedPartnerId(id)}
               items={partnerships.map((p) => {
                 const u1 = isPartnershipUser1(p, currentUser?.id, currentUsername);
-                const running = challengesFor(p).filter((c) => c.status === 'active');
+                const running = challengesFor(p).filter((c) => c.status === 'active' && canStillFinishWith(p, c));
                 const left = running.filter((c) => !doneDates(c, u1).includes(today)).length;
-                // Badge: challenges you still have to tick today with this partner.
+                // Badge: challenges that can still finish and you still have to tick today with this partner.
                 return { id: p.id, label: u1 ? p.user2Username : p.user1Username, badge: left || undefined };
               })}
             />
