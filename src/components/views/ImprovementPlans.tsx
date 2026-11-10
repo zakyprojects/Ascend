@@ -23,7 +23,7 @@ import { CreatePlanDialog } from '@/components/plans/CreatePlanDialog';
 import { EditPlanDialog } from '@/components/plans/EditPlanDialog';
 import { DiscoverPanel } from '@/components/plans/DiscoverPanel';
 import { useDiscoverPlans } from '@/components/plans/useDiscoverPlans';
-import { type AnyPlan, finishLineShare, isReviewDue, journeyState, ownPlans, planTypeOf, targetProgress } from '@/components/plans/planMeta';
+import { type AnyPlan, copiesLabel, finishLineShare, isReviewDue, journeyState, ownPlans, planTypeOf, targetProgress } from '@/components/plans/planMeta';
 import { useLocalDayKey } from '@/lib/useLocalDayKey';
 import { MasonryGrid } from '@/components/ui/MasonryGrid';
 
@@ -193,7 +193,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                 ? { value: averagePct, max: 100, label: 'Average progress of milestone and target plans', center: `${averagePct}%`, caption: 'done' }
                 : undefined
             }
-            lead={{ label: 'Active plans', value: <CountUp value={allPlans.length} />, hint: `${myPlans.length} yours, ${followedPlans.length} copied` }}
+            lead={{ label: 'Plans', value: <CountUp value={allPlans.length} />, hint: `${myPlans.length} yours, ${followedPlans.length} copied` }}
             stats={[
               {
                 label: 'Journeys done',
@@ -257,7 +257,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                       footer={
                         plan.isPublic ? (
                           <span className="text-xs text-content-muted">
-                            {plan.copyCount === 1 ? 'Copied once' : `Copied ${plan.copyCount || 0} times`}
+                            {copiesLabel(plan.copyCount || 0)}
                           </span>
                         ) : undefined
                       }

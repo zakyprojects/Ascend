@@ -16,6 +16,12 @@ export function ownPlans(plans: ImprovementPlan[], currentUserId: string | undef
 /** A new or renamed plan of yours can't take the name of another plan you made (copies live apart). */
 export const PLAN_NAME_TAKEN = 'You already have a plan with this name.';
 
+/** How often a public plan was copied, for its card. */
+export function copiesLabel(n: number): string {
+  if (n <= 0) return 'Not copied yet';
+  return n === 1 ? 'Copied once' : `Copied ${n} times`;
+}
+
 export interface PlanTypeMeta {
   label: string;
   /** One line for the type picker. */

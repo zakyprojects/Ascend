@@ -7,16 +7,11 @@ import { getProfileSeasonPointsByUsername } from '@/lib/auth';
 import { leagueNow } from '@/lib/leagueTime';
 import { PLAN_CATEGORIES, type ImprovementPlan } from '@/types';
 import { PlanCard } from './PlanCard';
-import { PLAN_TYPES, PLAN_TYPE_META } from './planMeta';
+import { PLAN_TYPES, PLAN_TYPE_META, copiesLabel } from './planMeta';
 import type { DiscoverSort, useDiscoverPlans } from './useDiscoverPlans';
 import { MasonryGrid } from '@/components/ui/MasonryGrid';
 
 type Discover = ReturnType<typeof useDiscoverPlans>;
-
-function copiesLabel(n: number): string {
-  if (n <= 0) return 'Not copied yet';
-  return n === 1 ? 'Copied once' : `Copied ${n} times`;
-}
 
 export function DiscoverPanel({
   discover,
