@@ -150,7 +150,13 @@ TIERS.forEach((tier, i) => assert(ranksPage.includes(`${i + 1}. ${tier.name}`) &
 // Health-adjacent pages carry their not-medical-advice note; recovery also its check-in points and a helpline.
 const pageOf = (slug: string) => renderMarketingPage(MARKETING_ROUTES.find((r) => r.slug === slug)!, assets);
 const recoveryPage = pageOf('recovery');
-assert(recoveryPage.includes('AscendDay is not treatment, therapy or medical advice.') && recoveryPage.includes('1-800-662-4357'), 'recovery page: not-treatment note and helpline');
+assert(recoveryPage.includes('AscendDay is not treatment, therapy or medical advice.'), 'recovery page: not-treatment note');
+// The same crisis lines as the app's Recovery page (lib/crisisLines.ts), as tap-to-call links.
+for (const [number, tel] of [['1122', '1122'], ['0311 7786264', '+923117786264'], ['1-800-662-4357', '+18006624357']]) {
+  assert(recoveryPage.includes(`href="tel:${tel}"`) && recoveryPage.includes(number), `recovery page: crisis line ${number}`);
+}
+assert(recoveryPage.includes('Elsewhere: call your local emergency number.'), 'recovery page: fallback for other countries');
+assert(!/Umang[^<]{0,80}(24|hours|7 days)/i.test(recoveryPage), 'recovery page: no opening hours claimed for Umang');
 assert(
   recoveryPage.includes('Clean today, once a day') && recoveryPage.includes(`+${pts(RECOVERY_POINTS.perCheckin)}`) && recoveryPage.includes(`at most ${pts(RECOVERY_POINTS.seasonCap)} in a season`),
   'recovery page: daily check-in point and season cap'

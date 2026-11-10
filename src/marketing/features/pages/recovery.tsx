@@ -1,5 +1,6 @@
 import { RECOVERY_MILESTONES } from '@/lib/recoveryAwards';
 import { RECOVERY_POINTS } from '@/lib/pointsConfig';
+import { CRISIS_ELSEWHERE, CRISIS_LINES } from '@/lib/crisisLines';
 import { LINK_CLASS } from '../../components/MarketingLayout';
 import { featurePath } from '../catalog';
 import { Block, Cards, Note, Rules, Steps, type FeatureContent } from '../blocks';
@@ -9,8 +10,8 @@ import { pts } from '../format';
    markers), lib/pointsConfig.ts RECOVERY_POINTS (perCheckin, seasonCap),
    components/views/AddictionRecovery.tsx (one tracker, clock starts when it is created, Clean today, craving
    form, emergency support with box breathing and distraction ideas, reset/delete wording, the
-   medical disclaimer and its SAMHSA example), the Privacy Policy ("Only you: ... cravings and
-   recovery tracker"; "Not medical advice") and the point_entries owner-only read policy.
+   medical disclaimer), lib/crisisLines.ts (the app's crisis numbers, listed here too), the Privacy
+   Policy ("Only you: ... cravings and recovery tracker"; "Not medical advice") and the point_entries owner-only read policy.
    Helpline facts: https://www.samhsa.gov/find-help/helplines/national-helpline (opened 2026-10-21). */
 
 const days = (hours: number) => hours / 24;
@@ -18,7 +19,10 @@ const [week, month, ninety] = RECOVERY_MILESTONES;
 const perDay = RECOVERY_POINTS.perCheckin;
 const cap = RECOVERY_POINTS.seasonCap;
 const SAMHSA_URL = 'https://www.samhsa.gov/find-help/helplines/national-helpline';
-const SAMHSA_PHONE = '1-800-662-4357';
+const crisisNumber = (name: string) => CRISIS_LINES.find((line) => line.name === name)?.number ?? '';
+const RESCUE_PHONE = crisisNumber('Rescue');
+const UMANG_PHONE = crisisNumber('Umang');
+const SAMHSA_PHONE = crisisNumber('SAMHSA Helpline');
 
 export const recovery: FeatureContent = {
   intro: (
@@ -173,12 +177,26 @@ export const recovery: FeatureContent = {
       >
         <Note title="AscendDay is not treatment, therapy or medical advice.">
           If you are in crisis, have severe withdrawal or a serious addiction, contact a doctor, a licensed professional or
-          a helpline. In the United States, the{' '}
-          <a href={SAMHSA_URL} className={LINK_CLASS}>
-            SAMHSA National Helpline
-          </a>{' '}
-          ({SAMHSA_PHONE}) is free, confidential and open 24 hours a day for treatment referral and information. In an
-          emergency, contact your local emergency services.
+          a helpline:
+          <ul className="mt-2 space-y-1">
+            {CRISIS_LINES.map((line) => (
+              <li key={line.tel}>
+                {line.place}: {line.name}{' '}
+                <a href={`tel:${line.tel}`} className={LINK_CLASS}>
+                  {line.number}
+                </a>
+                {line.note && ` (${line.note})`}
+              </li>
+            ))}
+            <li>{CRISIS_ELSEWHERE}</li>
+          </ul>
+          <p className="mt-2">
+            In the United States, the{' '}
+            <a href={SAMHSA_URL} className={LINK_CLASS}>
+              SAMHSA National Helpline
+            </a>{' '}
+            is free, confidential and open 24 hours a day for treatment referral and information.
+          </p>
         </Note>
       </Block>
     </>
@@ -236,7 +254,7 @@ export const recovery: FeatureContent = {
     },
     {
       q: 'Is AscendDay an addiction treatment?',
-      a: `No. It is a self-help tool, not treatment, therapy or medical advice. In the United States the SAMHSA National Helpline (${SAMHSA_PHONE}) is free and open 24/7; anywhere else, contact a qualified professional or your local emergency services.`,
+      a: `No. It is a self-help tool, not treatment, therapy or medical advice. In Pakistan, call Rescue ${RESCUE_PHONE} in an emergency, or Umang (${UMANG_PHONE}), a free mental health helpline. In the United States the SAMHSA National Helpline (${SAMHSA_PHONE}) is free and open 24/7. Anywhere else, contact a qualified professional or your local emergency number.`,
     },
   ],
   related: ['bad-habits', 'journal', 'brain-lessons', 'habits'],

@@ -20,6 +20,7 @@ import { toUserMessage } from '@/lib/userMessage';
 import { useUnsavedChanges } from '@/lib/unsavedChanges';
 import { FOCUS_RING, TAP_TARGET, cx } from '@/components/ui/primitives/shared';
 import { trustedNow } from '@/lib/clock';
+import { CRISIS_ELSEWHERE, CRISIS_LINES } from '@/lib/crisisLines';
 
 const CRAVINGS_PAGE = 10;
 
@@ -31,13 +32,6 @@ const DISTRACTION_ACTIVITIES = [
   'Listen to your favorite energetic or calming song',
   'Wash your hands or face with cold water',
   'Call or message a trusted friend or family member',
-];
-
-/** Who to call in a crisis, Pakistan first (most users). Shown in the disclaimer and the Emergency dialog. */
-const CRISIS_LINES: { place: string; name: string; number: string; tel: string; note?: string }[] = [
-  { place: 'Pakistan', name: 'Rescue', number: '1122', tel: '1122', note: 'emergency' },
-  { place: 'Pakistan', name: 'Umang', number: '0311 7786264', tel: '+923117786264', note: 'free mental health helpline' },
-  { place: 'US', name: 'SAMHSA Helpline', number: '1-800-662-4357', tel: '+18006624357' },
 ];
 
 const CRISIS_LINK_CLASS = cx('figure font-medium text-brand-text underline underline-offset-2 rounded', FOCUS_RING);
@@ -55,7 +49,7 @@ function CrisisLines({ className }: { className?: string }) {
           {line.note && ` (${line.note})`}
         </li>
       ))}
-      <li>Elsewhere: call your local emergency number.</li>
+      <li>{CRISIS_ELSEWHERE}</li>
     </ul>
   );
 }
