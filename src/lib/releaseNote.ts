@@ -48,15 +48,13 @@ export function releaseNoteGroups(note: ReleaseNote): { key: ReleaseNoteGroupKey
 }
 
 export const RELEASE_NOTE: ReleaseNote | null = {
-  id: 1,
-  releasedAt: '2026-11-09T21:25:00+05:00',
-  title: "What's new in 1.2.0",
-  new: [
-    'Reading: switch a book between pages and chapters anytime. 1 chapter counts as 20 pages, and you can edit both numbers.',
-    'Recovery: tapped Clean today by mistake? Tap the tick to undo it the same day.',
+  id: 2,
+  releasedAt: '2026-11-10T12:45:00+05:00',
+  title: "What's new in 1.3.0",
+  new: ['Choose System, Dark or Light in Settings. System follows your device.'],
+  improved: [
+    'Recovery lists tap-to-call helplines for Pakistan (Rescue 1122, Umang) and the US.',
+    'Reading shows the points before you save a log.',
   ],
-  changed: [
-    'Recovery: tap "Clean today" once a day to earn 1 point. This daily check-in replaces milestone points.',
-    "Focus: every 12 minutes of focus now gives 1 point, and today's sessions add up. No finish bonus.",
-  ],
+  fixed: ['Goals and projects show Achieved only when every part is done.'],
 };
