@@ -7,6 +7,9 @@ const SHELL_CACHE_NAME = 'ascend-shell-v1';
 const SHELL_KEY = '/__ascend/app-shell';
 const MARKETING_CACHE_NAME = 'ascend-marketing-v1';
 const MARKETING_PAGE = /^\/(?:|features|features\/[a-z-]+|about|contact|privacy|terms|404)$/;
+// The app's own pages (src/lib/views.ts through routes.ts; KEEP IN SYNC, checked by
+// vercelConfig.test.ts). A window on one of them runs the app; see openFromNotification.
+const APP_VIEW_PAGE = /^\/(?:dashboard|habits|time-tracker|weekly-goals|projects-goals|journal|exercise|reading|skills|bad-habits|recovery|prefrontal-cortex|neuroplasticity|lessons|plans|partner|leagues|tiers|settings|feedback|report-bug|suggest-idea)$/;
 // Before 2026-10-21 every page was the app under one key here; its copy seeds the shell cache once.
 const OLD_PAGE_CACHE_NAME = 'ascend-pages-v1';
 // Static files from public/ (icons, manifest, fonts): one entry per file, network first.
@@ -203,23 +206,34 @@ self.addEventListener('pushsubscriptionchange', (event) => {
   );
 });
 
-// Notification click event - focus or open client window when tapped. An open window is also
-// told the notification's url (`ascend:navigate`) and opens that page (App.tsx); a push's url is
-// its notification's page (send-push), the focus timer's is PFC.
+// Notification click event - open the notification's page in a window of ours (see
+// openFromNotification); a push's url is its notification's page (send-push), the focus timer's is PFC.
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   const url = (event.notification.data && event.notification.data.url) || '/dashboard';
-  event.waitUntil(
-    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
-      for (const client of clientList) {
-        if ('focus' in client) {
-          client.postMessage({ type: 'ascend:navigate', url });
-          return client.focus();
-        }
-      }
-      if (self.clients.openWindow) {
-        return self.clients.openWindow(url);
-      }
-    })
-  );
+  event.waitUntil(openFromNotification(url));
 });
+
+// A tapped notification's page. A window showing an app page runs the app, which opens the page
+// itself on 'ascend:navigate' (App.tsx). Any other window of ours (a public page, /login,
+// /reset-password) has no listener, so it is sent to the page instead. With no window, or one this
+// worker cannot steer (not controlled by it), a new window opens.
+async function openFromNotification(url) {
+  const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+  const app = windows.find((client) => APP_VIEW_PAGE.test(new URL(client.url).pathname));
+  if (app) {
+    app.postMessage({ type: 'ascend:navigate', url });
+    return app.focus();
+  }
+  const other = windows.find((client) => 'navigate' in client && 'focus' in client);
+  if (other) {
+    try {
+      const focused = await other.focus();
+      const moved = await focused.navigate(url);
+      if (moved) return moved;
+    } catch {
+      // Not controlled by this worker, or the browser refused: open a new window below.
+    }
+  }
+  if (self.clients.openWindow) return self.clients.openWindow(url);
+}

@@ -82,5 +82,15 @@ for (const route of MARKETING_ROUTES) {
   assert(marketingPage.test(route.path) === (route.kind !== 'auth'), `sw.js MARKETING_PAGE ${route.kind === 'auth' ? 'excludes' : 'includes'} ${route.path}`);
 }
 for (const path of APP_PATHS) assert(!marketingPage.test(path), `sw.js MARKETING_PAGE excludes app page ${path}`);
+// A tapped notification is handed to a window on an app page (it runs the app and listens): the
+// list = every view's page, and never /reset-password, /login, /signup or a public page.
+const swAppPattern = serviceWorker.match(/const APP_VIEW_PAGE = \/(.+)\/;/)?.[1];
+assert(Boolean(swAppPattern), 'sw.js has APP_VIEW_PAGE');
+const appViewPage = new RegExp(swAppPattern!);
+for (const view of VIEWS) assert(appViewPage.test(pathForView(view)), `sw.js APP_VIEW_PAGE includes ${pathForView(view)}`);
+for (const path of ['/reset-password', '/login', '/signup', '/dashboard/x', '/Dashboard']) {
+  assert(!appViewPage.test(path), `sw.js APP_VIEW_PAGE excludes ${path}`);
+}
+for (const route of MARKETING_ROUTES) assert(!appViewPage.test(route.path), `sw.js APP_VIEW_PAGE excludes ${route.path}`);
 
 console.log(`\nvercel.json: ${APP_PATHS.length} app pages, ${Object.keys(written).length} built files checked.`);
