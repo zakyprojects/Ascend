@@ -2,7 +2,6 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type {
   AppState,
   Habit,
-  JournalEntry,
   LeagueType,
   UserProfile,
   ReadingLog,
@@ -76,8 +75,6 @@ import {
   recoveryDayAwardId,
   trackerStartMs,
 } from './recoveryAwards';
-import { journalEntryEarns } from './journalAwards';
-import { applyJournalEntryEdit } from './journalEdits';
 import { focusFloorDay, isFocusDayEntry } from './focusAwards';
 import { focusSkillLogFor, withReflectionNote } from './focusSkillLog';
 import { renameBadHabitIn, renameHabitIn, renameSkillIn, renameSubtaskIn, renameTracker } from './itemEdits';
@@ -86,7 +83,6 @@ import { pauseStoredSessionsForSignOut } from './focusSession';
 import {
   isReflectionWindowOpen,
 } from './weeklyAwards';
-import { computeLessonAward, isLessonReadInSeason, lessonReadId } from './lessonAwards';
 import { stampLogUnits, switchBookUnit, takeBackTodaysReading, unitSwitchDefaults } from './bookUnits';
 import {
   isChapterBook,
@@ -123,10 +119,11 @@ import {
 import { useTimeTrackerActions } from './useTimeTrackerActions';
 import { CLEAR_SKILL_LOGS_MAX, CLEAR_CRAVING_LOGS_MAX } from './clearLimits';
 import { useWorkoutActions } from './useWorkoutActions';
+import { useJournalActions } from './useJournalActions';
 import { hydrateUserSession } from './authSession';
 import { sanitizeLoadedState } from './loadedState';
 import { removeLinkedWeeklyGoals, reconcileWeeklyGoalsPointsForAllWeeks, reconcileLinkedWeeklyGoals, removeWeeklyGoalsWhere, reconcileReflectionPoints, withDeletedGoalIds, recomputeWeeklyGoalsPointsForState } from './weeklyGoalPoints';
-import { excisePointsEntriesInternal, withHydratedPoints, applyHabitAwardsInternal, applyJournalAwardInternal, applyReadingAwardsInternal, applySkillAwardsInternal, applyBadHabitAwardsInternal, applyFocusAwardsInternal } from './stateAwards';
+import { excisePointsEntriesInternal, withHydratedPoints, applyHabitAwardsInternal, applyReadingAwardsInternal, applySkillAwardsInternal, applyBadHabitAwardsInternal, applyFocusAwardsInternal } from './stateAwards';
 import { createLeagueStandingsRefresher, leaguePeriodKey } from './leagueStandingsRefresh';
 import {
   badHabitCreatedDay,
@@ -2622,108 +2619,8 @@ export function useAppState() {
     return habit.completions[key]?.done === true;
   }, []);
 
-  const saveJournalEntry = useCallback(
-    (mood: JournalEntry['mood'], content: string, existingId?: string) => {
-      const date = todayKey();
-      const trimmed = content.trim();
-
-      setState((prev) => {
-        const existingIdx = prev.journalEntries.findIndex(
-          (e) => (existingId && e.id === existingId) || e.date === date
-        );
-
-        const existing = existingIdx >= 0 ? prev.journalEntries[existingIdx] : null;
-        // An edit keeps createdAt (the first write), as the server does, so its echo is a no-op.
-        const saved: JournalEntry = existing
-          ? { ...existing, mood, content: trimmed }
-          : { id: uid(), date, mood, content: trimmed, createdAt: trustedNow().toISOString(), pointsAwarded: false };
-        // Only today's entry earns (the server recomputes only today); an earlier entry keeps its flag.
-        if (saved.date === date) saved.pointsAwarded = journalEntryEarns(saved);
-
-        const journalEntries = existing
-          ? prev.journalEntries.map((e, i) => (i === existingIdx ? saved : e))
-          : [saved, ...prev.journalEntries];
-        // The server writes the day's award (applyJournalAwardInternal shows the same row now).
-        return { ...prev, journalEntries, ...applyJournalAwardInternal(prev, journalEntries, date) };
-      });
-    },
-    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    []
-  );
-
-  const deleteJournalEntry = useCallback((entryId: string) => {
-    void (
-      setState(
-        (prev) => {
-          const entry = prev.journalEntries.find((e) => e.id === entryId);
-          if (!entry) return prev;
-
-          const updatedDeletedEntityIds = [...(prev.deletedEntityIds || []), entryId].slice(-500);
-          const journalEntries = prev.journalEntries.filter((e) => e.id !== entryId);
-
-          // Only today's award changes: an earlier day's points stay (the server recomputes only today).
-          return {
-            ...prev,
-            journalEntries,
-            deletedEntityIds: updatedDeletedEntityIds,
-            ...applyJournalAwardInternal(prev, journalEntries, todayKey()),
-          };
-        },
-        { immediate: true, actionLabel: 'Journal entry deletion', entityId: entryId }
-      )
-    );
-    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // Edit a saved entry of any day: mood and notes only (never its date or createdAt, never creates one).
-  // An earlier day's points never change (the server recomputes only today); today's entry
-  // recomputes today's award, as saveJournalEntry does.
-  const editJournalEntry = useCallback((entryId: string, mood: JournalEntry['mood'], content: string) => {
-    setState((prev) => {
-      const today = todayKey();
-      const edit = applyJournalEntryEdit(prev.journalEntries, entryId, mood, content, today);
-      if (!edit) return prev;
-      const { journalEntries } = edit;
-      return edit.entry.date === today
-        ? { ...prev, journalEntries, ...applyJournalAwardInternal(prev, journalEntries, today) }
-        : { ...prev, journalEntries };
-    });
-    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const getTodayJournalEntry = useCallback((date = trustedNow()): JournalEntry | null => {
-    const key = todayKey(date);
-    return state.journalEntries.find((e) => e.date === key) ?? null;
-  }, [state.journalEntries]);
-
-  const markLessonRead = useCallback(
-    (lessonId: string) => {
-      setState((prev) => {
-        const activeSeasonNum = getSeasonNumber(leagueNow());
-        if (isLessonReadInSeason(prev.readLessonIds, lessonId, activeSeasonNum)) return prev;
-
-        // The server writes the award from its own catalog (computeLessonAward shows the same row now).
-        // Offline there is no preview: the read is judged by the season it reaches the server in,
-        // and a later season awards nothing for it. The server's row shows once it lands.
-        const online = typeof navigator === 'undefined' || navigator.onLine !== false;
-        const award = online ? computeLessonAward(lessonId, activeSeasonNum, trustedNow().toISOString()) : null;
-        const pointsUpdate = award
-          ? addPointsInternal(prev, award.amount, award.reason, award.source, award.metadata, award.timestamp, award.id)
-          : {};
-        return {
-          ...prev,
-          readLessonIds: [...prev.readLessonIds, lessonReadId(lessonId, activeSeasonNum)],
-          ...pointsUpdate,
-        };
-      });
-    },
-    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    []
-  );
+  // Journal and lesson actions (useJournalActions.ts), spread into the return object below.
+  const journalActions = useJournalActions(setState, state);
 
   const setUsername = useCallback((username: string) => {
     setState((prev) => ({
@@ -7320,11 +7217,7 @@ export function useAppState() {
     toggleHabit,
     toggleReadingHabit,
     isHabitDone,
-    saveJournalEntry,
-    deleteJournalEntry,
-    editJournalEntry,
-    getTodayJournalEntry,
-    markLessonRead,
+    ...journalActions,
     setUsername,
     updateProfileUsername,
     updateProfileAvatar,
