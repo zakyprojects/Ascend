@@ -5,7 +5,6 @@ import type {
   JournalEntry,
   LeagueType,
   UserProfile,
-  WorkoutLog,
   ReadingLog,
   Skill,
   SkillSessionLog,
@@ -81,7 +80,7 @@ import { journalEntryEarns } from './journalAwards';
 import { applyJournalEntryEdit } from './journalEdits';
 import { focusFloorDay, isFocusDayEntry } from './focusAwards';
 import { focusSkillLogFor, withReflectionNote } from './focusSkillLog';
-import { editWorkoutIn, renameBadHabitIn, renameHabitIn, renameSkillIn, renameSubtaskIn, renameTracker, workoutFields } from './itemEdits';
+import { renameBadHabitIn, renameHabitIn, renameSkillIn, renameSubtaskIn, renameTracker } from './itemEdits';
 import { editDecisionText, editEmotionNote, editFocusLogText } from './pfcLogEdits';
 import { pauseStoredSessionsForSignOut } from './focusSession';
 import {
@@ -122,11 +121,12 @@ import {
   fetchProfileByUidFromSupabase,
 } from './auth';
 import { useTimeTrackerActions } from './useTimeTrackerActions';
-import { CLEAR_WORKOUTS_MAX, CLEAR_SKILL_LOGS_MAX, CLEAR_CRAVING_LOGS_MAX } from './clearLimits';
+import { CLEAR_SKILL_LOGS_MAX, CLEAR_CRAVING_LOGS_MAX } from './clearLimits';
+import { useWorkoutActions } from './useWorkoutActions';
 import { hydrateUserSession } from './authSession';
 import { sanitizeLoadedState } from './loadedState';
 import { removeLinkedWeeklyGoals, reconcileWeeklyGoalsPointsForAllWeeks, reconcileLinkedWeeklyGoals, removeWeeklyGoalsWhere, reconcileReflectionPoints, withDeletedGoalIds, recomputeWeeklyGoalsPointsForState } from './weeklyGoalPoints';
-import { excisePointsEntriesInternal, withHydratedPoints, applyHabitAwardsInternal, applyJournalAwardInternal, applyWorkoutAwardsInternal, applyReadingAwardsInternal, applySkillAwardsInternal, applyBadHabitAwardsInternal, applyFocusAwardsInternal } from './stateAwards';
+import { excisePointsEntriesInternal, withHydratedPoints, applyHabitAwardsInternal, applyJournalAwardInternal, applyReadingAwardsInternal, applySkillAwardsInternal, applyBadHabitAwardsInternal, applyFocusAwardsInternal } from './stateAwards';
 import { createLeagueStandingsRefresher, leaguePeriodKey } from './leagueStandingsRefresh';
 import {
   badHabitCreatedDay,
@@ -2851,113 +2851,8 @@ export function useAppState() {
     [flipProfileSwitch]
   );
 
-  // --- MODULE 1: EXERCISE TRACKER ACTIONS ---
-  const logWorkout = useCallback((type: string, durationMinutes: number, amount?: number, unit?: string) => {
-    const date = todayKey();
-    setState((prev) => {
-      // One rule for the saved fields, shared with updateWorkout.
-      const workout: WorkoutLog = {
-        id: uid(),
-        date,
-        ...workoutFields(type, durationMinutes, amount, unit),
-        pointsAwarded: 0,
-        createdAt: trustedNow().toISOString(),
-      };
-
-      // The server writes the day's award (applyWorkoutAwardsInternal shows the same row now).
-      const awards = applyWorkoutAwardsInternal(prev, [workout, ...prev.workouts], date);
-      return reconcileLinkedWeeklyGoals({
-        ...prev,
-        workouts: awards.workouts,
-        ...awards.points,
-      });
-    });
-    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const deleteWorkout = useCallback((workoutId: string) => {
-    void (
-      setState(
-        (prev) => {
-          const target = prev.workouts.find((w) => w.id === workoutId);
-          if (!target) return prev;
-
-          const remainingWorkouts = prev.workouts.filter((w) => w.id !== workoutId);
-          const updatedDeletedEntityIds = [...(prev.deletedEntityIds || []), workoutId].slice(-500);
-
-          // Only today's award follows the workouts; an earlier day's points stay (as on the server).
-          const today = todayKey();
-          if (target.date !== today) {
-            return reconcileLinkedWeeklyGoals({ ...prev, workouts: remainingWorkouts, deletedEntityIds: updatedDeletedEntityIds });
-          }
-          const awards = applyWorkoutAwardsInternal(prev, remainingWorkouts, today);
-          return reconcileLinkedWeeklyGoals({
-            ...prev,
-            workouts: awards.workouts,
-            deletedEntityIds: updatedDeletedEntityIds,
-            ...awards.points,
-          });
-        },
-        { immediate: true, actionLabel: 'Workout deletion', entityId: workoutId }
-      )
-    );
-    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  /**
-   * Changes today's workout (type, amount, measure). Any other day throws: the server drops those
-   * edits. Today's award is recomputed here as the server does on the update.
-   */
-  const updateWorkout = useCallback((workoutId: string, type: string, durationMinutes: number, amount?: number, unit?: string) => {
-    const fields = workoutFields(type, durationMinutes, amount, unit);
-    editWorkoutIn(get().workouts, workoutId, fields, todayKey());
-    return setState(
-      (prev) => {
-        const today = todayKey();
-        let workouts: WorkoutLog[];
-        try {
-          workouts = editWorkoutIn(prev.workouts, workoutId, fields, today);
-        } catch {
-          return prev;
-        }
-        const awards = applyWorkoutAwardsInternal(prev, workouts, today);
-        return reconcileLinkedWeeklyGoals({ ...prev, workouts: awards.workouts, ...awards.points });
-      },
-      { immediate: true }
-    );
-    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  /**
-   * Removes workout logs dated before `beforeDate` (a local day key). Points already earned stay:
-   * no earlier day's award is recomputed, here or on the server. Capped per call so the ids
-   * fit in the tombstone list (deletedEntityIds keeps the last 500).
-   */
-  const clearWorkoutsBefore = useCallback((beforeDate: string) => {
-    void (
-      setState(
-        (prev) => {
-          const ids = prev.workouts
-            .filter((w) => w.date < beforeDate && w.date !== todayKey())
-            .slice(0, CLEAR_WORKOUTS_MAX)
-            .map((w) => w.id);
-          if (ids.length === 0) return prev;
-          const cleared = new Set(ids);
-          return {
-            ...prev,
-            workouts: prev.workouts.filter((w) => !cleared.has(w.id)),
-            deletedEntityIds: [...(prev.deletedEntityIds || []), ...ids].slice(-500),
-          };
-        },
-        { immediate: true, actionLabel: 'Clearing old workouts' }
-      )
-    );
-    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // Workout actions (useWorkoutActions.ts), spread into the return object below.
+  const workoutActions = useWorkoutActions(setState, get);
 
   // --- MODULE 2: UNIFIED READING HUB & LIBRARY ACTIONS ---
   const updateReadingProgress = useCallback((bookId: string, pagesDelta: number, newCurrentPage: number) => {
@@ -7443,10 +7338,7 @@ export function useAppState() {
     refreshLeagueStandings,
     getLeagueStandingsStatus,
     // New Module Actions
-    logWorkout,
-    deleteWorkout,
-    updateWorkout,
-    clearWorkoutsBefore,
+    ...workoutActions,
     updateReadingProgress,
     finishBook,
     deleteBook,
