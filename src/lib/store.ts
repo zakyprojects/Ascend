@@ -21,14 +21,10 @@ import type {
   PlanType,
   SharedChallengeCategory,
   AppNotification,
-  NotificationPreferenceKey,
-  RankCelebrated,
 } from '@/types';
 import { DEFAULT_STATE } from '@/types';
-import { mergeRankCelebrated } from './rankCelebration';
-import { mergeLastSeenRelease } from './whatsNew';
 import { isDeviceOffline } from './deviceOffline';
-import { dispatchToastError, type ProfileSwitchKey } from './storeShared';
+import { dispatchToastError } from './storeShared';
 import { uid, generateUUID, generateNumericUID, periodKey, todayKey, isPlanJourneyDoneThisPeriod, calculateActivePlanStreak, getNow, getNextDateKey, weekKey, formatWeekdayDate } from './dates';
 import { adoptServerInviteId } from './partnerInvites';
 import { singleFlight } from './singleFlight';
@@ -64,9 +60,6 @@ import {
   logoutUser,
   deleteOwnAccount,
   clearLocalUserData,
-  updateProfilePrivacy,
-  updateProfileAcceptPartnerInvites,
-  updateProfileNotificationPreferences,
   setCachedProfiles,
   setCachedSeasonPoints,
   setCachedLeaguePoints,
@@ -80,6 +73,7 @@ import { usePfcActions } from './usePfcActions';
 import { useSkillActions } from './useSkillActions';
 import { useWeeklyGoalActions } from './useWeeklyGoalActions';
 import { useProjectActions } from './useProjectActions';
+import { useProfileActions } from './useProfileActions';
 import { hydrateUserSession } from './authSession';
 import { sanitizeLoadedState } from './loadedState';
 import { removeLinkedWeeklyGoals, reconcileWeeklyGoalsPointsForAllWeeks, reconcileLinkedWeeklyGoals,} from './weeklyGoalPoints';
@@ -153,7 +147,6 @@ import {
   resolveTheme,
   setLocalThemePreference,
   useSystemTheme,
-  type ThemePreference,
 } from './theme';
 
 // Cross-tab real-time state synchronization channel
@@ -2572,131 +2565,19 @@ export function useAppState() {
   // Journal and lesson actions (useJournalActions.ts), spread into the return object below.
   const journalActions = useJournalActions(setState, state);
 
-  const setUsername = useCallback((username: string) => {
-    setState((prev) => ({
-      ...prev,
-      username,
-      currentUser: prev.currentUser ? { ...prev.currentUser, username } : null,
-    }));
-    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const updateProfileUsername = useCallback((newUsername: string, lastChangedAt?: string) => {
-    const timestamp = lastChangedAt || trustedNow().toISOString();
-    setState(
-      (prev) => {
-        if (!prev.currentUser) return prev;
-        const updatedUser = {
-          ...prev.currentUser,
-          username: newUsername,
-          lastUsernameChangeAt: timestamp,
-        };
-        return {
-          ...prev,
-          currentUser: updatedUser,
-          username: newUsername,
-        };
-      },
-      { immediate: true }
-    );
-  }, [setState]);
-
-  const updateProfileAvatar = useCallback((newAvatar: string) => {
-    setState((prev) => {
-      if (!prev.currentUser) return prev;
-      const updatedUser = {
-        ...prev.currentUser,
-        avatar: newAvatar,
-      };
-      return {
-        ...prev,
-        currentUser: updatedUser,
-      };
-    });
-    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  /** The user's own pick ('system' = follow the device again), stamped so it syncs to every device. */
-  const setThemePreference = useCallback((theme: ThemePreference) => {
-    setLocalThemePreference(theme);
-    applyTheme(resolveTheme(theme));
-    setState(
-      (prev) => ({
-        ...prev,
-        themePreference: theme,
-        themeUpdatedAt: trustedNow().toISOString(),
-      }),
-      { immediate: true }
-    );
-  }, [setState]);
-
-  /** Header / account menu switch: the other theme than the one on screen, as the user's pick. */
-  const toggleThemePreference = useCallback(() => {
-    setThemePreference(resolveTheme(stateRef.current.themePreference) === 'light' ? 'dark' : 'light');
-  }, [setThemePreference]);
-
-  /** Rank-up memory (lib/rankCelebration), saved at once so a reload or another device never shows it again. */
-  const setRankCelebrated = useCallback(
-    (memory: RankCelebrated) => {
-      setState((prev) => ({ ...prev, rankCelebrated: mergeRankCelebrated(prev.rankCelebrated, memory) }), { immediate: true });
-    },
-    [setState]
-  );
-
-  /** Release-note seen mark (lib/whatsNew), saved at once so a reload or another device never pops it up again. */
-  const setLastSeenRelease = useCallback(
-    (id: number) => {
-      setState((prev) => ({ ...prev, lastSeenRelease: mergeLastSeenRelease(prev.lastSeenRelease, id) }), { immediate: true });
-    },
-    [setState]
-  );
-
-  // Flips one on/off profile setting: the switch moves at once, and if the profile write fails
-  // it moves back and says so, so a switch never shows a setting the server does not hold.
-  const flipProfileSwitch = useCallback(
-    async (key: ProfileSwitchKey, write: (userId: string, value: boolean) => Promise<void>) => {
-      const current = get().currentUser;
-      if (!current?.id) return;
-      const nextSetting = !(current[key] ?? true);
-      const apply = (value: boolean) =>
-        setState(
-          (prev) => ({
-            ...prev,
-            currentUser: prev.currentUser ? { ...prev.currentUser, [key]: value } : null,
-          }),
-          { immediate: true }
-        );
-
-      apply(nextSetting);
-      try {
-        await write(current.id, nextSetting);
-      } catch (err) {
-        apply(!nextSetting);
-        dispatchToastError("Couldn't change this setting", toUserMessage(err, 'Check your connection and try again.'));
-      }
-    },
-    // False positive: setState/get are stable (useCallback with empty deps array)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    []
-  );
-
-  const toggleProfilePrivacy = useCallback(
-    () => flipProfileSwitch('isProfilePublic', updateProfilePrivacy),
-    [flipProfileSwitch]
-  );
-
-  const toggleAcceptPartnerInvites = useCallback(
-    () => flipProfileSwitch('acceptPartnerInvites', updateProfileAcceptPartnerInvites),
-    [flipProfileSwitch]
-  );
-
-  const toggleNotificationPreference = useCallback(
-    (key: NotificationPreferenceKey) =>
-      flipProfileSwitch(key, (userId, value) => updateProfileNotificationPreferences(userId, { [key]: value })),
-    [flipProfileSwitch]
-  );
+  // Profile and settings actions (useProfileActions.ts). Destructured: their places in the return object below are not side by side.
+  const {
+    setUsername,
+    updateProfileUsername,
+    updateProfileAvatar,
+    setThemePreference,
+    toggleThemePreference,
+    setRankCelebrated,
+    setLastSeenRelease,
+    toggleProfilePrivacy,
+    toggleAcceptPartnerInvites,
+    toggleNotificationPreference,
+  } = useProfileActions(setState, get, stateRef);
 
   // Workout actions (useWorkoutActions.ts), spread into the return object below.
   const workoutActions = useWorkoutActions(setState, get);
