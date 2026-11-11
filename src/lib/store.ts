@@ -28,9 +28,7 @@ import { DEFAULT_STATE } from '@/types';
 import { mergeRankCelebrated } from './rankCelebration';
 import { mergeLastSeenRelease } from './whatsNew';
 import { isDeviceOffline } from './deviceOffline';
-
-/** The on/off UserProfile settings the Settings switches write to the profile row. */
-type ProfileSwitchKey = NotificationPreferenceKey | 'isProfilePublic' | 'acceptPartnerInvites';
+import { dispatchToastError, type ProfileSwitchKey } from './storeShared';
 import { uid, generateUUID, generateNumericUID, periodKey, todayKey, isPlanJourneyDoneThisPeriod, calculateActivePlanStreak, getNow, getNextDateKey, weekKey, formatWeekdayDate } from './dates';
 import { adoptServerInviteId } from './partnerInvites';
 import { singleFlight } from './singleFlight';
@@ -200,16 +198,6 @@ export function broadcastStateToTabs(state: AppState, senderTabId: string) {
     channel.close();
   } catch (e) {
     /* ignore BroadcastChannel errors */
-  }
-}
-
-function dispatchToastError(title: string, message?: string) {
-  if (typeof window !== 'undefined') {
-    window.dispatchEvent(
-      new CustomEvent('app-toast-error', {
-        detail: { title, message },
-      })
-    );
   }
 }
 
