@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useLayoutEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { Bell, Check, CheckCheck, ChevronDown, Megaphone, RotateCw, Settings, Trash2, X } from 'lucide-react';
-import { AppStore } from '@/lib/store';
+import { AppStore } from '@/lib/store/store';
 import { AppNotification } from '@/types';
 import { cx, FOCUS_RING, TAP_TARGET, TAP_TARGET_Y } from '@/components/ui/primitives/shared';
 import { Badge } from '@/components/ui/primitives/Badge';
@@ -10,7 +10,7 @@ import { EmptyState } from '@/components/ui/primitives/EmptyState';
 import { trustedNowMs } from '@/lib/time/clock';
 import type { View } from '@/lib/views';
 import { pathForView } from '@/lib/routes';
-import { NOTIFICATION_WINDOW } from '@/lib/supabase';
+import { NOTIFICATION_WINDOW } from '@/lib/auth/supabase';
 import {
   describeGroup,
   describeNotification,

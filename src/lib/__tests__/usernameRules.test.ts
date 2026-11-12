@@ -1,6 +1,6 @@
 // Fixtures for ilikeExact: an ilike filter built from a username matches only that name
 // (any case), never a wildcard pattern.
-import { ilikeExact, ilikeExactOrValue } from '../usernameRules';
+import { ilikeExact, ilikeExactOrValue } from '../auth/usernameRules';
 
 function assert(condition: boolean, msg: string) {
   if (!condition) {

@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Pencil, Timer, Trash2 } from 'lucide-react';
-import type { AppStore } from '@/lib/store';
+import type { AppStore } from '@/lib/store/store';
 import type { FocusSessionLog } from '@/types';
 import { formatDateLong, localDayStartMs } from '@/lib/time/dates';
 import { trustedNowMs } from '@/lib/time/clock';
@@ -8,7 +8,7 @@ import { computeFocusAwards } from '@/lib/points/focusAwards';
 import { focusSkillLogId } from '@/lib/focusSkillLog';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { useToast } from '@/components/ui/Toast';
-import { useAsyncActionKey } from '@/lib/useAsyncAction';
+import { useAsyncActionKey } from '@/lib/actions/useAsyncAction';
 import { TAP_TARGET } from '@/components/ui/primitives/shared';
 import { byNewest, groupByDay, timeOfDay, DAYS_PAGE } from './pfcLists';
 import { FocusLogEditDialog } from './FocusLogEditDialog';

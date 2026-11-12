@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Check, KeyRound } from 'lucide-react';
-import { setRecoveredPassword } from '@/lib/auth';
-import { endPasswordRecoverySession, isPasswordRecoverySession, passwordRecoveryLinkError } from '@/lib/supabase';
-import { newPasswordProblem } from '@/lib/passwordRules';
+import { setRecoveredPassword } from '@/lib/auth/auth';
+import { endPasswordRecoverySession, isPasswordRecoverySession, passwordRecoveryLinkError } from '@/lib/auth/supabase';
+import { newPasswordProblem } from '@/lib/auth/passwordRules';
 import { toUserMessage } from '@/lib/userMessage';
 import { settingsSectionPath } from '@/lib/settingsSections';
 import { DASHBOARD_PATH } from '@/lib/routes';

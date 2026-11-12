@@ -3,15 +3,15 @@
 // same place, and destructures the members (their places in its return object are not side by side).
 import { useCallback } from 'react';
 import type { AppState, LeagueType } from '@/types';
-import { dispatchToastError } from './storeShared';
-import { todayKey } from './time/dates';
-import { getLeaguePeriodStart, calculatePeriodPoints, getEffectiveSeasonPoints, generateCompetitors, getUserRank } from './leagues/leagues';
-import { leagueNow, getSeasonStart } from './time/leagueTime';
-import { toSeasonHistory } from './leagues/seasonArchive';
-import { buildMemberStats } from './leagues/memberStats';
-import { markNotificationReadSupabase, markAllNotificationsReadSupabase, clearNotificationSupabase, clearNotificationsSupabase } from './supabase';
+import { dispatchToastError } from '../store/storeShared';
+import { todayKey } from '../time/dates';
+import { getLeaguePeriodStart, calculatePeriodPoints, getEffectiveSeasonPoints, generateCompetitors, getUserRank } from '../leagues/leagues';
+import { leagueNow, getSeasonStart } from '../time/leagueTime';
+import { toSeasonHistory } from '../leagues/seasonArchive';
+import { buildMemberStats } from '../leagues/memberStats';
+import { markNotificationReadSupabase, markAllNotificationsReadSupabase, clearNotificationSupabase, clearNotificationsSupabase } from '../auth/supabase';
 import type { Dispatch, SetStateAction } from 'react';
-import type { StoreSetState } from './storeSetState';
+import type { StoreSetState } from '../store/storeSetState';
 
 export function useNotificationActions(setState: StoreSetState, get: () => AppState, state: AppState, leagueDataVersion: number, notificationsRefreshRef: { current: (() => Promise<void>) | null }, partnersRefreshRef: { current: (() => Promise<void>) | null }, setNotificationsStatus: Dispatch<SetStateAction<'loading' | 'ready' | 'failed'>>, setPartnersStatus: Dispatch<SetStateAction<'loading' | 'ready' | 'failed'>>) {
   /** Marks these notices read at once; a failed save puts them back as unread with a toast (N7). */

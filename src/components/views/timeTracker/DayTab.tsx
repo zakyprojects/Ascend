@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { CalendarClock, Layers, Plus } from 'lucide-react';
 import type { TimeTrackerActivity, TimeTrackerBlock, TimeTrackerTemplate } from '@/types';
-import { AppStore } from '@/lib/store';
+import { AppStore } from '@/lib/store/store';
 import {
   calculateBlockDurationMinutes,
   computeLiveSchedule,

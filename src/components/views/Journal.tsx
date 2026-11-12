@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { Trash2, Edit3, Check, CheckCircle2, Sparkles, RotateCcw, BookOpen, PenLine } from 'lucide-react';
-import { AppStore } from '@/lib/store';
+import { AppStore } from '@/lib/store/store';
 import { useLocalDayKey } from '@/lib/time/useLocalDayKey';
 import { Mood, JournalEntry } from '@/types';
 import { formatDateLong, calculateStreak, formatWeekdayShort, formatWeekdayDate } from '@/lib/time/dates';
@@ -10,7 +10,7 @@ import { journalPointsInSeason } from '@/lib/points/journalAwards';
 import { trustedNow } from '@/lib/time/clock';
 import { MIN_JOURNAL_CONTENT_LENGTH } from '@/lib/journalRules';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
-import { useAsyncAction } from '@/lib/useAsyncAction';
+import { useAsyncAction } from '@/lib/actions/useAsyncAction';
 import { AscendLoadingIndicator } from '@/components/ui/AscendLoadingIndicator';
 import { CapMeterConnected } from '@/components/ui/CapMeterConnected';
 import { HowItWorksButton, HowItWorksDialog, useHowItWorks } from '@/components/ui/HowItWorks';

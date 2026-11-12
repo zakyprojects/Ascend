@@ -1,17 +1,17 @@
 import { useEffect, useRef, useState } from 'react';
 import { Check, Clock, Copy } from 'lucide-react';
-import { AppStore } from '@/lib/store';
+import { AppStore } from '@/lib/store/store';
 import { EMOJI_AVATARS } from '@/types';
-import { isUsernameAvailable, updateUsernameWithCooldown, updateUserAvatar } from '@/lib/auth';
+import { isUsernameAvailable, updateUsernameWithCooldown, updateUserAvatar } from '@/lib/auth/auth';
 import { cx, FieldErrorBubble, FOCUS_RING, Form, Input, useFormController } from '@/components/ui/primitives';
 import { AscendLoadingIndicator } from '@/components/ui/AscendLoadingIndicator';
-import { useAsyncAction } from '@/lib/useAsyncAction';
+import { useAsyncAction } from '@/lib/actions/useAsyncAction';
 import { useUnsavedChanges } from '@/lib/unsavedChanges';
 import { toUserMessage } from '@/lib/userMessage';
 import { trustedNowMs } from '@/lib/time/clock';
 import { useToast } from '@/components/ui/Toast';
 import { SettingsCard } from './SettingRow';
-import { USERNAME_TAKEN, usernameFormatProblem } from '@/lib/usernameRules';
+import { USERNAME_TAKEN, usernameFormatProblem } from '@/lib/auth/usernameRules';
 
 const COOLDOWN_MS = 24 * 60 * 60 * 1000;
 

@@ -1,5 +1,5 @@
 import { AlertTriangle, CheckCircle2, SkipForward } from 'lucide-react';
-import type { AppStore } from '@/lib/store';
+import type { AppStore } from '@/lib/store/store';
 import type { TimeTrackerActivity, TimeTrackerBlock } from '@/types';
 import { formatTime12h } from '@/lib/timeTracker';
 import { useToast } from '@/components/ui/Toast';

@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { registerCaptchaSlot } from '@/lib/captcha';
+import { registerCaptchaSlot } from '@/lib/auth/captcha';
 
 /**
  * Where the bot check's click challenge appears in this form, if Cloudflare asks for one. Place it

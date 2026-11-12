@@ -1,4 +1,4 @@
-import type { AppStore } from '@/lib/store';
+import type { AppStore } from '@/lib/store/store';
 import type { View } from '@/lib/views';
 import { useFocusSession } from './FocusSessionProvider';
 import { RunningTimerStrip } from './FocusTimerCard';

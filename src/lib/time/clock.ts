@@ -15,7 +15,7 @@
  *
  * Every time read in the app goes through trustedNow() / trustedNowMs() (enforced by ESLint).
  */
-import { isDeviceOffline } from '../deviceOffline';
+import { isDeviceOffline } from '../store/deviceOffline';
 
 const LAST_TRUSTED_KEY = 'ascend_last_trusted_ms';
 const RESYNC_INTERVAL_MS = 10 * 60 * 1000;
@@ -92,7 +92,7 @@ function remember(): void {
 
 async function readServerTime(): Promise<void> {
   // Loaded lazily: supabase.ts reads the clock itself, so a static import would be a cycle.
-  const { supabase, isSupabaseConfigured } = await import('../supabase');
+  const { supabase, isSupabaseConfigured } = await import('../auth/supabase');
   if (!isSupabaseConfigured) return;
   const sentAt = performance.now();
   const { data, error } = await supabase.rpc('server_now');

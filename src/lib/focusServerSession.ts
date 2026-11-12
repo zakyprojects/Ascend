@@ -224,7 +224,7 @@ const isMissingFunction = (error: { code?: string; message?: string } | null): b
 export const supabaseFocusTransport: FocusTransport = {
   async call(fn, args) {
     try {
-      const { supabase, isSupabaseConfigured } = await import('./supabase');
+      const { supabase, isSupabaseConfigured } = await import('./auth/supabase');
       if (!isSupabaseConfigured) return { ok: false, missing: true };
       const { data, error } = await supabase.rpc(fn, args);
       if (error) return { ok: false, missing: isMissingFunction(error) };

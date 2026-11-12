@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { CheckCircle2, ChevronRight, Coffee, RotateCcw, SkipForward } from 'lucide-react';
-import type { AppStore } from '@/lib/store';
+import type { AppStore } from '@/lib/store/store';
 import type { View } from '@/lib/views';
 import type { TimeTrackerActivity, TimeTrackerBlock } from '@/types';
 import { blockIntervalMs, formatTime12h, getAscendViewForModule } from '@/lib/timeTracker';

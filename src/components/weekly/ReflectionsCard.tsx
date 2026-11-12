@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Check, Edit3, PenLine, Plus, Trash2 } from 'lucide-react';
 import type { WeeklyGoalReflection } from '@/types';
-import { AppStore } from '@/lib/store';
+import { AppStore } from '@/lib/store/store';
 import { getWeeklyReflectionNetPoints, isWeeklyReflectionAwarded, weeklyReflectionAwardedToday } from '@/lib/points/weeklyGoalPoints';
 import { WEEKLY_REFLECTION_POINTS } from '@/lib/points/pointsConfig';
 import { reflectionWindow } from '@/lib/points/weeklyAwards';
@@ -11,7 +11,7 @@ import { EmptyState, Form, Textarea, useFocusOnRender, useFormController } from 
 import { TAP_TARGET_Y } from '@/components/ui/primitives/shared';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { useToast } from '@/components/ui/Toast';
-import { useAsyncActionKey } from '@/lib/useAsyncAction';
+import { useAsyncActionKey } from '@/lib/actions/useAsyncAction';
 import { useUnsavedChanges } from '@/lib/unsavedChanges';
 import { useMinuteTick } from '@/lib/time/useMinuteTick';
 import { toUserMessage } from '@/lib/userMessage';

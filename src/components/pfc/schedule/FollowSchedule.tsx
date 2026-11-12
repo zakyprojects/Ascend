@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { AppStore } from '@/lib/store';
+import type { AppStore } from '@/lib/store/store';
 import type { View } from '@/lib/views';
 import { todayKey } from '@/lib/time/dates';
 import { trustedNow } from '@/lib/time/clock';

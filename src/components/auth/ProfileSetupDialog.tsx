@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react';
-import { AppStore } from '@/lib/store';
+import { AppStore } from '@/lib/store/store';
 import { EMOJI_AVATARS } from '@/types';
-import { clearProfileSetupDue, isUsernameAvailable, updateUsernameWithCooldown, updateUserAvatar } from '@/lib/auth';
+import { clearProfileSetupDue, isUsernameAvailable, updateUsernameWithCooldown, updateUserAvatar } from '@/lib/auth/auth';
 import { cx, Dialog, Form, FOCUS_RING, Input, useFormController } from '@/components/ui/primitives';
 import { AscendLoadingIndicator } from '@/components/ui/AscendLoadingIndicator';
-import { useAsyncAction } from '@/lib/useAsyncAction';
+import { useAsyncAction } from '@/lib/actions/useAsyncAction';
 import { toUserMessage } from '@/lib/userMessage';
-import { USERNAME_TAKEN, usernameFormatProblem } from '@/lib/usernameRules';
+import { USERNAME_TAKEN, usernameFormatProblem } from '@/lib/auth/usernameRules';
 
 type NameCheck = { state: 'idle' } | { state: 'available' } | { state: 'problem'; message: string };
 

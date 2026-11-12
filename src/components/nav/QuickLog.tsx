@@ -2,7 +2,7 @@ import { Check } from 'lucide-react';
 import { NAV_GROUPS } from './navConfig';
 import { Dialog } from '@/components/ui/primitives';
 import { cx, FOCUS_RING, TRANSITION } from '@/components/ui/primitives/shared';
-import type { AppStore } from '@/lib/store';
+import type { AppStore } from '@/lib/store/store';
 import type { View } from '@/lib/views';
 import type { NavStatuses } from '@/lib/navStatus';
 import { pageLinkProps } from '@/lib/pageLink';

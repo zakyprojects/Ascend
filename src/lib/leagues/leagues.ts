@@ -1,5 +1,5 @@
 import { LeagueType, LeagueCompetitor, LeagueArchive, PointsEntry, UserProfile, AppState } from '@/types';
-import { getCachedFirstActiveAt, getRegisteredCompetitors } from '../auth';
+import { getCachedFirstActiveAt, getRegisteredCompetitors } from '../auth/auth';
 import {
   getWeekStart,
   getWeekEnd,

@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import type { AppStore } from '@/lib/store';
+import type { AppStore } from '@/lib/store/store';
 import type { AppNotification } from '@/types';
 import { trustedNowMs } from '@/lib/time/clock';
 

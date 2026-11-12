@@ -1,6 +1,6 @@
 // keepIfUnchanged: the 60 s reconcile tick in store.ts (checkUpdates) returns the same state when
 // nothing changed, so the autosave does not fire.
-import { canonical, keepIfUnchanged } from '../stateEquality';
+import { canonical, keepIfUnchanged } from '../store/stateEquality';
 
 function assert(condition: boolean, msg: string) {
   if (!condition) {

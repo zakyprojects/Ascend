@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import type { AppStore } from './store';
+import type { AppStore } from './store/store';
 import { RELEASE_NOTE } from './releaseNote';
 import { shouldShowWhatsNew } from './whatsNew';
 

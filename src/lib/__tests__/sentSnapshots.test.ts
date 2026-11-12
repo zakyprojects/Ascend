@@ -1,5 +1,5 @@
 // Skip-unchanged bookkeeping used by writeOwnProfile and saveUserDataToSupabase (supabase.ts).
-import { SentSnapshots, snapshotOf } from '../sentSnapshots';
+import { SentSnapshots, snapshotOf } from '../store/sentSnapshots';
 
 function assert(condition: boolean, msg: string) {
   if (!condition) {

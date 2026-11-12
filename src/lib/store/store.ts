@@ -9,14 +9,14 @@ import type {
 import { DEFAULT_STATE } from '@/types';
 import { isDeviceOffline } from './deviceOffline';
 import { dispatchToastError } from './storeShared';
-import { generateNumericUID, todayKey, getNextDateKey, formatWeekdayDate } from './time/dates';
+import { generateNumericUID, todayKey, getNextDateKey, formatWeekdayDate } from '../time/dates';
 import { singleFlight } from './singleFlight';
-import { reconcileSharedChallengeLifecycle, mergeSharedChallenge, pactTickRefused, type LinkedPactTick } from './pactLifecycle';
-import { pauseStoredSessionsForSignOut } from './focusSession';
+import { reconcileSharedChallengeLifecycle, mergeSharedChallenge, pactTickRefused, type LinkedPactTick } from '../pactLifecycle';
+import { pauseStoredSessionsForSignOut } from '../focusSession';
 import {
   leagueNow,
   syncSeasonConfig,
-} from './time/leagueTime';
+} from '../time/leagueTime';
 import {
   logoutUser,
   deleteOwnAccount,
@@ -24,28 +24,28 @@ import {
   setCachedProfiles,
   setCachedSeasonPoints,
   setCachedLeaguePoints,
-} from './auth';
-import { useTimeTrackerActions } from './useTimeTrackerActions';
-import { useWorkoutActions } from './useWorkoutActions';
-import { useJournalActions } from './useJournalActions';
-import { useRecoveryActions } from './useRecoveryActions';
-import { usePfcActions } from './usePfcActions';
-import { useSkillActions } from './useSkillActions';
-import { useWeeklyGoalActions } from './useWeeklyGoalActions';
-import { useProjectActions } from './useProjectActions';
-import { useProfileActions } from './useProfileActions';
-import { useHabitActions } from './useHabitActions';
-import { useBadHabitActions } from './useBadHabitActions';
-import { useReadingActions } from './useReadingActions';
-import { usePlanActions } from './usePlanActions';
-import { usePartnerActions } from './usePartnerActions';
-import { useNotificationActions } from './useNotificationActions';
-import { hydrateUserSession } from './authSession';
+} from '../auth/auth';
+import { useTimeTrackerActions } from '../actions/useTimeTrackerActions';
+import { useWorkoutActions } from '../actions/useWorkoutActions';
+import { useJournalActions } from '../actions/useJournalActions';
+import { useRecoveryActions } from '../actions/useRecoveryActions';
+import { usePfcActions } from '../actions/usePfcActions';
+import { useSkillActions } from '../actions/useSkillActions';
+import { useWeeklyGoalActions } from '../actions/useWeeklyGoalActions';
+import { useProjectActions } from '../actions/useProjectActions';
+import { useProfileActions } from '../actions/useProfileActions';
+import { useHabitActions } from '../actions/useHabitActions';
+import { useBadHabitActions } from '../actions/useBadHabitActions';
+import { useReadingActions } from '../actions/useReadingActions';
+import { usePlanActions } from '../actions/usePlanActions';
+import { usePartnerActions } from '../actions/usePartnerActions';
+import { useNotificationActions } from '../actions/useNotificationActions';
+import { hydrateUserSession } from '../auth/authSession';
 import { sanitizeLoadedState } from './loadedState';
-import { reconcileWeeklyGoalsPointsForAllWeeks, reconcileLinkedWeeklyGoals } from './points/weeklyGoalPoints';
-import { withHydratedPoints } from './points/stateAwards';
-import { createLeagueStandingsRefresher, leaguePeriodKey } from './leagues/leagueStandingsRefresh';
-import { clockReady, trustedNow, trustedNowMs } from './time/clock';
+import { reconcileWeeklyGoalsPointsForAllWeeks, reconcileLinkedWeeklyGoals } from '../points/weeklyGoalPoints';
+import { withHydratedPoints } from '../points/stateAwards';
+import { createLeagueStandingsRefresher, leaguePeriodKey } from '../leagues/leagueStandingsRefresh';
+import { clockReady, trustedNow, trustedNowMs } from '../time/clock';
 import { hasStateData, isGuardedKey } from './dataWeight';
 import {
   supabase,
@@ -67,17 +67,17 @@ import {
   fetchNotificationsSupabase,
   storedAuthSession,
   hasSessionFor,
-} from './supabase';
+} from '../auth/supabase';
 import { GuardBlockedError, SessionLostError } from './errors';
-import { SYNC_BEHIND_EVENT, SYNC_VERSIONS_EVENT, flushOutbox, hasPendingSyncOps, readBaseline, recordSyncedChanges } from './sync/outbox';
-import { setTabSyncedHashes, storeTabSyncedHashes, tabSyncedHashes, type Baseline } from './sync/tabVersions';
-import { noteEditTimes } from './sync/editTimes';
-import { clearDirtyAfterSave, dirtyMark, markDirty } from './sync/dirtyFlag';
-import { adoptTabState, applyRemoteChanges, prepareRemoteRows, pullSyncedRows, takePeerVersions, type RemoteChange } from './sync/pull';
-import { SYNCED_COLLECTIONS, cacheWithHydratedCollections, itemsOf, rowIdOf, syncKeyOf } from './sync/syncedCollections';
+import { SYNC_BEHIND_EVENT, SYNC_VERSIONS_EVENT, flushOutbox, hasPendingSyncOps, readBaseline, recordSyncedChanges } from '../sync/outbox';
+import { setTabSyncedHashes, storeTabSyncedHashes, tabSyncedHashes, type Baseline } from '../sync/tabVersions';
+import { noteEditTimes } from '../sync/editTimes';
+import { clearDirtyAfterSave, dirtyMark, markDirty } from '../sync/dirtyFlag';
+import { adoptTabState, applyRemoteChanges, prepareRemoteRows, pullSyncedRows, takePeerVersions, type RemoteChange } from '../sync/pull';
+import { SYNCED_COLLECTIONS, cacheWithHydratedCollections, itemsOf, rowIdOf, syncKeyOf } from '../sync/syncedCollections';
 import { mergeAppState, mergeAppStateWithGuardResult, signInMergeBase } from './stateMerger';
-import { toUserMessage } from './userMessage';
-import { disablePush } from './push';
+import { toUserMessage } from '../userMessage';
+import { disablePush } from '../push';
 import { keepIfUnchanged } from './stateEquality';
 import {
   applyTheme,
@@ -85,7 +85,7 @@ import {
   resolveTheme,
   setLocalThemePreference,
   useSystemTheme,
-} from './theme';
+} from '../theme';
 
 // Cross-tab real-time state synchronization channel
 export const STATE_SYNC_CHANNEL_NAME = 'ascend-state-sync';

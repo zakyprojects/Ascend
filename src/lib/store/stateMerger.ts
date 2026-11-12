@@ -22,17 +22,17 @@ import {
   DEFAULT_TIME_TRACKER_STATE,
   DEFAULT_STATE,
 } from '@/types';
-import { mergeSharedChallenge } from './pactLifecycle';
-import { ensureDefaultActivities, mergeTimeTrackerDays, type TimeTrackerDayDoc } from './timeTracker';
-import { parseDate } from './time/dates';
-import { calculateSeasonalTotal } from './leagues/leagues';
-import { leagueNow, getSeasonNumber, getSeasonStart } from './time/leagueTime';
-import { isWeeklyGoalSeasonSplitEntryId } from './leagues/weeklyGoalSeasons';
+import { mergeSharedChallenge } from '../pactLifecycle';
+import { ensureDefaultActivities, mergeTimeTrackerDays, type TimeTrackerDayDoc } from '../timeTracker';
+import { parseDate } from '../time/dates';
+import { calculateSeasonalTotal } from '../leagues/leagues';
+import { leagueNow, getSeasonNumber, getSeasonStart } from '../time/leagueTime';
+import { isWeeklyGoalSeasonSplitEntryId } from '../leagues/weeklyGoalSeasons';
 import { computeStateDataWeight, type UserDataWeight } from './dataWeight';
-import { trustedNow, trustedNowMs } from './time/clock';
-import { mergeRankCelebrated } from './leagues/rankCelebration';
-import { normalizeThemePreference } from './theme';
-import { mergeLastSeenRelease } from './whatsNew';
+import { trustedNow, trustedNowMs } from '../time/clock';
+import { mergeRankCelebrated } from '../leagues/rankCelebration';
+import { normalizeThemePreference } from '../theme';
+import { mergeLastSeenRelease } from '../whatsNew';
 
 /**
  * A stored time as epoch ms, for comparing: an ISO string in any offset (`…Z`, `…+00:00` from

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Check, Plus } from 'lucide-react';
 import { Dialog, FieldRow, Form, Input, NumberField, Select, Textarea } from '@/components/ui/primitives';
-import type { AppStore } from '@/lib/store';
+import type { AppStore } from '@/lib/store/store';
 import { BOOK_CATEGORIES } from '@/lib/books';
 import type { BookCategory, UserBook, UserBookStatus } from '@/types';
 import { earliestTargetDate, isNewPastDate } from '@/lib/time/dates';

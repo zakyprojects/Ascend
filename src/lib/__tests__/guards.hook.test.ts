@@ -15,7 +15,7 @@ await story('guards.hook (data-loss guards)', async () => {
   const h = await bootHook({
     as: 'signedIn',
     beforeRender: async () => {
-      const { setUserDataWatermark } = await import('../supabase');
+      const { setUserDataWatermark } = await import('../auth/supabase');
       setUserDataWatermark(UID, { itemCount: 20, arrayBreakdown: { habits: 20 }, tombstoneIds: [] });
     },
   });

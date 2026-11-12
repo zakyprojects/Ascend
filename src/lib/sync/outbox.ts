@@ -1,6 +1,6 @@
 import type { PostgrestError } from '@supabase/supabase-js';
 import type { AppState } from '../../types';
-import { supabase } from '../supabase';
+import { supabase } from '../auth/supabase';
 import { SYNCED_COLLECTIONS, itemsOf, rowIdOf, syncKeyOf } from './syncedCollections';
 import { trustedNow } from '../time/clock';
 import { clearTabSyncedHashes, setTabSyncedHashes, tabSyncedHashes, type Baseline } from './tabVersions';

@@ -19,7 +19,7 @@ import {
 } from 'lucide-react';
 import { EmptyState, PageColumns, Skeleton } from '@/components/ui/primitives';
 import { cx, FOCUS_RING, TRANSITION } from '@/components/ui/primitives/shared';
-import { AppStore } from '@/lib/store';
+import { AppStore } from '@/lib/store/store';
 import { View } from '@/components/AppShell';
 import { Habit, LeagueType } from '@/types';
 import { habitPointsMeta } from '@/components/habits/habitPointsMeta';
@@ -35,7 +35,7 @@ import { AutoNum, CountUp, Reveal } from '@/components/ui/Motion';
 import { LeagueCountdown } from '@/components/ui/LeagueCountdown';
 import { GuestSaveBanner } from '@/components/ui/GuestSaveBanner';
 import { PushPromptCard } from '@/components/ui/PushPromptCard';
-import { isSupabaseConfigured } from '@/lib/supabase';
+import { isSupabaseConfigured } from '@/lib/auth/supabase';
 import { useLeaguePeriodRollover } from '@/lib/leagues/useLeaguePeriodRollover';
 import { useLeagueStandingsRefresh } from '@/lib/leagues/useLeagueStandingsRefresh';
 import { useLocalDayKey } from '@/lib/time/useLocalDayKey';

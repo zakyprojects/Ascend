@@ -1,6 +1,6 @@
 import { useEffect, useReducer, useState } from 'react';
 import { Bell, BellOff, Check, Coffee, Pause, Play, SkipForward, Square, X } from 'lucide-react';
-import type { AppStore } from '@/lib/store';
+import type { AppStore } from '@/lib/store/store';
 import { Dialog, FieldErrorBubble, Input, NumberField, ProgressBar, Select } from '@/components/ui/primitives';
 import { cx } from '@/components/ui/primitives/shared';
 import { trustedNowMs } from '@/lib/time/clock';

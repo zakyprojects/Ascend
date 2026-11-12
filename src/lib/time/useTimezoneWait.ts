@@ -2,9 +2,9 @@ import { useSyncExternalStore } from 'react';
 import { elapsedMark, isMarkOlderThan, trustedNow, trustedNowMs } from './clock';
 import { todayKey } from './dates';
 import { DEVICE_TIMEZONE_SENT_EVENT } from './deviceTimezone';
-import { supabase } from '../supabase';
+import { supabase } from '../auth/supabase';
 import { readTimezoneWait, waitHoldsDayPreview, type TimezoneWait } from './timezoneStatus';
-import { isDeviceOffline } from '../deviceOffline';
+import { isDeviceOffline } from '../store/deviceOffline';
 
 const REFRESH_MS = 10 * 60 * 1000;
 /** A tab return re-reads only when the last read started at least this long ago. */

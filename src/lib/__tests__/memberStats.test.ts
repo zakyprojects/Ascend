@@ -17,7 +17,7 @@ const store = new Map<string, string>();
 } as Storage;
 
 const { buildMemberStats, toSeasonCard } = await import('../leagues/memberStats');
-const { toCompetitorStats } = await import('../auth');
+const { toCompetitorStats } = await import('../auth/auth');
 const { addDays } = await import('../time/dates');
 
 function assert(condition: boolean, msg: string) {

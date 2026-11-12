@@ -1,5 +1,5 @@
 import * as Sentry from '@sentry/react';
-import { supabase } from './supabase';
+import { supabase } from './auth/supabase';
 import { isBuildFileError } from './assetRecovery';
 
 /**

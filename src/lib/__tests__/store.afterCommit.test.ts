@@ -32,8 +32,8 @@ const partnership = { id: 'p1', user1Id: 'u1', user2Id: 'u2', user1Username: 'me
 
 const React = await import('react');
 const { createRoot } = await import('react-dom/client');
-const { useAppState } = await import('../store');
-const { syncBroadcaster } = await import('../supabase');
+const { useAppState } = await import('../store/store');
+const { syncBroadcaster } = await import('../auth/supabase');
 type Store = ReturnType<typeof useAppState>;
 
 function assert(condition: boolean, msg: string) {

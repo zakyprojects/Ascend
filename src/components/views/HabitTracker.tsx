@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { applyListOrder, byCreatedAsc, LIST_ORDER_KEYS, savedOrderIds } from '@/lib/listOrder';
 import { LazyReorderList, ReorderButton } from '@/components/ui/Reorder';
 import { ListChecks, Plus } from 'lucide-react';
-import { AppStore } from '@/lib/store';
+import { AppStore } from '@/lib/store/store';
 import { pactUnlinkNote, runningPactsLinkedTo } from '@/lib/pactLifecycle';
 import { Habit } from '@/types';
 import { trustedNow } from '@/lib/time/clock';

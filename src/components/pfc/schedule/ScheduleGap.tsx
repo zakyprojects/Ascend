@@ -1,5 +1,5 @@
 import { ArrowRight, CalendarDays, CheckCircle2, Play } from 'lucide-react';
-import type { AppStore } from '@/lib/store';
+import type { AppStore } from '@/lib/store/store';
 import type { TimeTrackerActivity } from '@/types';
 import { formatTime12h, timeStringToMinutes } from '@/lib/timeTracker';
 import { EmptyState } from '@/components/ui/primitives';

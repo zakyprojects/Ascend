@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Check, Pencil, Plus, Trash2 } from 'lucide-react';
 import { TimeTrackerActivity } from '@/types';
-import { AppStore } from '@/lib/store';
+import { AppStore } from '@/lib/store/store';
 import { getActivityDisplayColor } from '@/lib/timeTracker';
 import { ActivityIcon } from './ActivityIcon';
 import { useToast } from '@/components/ui/Toast';

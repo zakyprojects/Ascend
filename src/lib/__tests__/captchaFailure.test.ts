@@ -7,7 +7,7 @@ import {
   CAPTCHA_SLOW_MESSAGE,
   captchaFailureMessage,
   classifyTurnstileCode,
-} from '../captcha';
+} from '../auth/captcha';
 import { toUserMessage } from '../userMessage';
 
 function assert(condition: boolean, msg: string) {

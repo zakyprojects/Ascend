@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { HelpCircle } from 'lucide-react';
-import type { AppStore } from '@/lib/store';
+import type { AppStore } from '@/lib/store/store';
 import { PageColumns } from '@/components/ui/primitives';
 import { BarChart } from '@/components/ui/charts';
 import { CountUp, Reveal } from '@/components/ui/Motion';

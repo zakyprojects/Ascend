@@ -3,7 +3,7 @@ import { Check, Compass, Copy, RefreshCw, Search } from 'lucide-react';
 import { EmptyState, Skeleton, ToolbarInput, ToolbarSelect } from '@/components/ui/primitives';
 import { AscendLoadingIndicator } from '@/components/ui/AscendLoadingIndicator';
 import { TierBadge } from '@/components/ui/TierBadge';
-import { getProfileSeasonPointsByUsername } from '@/lib/auth';
+import { getProfileSeasonPointsByUsername } from '@/lib/auth/auth';
 import { leagueNow } from '@/lib/time/leagueTime';
 import { PLAN_CATEGORIES, type ImprovementPlan } from '@/types';
 import { PlanCard } from './PlanCard';

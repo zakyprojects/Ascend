@@ -1,7 +1,7 @@
 import { AlertTriangle, LogOut } from 'lucide-react';
 import { Dialog } from './primitives';
 import { AscendLoadingIndicator } from './AscendLoadingIndicator';
-import { usePendingGuestEmail } from '@/lib/usePendingGuestEmail';
+import { usePendingGuestEmail } from '@/lib/auth/usePendingGuestEmail';
 
 interface GuestLogoutWarningModalProps {
   open: boolean;

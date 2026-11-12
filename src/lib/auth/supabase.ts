@@ -1,28 +1,28 @@
 import { createClient } from '@supabase/supabase-js';
 import { ImprovementPlan, PartnerInvite, Partnership, AppState, SharedChallenge, UserPlanFollow, AppNotification, PlanReflectionNote, type MemberCard } from '@/types';
-import { buildMemberStats, toSeasonCard } from './leagues/memberStats';
-import { getSeasonStart, leagueNow } from './time/leagueTime';
-import { mergeAppState } from './stateMerger';
-import { reconcileSharedChallengeLifecycle } from './pactLifecycle';
-import { todayKey } from './time/dates';
-import { GuardBlockedError, PreFetchSyncError, SessionLostError } from './errors';
+import { buildMemberStats, toSeasonCard } from '../leagues/memberStats';
+import { getSeasonStart, leagueNow } from '../time/leagueTime';
+import { mergeAppState } from '../store/stateMerger';
+import { reconcileSharedChallengeLifecycle } from '../pactLifecycle';
+import { todayKey } from '../time/dates';
+import { GuardBlockedError, PreFetchSyncError, SessionLostError } from '../store/errors';
 import {
   DEVICE_TIMEZONE_SENT_EVENT,
   deviceTimeZone,
   deviceTimezoneSent,
   markDeviceTimezoneSent,
-} from './time/deviceTimezone';
-import { computeStateDataWeight, savedItemCount, type UserDataWeight } from './dataWeight';
-import { withoutSyncedCollections } from './sync/syncedCollections';
-import { storeTabSyncedHashes } from './sync/tabVersions';
-import { withoutRetiredKeys, withoutUnsavedBlobKeys } from './retiredStateKeys';
-import { withoutDeviceLocalKeys } from './deviceLocalState';
-import { trustedNow, trustedNowMs } from './time/clock';
+} from '../time/deviceTimezone';
+import { computeStateDataWeight, savedItemCount, type UserDataWeight } from '../store/dataWeight';
+import { withoutSyncedCollections } from '../sync/syncedCollections';
+import { storeTabSyncedHashes } from '../sync/tabVersions';
+import { withoutRetiredKeys, withoutUnsavedBlobKeys } from '../store/retiredStateKeys';
+import { withoutDeviceLocalKeys } from '../store/deviceLocalState';
+import { trustedNow, trustedNowMs } from '../time/clock';
 import { CaptchaRejectedError, isCaptchaRejection, withCaptcha } from './captcha';
-import { SentSnapshots, snapshotOf } from './sentSnapshots';
-import { canonical } from './stateEquality';
+import { SentSnapshots, snapshotOf } from '../store/sentSnapshots';
+import { canonical } from '../store/stateEquality';
 import { ilikeExactOrValue } from './usernameRules';
-import { parseLeagueBoards, type LeagueStandingsResult } from './leagues/leagueStandingsRefresh';
+import { parseLeagueBoards, type LeagueStandingsResult } from '../leagues/leagueStandingsRefresh';
 
 function getValidSupabaseUrl(url: unknown): string | null {
   if (typeof url !== 'string') return null;

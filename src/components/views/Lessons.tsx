@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { BookOpen, Check, Clock, Search } from 'lucide-react';
-import { AppStore } from '@/lib/store';
+import { AppStore } from '@/lib/store/store';
 import { LESSONS, LESSON_CATEGORIES } from '@/lib/lessons';
 import type { Lesson } from '@/types';
 import { cx, EmptyState, Switch, TabPanel, Tabs, ToolbarInput } from '@/components/ui/primitives';

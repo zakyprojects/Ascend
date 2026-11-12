@@ -2,7 +2,7 @@
 // progress. Before the fix the merger always took the INCOMING totalAmount,
 // so an older incoming copy could pair the newer unit with the old length.
 import { DEFAULT_STATE, type AppState, type UserBook } from '@/types';
-import { mergeAppState } from '../stateMerger';
+import { mergeAppState } from '../store/stateMerger';
 
 function assert(condition: boolean, msg: string) {
   if (!condition) throw new Error(`Assertion failed: ${msg}`);

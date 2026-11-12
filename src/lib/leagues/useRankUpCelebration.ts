@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import type { AppStore } from '../store';
+import type { AppStore } from '../store/store';
 import { decideRankUp } from './rankCelebration';
 import { getTierIndex } from './tiers';
 import { getSeasonNumber, leagueNow } from '../time/leagueTime';

@@ -1,4 +1,4 @@
-import { DELETE_REAUTH_MS, googleDeleteReauthResult, parseGoogleDeleteMark, type GoogleDeleteMark } from '../googleDeleteReauth';
+import { DELETE_REAUTH_MS, googleDeleteReauthResult, parseGoogleDeleteMark, type GoogleDeleteMark } from '../auth/googleDeleteReauth';
 
 function assert(condition: boolean, msg: string) {
   if (!condition) {

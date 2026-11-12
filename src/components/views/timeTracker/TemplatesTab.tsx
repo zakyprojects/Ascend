@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Brain, Heart, Layers, Moon, Pencil, Plus, Sparkles, Trash2 } from 'lucide-react';
 import { ASCEND_RECOMMENDED_DAY_BLOCKS, ASCEND_RECOMMENDED_DAY_TITLE, TimeTrackerActivity, TimeTrackerTemplate } from '@/types';
-import { AppStore } from '@/lib/store';
+import { AppStore } from '@/lib/store/store';
 import { firstFreeName } from '@/lib/uniqueNames';
 import {
   calculateBlockDurationMinutes,

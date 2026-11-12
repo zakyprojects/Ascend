@@ -2,7 +2,7 @@
 // another account's: a tab still holding an earlier account must not carry its items into the
 // account that just signed in (and so save them there).
 import { DEFAULT_STATE, type AppState, type UserProfile } from '@/types';
-import { mergeAppStateWithGuardResult, signInMergeBase } from '../stateMerger';
+import { mergeAppStateWithGuardResult, signInMergeBase } from '../store/stateMerger';
 
 function assert(condition: boolean, msg: string) {
   if (!condition) {

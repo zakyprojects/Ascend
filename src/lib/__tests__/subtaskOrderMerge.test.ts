@@ -2,7 +2,7 @@
 // (updatedAt, the row's updated_at once synced) gives the order, titles and done states; a subtask
 // only the older copy has joins the end; a deleted one stays out; no stamps = the incoming copy, as before.
 import { DEFAULT_STATE, type AppState, type Task } from '../../types';
-const { mergeTaskCopies, mergeAppState } = await import('../stateMerger');
+const { mergeTaskCopies, mergeAppState } = await import('../store/stateMerger');
 const { SYNCED_COLLECTIONS } = await import('../sync/syncedCollections');
 
 function assert(condition: boolean, msg: string) {

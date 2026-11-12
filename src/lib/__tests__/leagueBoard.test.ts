@@ -8,7 +8,7 @@ import {
   setCachedProfiles,
   setCachedSeasonPoints,
   toCompetitorStats,
-} from '../auth';
+} from '../auth/auth';
 import { getMonthPeriodId, getSeasonNumber, getWeekPeriodId, leagueNow } from '../time/leagueTime';
 
 function assert(condition: boolean, msg: string) {

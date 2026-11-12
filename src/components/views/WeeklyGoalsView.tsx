@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { ChevronLeft, ChevronRight, Plus, Target } from 'lucide-react';
-import { AppStore } from '@/lib/store';
+import { AppStore } from '@/lib/store/store';
 import { WEEKLY_REFLECTION_POINTS, WEEKLY_GOALS_POINTS, calculateWeeklyGoalsPoints } from '@/lib/points/pointsConfig';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { CapMeter } from '@/components/ui/CapMeter';
@@ -8,7 +8,7 @@ import { HowItWorksButton, HowItWorksDialog, useHowItWorks } from '@/components/
 import { weeklyGoalsGuide } from '@/components/howItWorks/weeklyGoals';
 import { EmptyState, PageColumns } from '@/components/ui/primitives';
 import { useToast } from '@/components/ui/Toast';
-import { useAsyncActionKey } from '@/lib/useAsyncAction';
+import { useAsyncActionKey } from '@/lib/actions/useAsyncAction';
 import { applyListOrder, LIST_ORDER_KEYS, reorderInSlots, savedOrderIds } from '@/lib/listOrder';
 import { confirmLeave } from '@/lib/unsavedChanges';
 import { LazyReorderList, ReorderButton } from '@/components/ui/Reorder';

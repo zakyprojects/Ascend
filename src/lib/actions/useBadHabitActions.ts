@@ -2,15 +2,15 @@
 // unchanged. useAppState calls this hook once, at the same place, and returns the same members as before.
 import { useCallback } from 'react';
 import type { AppState, BadHabit, BadHabitLog } from '@/types';
-import { uid, todayKey } from './time/dates';
-import { tickLinkedBadHabitPacts, pactSideIn, runningPactsLinkedToBadHabit } from './pactLifecycle';
-import type { LinkedPactTick } from './pactLifecycle';
-import { sameName } from './uniqueNames';
-import { renameBadHabitIn } from './itemEdits';
-import { applyBadHabitAwardsInternal } from './points/stateAwards';
-import { badHabitCreatedDay, getBadHabitBadDaysBefore } from './points/habitPenalties';
-import { trustedNow } from './time/clock';
-import type { StoreSetState } from './storeSetState';
+import { uid, todayKey } from '../time/dates';
+import { tickLinkedBadHabitPacts, pactSideIn, runningPactsLinkedToBadHabit } from '../pactLifecycle';
+import type { LinkedPactTick } from '../pactLifecycle';
+import { sameName } from '../uniqueNames';
+import { renameBadHabitIn } from '../itemEdits';
+import { applyBadHabitAwardsInternal } from '../points/stateAwards';
+import { badHabitCreatedDay, getBadHabitBadDaysBefore } from '../points/habitPenalties';
+import { trustedNow } from '../time/clock';
+import type { StoreSetState } from '../store/storeSetState';
 
 export function useBadHabitActions(setState: StoreSetState, get: () => AppState, afterCommit: (fn: () => void) => void, sendLinkedPactTicks: (ticks: readonly LinkedPactTick[], saved: string) => void) {
   // --- MODULE 4: BAD HABIT REDUCTION TRACKER ACTIONS ---

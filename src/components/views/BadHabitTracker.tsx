@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Plus, ShieldAlert } from 'lucide-react';
-import { AppStore } from '@/lib/store';
+import { AppStore } from '@/lib/store/store';
 import { pactUnlinkNote, runningPactsLinkedToBadHabit } from '@/lib/pactLifecycle';
 import { useToast } from '@/components/ui/Toast';
 import { BadHabit } from '@/types';

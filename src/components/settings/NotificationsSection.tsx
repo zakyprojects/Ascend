@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 import { BellOff } from 'lucide-react';
-import { AppStore } from '@/lib/store';
+import { AppStore } from '@/lib/store/store';
 import { NotificationPreferenceKey } from '@/types';
 import { Switch } from '@/components/ui/primitives';
-import { useAsyncAction, useAsyncActionKey } from '@/lib/useAsyncAction';
+import { useAsyncAction, useAsyncActionKey } from '@/lib/actions/useAsyncAction';
 import { toUserMessage } from '@/lib/userMessage';
 import { useToast } from '@/components/ui/Toast';
 import { disablePush, enablePush, getPushStatus, markPushPromptDone, type PushStatus } from '@/lib/push';

@@ -1,5 +1,5 @@
 import { trustedNowMs } from './time/clock';
-import { supabase } from './supabase';
+import { supabase } from './auth/supabase';
 import {
   FEEDBACK_ERROR_MESSAGES,
   FEEDBACK_FALLBACK_ERROR,

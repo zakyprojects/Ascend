@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { LeagueCompetitor, MemberCard, SeasonHistoryEntry, UserStats } from '@/types';
-import { fetchMemberCardFromSupabase, fetchProfileByUsernameFromSupabase } from '../supabase';
-import { toCompetitorStats } from '../auth';
+import { fetchMemberCardFromSupabase, fetchProfileByUsernameFromSupabase } from '../auth/supabase';
+import { toCompetitorStats } from '../auth/auth';
 
 export type MemberDetails =
   | { status: 'loading' }

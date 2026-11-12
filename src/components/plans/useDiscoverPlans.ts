@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { AppStore } from '@/lib/store';
+import type { AppStore } from '@/lib/store/store';
 import type { ImprovementPlan } from '@/types';
-import { fetchPublicPlansFromSupabase, supabase, syncBroadcaster } from '@/lib/supabase';
+import { fetchPublicPlansFromSupabase, supabase, syncBroadcaster } from '@/lib/auth/supabase';
 
 export type DiscoverSort = 'recent' | 'followed' | 'creator_rank';
 

@@ -22,7 +22,7 @@ import {
 } from '../skillDrills';
 import { LINKED_GOAL_METRICS, computeLinkedGoalProgress, linkedGoalCrossing, linkedGoalUnit, linkedItemExists } from '../linkedGoalMetrics';
 import { computeSkillAwards } from '../points/skillAwards';
-import { mergeAppState } from '../stateMerger';
+import { mergeAppState } from '../store/stateMerger';
 import { getWeekDates, weekKey } from '../time/dates';
 import { reconcileLinkedWeeklyGoals } from '../points/weeklyGoalPoints';
 

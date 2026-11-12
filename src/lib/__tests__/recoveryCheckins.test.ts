@@ -10,7 +10,7 @@ const { getSeasonStart } = await import('../time/leagueTime');
 const { SYNCED_COLLECTIONS } = await import('../sync/syncedCollections');
 const { diffSyncedCollections, hashRow, DELETED } = await import('../sync/outbox');
 const { excisePointsEntriesInternal } = await import('../points/stateAwards');
-const { mergeAppState } = await import('../stateMerger');
+const { mergeAppState } = await import('../store/stateMerger');
 
 function assert(condition: boolean, msg: string) {
   if (!condition) throw new Error(`Assertion failed: ${msg}`);

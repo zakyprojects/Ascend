@@ -11,7 +11,7 @@
  * - If Cloudflare ever needs a click, its own small box appears at the bottom of the screen
  *   (appearance "interaction-only"); otherwise the host element stays empty and invisible.
  */
-import { NETWORK_MESSAGE } from './userMessage';
+import { NETWORK_MESSAGE } from '../userMessage';
 
 const SITE_KEY = ((import.meta.env.VITE_TURNSTILE_SITE_KEY as string | undefined) ?? '').trim();
 const SCRIPT_URL = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';

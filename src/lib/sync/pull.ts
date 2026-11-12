@@ -1,6 +1,6 @@
 import type { AppState } from '../../types';
 import { trustedNow, trustedNowMs } from '../time/clock';
-import { supabase } from '../supabase';
+import { supabase } from '../auth/supabase';
 import {
   DELETED,
   acceptServerRows,

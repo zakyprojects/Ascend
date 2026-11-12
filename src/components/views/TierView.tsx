@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { Check, Compass, History, Lock } from 'lucide-react';
 import { getCurrentTier, getProgressToNextTier, getNextTier, TIERS } from '@/lib/leagues/tiers';
-import { AppStore } from '@/lib/store';
+import { AppStore } from '@/lib/store/store';
 import type { PointsEntry } from '@/types';
 import { cx, EmptyState, PageColumns, ProgressBar } from '@/components/ui/primitives';
 import { CountUp, Reveal } from '@/components/ui/Motion';

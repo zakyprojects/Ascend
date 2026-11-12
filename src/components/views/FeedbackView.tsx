@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Check, ImagePlus, X } from 'lucide-react';
-import type { AppStore } from '@/lib/store';
+import type { AppStore } from '@/lib/store/store';
 import type { View } from '@/lib/views';
 import { Button, Card, FieldErrorBubble, Form, FormAlert, Input, Select, Textarea, cx, useFocusOnRender, useFormController } from '@/components/ui/primitives';
 import { FOCUS_RING, TAP_TARGET } from '@/components/ui/primitives/shared';

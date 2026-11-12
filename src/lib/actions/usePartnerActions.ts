@@ -6,18 +6,18 @@
 // store.ts above pactRepairReady.
 import { useCallback, useEffect } from 'react';
 import type { AppState, PartnerInvite, Partnership, SharedChallenge, SharedChallengeCategory } from '@/types';
-import { isDeviceOffline } from './deviceOffline';
-import { todayKey } from './time/dates';
-import { adoptServerInviteId } from './partnerInvites';
-import { applyPledgeToggle, linkedHabitFor, linkedBadHabitFor, badHabitStatusOn, habitDoneOn, planLinkedPactRepairs } from './pactLifecycle';
-import { isPartnershipUser1 } from './partnershipSide';
-import { leagueNow, getSeasonNumber } from './time/leagueTime';
-import { fetchProfileByUidFromSupabase } from './auth';
-import { trustedNow } from './time/clock';
-import { supabase, isSupabaseConfigured, syncBroadcaster, sendPartnerInviteSupabase, fetchProfileByUsernameFromSupabase, fetchMemberCardFromSupabase, fetchPartnerInvitesSupabase, deletePartnershipSupabase, deletePartnerInviteSupabase, declinePartnerInviteSupabase, saveSharedChallengeSupabase, deleteSharedChallengeSupabase, acceptPartnerInviteAtomicSupabase, markNotificationReadSupabase } from './supabase';
-import type { SharedChallengeSaveResult } from './supabase';
-import { ilikeExact } from './usernameRules';
-import type { StoreSetState } from './storeSetState';
+import { isDeviceOffline } from '../store/deviceOffline';
+import { todayKey } from '../time/dates';
+import { adoptServerInviteId } from '../partnerInvites';
+import { applyPledgeToggle, linkedHabitFor, linkedBadHabitFor, badHabitStatusOn, habitDoneOn, planLinkedPactRepairs } from '../pactLifecycle';
+import { isPartnershipUser1 } from '../partnershipSide';
+import { leagueNow, getSeasonNumber } from '../time/leagueTime';
+import { fetchProfileByUidFromSupabase } from '../auth/auth';
+import { trustedNow } from '../time/clock';
+import { supabase, isSupabaseConfigured, syncBroadcaster, sendPartnerInviteSupabase, fetchProfileByUsernameFromSupabase, fetchMemberCardFromSupabase, fetchPartnerInvitesSupabase, deletePartnershipSupabase, deletePartnerInviteSupabase, declinePartnerInviteSupabase, saveSharedChallengeSupabase, deleteSharedChallengeSupabase, acceptPartnerInviteAtomicSupabase, markNotificationReadSupabase } from '../auth/supabase';
+import type { SharedChallengeSaveResult } from '../auth/supabase';
+import { ilikeExact } from '../auth/usernameRules';
+import type { StoreSetState } from '../store/storeSetState';
 
 export function usePartnerActions(setState: StoreSetState, stateRef: { current: AppState }, state: AppState, trackPledgeWrite: <T>(challengeId: string, write: Promise<T>) => Promise<T>, settlePactSave: (sent: SharedChallenge, result: SharedChallengeSaveResult, isUser1: boolean) => boolean, pledgeWrites: { current: Map<string, { inFlight: number; lastSeq: number; skipped: boolean }> }, pactDiverged: { current: Set<string> }, pactRepairedOn: { current: Map<string, string> }, pactRetry: { current: Map<string, { day: string; failures: number }> }, pactRepairReady: { current: boolean }, linkedPactUserId: string | undefined, pendingPledgeRequests: Set<string>, PACT_RETRY_LIMIT: number) {
   // --- SOCIAL FEATURE 2: ACCOUNTABILITY PARTNER & SHARED CHALLENGES ---

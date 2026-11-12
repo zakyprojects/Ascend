@@ -2,14 +2,14 @@
 // store.ts unchanged. useAppState calls this hook once and returns the same members as before.
 import { useCallback } from 'react';
 import type { AppState, AddictionTracker, CravingLog, RecoveryCheckin } from '@/types';
-import { uid, todayKey } from './time/dates';
-import { canUndoRecoveryCheckin, computeRecoveryCheckinAward, RECOVERY_CHECKIN_SOURCE, RECOVERY_MILESTONES, recoveryCheckinDays, recoveryDayAwardId, trackerStartMs } from './points/recoveryAwards';
-import { renameTracker } from './itemEdits';
-import { CLEAR_CRAVING_LOGS_MAX } from './clearLimits';
-import { excisePointsEntriesInternal } from './points/stateAwards';
-import { addPointsInternal } from './points/pointsLedger';
-import { trustedNow } from './time/clock';
-import type { StoreSetState } from './storeSetState';
+import { uid, todayKey } from '../time/dates';
+import { canUndoRecoveryCheckin, computeRecoveryCheckinAward, RECOVERY_CHECKIN_SOURCE, RECOVERY_MILESTONES, recoveryCheckinDays, recoveryDayAwardId, trackerStartMs } from '../points/recoveryAwards';
+import { renameTracker } from '../itemEdits';
+import { CLEAR_CRAVING_LOGS_MAX } from '../store/clearLimits';
+import { excisePointsEntriesInternal } from '../points/stateAwards';
+import { addPointsInternal } from '../points/pointsLedger';
+import { trustedNow } from '../time/clock';
+import type { StoreSetState } from '../store/storeSetState';
 
 export function useRecoveryActions(setState: StoreSetState, get: () => AppState) {
   // --- MODULE 5: ADDICTION RECOVERY ACTIONS ---

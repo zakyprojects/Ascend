@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 import type { View } from '@/components/AppShell';
 import type { Lesson } from '@/types';
-import type { AppStore } from '@/lib/store';
+import type { AppStore } from '@/lib/store/store';
 import { cx, PageColumns } from '@/components/ui/primitives';
 import { Reveal } from '@/components/ui/Motion';
 import { LESSONS } from '@/lib/lessons';

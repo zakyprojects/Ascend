@@ -49,7 +49,7 @@ const { trustedNowMs } = await import('../../time/clock');
 const { SYNCED_COLLECTIONS } = await import('../syncedCollections');
 const { setTabSyncedHashes, clearTabSyncedHashes, tabSyncedHashes } = await import('../tabVersions');
 const { noteEditTimes, readEditTimes } = await import('../editTimes');
-const { supabase } = await import('../../supabase');
+const { supabase } = await import('../../auth/supabase');
 const { clearDirtyAfterSave, dirtyMark, markDirty } = await import('../dirtyFlag');
 
 function assert(condition: boolean, msg: string) {

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Bell, X } from 'lucide-react';
 import { Button } from '@/components/ui/primitives';
 import { useToast } from '@/components/ui/Toast';
-import { useAsyncAction } from '@/lib/useAsyncAction';
+import { useAsyncAction } from '@/lib/actions/useAsyncAction';
 import { toUserMessage } from '@/lib/userMessage';
 import { enablePush, markPushPromptDone, shouldOfferHomeScreenHint, shouldOfferPush } from '@/lib/push';
 

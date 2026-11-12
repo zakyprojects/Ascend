@@ -3,9 +3,9 @@ import { applyListOrder, byCreatedDesc, LIST_ORDER_KEYS, reorderInSlots, savedOr
 import { LazyReorderList, ReorderButton } from '@/components/ui/Reorder';
 import { confirmLeave } from '@/lib/unsavedChanges';
 import { Edit3, Globe, Lock, Plus, Trash2 } from 'lucide-react';
-import { AppStore } from '@/lib/store';
+import { AppStore } from '@/lib/store/store';
 import { useToast } from '@/components/ui/Toast';
-import { useAsyncActionKey } from '@/lib/useAsyncAction';
+import { useAsyncActionKey } from '@/lib/actions/useAsyncAction';
 import { AscendLoadingIndicator } from '@/components/ui/AscendLoadingIndicator';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { ProgressUpdateDialog } from '@/components/ui/ProgressUpdateDialog';

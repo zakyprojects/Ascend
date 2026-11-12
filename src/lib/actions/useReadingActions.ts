@@ -3,17 +3,17 @@
 // destructures the members (their places in its return object are not side by side).
 import { useCallback } from 'react';
 import type { AppState, ReadingLog, UserBook, UserBookStatus, CuratedBook, BookCategory } from '@/types';
-import { periodKey, todayKey, weekKey } from './time/dates';
-import type { LinkedPactTick } from './pactLifecycle';
-import { tickPactsLinkedTo } from './pactLifecycle';
-import { stampLogUnits, switchBookUnit, takeBackTodaysReading, unitSwitchDefaults } from './bookUnits';
-import { isChapterBook, meetsReadingBonusGates, readingBonusCooldown, readingBonusAlreadyGiven, readingBonusId } from './points/readingAwards';
-import { removeLinkedWeeklyGoals, reconcileLinkedWeeklyGoals } from './points/weeklyGoalPoints';
-import { excisePointsEntriesInternal, applyReadingAwardsInternal } from './points/stateAwards';
-import { addPointsInternal } from './points/pointsLedger';
-import { trustedNow, trustedNowMs } from './time/clock';
-import { READING_POINTS } from './points/pointsConfig';
-import type { StoreSetState } from './storeSetState';
+import { periodKey, todayKey, weekKey } from '../time/dates';
+import type { LinkedPactTick } from '../pactLifecycle';
+import { tickPactsLinkedTo } from '../pactLifecycle';
+import { stampLogUnits, switchBookUnit, takeBackTodaysReading, unitSwitchDefaults } from '../bookUnits';
+import { isChapterBook, meetsReadingBonusGates, readingBonusCooldown, readingBonusAlreadyGiven, readingBonusId } from '../points/readingAwards';
+import { removeLinkedWeeklyGoals, reconcileLinkedWeeklyGoals } from '../points/weeklyGoalPoints';
+import { excisePointsEntriesInternal, applyReadingAwardsInternal } from '../points/stateAwards';
+import { addPointsInternal } from '../points/pointsLedger';
+import { trustedNow, trustedNowMs } from '../time/clock';
+import { READING_POINTS } from '../points/pointsConfig';
+import type { StoreSetState } from '../store/storeSetState';
 
 export function useReadingActions(setState: StoreSetState, afterCommit: (fn: () => void) => void, sendLinkedPactTicks: (ticks: readonly LinkedPactTick[], saved: string) => void) {
   // --- MODULE 2: UNIFIED READING HUB & LIBRARY ACTIONS ---

@@ -3,16 +3,16 @@
 // returns the same members as before.
 import { useCallback } from 'react';
 import type { AppState, Habit } from '@/types';
-import { uid, periodKey, todayKey, weekKey } from './time/dates';
-import type { LinkedPactTick } from './pactLifecycle';
-import { runningPactsLinkedTo, tickPactsLinkedTo } from './pactLifecycle';
-import type { PresetHabit } from './presets';
-import { presetHabitPoints } from './points/habitAwards';
-import { renameHabitIn } from './itemEdits';
-import { removeLinkedWeeklyGoals, reconcileLinkedWeeklyGoals } from './points/weeklyGoalPoints';
-import { applyHabitAwardsInternal } from './points/stateAwards';
-import { trustedNow } from './time/clock';
-import type { StoreSetState } from './storeSetState';
+import { uid, periodKey, todayKey, weekKey } from '../time/dates';
+import type { LinkedPactTick } from '../pactLifecycle';
+import { runningPactsLinkedTo, tickPactsLinkedTo } from '../pactLifecycle';
+import type { PresetHabit } from '../presets';
+import { presetHabitPoints } from '../points/habitAwards';
+import { renameHabitIn } from '../itemEdits';
+import { removeLinkedWeeklyGoals, reconcileLinkedWeeklyGoals } from '../points/weeklyGoalPoints';
+import { applyHabitAwardsInternal } from '../points/stateAwards';
+import { trustedNow } from '../time/clock';
+import type { StoreSetState } from '../store/storeSetState';
 
 export function useHabitActions(setState: StoreSetState, get: () => AppState, afterCommit: (fn: () => void) => void, sendLinkedPactTicks: (ticks: readonly LinkedPactTick[], saved: string) => void, inFlightHabitToggles: { current: Set<string> }) {
   const addPresetHabit = useCallback((preset: PresetHabit) => {

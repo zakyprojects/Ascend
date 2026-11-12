@@ -40,7 +40,7 @@ const { DELETED, SYNC_VERSIONS_EVENT, cursorKey, diffSyncedCollections, hashRow,
 const { adoptTabState, applyRemoteChanges, prepareRemoteRows, pullSyncedRows, takePeerVersions } = await import('../pull');
 const { SYNCED_COLLECTIONS, cacheWithHydratedCollections, itemsOf, rowIdOf } = await import('../syncedCollections');
 const { setTabSyncedHashes, tabSyncedHashes, clearTabSyncedHashes } = await import('../tabVersions');
-const { supabase } = await import('../../supabase');
+const { supabase } = await import('../../auth/supabase');
 type Baseline = Record<string, Record<string, string>>;
 
 function assert(condition: boolean, msg: string) {

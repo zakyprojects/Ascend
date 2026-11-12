@@ -1,11 +1,11 @@
 import { Suspense, lazy, useCallback, useEffect, useLayoutEffect, useRef, useState, type ComponentType } from 'react';
-import { useAppState } from '@/lib/store';
+import { useAppState } from '@/lib/store/store';
 import { useViewRoute } from '@/lib/useViewRoute';
 import { confirmLeave } from '@/lib/unsavedChanges';
 import { authPathWithNext, DASHBOARD_PATH, nextFromSearch, pathForAuthRoute, pathForView, viewFromPath } from '@/lib/routes';
-import { consumeSignOutByUser, logoutUser } from '@/lib/auth';
+import { consumeSignOutByUser, logoutUser } from '@/lib/auth/auth';
 import type { View } from '@/lib/views';
-import { isSupabaseConfigured, storedAuthSession } from '@/lib/supabase';
+import { isSupabaseConfigured, storedAuthSession } from '@/lib/auth/supabase';
 import { reloadOnceForStaleChunk } from '@/lib/chunkReload';
 import { syncPushSubscription } from '@/lib/push';
 import { WEEK_PARAM } from '@/lib/time/weekParam';

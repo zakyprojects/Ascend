@@ -4,7 +4,7 @@
  * action "contact"; the server verifies it) and sends the message to /api/feedback as a
  * signed-out sender. No React, no Supabase.
  */
-import { getCaptchaToken, registerCaptchaSlot } from '@/lib/captcha';
+import { getCaptchaToken, registerCaptchaSlot } from '@/lib/auth/captcha';
 import {
   FEEDBACK_ERROR_MESSAGES,
   FEEDBACK_FALLBACK_ERROR,

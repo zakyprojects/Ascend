@@ -1,4 +1,4 @@
-import { newPasswordProblem } from '@/lib/passwordRules';
+import { newPasswordProblem } from '@/lib/auth/passwordRules';
 
 /** 0 (empty) to 4: a password that breaks a rule is always 1; then length and character variety add steps. */
 function passwordScore(password: string): number {

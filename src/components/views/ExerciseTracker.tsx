@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { Activity, Calendar, Dumbbell, Flame, Pencil, Plus, Trash2 } from 'lucide-react';
-import { AppStore, CLEAR_WORKOUTS_MAX } from '@/lib/store';
+import { AppStore, CLEAR_WORKOUTS_MAX } from '@/lib/store/store';
 import { ledgerPointsByDay } from '@/lib/points/ledgerDayPoints';
 import { isRetiredAppWorkoutAward } from '@/lib/points/workoutAwards';
 import { PREVIEW_EARN_LABEL, PREVIEW_MAX_LABEL, previewCapReachedText, workoutEditPreview } from '@/lib/points/practicePreviews';
@@ -13,7 +13,7 @@ import { WorkoutLog } from '@/types';
 import { todayKey, formatDateLong, startOfWeek, formatWeekdayDate, calculateStreak, parseDate, weekKey } from '@/lib/time/dates';
 import { DEFAULT_WORKOUT_TYPES, workoutAmountOf, workoutMeasureOf, workoutTypeKey, type WorkoutMeasure } from '@/lib/workoutTypes';
 import { EXERCISE_METRIC_BY_MEASURE } from '@/lib/linkedGoalMetrics';
-import { useAsyncAction } from '@/lib/useAsyncAction';
+import { useAsyncAction } from '@/lib/actions/useAsyncAction';
 import { AscendLoadingIndicator } from '@/components/ui/AscendLoadingIndicator';
 import { useToast } from '@/components/ui/Toast';
 import { CapMeterConnected } from '@/components/ui/CapMeterConnected';

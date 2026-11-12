@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import type { AppStore } from '@/lib/store';
+import type { AppStore } from '@/lib/store/store';
 import type { View } from '@/lib/views';
 import { pathForView } from '@/lib/routes';
 import { addDays, startOfWeek, todayKey } from '@/lib/time/dates';

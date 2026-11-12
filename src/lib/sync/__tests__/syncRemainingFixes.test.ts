@@ -38,8 +38,8 @@ const { applyRemoteChanges, pullSyncedRows } = await import('../pull');
 const { SYNCED_COLLECTIONS, itemsOf, rowIdOf } = await import('../syncedCollections');
 const { setTabSyncedHashes, clearTabSyncedHashes } = await import('../tabVersions');
 const { noteEditTimes, readEditTimes } = await import('../editTimes');
-const { mergeThemePreference } = await import('../../stateMerger');
-const { supabase } = await import('../../supabase');
+const { mergeThemePreference } = await import('../../store/stateMerger');
+const { supabase } = await import('../../auth/supabase');
 type Baseline = Record<string, Record<string, string>>;
 
 function assert(condition: boolean, msg: string) {

@@ -1,9 +1,9 @@
 import { Monitor, Moon, Sun } from 'lucide-react';
-import { AppStore } from '@/lib/store';
+import { AppStore } from '@/lib/store/store';
 import type { View } from '@/lib/views';
 import { NAV_GROUPS, NAV_HELP, type NavGroup } from '@/components/nav/navConfig';
 import { cx, FOCUS_RING, Switch } from '@/components/ui/primitives';
-import { useAsyncActionKey } from '@/lib/useAsyncAction';
+import { useAsyncActionKey } from '@/lib/actions/useAsyncAction';
 import { pageLinkProps } from '@/lib/pageLink';
 import { pathForLegalRoute } from '@/lib/routes';
 import { resolveTheme } from '@/lib/theme';

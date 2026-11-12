@@ -62,7 +62,7 @@ try {
 export async function syncSeasonConfig(): Promise<void> {
   try {
     // Loaded lazily: supabase.ts reads the clock, so a static import would be a cycle.
-    const { supabase, isSupabaseConfigured } = await import('../supabase');
+    const { supabase, isSupabaseConfigured } = await import('../auth/supabase');
     if (!isSupabaseConfigured) return;
     const request = supabase.rpc('ascend_season_config');
     const timeout = new Promise<null>((resolve) => setTimeout(() => resolve(null), SEASON_CONFIG_TIMEOUT_MS));

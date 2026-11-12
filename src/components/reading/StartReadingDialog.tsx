@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { PlayCircle } from 'lucide-react';
 import { Dialog, FieldRow, Form, Input, NumberField, Select } from '@/components/ui/primitives';
-import type { AppStore } from '@/lib/store';
+import type { AppStore } from '@/lib/store/store';
 import type { CuratedBook, UserBook } from '@/types';
 import { earliestTargetDate, isNewPastDate } from '@/lib/time/dates';
 import { useUnsavedChanges } from '@/lib/unsavedChanges';

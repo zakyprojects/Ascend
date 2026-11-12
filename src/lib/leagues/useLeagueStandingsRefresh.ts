@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import type { AppStore } from '@/lib/store';
+import type { AppStore } from '@/lib/store/store';
 
 const POLL_MS = 60_000;
 

@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { RefreshCw } from 'lucide-react';
 import { APP_BUILD_ID } from '@/lib/version';
 import { trustedNowMs } from '@/lib/time/clock';
-import { isDeviceOffline } from '@/lib/deviceOffline';
+import { isDeviceOffline } from '@/lib/store/deviceOffline';
 
 // A browser can open the app from its own copy of an old build (a tab restored at browser start
 // is not revalidated). Found that early, before the user has done anything, the newer build loads

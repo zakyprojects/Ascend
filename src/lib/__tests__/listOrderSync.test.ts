@@ -5,7 +5,7 @@ import { DEFAULT_STATE, type AppState, type Habit, type ListOrder, type Project 
 const { applyListOrder, byCreatedAsc, byCreatedDesc, moveId, reorderInSlots, sameOrder, savedOrderIds, LIST_ORDER_KEYS } = await import('../listOrder');
 const { SYNCED_COLLECTIONS } = await import('../sync/syncedCollections');
 const { diffSyncedCollections, hashRow } = await import('../sync/outbox');
-const { mergeAppState } = await import('../stateMerger');
+const { mergeAppState } = await import('../store/stateMerger');
 
 function assert(condition: boolean, msg: string) {
   if (!condition) throw new Error(`Assertion failed: ${msg}`);

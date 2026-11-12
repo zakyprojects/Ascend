@@ -1,7 +1,7 @@
 import { trustedNow } from './clock';
 import { todayKey, todayKeyInZone } from './dates';
-import { supabase, isSupabaseConfigured, fetchMyPrivateProfile, sendDeviceTimezone } from '../supabase';
-import { isDeviceOffline } from '../deviceOffline';
+import { supabase, isSupabaseConfigured, fetchMyPrivateProfile, sendDeviceTimezone } from '../auth/supabase';
+import { isDeviceOffline } from '../store/deviceOffline';
 
 /**
  * A westward timezone change waits on the server until the new local date catches up with the

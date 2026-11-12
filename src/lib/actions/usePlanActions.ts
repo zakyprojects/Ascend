@@ -4,13 +4,13 @@
 // for its minute tick.
 import { useCallback } from 'react';
 import type { AppState, PlanStep, ImprovementPlan, UserPlanFollow, PlanReflectionNote, PlanType } from '@/types';
-import { dispatchToastError } from './storeShared';
-import { uid, generateUUID, todayKey, isPlanJourneyDoneThisPeriod, calculateActivePlanStreak } from './time/dates';
-import { trustedNow, trustedNowMs } from './time/clock';
-import { editedPlanStructure } from './planStructure';
-import type { PlanStructureEdits } from './planStructure';
-import { supabase, syncBroadcaster, syncPlanToSupabase, syncFollowedPlanToSupabase, deletePlanFromSupabase, deleteFollowedPlanFromSupabase } from './supabase';
-import type { StoreSetState } from './storeSetState';
+import { dispatchToastError } from '../store/storeShared';
+import { uid, generateUUID, todayKey, isPlanJourneyDoneThisPeriod, calculateActivePlanStreak } from '../time/dates';
+import { trustedNow, trustedNowMs } from '../time/clock';
+import { editedPlanStructure } from '../planStructure';
+import type { PlanStructureEdits } from '../planStructure';
+import { supabase, syncBroadcaster, syncPlanToSupabase, syncFollowedPlanToSupabase, deletePlanFromSupabase, deleteFollowedPlanFromSupabase } from '../auth/supabase';
+import type { StoreSetState } from '../store/storeSetState';
 
 export function usePlanActions(setState: StoreSetState, afterCommit: (fn: () => void) => void, stateRef: { current: AppState }, state: AppState) {
   // --- SOCIAL FEATURE 1: PERSONAL IMPROVEMENT PLANS ACTIONS ---

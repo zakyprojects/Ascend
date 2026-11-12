@@ -3,12 +3,12 @@
 // same place (so the effect keeps its position in the effect order), and returns the same members as before.
 import { useCallback, useEffect } from 'react';
 import type { AppState, Goal, Project, ListOrder, Task, TaskSubtask, GoalStatus, ProjectStatus, TaskPriority } from '@/types';
-import { uid } from './time/dates';
-import { autoStatusChanges } from './projectProgress';
-import { applyListOrder, nextSequenceOrder, sameOrder, topStandaloneOrder } from './listOrder';
-import { renameSubtaskIn } from './itemEdits';
-import { trustedNow } from './time/clock';
-import type { StoreSetState } from './storeSetState';
+import { uid } from '../time/dates';
+import { autoStatusChanges } from '../projectProgress';
+import { applyListOrder, nextSequenceOrder, sameOrder, topStandaloneOrder } from '../listOrder';
+import { renameSubtaskIn } from '../itemEdits';
+import { trustedNow } from '../time/clock';
+import type { StoreSetState } from '../store/storeSetState';
 
 export function useProjectActions(setState: StoreSetState, get: () => AppState, state: AppState, isServerDataApplied: boolean) {
   // --- MODULE: PROJECTS & GOALS ACTIONS ---

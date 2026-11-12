@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { HeartPulse, AlertTriangle, RefreshCw, Activity, PhoneCall, Play, Pause, RotateCcw, Trash2, Medal, Trophy, Crown, Check, Plus, Pencil, CalendarCheck } from 'lucide-react';
-import { AppStore, CLEAR_CRAVING_LOGS_MAX } from '@/lib/store';
+import { AppStore, CLEAR_CRAVING_LOGS_MAX } from '@/lib/store/store';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { useToast } from '@/components/ui/Toast';
-import { useAsyncActionKey } from '@/lib/useAsyncAction';
+import { useAsyncActionKey } from '@/lib/actions/useAsyncAction';
 import { CravingLog } from '@/types';
 import { recoveryCheckinBlock, recoveryDayAwardId, recoveryPointsInSeason, RecoveryMilestoneKey, RECOVERY_MILESTONES } from '@/lib/points/recoveryAwards';
 import { addDays, formatDateLong, todayKey, startOfWeek, parseDate } from '@/lib/time/dates';

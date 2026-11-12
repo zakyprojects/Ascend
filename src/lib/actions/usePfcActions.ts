@@ -2,15 +2,15 @@
 // store.ts unchanged. useAppState calls this hook once and returns the same members as before.
 import { useCallback } from 'react';
 import type { AppState, FocusSessionLog, DecisionLog, EmotionLog } from '@/types';
-import { uid, todayKey } from './time/dates';
-import { skillLateDay } from './points/skillAwards';
-import { focusFloorDay, isFocusDayEntry } from './points/focusAwards';
-import { focusSkillLogFor, withReflectionNote } from './focusSkillLog';
-import { editDecisionText, editEmotionNote, editFocusLogText } from './pfcLogEdits';
-import { reconcileLinkedWeeklyGoals } from './points/weeklyGoalPoints';
-import { applySkillAwardsInternal, applyFocusAwardsInternal } from './points/stateAwards';
-import { trustedNow, trustedNowMs } from './time/clock';
-import type { StoreSetState } from './storeSetState';
+import { uid, todayKey } from '../time/dates';
+import { skillLateDay } from '../points/skillAwards';
+import { focusFloorDay, isFocusDayEntry } from '../points/focusAwards';
+import { focusSkillLogFor, withReflectionNote } from '../focusSkillLog';
+import { editDecisionText, editEmotionNote, editFocusLogText } from '../pfcLogEdits';
+import { reconcileLinkedWeeklyGoals } from '../points/weeklyGoalPoints';
+import { applySkillAwardsInternal, applyFocusAwardsInternal } from '../points/stateAwards';
+import { trustedNow, trustedNowMs } from '../time/clock';
+import type { StoreSetState } from '../store/storeSetState';
 
 export function usePfcActions(setState: StoreSetState, get: () => AppState) {
   // --- MODULE 7: PREFRONTAL CORTEX ACTIONS ---

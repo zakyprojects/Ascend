@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { CheckCircle2, Info } from 'lucide-react';
 import { Dialog, Form, Textarea } from '@/components/ui/primitives';
 import { CapMeter } from '@/components/ui/CapMeter';
-import type { AppStore } from '@/lib/store';
+import type { AppStore } from '@/lib/store/store';
 import type { UserBook } from '@/types';
 import { formatDateKeyHuman, todayKey } from '@/lib/time/dates';
 import { trustedNow } from '@/lib/time/clock';

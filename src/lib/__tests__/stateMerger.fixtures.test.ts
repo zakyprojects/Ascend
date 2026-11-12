@@ -2,8 +2,8 @@
 // contracts hydration, writeSync and reconnect rely on today, so a later
 // change to stateMerger.ts that alters behaviour fails here first.
 import { DEFAULT_STATE, type AppState } from '@/types';
-import { isLegitimateTombstoneId, mergeAppState, mergeAppStateWithGuardResult } from '../stateMerger';
-import { computeStateDataWeight, hasStateData, savedItemCount } from '../dataWeight';
+import { isLegitimateTombstoneId, mergeAppState, mergeAppStateWithGuardResult } from '../store/stateMerger';
+import { computeStateDataWeight, hasStateData, savedItemCount } from '../store/dataWeight';
 
 function assert(condition: boolean, msg: string) {
   if (!condition) {

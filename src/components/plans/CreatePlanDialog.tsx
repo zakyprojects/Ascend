@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { ArrowLeft, ChevronRight } from 'lucide-react';
 import { Badge, Dialog, Form } from '@/components/ui/primitives';
-import type { AppStore } from '@/lib/store';
+import type { AppStore } from '@/lib/store/store';
 import type { PlanType } from '@/types';
 import { addDays, isNewPastDate, todayKey } from '@/lib/time/dates';
 import { useUnsavedChanges } from '@/lib/unsavedChanges';

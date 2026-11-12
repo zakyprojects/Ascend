@@ -59,8 +59,8 @@ export async function bootHook(opts: BootOptions) {
   await opts.beforeRender?.();
   const React = await import('react');
   const { createRoot } = await import('react-dom/client');
-  const { useAppState } = await import('../../store');
-  const supabaseModule = await import('../../supabase');
+  const { useAppState } = await import('../../store/store');
+  const supabaseModule = await import('../../auth/supabase');
   type Store = ReturnType<typeof useAppState>;
   let store: Store | null = null;
   // Every account id the screen showed, in render order (null = guest), so a test can tell that a

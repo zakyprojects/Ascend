@@ -1,7 +1,7 @@
 import { LeagueCompetitor, LeagueType, SeasonHistoryEntry, NotificationPreferenceKey } from '@/types';
 import { newPasswordProblem } from './passwordRules';
-import { leagueNow, getSeasonNumber, getWeekPeriodId, getMonthPeriodId } from './time/leagueTime';
-import { clearSyncStorage } from './sync/outbox';
+import { leagueNow, getSeasonNumber, getWeekPeriodId, getMonthPeriodId } from '../time/leagueTime';
+import { clearSyncStorage } from '../sync/outbox';
 import {
   supabase,
   isSupabaseConfigured,
@@ -10,15 +10,15 @@ import {
   verifyAccountPassword,
   authRedirectError,
 } from './supabase';
-import { trustedNow, trustedNowMs } from './time/clock';
+import { trustedNow, trustedNowMs } from '../time/clock';
 import { ilikeExact, isUsernameTakenError, looksLikeUsername, sameUsername, USERNAME_TAKEN, usernameFormatProblem } from './usernameRules';
-import { NETWORK_MESSAGE } from './userMessage';
-import { clearDrafts } from './unsavedChanges';
-import { dropStoredSession, pauseStoredSessionsForSignOut, readStoredSession } from './focusSession';
-import { flushOps, supabaseFocusTransport } from './focusServerSession';
+import { NETWORK_MESSAGE } from '../userMessage';
+import { clearDrafts } from '../unsavedChanges';
+import { dropStoredSession, pauseStoredSessionsForSignOut, readStoredSession } from '../focusSession';
+import { flushOps, supabaseFocusTransport } from '../focusServerSession';
 import { FunctionRegion, FunctionsHttpError } from '@supabase/supabase-js';
 import { CaptchaRejectedError, isCaptchaRejection } from './captcha';
-import { TERMS_VERSION } from './legal';
+import { TERMS_VERSION } from '../legal';
 import { googleDeleteReauthResult, parseGoogleDeleteMark, type GoogleDeleteMark, type GoogleDeleteReauthResult } from './googleDeleteReauth';
 
 let cachedProfiles: any[] = [];

@@ -1,4 +1,4 @@
-import { singleFlight } from '../singleFlight';
+import { singleFlight } from '../store/singleFlight';
 
 function assert(condition: boolean, msg: string) {
   if (!condition) {

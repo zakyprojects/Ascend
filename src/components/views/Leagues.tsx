@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Brain, Calendar, CalendarDays, ChevronRight, Trophy, WifiOff } from 'lucide-react';
 import { Button, cx, Dialog, Disclosure, EmptyState, PageColumns, Skeleton, TabPanel, Tabs } from '@/components/ui/primitives';
-import { AppStore } from '@/lib/store';
+import { AppStore } from '@/lib/store/store';
 import { LeagueArchive, LeagueCompetitor, LeagueType } from '@/types';
 import {
   LEAGUE_CONFIG,

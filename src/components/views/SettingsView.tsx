@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Bell, Coffee, Eye, Info, KeyRound, MessageSquare, Palette, User, UserRound, Vibrate, type LucideIcon } from 'lucide-react';
 import { GuestSaveBanner } from '@/components/ui/GuestSaveBanner';
-import { AppStore } from '@/lib/store';
+import { AppStore } from '@/lib/store/store';
 import type { View } from '@/lib/views';
 import { cx, FOCUS_RING, TabPanel, Tabs } from '@/components/ui/primitives';
 import { Reveal } from '@/components/ui/Motion';
@@ -20,7 +20,7 @@ import { NotificationsSection } from '@/components/settings/NotificationsSection
 import { AppInfoSection, AppearanceSection, PrivacySection } from '@/components/settings/PreferenceSections';
 import { AboutUsSection, FeedbackSection, SupportSection } from '@/components/settings/MakerSections';
 import { SoundVibrationSection } from '@/components/settings/SoundVibrationSection';
-import { usePendingGuestEmail } from '@/lib/usePendingGuestEmail';
+import { usePendingGuestEmail } from '@/lib/auth/usePendingGuestEmail';
 
 interface SettingsViewProps {
   store: AppStore;
