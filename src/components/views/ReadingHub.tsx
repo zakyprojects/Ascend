@@ -13,6 +13,7 @@ import { formatDateLong, weekKey, formatWeekdayDate, formatWeekdayShort, calcula
 import { READING_POINTS } from '@/lib/points/pointsConfig';
 import { bookRemovalPoints, chapterTenths, isRetiredAppReadingAward, logUnit } from '@/lib/points/readingAwards';
 import { getCapStatus } from '@/lib/points/capStatus';
+import { readingAmountText } from '@/lib/reading/readingAmount';
 import { ptsText } from '@/lib/leagues/leagues';
 import { trustedNow } from '@/lib/time/clock';
 import { PREVIEW_EARN_LABEL, PREVIEW_MAX_LABEL, previewCapReachedText, readingProgressPreview } from '@/lib/points/practicePreviews';
@@ -125,13 +126,8 @@ export function ReadingHub({ store }: { store: AppStore }) {
   // Bars show pages, unless the week has only chapters.
   const chartInChapters = pagesThisWeek === 0 && chaptersThisWeek > 0;
   const chartByDay = chartInChapters ? chaptersByDay : pagesByDay;
-  const readOnDay = (i: number) =>
-    [pagesByDay[i] !== 0 && formatAmount(pagesByDay[i], 'pages'), chaptersByDay[i] !== 0 && formatAmount(chaptersByDay[i], 'chapters')]
-      .filter(Boolean)
-      .join(', ') || formatAmount(0, chartInChapters ? 'chapters' : 'pages');
-  const weekTotals = [!chartInChapters && `${pagesThisWeek} pages`, chaptersThisWeek > 0 && formatAmount(chaptersThisWeek, 'chapters')]
-    .filter(Boolean)
-    .join(' and ');
+  const readOnDay = (i: number) => readingAmountText(pagesByDay[i], chaptersByDay[i], ', ') || formatAmount(0, chartInChapters ? 'chapters' : 'pages');
+  const weekTotals = readingAmountText(pagesThisWeek, chaptersThisWeek, ' and ') || formatAmount(0, 'pages');
 
   // Any logged day counts, as before (older logs carry their amount under another field).
   const streak = useMemo(

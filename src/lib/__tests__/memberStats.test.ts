@@ -143,4 +143,20 @@ const sample = {
   assert(!JSON.stringify(card).includes('extra'), 'unknown keys dropped');
 }
 
+// --- 6. Reading in each unit logged (I4, Zakria 2026-11-12): pages and chapters apart, never converted ---
+{
+  const r = (reading: unknown) => toSeasonCard({ ...sample, reading })!.reading;
+  eq(r({ days: 3, booksThisSeason: 1, pages: 40, chapters: '3.5' }), { days: 3, booksThisSeason: 1, pages: 40, chapters: 3.5 }, 'both units, numeric string');
+  eq(r({ days: 2, booksThisSeason: 0, chapters: 1.25 }), { days: 2, booksThisSeason: 0, chapters: 1.3 }, 'chapters only, to a tenth');
+  eq(r({ days: 2, booksThisSeason: 0, chapters: -1 }), { days: 2, booksThisSeason: 0, chapters: 0 }, 'bad chapters = 0');
+  eq(r({ days: 2, booksThisSeason: 0, pages: 7 }), { days: 2, booksThisSeason: 0, pages: 7 }, 'an old server (pages only) parses as before');
+  const { readingAmountText } = await import('../reading/readingAmount');
+  eq(
+    [readingAmountText(40, 3.5), readingAmountText(0, 3.5), readingAmountText(12, 0), readingAmountText(1, 1), readingAmountText(0, 0), readingAmountText(0, 0.1 + 0.2), readingAmountText(0, 1.25), readingAmountText(12500, 0)],
+    ['40 pages · 3.5 chapters', '3.5 chapters', '12 pages', '1 page · 1 chapter', '', '0.3 chapters', '1.3 chapters', '12.5k pages'],
+    'card reading text: each unit logged, a unit at 0 left out'
+  );
+  eq(readingAmountText(40, 3, ' and '), '40 pages and 3 chapters', 'Reading Hub separator');
+}
+
 console.log('memberStats fixtures: all passed');

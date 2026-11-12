@@ -92,8 +92,8 @@ export interface MemberCard {
   habits?: { done: number; due: number };
   exercise?: MemberCardExercise[];
   skills?: { minutes: number; days: number };
-  /** pages only when every page log this season was for a book counted in pages. */
-  reading?: { days: number; booksThisSeason: number; pages?: number };
+  /** pages: this season's page logs; chapters: its chapter logs (to a tenth). Each only when logged, never converted. */
+  reading?: { days: number; booksThisSeason: number; pages?: number; chapters?: number };
   focus?: { minutes: number; sessions: number };
   journal?: { days: number };
 }

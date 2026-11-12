@@ -134,6 +134,7 @@ export function toSeasonCard(raw: unknown): MemberCard | undefined {
   if (reading) {
     card.reading = { days: Math.min(days, count(reading.days)), booksThisSeason: count(reading.booksThisSeason) };
     if (reading.pages !== undefined && reading.pages !== null) card.reading.pages = count(reading.pages);
+    if (reading.chapters !== undefined && reading.chapters !== null) card.reading.chapters = Math.round(num(reading.chapters) * 10) / 10;
   }
   const focus = obj(c.focus);
   if (focus) card.focus = { minutes: count(focus.minutes), sessions: count(focus.sessions) };

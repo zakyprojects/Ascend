@@ -9,6 +9,7 @@ import { formatDateShort } from '@/lib/time/dates';
 import { ptUnit } from '@/lib/leagues/leagues';
 import { compactNumber } from '@/lib/leagues/numberFormat';
 import { exerciseAmountText as exerciseText, minutesText } from '@/lib/items/exerciseSummary';
+import { readingAmountText } from '@/lib/reading/readingAmount';
 import type { MemberDetails } from '@/lib/leagues/useMemberDetails';
 
 interface CompetitorProfileModalProps {
@@ -331,10 +332,11 @@ function MemberCardStats({ card }: { card: MemberCard }) {
     });
   }
   if (card.reading) {
-    const { days, booksThisSeason, pages } = card.reading;
+    const { days, booksThisSeason, pages, chapters } = card.reading;
+    // Each unit the member logged this season, never converted (40 pages · 3.5 chapters).
     const hint = [
       booksThisSeason > 0 ? `${plural(booksThisSeason, 'book')} this season` : '',
-      days > 0 && pages !== undefined ? plural(pages, 'page') : '',
+      days > 0 ? readingAmountText(pages ?? 0, chapters ?? 0) : '',
     ].filter(Boolean);
     tiles.push({
       icon: Book,
