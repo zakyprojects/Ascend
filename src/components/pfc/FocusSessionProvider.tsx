@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useReducer,
 import type { AppStore } from '@/lib/store/store';
 import { clockSettled, trustedNowMs } from '@/lib/time/clock';
 import { isDeviceOffline } from '@/lib/store/deviceOffline';
+import { APP_REFRESH_EVENT } from '@/lib/store/appRefresh';
 import { supabase, isSupabaseConfigured } from '@/lib/auth/supabase';
 import {
   claimLog,
@@ -438,9 +439,9 @@ export function FocusSessionProvider({
     };
   }, [ready, session, settle]);
 
-  // The account's other devices: pull when the page comes back into view or online, and listen
-  // for changes to the session row (a phone drops the socket in the background, so the pull on
-  // unlock is what shows a session started on the PC).
+  // The account's other devices: pull when the page comes back into view or online or on a
+  // pull-to-refresh, and listen for changes to the session row (a phone drops the socket in the
+  // background, so the pull on unlock is what shows a session started on the PC).
   useEffect(() => {
     if (!ready || !userId) return;
     const onVisible = () => {
@@ -449,6 +450,7 @@ export function FocusSessionProvider({
     document.addEventListener('visibilitychange', onVisible);
     window.addEventListener('pageshow', onVisible);
     window.addEventListener('online', settle);
+    window.addEventListener(APP_REFRESH_EVENT, settle);
     let debounce = 0;
     // The name is matched by ACCOUNT_CHANNEL_TOPIC in auth.ts (closed before sign-out).
     const channel = isSupabaseConfigured
@@ -468,6 +470,7 @@ export function FocusSessionProvider({
       document.removeEventListener('visibilitychange', onVisible);
       window.removeEventListener('pageshow', onVisible);
       window.removeEventListener('online', settle);
+      window.removeEventListener(APP_REFRESH_EVENT, settle);
       window.clearTimeout(debounce);
       if (channel) void supabase.removeChannel(channel);
     };

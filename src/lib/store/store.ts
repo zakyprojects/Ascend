@@ -8,6 +8,7 @@ import type {
 } from '@/types';
 import { DEFAULT_STATE } from '@/types';
 import { isDeviceOffline } from './deviceOffline';
+import { APP_REFRESH_EVENT } from './appRefresh';
 import { dispatchToastError } from './storeShared';
 import { generateNumericUID, todayKey, getNextDateKey, formatWeekdayDate } from '../time/dates';
 import { singleFlight } from './singleFlight';
@@ -745,6 +746,8 @@ export function useAppState() {
 
   // FIX 3: Network Reconnection & Tab Focus Sync (with Anti-Spam Throttle)
   const lastSyncTimeRef = useRef<number>(trustedNowMs());
+  // The sync below, for refreshNow (pull-to-refresh): `force` skips the 3-minute throttle.
+  const reconnectSyncRef = useRef<((force: boolean) => Promise<void>) | null>(null);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -762,7 +765,7 @@ export function useAppState() {
 
       const userId = currentUserRef.current?.id;
       if (!userId || !isHydrated.current || !isSupabaseConfigured) return;
-      void syncTables(userId, false);
+      const tables = syncTables(userId, false);
 
       try {
         isSyncing = true;
@@ -799,7 +802,9 @@ export function useAppState() {
           setState((prev) => ({ ...prev }), { immediate: true, actionLabel: 'Pending changes' });
         }
       }
+      await tables;
     };
+    reconnectSyncRef.current = handleReconnectAndSync;
 
     const onOnline = () => {
       // Force immediate sync upon network reconnection
@@ -817,6 +822,7 @@ export function useAppState() {
     document.addEventListener('visibilitychange', onVisibilityChange);
 
     return () => {
+      reconnectSyncRef.current = null;
       window.removeEventListener('online', onOnline);
       document.removeEventListener('visibilitychange', onVisibilityChange);
     };
@@ -2297,6 +2303,25 @@ export function useAppState() {
     getLeagueData,
   } = useNotificationActions(setState, get, state, leagueDataVersion, notificationsRefreshRef, partnersRefreshRef, setNotificationsStatus, setPartnersStatus);
 
+  /**
+   * Pull-to-refresh: sends pending changes, pulls what other devices changed and the settings doc
+   * (the reconnect sync, without its 3-minute throttle), notifications and league standings, and
+   * tells the focus session to pull (APP_REFRESH_EVENT). No page reload, no version check. Signed
+   * out or offline it does nothing (the offline banner already says why). Never rejects.
+   */
+  const refreshNow = useCallback(async (): Promise<void> => {
+    if (!currentUserRef.current?.id || !isSupabaseConfigured || isDeviceOffline()) return;
+    window.dispatchEvent(new Event(APP_REFRESH_EVENT));
+    const results = await Promise.allSettled([
+      reconnectSyncRef.current?.(true),
+      refreshNotifications(),
+      refreshLeagueStandings({ full: true }),
+    ]);
+    for (const result of results) {
+      if (result.status === 'rejected') console.error('[SYNC] Refresh failed:', result.reason);
+    }
+  }, [refreshNotifications, refreshLeagueStandings]);
+
   // Time Tracker actions (useTimeTrackerActions.ts), spread into the return object below.
   const timeTrackerActions = useTimeTrackerActions(setState, get);
 
@@ -2353,6 +2378,7 @@ export function useAppState() {
     notificationsStatus,
     refreshPartners,
     partnersStatus,
+    refreshNow,
     // Projects & Goals Module Actions
     ...projectActions,
     // Time Tracker Module Actions

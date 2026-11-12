@@ -7,7 +7,7 @@ import { bootHook, story, until, quiet, eq, assert, pass, server, UID } from './
 
 const blobAt = 'Sun 2026-11-01 5:00 AM PKT (UTC+05:00)';
 
-// Object.keys(useAppState()) at ef21c97 (the 175 members, in order).
+// Object.keys(useAppState()) at ef21c97 (the 175 members, in order), plus refreshNow (pull-to-refresh).
 const MEMBERS = [
   'state', 'isAuthChecking', 'isSessionLoading', 'isServerDataApplied', 'setRankCelebrated',
   'setLastSeenRelease', 'storedSessionWait', 'logout', 'deleteAccount', 'logoutGuest', 'addPresetHabit',
@@ -38,7 +38,7 @@ const MEMBERS = [
   'declinePartnerInvite', 'endPartnership', 'getPartnerProfileStats', 'createSharedChallenge',
   'logSharedChallengeHabit', 'deleteSharedChallenge', 'markNotificationRead', 'markNotificationsRead',
   'markAllNotificationsRead', 'clearNotifications', 'clearReadNotifications', 'refreshNotifications',
-  'notificationsStatus', 'refreshPartners', 'partnersStatus', 'createGoal', 'updateGoal', 'deleteGoal',
+  'notificationsStatus', 'refreshPartners', 'partnersStatus', 'refreshNow', 'createGoal', 'updateGoal', 'deleteGoal',
   'createProject', 'updateProject', 'saveProjectOrder', 'saveListOrder', 'deleteProject', 'createTask',
   'updateTask', 'toggleTaskCompleted', 'deleteTask', 'toggleSubtask', 'addSubtask', 'deleteSubtask',
   'renameSubtask', 'reorderSubtasks', 'addTimeTrackerActivity', 'updateTimeTrackerActivity',

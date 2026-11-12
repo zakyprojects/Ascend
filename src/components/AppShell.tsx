@@ -52,6 +52,7 @@ import { FocusTimerChip } from './pfc/FocusTimerChip';
 import { FloatingDock } from './nav/FloatingDock';
 import { BlockPill } from './nav/BlockPill';
 import { PageSwipeContext, usePageSwipe } from '@/lib/ui/pageSwipe';
+import { PullRefresh } from './ui/PullRefresh';
 
 // Below lg the window scrolls; from lg up the shell is viewport-high and <main> scrolls.
 const DESKTOP_QUERY = '(min-width: 1024px)';
@@ -391,6 +392,14 @@ export function AppShell({ currentView, navigationKind, pendingView = null, onVi
             </PageSwipeContext.Provider>
           </div>
         </main>
+
+        {/* Pull down at the top of a page to refresh (touch screens, signed in). */}
+        <PullRefresh
+          listenRef={mainRef}
+          isActive={() => Boolean(currentUser)}
+          scrollTop={() => (mainRef.current ? readScroll(mainRef.current) : 0)}
+          onRefresh={store.refreshNow}
+        />
 
         {/* Floating pills: a running focus timer above the current Time Tracker block. */}
         <FloatingDock>

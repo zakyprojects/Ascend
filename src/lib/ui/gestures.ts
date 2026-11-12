@@ -62,3 +62,19 @@ export function startsInsideOwnGesture(target: Element, root: Element): boolean 
   }
   return false;
 }
+
+/** Controls that own vertical movement or a drag of their own: pull-to-refresh leaves them alone. */
+const OWN_PULL_SELECTOR =
+  'input, textarea, select, [contenteditable]:not([contenteditable="false"]), [role="slider"], [data-no-swipe], [data-no-pull]';
+
+/**
+ * True when a downward pull on `target` belongs to something between it and `root`: a field, a
+ * slider, a drag owner (`data-no-swipe`: reorder lists, swipe rows, charts, the week picker, Select)
+ * or an inner list scrolled away from its top (the pull scrolls that list back up).
+ */
+export function startsInsideOwnPull(target: Element, root: Element): boolean {
+  for (let el: Element | null = target; el && el !== root; el = el.parentElement) {
+    if (el.matches(OWN_PULL_SELECTOR) || el.scrollTop > 0) return true;
+  }
+  return false;
+}
