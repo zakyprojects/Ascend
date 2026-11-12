@@ -1306,6 +1306,7 @@ function mapSharedChallengeRow(row: any): SharedChallenge {
       : (row.user2_done_date ? [row.user2_done_date] : []),
     status: row.status as 'active' | 'completed' | 'expired',
     createdAt: row.created_at,
+    ...(typeof row.start_date === 'string' && row.start_date ? { startDate: row.start_date } : {}),
   };
 }
 

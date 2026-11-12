@@ -18,7 +18,7 @@ import { leaguePeriodKey } from '@/lib/leagueStandingsRefresh';
 import { getCurrentTier } from '@/lib/tiers';
 import { isPartnershipUser1 } from '@/lib/partnershipSide';
 import { CHALLENGE_LENGTH_OPTIONS, MAX_PARTNERS, partnerLimitText } from '@/lib/partnerRules';
-import { addDays, calculateElapsedDays, todayKey } from '@/lib/dates';
+import { addDays, todayKey } from '@/lib/dates';
 import { useLocalDayKey } from '@/lib/useLocalDayKey';
 import { usePartnerDayKeys } from '@/lib/usePartnerDayKeys';
 import { ptUnit, ptsText } from '@/lib/leagues';
@@ -37,6 +37,7 @@ import {
   pactBadHabitToAdd,
   pactCanStillFinish,
   pactDayCells,
+  pactDayNumber,
   pactHabitToAdd,
   pactSideGoal,
   resistPactTitle,
@@ -305,6 +306,8 @@ export function AccountabilityPartner({ store, onNavigate }: { store: AppStore; 
         if (c.status !== 'active') continue;
         running++;
         together += c.totalJointDaysCompleted ?? 0;
+        // Day 1 still to come for me (partner ahead in time): nothing to tick today.
+        if (pactDayNumber(c, today) < 1) continue;
         if (!canStillFinishWith(p, c)) continue;
         finishable++;
         if (doneDates(c, u1).includes(today)) doneToday++;
@@ -568,8 +571,13 @@ export function AccountabilityPartner({ store, onNavigate }: { store: AppStore; 
     const theirsDone = doneDates(c, !amUser1).includes(partnerToday);
     const together = c.totalJointDaysCompleted ?? 0;
     const length = c.durationDays || 1;
-    const day = Math.min(length, calculateElapsedDays(c.createdAt));
+    // My pact day: before day 1 (I'm behind my partner in time on the creation evening) there is
+    // nothing to tick yet; both start on the same date.
+    const dayNumber = pactDayNumber(c, today);
+    const notStarted = dayNumber < 1;
+    const day = Math.min(length, Math.max(1, dayNumber));
     const daysLeft = Math.max(0, length - day);
+    const startsText = dayNumber === 0 ? 'Starts tomorrow' : 'Starts soon';
     const mine = goalOf(c, amUser1);
     const theirs = goalOf(c, !amUser1);
     const busy = isKeyLoading(`log_${c.id}`);
@@ -614,14 +622,16 @@ export function AccountabilityPartner({ store, onNavigate }: { store: AppStore; 
         <div className="flex items-center gap-3">
           <button
             type="button"
-            disabled={busy}
+            disabled={busy || (notStarted && !mineDone)}
             onClick={() => {
               if (!mineDone && !slipped && !readingLinked) actionFeedback('tick');
               handleToggleToday(c);
             }}
             aria-pressed={readingLinked || slipped ? undefined : mineDone}
             aria-label={
-              readingLinked
+              notStarted && !mineDone
+                ? `${mine}: ${startsText.toLowerCase()} for you`
+                : readingLinked
                 ? `${mine}: ${mineDone ? 'done today' : 'not done yet'}. Open Reading to log pages.`
                 : slipped
                 ? `${mine}: slipped today. Undo today's log`
@@ -629,9 +639,9 @@ export function AccountabilityPartner({ store, onNavigate }: { store: AppStore; 
                 ? (mineDone ? `Undo resisted today for ${mine}` : `Mark ${mine} resisted today`) + (linked ? ' (your bad habit too)' : '')
                 : (mineDone ? `Undo today for ${mine}` : `Mark ${mine} done today`) + (linked ? ' (your habit too)' : '')
             }
-            title={readingLinked ? 'Log pages in Reading to tick this' : slipped ? 'Slipped today. Tap to undo.' : undefined}
+            title={notStarted && !mineDone ? `${startsText} for you` : readingLinked ? 'Log pages in Reading to tick this' : slipped ? 'Slipped today. Tap to undo.' : undefined}
             className={cx(
-              'shrink-0 w-11 h-11 rounded-xl flex items-center justify-center transition-all duration-300 active:scale-90',
+              'shrink-0 w-11 h-11 rounded-xl flex items-center justify-center transition-all duration-300 active:scale-90 disabled:cursor-not-allowed',
               mineDone
                 ? 'bg-primary-600 text-on-brand'
                 : slipped
@@ -659,7 +669,7 @@ export function AccountabilityPartner({ store, onNavigate }: { store: AppStore; 
             )}
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-xs">
               <span className={mineDone ? 'text-success-text' : slipped ? 'text-rose-theme' : 'text-content-muted'}>
-                You: {mineDone ? doneWord : slipped ? 'slipped' : 'not yet'}
+                You: {mineDone ? doneWord : slipped ? 'slipped' : notStarted ? startsText.toLowerCase() : 'not yet'}
               </span>
               <span className={theirsDone ? 'text-success-text' : 'text-content-muted'}>
                 {partnerName}: {theirsDone ? doneWord : 'not yet'}
@@ -734,7 +744,9 @@ export function AccountabilityPartner({ store, onNavigate }: { store: AppStore; 
             <span>
               <span className="figure text-content-secondary">{together}</span> of {length} days done together
             </span>
-            <span>{daysLeft === 0 ? 'Last day' : `${daysLeft} day${daysLeft === 1 ? '' : 's'} left`}</span>
+            <span>
+              {notStarted ? `${startsText} for you` : daysLeft === 0 ? 'Last day' : `${daysLeft} day${daysLeft === 1 ? '' : 's'} left`}
+            </span>
           </div>
           {!canFinish && (
             <div className="flex flex-wrap items-center justify-between gap-2 pt-1.5">

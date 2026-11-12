@@ -522,13 +522,27 @@ export function usePartnerActions(setState: StoreSetState, stateRef: { current: 
       }));
 
       let todayTickFailed = false;
+      let notStartedForMe = false;
       let todayTickResult: SharedChallengeSaveResult | null = null;
       try {
         await trackPledgeWrite(
           challenge.id,
           (async () => {
-            await saveSharedChallengeSupabase(challenge);
+            const created = await saveSharedChallengeSupabase(challenge);
+            // The server's shared start date (day 1 for both partners) goes on screen at once.
+            const startDate = created.stored?.startDate;
+            if (startDate) {
+              setState((prev) => ({
+                ...prev,
+                sharedChallenges: prev.sharedChallenges.map((c) => (c.id === challenge.id ? { ...c, startDate } : c)),
+              }));
+            }
             if (!startsTicked) return;
+            // Day 1 is still to come for me (my partner is ahead in time): today can't be ticked.
+            if (startDate && startDate > todayKey()) {
+              notStartedForMe = true;
+              return;
+            }
             try {
               todayTickResult = await saveSharedChallengeSupabase(shown);
             } catch (err) {
@@ -545,6 +559,18 @@ export function usePartnerActions(setState: StoreSetState, stateRef: { current: 
           sharedChallenges: (prev.sharedChallenges || []).filter((c) => c.id !== challenge.id),
         }));
         throw err;
+      }
+
+      if (notStartedForMe) {
+        // The optimistic tick goes back quietly: the card says the challenge starts tomorrow.
+        setState((prev) => ({
+          ...prev,
+          sharedChallenges: prev.sharedChallenges.map((c) =>
+            c.id === challenge.id ? applyPledgeToggle(c, isUser1, false).updated : c
+          ),
+        }));
+        syncBroadcaster.broadcast('CHALLENGE_UPDATED', challenge);
+        return { startedTicked: false, todayTickFailed: false };
       }
 
       if (todayTickFailed) {

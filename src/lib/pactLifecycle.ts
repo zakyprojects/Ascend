@@ -1,6 +1,6 @@
 import { AppState, BadHabit, BadHabitLog, Habit, SharedChallenge } from '@/types';
 import { isPartnershipUser1 } from './partnershipSide';
-import { todayKey, previousPeriodKey, calculateElapsedDays, getNow, addDays, parseDate } from './dates';
+import { todayKey, previousPeriodKey, getNow, addDays, parseDate, localDayStartMs } from './dates';
 import { sameName } from './uniqueNames';
 import { PRESET_BAD_HABITS, PRESET_CATEGORIES, type PresetBadHabit, type PresetHabit } from './presets';
 
@@ -94,6 +94,36 @@ export function calculateJointStreak(jointDates: string[], targetNow: Date = get
 }
 
 /**
+ * Day 1 of a pact as a YYYY-MM-DD key: the server's shared start date (the later of the two
+ * partners' local dates at creation, so both tick the same dates), else the viewer's own creation
+ * day (rows from older servers, a new pact before the server answered). Null when neither is known.
+ */
+export function pactStartDay(challenge: SharedChallenge): string | null {
+  if (typeof challenge.startDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(challenge.startDate)) {
+    return challenge.startDate;
+  }
+  const created = parseDate(challenge.createdAt);
+  return created ? todayKey(created) : null;
+}
+
+/**
+ * The viewer's 1-based pact day on their day `today` (0 or less: day 1 is still to come for this
+ * viewer, the partner behind in time on the creation evening). Calendar days, as the server's date
+ * subtraction (rounded across a DST change).
+ */
+export function pactDayNumber(challenge: SharedChallenge, today: string = todayKey()): number {
+  const start = pactStartDay(challenge);
+  if (!start) return 1;
+  const diff = Math.round((localDayStartMs(today) - localDayStartMs(start)) / 86400000);
+  return Number.isFinite(diff) ? diff + 1 : 1;
+}
+
+/** Whether day 1 of the pact is still to come for the viewer (their today is before the start date). */
+export function pactNotStartedYet(challenge: SharedChallenge, today: string = todayKey()): boolean {
+  return pactDayNumber(challenge, today) < 1;
+}
+
+/**
  * The status this device shows. Completed once the joint days reach the length. Ended ('expired')
  * when the server says so, or once this viewer's own last day is over: the partner may still be on
  * theirs, so the stored status is the server's alone (shared_challenges_guard and the hourly pact
@@ -106,7 +136,7 @@ function displayedPactStatus(
 ): SharedChallenge['status'] {
   if (totalCompleted >= challenge.durationDays) return 'completed';
   if (challenge.status === 'expired') return 'expired';
-  return calculateElapsedDays(challenge.createdAt, targetNow) > challenge.durationDays ? 'expired' : 'active';
+  return pactDayNumber(challenge, todayKey(targetNow)) > challenge.durationDays ? 'expired' : 'active';
 }
 
 /**
@@ -150,6 +180,10 @@ export function applyPledgeToggle(
   targetNow: Date = getNow()
 ): { updated: SharedChallenge; becameCompleted: boolean; wasBothCompletedNow: boolean } {
   const today = todayKey(targetNow);
+  // Before the viewer's day 1 the server takes no tick (shared_challenges_guard): nothing changes.
+  if (isDoneToday && pactNotStartedYet(target, today)) {
+    return { updated: target, becameCompleted: false, wasBothCompletedNow: false };
+  }
   const norm = normalizeChallengeDates(target);
 
   const u1Set = new Set(norm.user1DoneDates);
@@ -249,6 +283,10 @@ export function mergeSharedChallenge(baseC: SharedChallenge, incC: SharedChallen
     totalJointDaysCompleted: totalCompleted,
     lastJointCompletionDate: latestJoint,
   };
+  // The server's start date never goes away once known (a realtime row or a local copy may lack it).
+  const startDate = primary.startDate || secondary.startDate;
+  if (startDate) merged.startDate = startDate;
+  else delete merged.startDate;
 
   return reconcileSharedChallengeLifecycle(merged);
 }
@@ -344,6 +382,8 @@ export function tickLinkedPacts(
     if (challenge.status !== 'active') return challenge;
     const isUser1 = sideOf(challenge);
     if (isUser1 === null || !linkedHabitFor(challenge, isUser1, [habit])) return challenge;
+    // Day 1 still to come for this viewer: the server takes no tick yet.
+    if (pactNotStartedYet(challenge)) return challenge;
     const { updated } = applyPledgeToggle(challenge, isUser1, done);
     ticks.push({ updated, isUser1 });
     return updated;
@@ -438,6 +478,7 @@ export function tickLinkedBadHabitPacts(
     if (challenge.status !== 'active') return challenge;
     const isUser1 = sideOf(challenge);
     if (isUser1 === null || !linkedBadHabitFor(challenge, isUser1, [badHabit])) return challenge;
+    if (pactNotStartedYet(challenge, today)) return challenge;
     if (pactSideDoneOn(challenge, isUser1, today) === resisted) return challenge;
     const { updated } = applyPledgeToggle(challenge, isUser1, resisted);
     ticks.push({ updated, isUser1 });
@@ -463,8 +504,9 @@ export interface PactDayCell {
 }
 
 /**
- * One cell per challenge day, dated from the viewer's creation day (the dates the viewer's side
- * ticks; "together" is the same-date match of both sides, as on the server). A day is lost once
+ * One cell per challenge day, dated from the pact's start day (pactStartDay: the same dates for
+ * both sides once the server's start date is known; "together" is the same-date match of both
+ * sides, as on the server). A day is lost once
  * either side's local day has passed it without a tick: past days can never be ticked. Shows only
  * done / not done for each side, never why (a slip and a day not logged look the same).
  */
@@ -474,9 +516,8 @@ export function pactDayCells(
   today: string,
   partnerToday: string
 ): PactDayCell[] {
-  const start = parseDate(challenge.createdAt);
-  if (!start) return [];
-  const first = todayKey(start);
+  const first = pactStartDay(challenge);
+  if (!first) return [];
   const norm = normalizeChallengeDates(challenge);
   const mineSet = new Set(isUser1 ? norm.user1DoneDates : norm.user2DoneDates);
   const theirsSet = new Set(isUser1 ? norm.user2DoneDates : norm.user1DoneDates);

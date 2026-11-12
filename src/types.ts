@@ -726,6 +726,12 @@ export interface SharedChallenge {
   user2DoneDates?: string[];
   status: 'active' | 'completed' | 'broken' | 'expired';
   createdAt: string;
+  /**
+   * Day 1 of the pact (YYYY-MM-DD), the same calendar date for both partners: set by the server at
+   * creation to the later of the two partners' local dates. Missing on rows from older servers and
+   * on a new pact until the server answers; then each side counts from its own creation day.
+   */
+  startDate?: string;
 }
 
 export interface AppNotification {
