@@ -10,7 +10,7 @@ import { isRetiredAppSkillAward } from './skillAwards';
 import { isRetiredAppReadingAward } from './readingAwards';
 import { isRetiredAppJournalAward } from './journalAwards';
 import { isRetiredAppFocusAward } from './focusAwards';
-import { weekKey, uid, getNow, todayKey } from './dates';
+import { weekKey, uid, todayKey } from './dates';
 import { WEEKLY_REFLECTION_POINTS, calculateWeeklyGoalsPoints } from './pointsConfig';
 import { trustedNow, trustedNowMs } from './clock';
 import { leagueNow, getSeasonNumber, getSeasonStart } from './leagueTime';
@@ -578,7 +578,7 @@ export function sanitizeLoadedState(loaded: Partial<AppState>, profile: UserProf
   };
 
   let sweptState = baseState;
-  const now = getNow();
+  const now = trustedNow();
 
   // Auto-hydrate today's schedule from active template if dailyLog is currently empty
   if (sweptState.timeTracker) {

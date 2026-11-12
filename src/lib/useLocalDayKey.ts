@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { getNow, todayKey } from './dates';
+import { trustedNow } from './clock';
+import { todayKey } from './dates';
 
 const CHECK_INTERVAL_MS = 30000;
 
@@ -8,10 +9,10 @@ const CHECK_INTERVAL_MS = 30000;
  * when the tab becomes visible), so "today" views roll over at midnight without a reload.
  */
 export function useLocalDayKey(): string {
-  const [dayKey, setDayKey] = useState(() => todayKey(getNow()));
+  const [dayKey, setDayKey] = useState(() => todayKey(trustedNow()));
 
   useEffect(() => {
-    const check = () => setDayKey(todayKey(getNow()));
+    const check = () => setDayKey(todayKey(trustedNow()));
     const intervalId = setInterval(check, CHECK_INTERVAL_MS);
     document.addEventListener('visibilitychange', check);
     return () => {

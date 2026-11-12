@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { getNow, todayKeyInZone } from './dates';
+import { trustedNow } from './clock';
+import { todayKeyInZone } from './dates';
 import { isSupabaseConfigured, supabase } from './supabase';
 import { isDeviceOffline } from './deviceOffline';
 
@@ -8,7 +9,7 @@ const CHECK_INTERVAL_MS = 30000;
 type DayKeys = Record<string, string>;
 
 function dayKeysFor(timeZones: Record<string, string>): DayKeys {
-  const now = getNow();
+  const now = trustedNow();
   const keys: DayKeys = {};
   for (const [userId, timeZone] of Object.entries(timeZones)) {
     const key = todayKeyInZone(timeZone, now);

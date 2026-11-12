@@ -2,13 +2,12 @@
 // journal, reading), plus server-owned points on hydration. Pure: state in, state out (moved from store.ts).
 import type { AppState, PointsEntry, LeagueArchive, Habit, BadHabit, BadHabitLog, WorkoutLog, SkillSessionLog, Skill, FocusSessionLog, JournalEntry, ReadingLog, UserBook, TimeTrackerBlock } from '@/types';
 import { leagueNow, getSeasonNumber, getSeasonStart } from './leagueTime';
-import { calculateSeasonalTotal } from './leagues';
+import { calculateSeasonalTotal, getEffectiveSeasonPoints } from './leagues';
 import { timezoneWaitHoldsPreview } from './useTimezoneWait';
 import { computeHabitAwards, isHabitAwardEntry } from './habitAwards';
 import { trustedNow } from './clock';
 import { addPointsInternal } from './pointsLedger';
 import { computeBadHabitAwards, isBadHabitDayEntry } from './badHabitAwards';
-import { getAppStateSeasonPoints } from './habitPenalties';
 import { computeWorkoutAwards, isWorkoutDayEntry } from './workoutAwards';
 import { computeSkillAwards, isSkillDayEntry } from './skillAwards';
 import { isFocusDayEntry, computeFocusAwards } from './focusAwards';
@@ -145,7 +144,7 @@ export function applyBadHabitAwardsInternal(
     day,
     new Date(`${day}T00:00:00`).getTime(),
     trustedNow().getTime(),
-    getAppStateSeasonPoints(state, leagueNow())
+    getEffectiveSeasonPoints(state, leagueNow())
   );
 
   const { excisedEntryIds: _excised, ...excised } = excisePointsEntriesInternal(state, (entry) =>

@@ -1,25 +1,16 @@
 import { trustedNow, trustedNowMs } from './clock';
-/** Returns the current Date */
-export function getNow(): Date {
-  return trustedNow();
-}
-
 /** Returns local date as YYYY-MM-DD (no timezone surprises) */
 export function todayKey(date?: Date): string {
-  const d = date || getNow();
+  const d = date || trustedNow();
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, '0');
   const day = String(d.getDate()).padStart(2, '0');
   return `${y}-${m}-${day}`;
 }
 
-export function dateKey(date?: Date): string {
-  return todayKey(date);
-}
-
 /** Start of the current week (Monday) as a Date */
 export function startOfWeek(date?: Date): Date {
-  const d = new Date(date || getNow());
+  const d = new Date(date || trustedNow());
   const day = d.getDay();
   const diff = day === 0 ? -6 : 1 - day; // Monday as start
   d.setDate(d.getDate() + diff);
@@ -44,11 +35,11 @@ export function periodKey(frequency: 'daily' | 'weekly', date?: Date): string {
 /** Returns the period key for N periods ago */
 export function previousPeriodKey(frequency: 'daily' | 'weekly', periodsAgo: number, date?: Date): string {
   if (frequency === 'daily') {
-    const d = new Date(date || getNow());
+    const d = new Date(date || trustedNow());
     d.setDate(d.getDate() - periodsAgo);
     return todayKey(d);
   }
-  const d = new Date(date || getNow());
+  const d = new Date(date || trustedNow());
   d.setDate(d.getDate() - periodsAgo * 7);
   return weekKey(d);
 }
@@ -66,7 +57,7 @@ export function calculateStreak(
   if (doneDates.length === 0) return 0;
   const done = new Set(doneDates);
 
-  const effectiveNow = now || getNow();
+  const effectiveNow = now || trustedNow();
   let streak = 0;
   // Walk period keys (calendar days / weeks), not 24-hour steps, so a 23- or 25-hour day at a
   // daylight-saving change never skips or repeats a day.
@@ -149,7 +140,7 @@ export function localDayStartMs(dayKey: string): number {
  * Today's YYYY-MM-DD date in an IANA timezone (e.g. a partner's), or null for an unknown zone.
  * Uses the zone's own rules, so daylight-saving changes need no arithmetic here.
  */
-export function todayKeyInZone(timeZone: string, now: Date = getNow()): string | null {
+export function todayKeyInZone(timeZone: string, now: Date = trustedNow()): string | null {
   try {
     const parts = new Intl.DateTimeFormat('en-US', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(now);
     const part = (type: string) => parts.find((p) => p.type === type)?.value;
@@ -214,7 +205,7 @@ export function isTodayLocal(dateIso?: string | null): boolean {
   if (!dateIso) return false;
   const d = parseDate(dateIso);
   if (!d) return false;
-  const now = getNow();
+  const now = trustedNow();
   return (
     d.getFullYear() === now.getFullYear() &&
     d.getMonth() === now.getMonth() &&
@@ -226,7 +217,7 @@ export function isYesterdayLocal(dateIso?: string | null): boolean {
   if (!dateIso) return false;
   const d = parseDate(dateIso);
   if (!d) return false;
-  const yesterday = getNow();
+  const yesterday = trustedNow();
   yesterday.setDate(yesterday.getDate() - 1);
   return (
     d.getFullYear() === yesterday.getFullYear() &&
@@ -243,7 +234,7 @@ export function calculateElapsedDays(startDateVal?: string | Date | number | nul
   const parsedStart = parseDate(startDateVal);
   if (!parsedStart) return 1;
 
-  const target = targetNow || getNow();
+  const target = targetNow || trustedNow();
   const startKeyStr = todayKey(parsedStart);
   const targetKeyStr = todayKey(target);
 
@@ -270,7 +261,7 @@ export function isPlanJourneyDoneThisPeriod(
 ): boolean {
   const last = parseDate(lastCompletedDate);
   if (!last) return false;
-  return periodKey(cadence, last) === periodKey(cadence, now || getNow());
+  return periodKey(cadence, last) === periodKey(cadence, now || trustedNow());
 }
 
 /**
@@ -287,7 +278,7 @@ export function calculateActivePlanStreak(
   const last = parseDate(lastCompletedDate);
   if (!last) return 0;
 
-  const currentNow = now || getNow();
+  const currentNow = now || trustedNow();
   const lastKey = periodKey(cadence, last);
   if (lastKey === periodKey(cadence, currentNow) || lastKey === previousPeriodKey(cadence, 1, currentNow)) {
     return streakCount;
@@ -325,7 +316,7 @@ export function getWeekDates(targetWeekKey?: string): {
   end: Date;
   dateStrings: string[];
 } {
-  let baseDate = getNow();
+  let baseDate = trustedNow();
   if (targetWeekKey) {
     const match = targetWeekKey.match(/^(\d{4})-W(\d{2})$/);
     if (match) {

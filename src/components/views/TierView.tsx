@@ -11,7 +11,8 @@ import { LeagueCountdown } from '@/components/ui/LeagueCountdown';
 import { getLocalResetDetail, sortPointsNewestFirst } from '@/lib/leagues';
 import { getSeasonNumber, getSeasonStart, leagueNow } from '@/lib/leagueTime';
 import { leaguePeriodKey } from '@/lib/leagueStandingsRefresh';
-import { formatDateKeyHuman, getNow, isTodayLocal, isYesterdayLocal, todayKey } from '@/lib/dates';
+import { trustedNow } from '@/lib/clock';
+import { formatDateKeyHuman, isTodayLocal, isYesterdayLocal, todayKey } from '@/lib/dates';
 import { entryDay } from '@/lib/weeklyActivity';
 import { pointsReasonText } from '@/lib/pointsReasonText';
 import { useLocalDayKey } from '@/lib/useLocalDayKey';
@@ -52,7 +53,7 @@ export function TierView({ store }: { store: AppStore }) {
   // League clock for the season and its reset; the personal clock for the entries' own dates.
   const leagueClock = leagueNow();
   const seasonStart = getSeasonStart(leagueClock);
-  const personalNow = getNow();
+  const personalNow = trustedNow();
   // The board rebuilds every member: once per state change or new period, not on every render.
   const { getLeagueData } = store;
   const periodKey = leaguePeriodKey(leagueClock);

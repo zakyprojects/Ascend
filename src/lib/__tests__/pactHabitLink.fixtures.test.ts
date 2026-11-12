@@ -10,7 +10,7 @@ import {
   tickLinkedPacts,
   type LinkedPactReconcileInput,
 } from '../pactLifecycle';
-import { getNow } from '../dates';
+import { trustedNow } from '../clock';
 
 function assert(condition: boolean, msg: string) {
   if (!condition) {
@@ -169,7 +169,7 @@ runFixtures();
 {
   const reading = habit('r', 'Reading (Books)', { linkedModule: 'reading', isSystemLinked: true, points: 0 });
   // Created now: tickLinkedPacts reads the real clock, and a pact past its last day takes no ticks.
-  const startedNow = { createdAt: getNow().toISOString() };
+  const startedNow = { createdAt: trustedNow().toISOString() };
   const linkedMine = pact('t1', 'Reading (Books)', 'Run', startedNow);
   const linkedTheirs = pact('t2', 'Run', 'reading (books)', startedNow);
   const unlinked = pact('t3', 'Run', 'Walk');

@@ -7,7 +7,7 @@
 import { useCallback, useEffect } from 'react';
 import type { AppState, PartnerInvite, Partnership, SharedChallenge, SharedChallengeCategory } from '@/types';
 import { isDeviceOffline } from './deviceOffline';
-import { todayKey, getNow } from './dates';
+import { todayKey } from './dates';
 import { adoptServerInviteId } from './partnerInvites';
 import { applyPledgeToggle, linkedHabitFor, linkedBadHabitFor, badHabitStatusOn, habitDoneOn, planLinkedPactRepairs } from './pactLifecycle';
 import { isPartnershipUser1 } from './partnershipSide';
@@ -494,7 +494,7 @@ export function usePartnerActions(setState: StoreSetState, stateRef: { current: 
         user2Category,
         user2Target: user2Target.trim(),
         status: 'active',
-        createdAt: getNow().toISOString(),
+        createdAt: trustedNow().toISOString(),
       };
 
       // Your goal is one of your habits and it is already done today: the pact starts with today

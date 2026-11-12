@@ -12,7 +12,8 @@ import { useAsyncActionKey } from '@/lib/useAsyncAction';
 import { applyListOrder, LIST_ORDER_KEYS, reorderInSlots, savedOrderIds } from '@/lib/listOrder';
 import { confirmLeave } from '@/lib/unsavedChanges';
 import { LazyReorderList, ReorderButton } from '@/components/ui/Reorder';
-import { weekKey, getWeekDates, offsetWeekKey, formatWeekRange, getNow, parseDate, localDayStartMs } from '@/lib/dates';
+import { trustedNow } from '@/lib/clock';
+import { weekKey, getWeekDates, offsetWeekKey, formatWeekRange, parseDate, localDayStartMs } from '@/lib/dates';
 import { useLocalDayKey } from '@/lib/useLocalDayKey';
 import { isReflectionWindowOpen, weeklyScoringGoals } from '@/lib/weeklyAwards';
 import { WeeklyGoalItem } from '@/types';
@@ -435,9 +436,9 @@ export function WeeklyGoalsView({
               store={store}
               weekKey={selectedWeekKey}
               weekText={selectedText}
-              lastWeekWindowOpen={isCurrentWeek && isReflectionWindowOpen(previousWeekKey, getNow())}
+              lastWeekWindowOpen={isCurrentWeek && isReflectionWindowOpen(previousWeekKey, trustedNow())}
               onOpenLastWeek={() => goToWeek(previousWeekKey)}
-              thisWeekWindowOpen={selectedWeekKey === nextWeekKey && isReflectionWindowOpen(currentWeekKey, getNow())}
+              thisWeekWindowOpen={selectedWeekKey === nextWeekKey && isReflectionWindowOpen(currentWeekKey, trustedNow())}
               onOpenThisWeek={() => goToWeek(currentWeekKey)}
             />
 

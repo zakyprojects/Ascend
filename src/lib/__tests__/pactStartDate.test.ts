@@ -15,7 +15,8 @@ import {
   reconcileSharedChallengeLifecycle,
   tickLinkedPacts,
 } from '../pactLifecycle';
-import { addDays, getNow, todayKey } from '../dates';
+import { trustedNow } from '../clock';
+import { addDays, todayKey } from '../dates';
 
 function assert(condition: boolean, msg: string) {
   if (!condition) throw new Error(`Assertion failed: ${msg}`);
@@ -95,7 +96,7 @@ function noTickBeforeDayOne() {
 
   // A habit-linked pact whose day 1 is after the real today is left alone (the server would refuse).
   const later = addDays(todayKey(), 1);
-  const linked = pact({ startDate: later, createdAt: getNow().toISOString() });
+  const linked = pact({ startDate: later, createdAt: trustedNow().toISOString() });
   const read: Habit = {
     id: 'h1', name: 'Read', frequency: 'daily', points: 1, isPreset: false,
     createdAt: '2026-10-01', createdAtPeriod: '2026-10-01', completions: {},

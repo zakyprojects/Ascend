@@ -1,6 +1,6 @@
 import { User } from '@supabase/supabase-js';
 import { AppState, DEFAULT_STATE, UserProfile, Partnership } from '@/types';
-import { generateNumericUID, getNow, todayKey, weekKey } from './dates';
+import { generateNumericUID, todayKey, weekKey } from './dates';
 import { reconcileSharedChallengeLifecycle } from './pactLifecycle';
 import { cachedSyncedCollections } from './sync/syncedCollections';
 import { cachedDeviceLocalState } from './deviceLocalState';
@@ -277,7 +277,7 @@ export async function hydrateUserSession(
       username: user.username,
     };
     state = applyRemoteChanges(state, tablePull.changes, userId);
-    const now = getNow();
+    const now = trustedNow();
     state = applyPresetHabitRemovalMigration(state, weekKey(now), todayKey(now));
     setUserDataWatermark(userId, state);
   } else {

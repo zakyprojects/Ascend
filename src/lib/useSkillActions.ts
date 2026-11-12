@@ -2,7 +2,7 @@
 // store.ts unchanged. useAppState calls this hook once and returns the same members as before.
 import { useCallback } from 'react';
 import type { AppState, Skill, SkillSessionLog, SkillLevel, SkillDrill, SkillDrillCount } from '@/types';
-import { uid, todayKey, getNow, weekKey } from './dates';
+import { uid, todayKey, weekKey } from './dates';
 import { addLogDrills, drillNameProblem, foldClearedCounts, isDrillGoal, keepValidDrillCounts, normalizeDrillName, normalizeDrillUnit } from './skillDrills';
 import type { NewLogDrill } from './skillDrills';
 import { renameSkillIn } from './itemEdits';
@@ -103,7 +103,7 @@ export function useSkillActions(setState: StoreSetState, get: () => AppState) {
   }, []);
 
   const deleteSkill = useCallback((skillId: string) => {
-    const currentWeekKey = weekKey(getNow());
+    const currentWeekKey = weekKey(trustedNow());
     void (
       setState(
         (prev) => {
@@ -299,7 +299,7 @@ export function useSkillActions(setState: StoreSetState, get: () => AppState) {
    * name. Weekly goals on it this week and later go (past weeks keep theirs, like a skill delete).
    */
   const deleteSkillDrill = useCallback((skillId: string, drillId: string) => {
-    const currentWeekKey = weekKey(getNow());
+    const currentWeekKey = weekKey(trustedNow());
     void (
       setState(
         (prev) => {

@@ -5,7 +5,8 @@ import { AppStore } from '@/lib/store';
 import { getWeeklyReflectionNetPoints, isWeeklyReflectionAwarded, weeklyReflectionAwardedToday } from '@/lib/weeklyGoalPoints';
 import { WEEKLY_REFLECTION_POINTS } from '@/lib/pointsConfig';
 import { reflectionWindow } from '@/lib/weeklyAwards';
-import { getNow, parseDate } from '@/lib/dates';
+import { trustedNow } from '@/lib/clock';
+import { parseDate } from '@/lib/dates';
 import { EmptyState, Form, Textarea, useFocusOnRender, useFormController } from '@/components/ui/primitives';
 import { TAP_TARGET_Y } from '@/components/ui/primitives/shared';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
@@ -57,7 +58,7 @@ export function ReflectionsCard({
   const { isKeyLoading, executeWithKey } = useAsyncActionKey();
   // Re-checked every minute, so a page left open shows the window opening and closing on time.
   useMinuteTick();
-  const status = windowStatus(weekKey, getNow());
+  const status = windowStatus(weekKey, trustedNow());
   const reflections = store.state.weeklyGoals.find((w) => w.weekKey === weekKey)?.reflections || [];
   const notYetRewarded = getWeeklyReflectionNetPoints(store.state, weekKey) <= 0;
 

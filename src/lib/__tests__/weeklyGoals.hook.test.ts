@@ -6,13 +6,14 @@
 //        last week. (Reflections depend on the reflection window, so
 //        they are not driven here; weeklyAwards has their unit tests.)
 import { bootHook, story, until, quiet, rows, assert, pass, server, UID } from './harness/bootHook';
-import { getNow, weekKey } from '../dates';
+import { trustedNow } from '../clock';
+import { weekKey } from '../dates';
 
 const blobAt = 'Sun 2026-11-01 5:00 AM PKT (UTC+05:00)';
 
 await story('weeklyGoals.hook (weekly goal actions)', async () => {
-  const week = weekKey(getNow());
-  const lastWeek = weekKey(new Date(getNow().getTime() - 7 * 24 * 3600 * 1000));
+  const week = weekKey(trustedNow());
+  const lastWeek = weekKey(new Date(trustedNow().getTime() - 7 * 24 * 3600 * 1000));
   assert(lastWeek < week, 'T24 precondition: last week key sorts before this week');
   const oldGoal = { id: 'g-last', title: 'HookLastWeekGoal', priority: 'medium', completed: false, createdAt: blobAt };
   const lastWeekDoc = { id: 'wg-last', weekKey: lastWeek, goals: [oldGoal], deletedGoalIds: [], createdAt: blobAt };

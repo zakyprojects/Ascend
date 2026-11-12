@@ -6,7 +6,7 @@ import {
   TimeTrackerTemplate,
   DEFAULT_TIME_TRACKER_ACTIVITIES,
 } from '@/types';
-import { uid, todayKey, getNow, parseDate, addDays } from './dates';
+import { uid, todayKey, parseDate, addDays } from './dates';
 import { trustedNow } from './clock';
 
 export const DAYS_OF_WEEK = [
@@ -613,7 +613,7 @@ export function liveBlocksAt(blocks: TimeTrackerBlock[], dateKey: string, at: Da
 /**
  * Live UI Computations:
  * Calculates active block, remaining time, progress percentage, etc.
- * Always computed against the given time (default getNow()) for blocks of day `dateKey`
+ * Always computed against the given time (default trustedNow()) for blocks of day `dateKey`
  * (default: the local day of `now`).
  */
 export interface LiveScheduleComputation {
@@ -638,7 +638,7 @@ export interface LiveScheduleComputation {
 export function computeLiveSchedule(
   blocks: TimeTrackerBlock[] = [],
   activities: TimeTrackerActivity[] = [],
-  now: Date = getNow(),
+  now: Date = trustedNow(),
   dateKey: string = todayKey(now)
 ): LiveScheduleComputation {
   const currentMinutes = now.getHours() * 60 + now.getMinutes() + now.getSeconds() / 60;

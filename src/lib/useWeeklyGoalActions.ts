@@ -2,7 +2,7 @@
 // moved out of store.ts unchanged. useAppState calls this hook once and returns the same members as before.
 import { useCallback } from 'react';
 import type { WeeklyGoal, WeeklyGoalItem, WeeklyGoalReflection } from '@/types';
-import { uid, getNow, weekKey } from './dates';
+import { uid, weekKey } from './dates';
 import { linkedItemExists, linkedGoalUnit } from './linkedGoalMetrics';
 import { isReflectionWindowOpen } from './weeklyAwards';
 import { reconcileWeeklyGoalsPointsForAllWeeks, reconcileLinkedWeeklyGoals, reconcileReflectionPoints, withDeletedGoalIds, recomputeWeeklyGoalsPointsForState } from './weeklyGoalPoints';
@@ -12,7 +12,7 @@ import type { StoreSetState } from './storeSetState';
 export function useWeeklyGoalActions(setState: StoreSetState) {
   const addWeeklyReflection = useCallback((targetWeekKey: string, content: string) => {
     if (!content.trim()) return;
-    if (!isReflectionWindowOpen(targetWeekKey, getNow())) {
+    if (!isReflectionWindowOpen(targetWeekKey, trustedNow())) {
       throw new Error('Reflections can only be written while the Reflection Window is open.');
     }
     setState((prev) => {
@@ -34,7 +34,7 @@ export function useWeeklyGoalActions(setState: StoreSetState) {
         prev,
         targetWeekKey,
         candidateReflections,
-        getNow()
+        trustedNow()
       );
 
       const updatedDoc: WeeklyGoal = withDeletedGoalIds({
@@ -64,7 +64,7 @@ export function useWeeklyGoalActions(setState: StoreSetState) {
 
   const updateWeeklyReflection = useCallback((targetWeekKey: string, reflectionId: string, content: string) => {
     if (!content.trim()) return;
-    if (!isReflectionWindowOpen(targetWeekKey, getNow())) {
+    if (!isReflectionWindowOpen(targetWeekKey, trustedNow())) {
       throw new Error('Reflections can only be written while the Reflection Window is open.');
     }
     setState((prev) => {
@@ -90,7 +90,7 @@ export function useWeeklyGoalActions(setState: StoreSetState) {
         prev,
         targetWeekKey,
         candidateReflections,
-        getNow()
+        trustedNow()
       );
 
       const updatedDoc = withDeletedGoalIds({ ...doc, reflections: updatedReflections });
@@ -107,7 +107,7 @@ export function useWeeklyGoalActions(setState: StoreSetState) {
   }, []);
 
   const deleteWeeklyReflection = useCallback((targetWeekKey: string, reflectionId: string) => {
-    if (!isReflectionWindowOpen(targetWeekKey, getNow())) {
+    if (!isReflectionWindowOpen(targetWeekKey, trustedNow())) {
       throw new Error('Reflections can only be written while the Reflection Window is open.');
     }
     void (
@@ -126,7 +126,7 @@ export function useWeeklyGoalActions(setState: StoreSetState) {
             prev,
             targetWeekKey,
             candidateReflections,
-            getNow()
+            trustedNow()
           );
 
           const updatedDoc = withDeletedGoalIds({ ...doc, reflections: updatedReflections });
@@ -148,7 +148,7 @@ export function useWeeklyGoalActions(setState: StoreSetState) {
   }, []);
 
   const addWeeklyGoalItem = useCallback((targetWeekKey: string, goalData: Partial<WeeklyGoalItem>) => {
-    const currentWeek = weekKey(getNow());
+    const currentWeek = weekKey(trustedNow());
     if (targetWeekKey < currentWeek) {
       throw new Error('Past weeks are read-only.');
     }
@@ -232,7 +232,7 @@ export function useWeeklyGoalActions(setState: StoreSetState) {
   }, []);
 
   const updateWeeklyGoalItem = useCallback((targetWeekKey: string, goalId: string, updates: Partial<WeeklyGoalItem>) => {
-    const currentWeek = weekKey(getNow());
+    const currentWeek = weekKey(trustedNow());
     if (targetWeekKey < currentWeek) {
       const keys = Object.keys(updates);
       if (keys.length !== 1 || keys[0] !== 'carryOverDismissed') {
@@ -355,7 +355,7 @@ export function useWeeklyGoalActions(setState: StoreSetState) {
   }, []);
 
   const deleteWeeklyGoalItem = useCallback((targetWeekKey: string, goalId: string) => {
-    const currentWeek = weekKey(getNow());
+    const currentWeek = weekKey(trustedNow());
     if (targetWeekKey < currentWeek) {
       throw new Error('Past weeks are read-only.');
     }
@@ -410,7 +410,7 @@ export function useWeeklyGoalActions(setState: StoreSetState) {
   }, []);
 
   const carryOverGoal = useCallback((sourceWeekKey: string, targetWeekKey: string, goalId: string, options?: { resumeProgress?: boolean }) => {
-    const currentWeek = weekKey(getNow());
+    const currentWeek = weekKey(trustedNow());
     if (targetWeekKey !== currentWeek) {
       return;
     }
@@ -491,8 +491,8 @@ export function useWeeklyGoalActions(setState: StoreSetState) {
   const syncLinkedWeeklyGoals = useCallback(() => {
     setState((prev) =>
       reconcileWeeklyGoalsPointsForAllWeeks(
-        reconcileLinkedWeeklyGoals(prev, getNow()),
-        getNow()
+        reconcileLinkedWeeklyGoals(prev, trustedNow()),
+        trustedNow()
       )
     );
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)

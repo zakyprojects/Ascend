@@ -3,7 +3,7 @@
 // returns the same members as before.
 import { useCallback } from 'react';
 import type { AppState, Habit } from '@/types';
-import { uid, periodKey, todayKey, getNow, weekKey } from './dates';
+import { uid, periodKey, todayKey, weekKey } from './dates';
 import type { LinkedPactTick } from './pactLifecycle';
 import { runningPactsLinkedTo, tickPactsLinkedTo } from './pactLifecycle';
 import type { PresetHabit } from './presets';
@@ -102,7 +102,7 @@ export function useHabitActions(setState: StoreSetState, get: () => AppState, af
   }, []);
 
   const deleteHabit = useCallback((habitId: string) => {
-    const currentWeekKey = weekKey(getNow());
+    const currentWeekKey = weekKey(trustedNow());
     setState(
       (prev) => {
         const target = prev.habits.find((h) => h.id === habitId);
@@ -148,7 +148,7 @@ export function useHabitActions(setState: StoreSetState, get: () => AppState, af
   }, []);
 
   const toggleReadingHabit = useCallback(() => {
-    const currentWeekKey = weekKey(getNow());
+    const currentWeekKey = weekKey(trustedNow());
     setState(
       (prev) => {
         const existing = prev.habits.find((h) => h.linkedModule === 'reading');

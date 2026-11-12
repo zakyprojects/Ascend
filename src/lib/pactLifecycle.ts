@@ -1,6 +1,7 @@
 import { AppState, BadHabit, BadHabitLog, Habit, SharedChallenge } from '@/types';
 import { isPartnershipUser1 } from './partnershipSide';
-import { todayKey, previousPeriodKey, getNow, addDays, parseDate, localDayStartMs } from './dates';
+import { trustedNow } from './clock';
+import { todayKey, previousPeriodKey, addDays, parseDate, localDayStartMs } from './dates';
 import { sameName } from './uniqueNames';
 import { PRESET_BAD_HABITS, PRESET_CATEGORIES, type PresetBadHabit, type PresetHabit } from './presets';
 
@@ -61,7 +62,7 @@ export function normalizeChallengeDates(c: SharedChallenge): {
  * - If today is not yet jointly done: checks if yesterday was jointly done (streak is preserved awaiting today).
  * - If yesterday was missed: streak is broken (0).
  */
-export function calculateJointStreak(jointDates: string[], targetNow: Date = getNow()): number {
+export function calculateJointStreak(jointDates: string[], targetNow: Date = trustedNow()): number {
   const jointSet = new Set(jointDates);
   const todayStr = todayKey(targetNow);
   const yesterdayStr = previousPeriodKey('daily', 1, targetNow);
@@ -147,7 +148,7 @@ function displayedPactStatus(
  */
 export function reconcileSharedChallengeLifecycle(
   challenge: SharedChallenge,
-  targetNow: Date = getNow()
+  targetNow: Date = trustedNow()
 ): SharedChallenge {
   const norm = normalizeChallengeDates(challenge);
   const jointDates = norm.jointDates;
@@ -177,7 +178,7 @@ export function applyPledgeToggle(
   target: SharedChallenge,
   isUser1: boolean,
   isDoneToday: boolean,
-  targetNow: Date = getNow()
+  targetNow: Date = trustedNow()
 ): { updated: SharedChallenge; becameCompleted: boolean; wasBothCompletedNow: boolean } {
   const today = todayKey(targetNow);
   // Before the viewer's day 1 the server takes no tick (shared_challenges_guard): nothing changes.

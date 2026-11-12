@@ -2,7 +2,7 @@ import { AppState } from '@/types';
 import { CapId, getCapStatus } from '@/lib/capStatus';
 import { capLabels, capReachedText } from '@/lib/capCopy';
 import { CapMeter } from '@/components/ui/CapMeter';
-import { getNow } from '@/lib/dates';
+import { trustedNow } from '@/lib/clock';
 import { useLocalDayKey } from '@/lib/useLocalDayKey';
 import { LATE_POINTS_TEXT, pointsResumeText, useTimezoneWait } from '@/lib/useTimezoneWait';
 
@@ -35,7 +35,7 @@ export function CapMeterConnected({ state, capId, bare = false, onExplain }: Cap
   const timezoneWait = useTimezoneWait();
   const waitText = timezoneWait && (LATE_POINTS_CAPS.has(capId) ? LATE_POINTS_TEXT : pointsResumeText(timezoneWait));
 
-  const status = getCapStatus(state, capId, getNow());
+  const status = getCapStatus(state, capId, trustedNow());
   const variant = capId === 'journal' ? 'slots' : 'bar';
 
   return (

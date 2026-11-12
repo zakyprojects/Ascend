@@ -1,6 +1,6 @@
-import { AppState, BadHabitLog, Habit } from '@/types';
-import { todayKey, periodKey, previousPeriodKey, addDays, addWeeks, getNow } from './dates';
-import { getEffectiveSeasonPoints } from './leagues';
+import { BadHabitLog, Habit } from '@/types';
+import { trustedNow } from './clock';
+import { todayKey, periodKey, previousPeriodKey, addDays, addWeeks } from './dates';
 
 /**
  * Penalties are issued only by the server (ascend_process_penalties, hourly cron). This file keeps the
@@ -9,10 +9,6 @@ import { getEffectiveSeasonPoints } from './leagues';
  * miss walk, getBadHabitBadDaysBefore = ascend_bad_habit_bad_days_before (no-report and occurred).
  */
 export const MAX_RETROACTIVE_PENALTY_DAYS = 90;
-
-export function getAppStateSeasonPoints(state: AppState, now: Date): number {
-  return getEffectiveSeasonPoints(state, now);
-}
 
 export interface StreakSourceInfo {
   days: number;
@@ -45,7 +41,7 @@ export function isHabitPeriodCompleted(habit: Habit, pKey: string): boolean {
 export function getHabitConsecutiveMissesUpToPeriod(
   habit: Habit,
   targetPeriod: string,
-  now: Date = getNow()
+  now: Date = trustedNow()
 ): number {
   if (!habit) return 0;
   const freq = habit.frequency || 'daily';
@@ -76,7 +72,7 @@ export function getHabitConsecutiveMissesUpToPeriod(
  * - If current period is already completed, the miss streak is broken (returns 0).
  * - Otherwise, derives consecutive misses starting from the most recent finished period.
  */
-export function getHabitConsecutiveMisses(habit: Habit, now: Date = getNow()): number {
+export function getHabitConsecutiveMisses(habit: Habit, now: Date = trustedNow()): number {
   if (!habit) return 0;
   const freq = habit.frequency || 'daily';
   const currentKey = periodKey(freq, now);

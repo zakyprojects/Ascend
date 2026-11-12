@@ -3,7 +3,7 @@
 // destructures the members (their places in its return object are not side by side).
 import { useCallback } from 'react';
 import type { AppState, ReadingLog, UserBook, UserBookStatus, CuratedBook, BookCategory } from '@/types';
-import { periodKey, todayKey, getNow, weekKey } from './dates';
+import { periodKey, todayKey, weekKey } from './dates';
 import type { LinkedPactTick } from './pactLifecycle';
 import { tickPactsLinkedTo } from './pactLifecycle';
 import { stampLogUnits, switchBookUnit, takeBackTodaysReading, unitSwitchDefaults } from './bookUnits';
@@ -277,7 +277,7 @@ export function useReadingActions(setState: StoreSetState, afterCommit: (fn: () 
   }, []);
 
   const deleteBook = useCallback((bookId: string) => {
-    const currentWeekKey = weekKey(getNow());
+    const currentWeekKey = weekKey(trustedNow());
     let pactTicks: LinkedPactTick[] = [];
     void (
       setState(

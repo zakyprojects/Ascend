@@ -4,7 +4,8 @@ import { AppStore } from '@/lib/store';
 import { pactUnlinkNote, runningPactsLinkedToBadHabit } from '@/lib/pactLifecycle';
 import { useToast } from '@/components/ui/Toast';
 import { BadHabit } from '@/types';
-import { getNow, todayKey } from '@/lib/dates';
+import { trustedNow } from '@/lib/clock';
+import { todayKey } from '@/lib/dates';
 import { CapMeterConnected } from '@/components/ui/CapMeterConnected';
 import { HowItWorksButton, HowItWorksDialog, useHowItWorks } from '@/components/ui/HowItWorks';
 import { badHabitsGuide } from '@/components/howItWorks/badHabits';
@@ -53,7 +54,7 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
   const toLog = habits.filter((h) => !todayLogOf(h.id));
   const logged = habits.filter((h) => todayLogOf(h.id));
   const resistedToday = logged.filter((h) => todayLogOf(h.id)?.status === 'resisted').length;
-  const resistRemaining = getCapStatus(store.state, 'badHabitsResisted', getNow()).remaining;
+  const resistRemaining = getCapStatus(store.state, 'badHabitsResisted', trustedNow()).remaining;
   // Read once for every row's slip cost (the same value as the season league's points).
   const seasonPoints = getEffectiveSeasonPoints(store.state, leagueNow());
 

@@ -1,7 +1,7 @@
 // Weekly goals: points for each week (season splits, held goals), reflection points, linked-goal
 // progress, and removing goals linked to deleted items. Pure: state in, state out (moved from store.ts).
 import type { WeeklyGoal, WeeklyGoalItem, PointsEntry, AppState, WeeklyGoalReflection } from '@/types';
-import { weekKey, todayKey, getWeekDates, getNow, addDays, parseDate } from './dates';
+import { weekKey, todayKey, getWeekDates, addDays, parseDate } from './dates';
 import { excisePointsEntriesInternal } from './stateAwards';
 import { addPointsInternal } from './pointsLedger';
 import { getWeeklyGoalEntryId, getWeeklyGoalSeasonSplitEntryId, getSeasonBoundaryInWeek, isWeeklyGoalSeasonSplitEntryId, isWeekBeforeSeason } from './weeklyGoalSeasons';
@@ -322,7 +322,7 @@ export const recomputeWeeklyGoalsPointsForState = (
 
 export function reconcileWeeklyGoalsPointsForAllWeeks(
   state: AppState,
-  now: Date = getNow()
+  now: Date = trustedNow()
 ): AppState {
   // Seasons follow league (UTC) time; the weeks below are the user's personal weeks.
   const activeSeasonStart = getSeasonStart(leagueNow());
@@ -370,7 +370,7 @@ export function reconcileWeeklyGoalsPointsForAllWeeks(
  * here (Zakria 2026-10-19): a device that has not pulled another device's log never unticks its
  * goal. Goals ticked before this rule (no completedByLogId) keep the old rule.
  */
-export function reconcileLinkedWeeklyGoals(state: AppState, now: Date = getNow()): AppState {
+export function reconcileLinkedWeeklyGoals(state: AppState, now: Date = trustedNow()): AppState {
   const currentKey = weekKey(now);
   const docIdx = (state.weeklyGoals || []).findIndex((w) => w.weekKey === currentKey);
   if (docIdx === -1) return state;

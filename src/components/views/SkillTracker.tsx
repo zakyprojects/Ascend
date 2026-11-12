@@ -13,7 +13,8 @@ import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { useToast } from '@/components/ui/Toast';
 import { useAsyncAction } from '@/lib/useAsyncAction';
 import { Skill, SkillDrill, SkillLevel, SkillSessionLog, WeeklyGoalItem } from '@/types';
-import { todayKey, formatDateLong, getNow, startOfWeek, calculateStreak, weekKey, formatWeekdayDate, formatWeekdayShort, parseDate, uid } from '@/lib/dates';
+import { trustedNow } from '@/lib/clock';
+import { todayKey, formatDateLong, startOfWeek, calculateStreak, weekKey, formatWeekdayDate, formatWeekdayShort, parseDate, uid } from '@/lib/dates';
 import { SKILLS_POINTS, calculateSkillPoints } from '@/lib/pointsConfig';
 import { CapMeterConnected } from '@/components/ui/CapMeterConnected';
 import { HowItWorksButton, HowItWorksDialog, useHowItWorks } from '@/components/ui/HowItWorks';
@@ -241,7 +242,7 @@ export function SkillTracker({ store, onNavigate }: { store: AppStore; onNavigat
 
   const linkedSkillGoalsCount = useMemo(() => {
     if (!deleteModalSkill) return 0;
-    const currentWeekKey = weekKey(getNow());
+    const currentWeekKey = weekKey(trustedNow());
     return store.state.weeklyGoals
       .filter((doc) => doc.weekKey >= currentWeekKey)
       .reduce((n, doc) => n + doc.goals.filter((g) => g.linkedModule === 'skill' && g.linkedItemId === deleteModalSkill.id).length, 0);
@@ -250,7 +251,7 @@ export function SkillTracker({ store, onNavigate }: { store: AppStore; onNavigat
   // Same rule as deleteSkillDrill: this week's and later goals on the drill go.
   const linkedDrillGoalsCount = useMemo(() => {
     if (!deleteDrillTarget) return 0;
-    const currentKey = weekKey(getNow());
+    const currentKey = weekKey(trustedNow());
     const { skill, drill } = deleteDrillTarget;
     return store.state.weeklyGoals
       .filter((doc) => doc.weekKey >= currentKey)

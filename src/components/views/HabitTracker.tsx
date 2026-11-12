@@ -5,7 +5,8 @@ import { ListChecks, Plus } from 'lucide-react';
 import { AppStore } from '@/lib/store';
 import { pactUnlinkNote, runningPactsLinkedTo } from '@/lib/pactLifecycle';
 import { Habit } from '@/types';
-import { getNow, weekKey, formatWeekdayDate, formatWeekdayShort } from '@/lib/dates';
+import { trustedNow } from '@/lib/clock';
+import { weekKey, formatWeekdayDate, formatWeekdayShort } from '@/lib/dates';
 import { getEffectiveSeasonPoints } from '@/lib/leagues';
 import { leagueNow } from '@/lib/leagueTime';
 import { actionFeedback } from '@/lib/actionFeedback';
@@ -62,7 +63,7 @@ export function HabitTracker({ store }: { store: AppStore }) {
 
   const linkedGoalsCount = useMemo(() => {
     if (!confirmDelete) return 0;
-    const currentWeekKey = weekKey(getNow());
+    const currentWeekKey = weekKey(trustedNow());
     let count = 0;
     store.state.weeklyGoals.forEach((doc) => {
       if (doc.weekKey < currentWeekKey) return;

@@ -9,7 +9,7 @@ import type {
 import { DEFAULT_STATE } from '@/types';
 import { isDeviceOffline } from './deviceOffline';
 import { dispatchToastError } from './storeShared';
-import { generateNumericUID, todayKey, getNow, getNextDateKey, formatWeekdayDate } from './dates';
+import { generateNumericUID, todayKey, getNextDateKey, formatWeekdayDate } from './dates';
 import { singleFlight } from './singleFlight';
 import { reconcileSharedChallengeLifecycle, mergeSharedChallenge, pactTickRefused, type LinkedPactTick } from './pactLifecycle';
 import { pauseStoredSessionsForSignOut } from './focusSession';
@@ -779,9 +779,9 @@ export function useAppState() {
               reconcileWeeklyGoalsPointsForAllWeeks(
                 reconcileLinkedWeeklyGoals(
                   mergeAppState(serverState, current, 'hydration'),
-                  getNow()
+                  trustedNow()
                 ),
-                getNow()
+                trustedNow()
               )
             );
             setUserDataWatermark(userId, merged);
@@ -1267,8 +1267,8 @@ export function useAppState() {
                 ? guardResult.retainedState
                 : withHydratedPoints(guardResult.mergedState, sanitizedState);
               const reconciledMergedState = reconcileWeeklyGoalsPointsForAllWeeks(
-                reconcileLinkedWeeklyGoals(rawMergedState, getNow()),
-                getNow()
+                reconcileLinkedWeeklyGoals(rawMergedState, trustedNow()),
+                trustedNow()
               );
 
               lastKnownGoodStateRef.current = reconciledMergedState;
@@ -1327,9 +1327,9 @@ export function useAppState() {
                   reconcileWeeklyGoalsPointsForAllWeeks(
                     reconcileLinkedWeeklyGoals(
                       mergeAppState(sanitizedCached, signInMergeBase(current, sanitizedCached, userId), 'hydration'),
-                      getNow()
+                      trustedNow()
                     ),
-                    getNow()
+                    trustedNow()
                   )
                 );
                 canPersistLocally.current = true;
@@ -1979,7 +1979,7 @@ export function useAppState() {
     const checkUpdates = (simulatedLeagueNow?: Date) => {
       const leagueTarget = simulatedLeagueNow || leagueNow();
       // Weekly goals and pacts run on the user's own days, never on league time.
-      const personalNow = getNow();
+      const personalNow = trustedNow();
 
       // A new week, month or season: other members' points for it (and final ones for the period
       // that just closed, which archiving waits for) need a fresh fetch.

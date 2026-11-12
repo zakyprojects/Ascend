@@ -9,7 +9,7 @@ import { Badge, Dialog, EmptyState, PageColumns, ProgressBar, Switch, TabPanel, 
 import { TAP_TARGET, cx } from '@/components/ui/primitives/shared';
 import { CURATED_BOOKS, BOOK_CATEGORIES } from '@/lib/books';
 import type { BookCategory, CuratedBook, ReadingLog, UserBook } from '@/types';
-import { formatDateLong, getNow, weekKey, formatWeekdayDate, formatWeekdayShort, calculateStreak, parseDate } from '@/lib/dates';
+import { formatDateLong, weekKey, formatWeekdayDate, formatWeekdayShort, calculateStreak, parseDate } from '@/lib/dates';
 import { READING_POINTS } from '@/lib/pointsConfig';
 import { bookRemovalPoints, isRetiredAppReadingAward, logUnit } from '@/lib/readingAwards';
 import { getCapStatus } from '@/lib/capStatus';
@@ -137,7 +137,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
     [readingLogs, today]
   );
 
-  const pointsToday = getCapStatus(store.state, 'reading', getNow()).earned;
+  const pointsToday = getCapStatus(store.state, 'reading', trustedNow()).earned;
   // Points come from the points ledger (page points and finish bonuses): removing a book keeps
   // earlier days' page points here and takes back only what the ledger takes back.
   const readingPoints = useMemo(
@@ -192,7 +192,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
 
   const linkedGoalsCount = useMemo(() => {
     if (!deleteBook) return 0;
-    const currentWeekKey = weekKey(getNow());
+    const currentWeekKey = weekKey(trustedNow());
     const ids = new Set([deleteBook.id, deleteBook.linkedBookId].filter(Boolean));
     return store.state.weeklyGoals
       .filter((doc) => doc.weekKey >= currentWeekKey)
