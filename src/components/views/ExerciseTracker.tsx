@@ -41,7 +41,9 @@ const measureOf = workoutMeasureOf;
 const amountOf = workoutAmountOf;
 const formatAmount = (value: number, measure: Measure): string => {
   const n = Number.isInteger(value) ? value : Math.round(value * 100) / 100;
-  return measure === 'mins' ? `${n} min` : `${n} ${measure}`;
+  if (measure === 'mins') return `${n} min`;
+  if (measure === 'km') return `${n} km`;
+  return `${n} ${n === 1 ? measure.slice(0, -1) : measure}`;
 };
 
 export function ExerciseTracker({ store }: { store: AppStore }) {
