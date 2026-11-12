@@ -9,9 +9,9 @@ import type {
 import { DEFAULT_STATE } from '@/types';
 import { isDeviceOffline } from './deviceOffline';
 import { dispatchToastError } from './storeShared';
-import { uid, generateNumericUID, todayKey, getNow, getNextDateKey, formatWeekdayDate } from './dates';
+import { generateNumericUID, todayKey, getNow, getNextDateKey, formatWeekdayDate } from './dates';
 import { singleFlight } from './singleFlight';
-import { reconcileSharedChallengeLifecycle, mergeSharedChallenge, pactTickRefused, type LinkedPactTick,} from './pactLifecycle';
+import { reconcileSharedChallengeLifecycle, mergeSharedChallenge, pactTickRefused, type LinkedPactTick } from './pactLifecycle';
 import { pauseStoredSessionsForSignOut } from './focusSession';
 import {
   leagueNow,
@@ -42,7 +42,7 @@ import { usePartnerActions } from './usePartnerActions';
 import { useNotificationActions } from './useNotificationActions';
 import { hydrateUserSession } from './authSession';
 import { sanitizeLoadedState } from './loadedState';
-import { reconcileWeeklyGoalsPointsForAllWeeks, reconcileLinkedWeeklyGoals,} from './weeklyGoalPoints';
+import { reconcileWeeklyGoalsPointsForAllWeeks, reconcileLinkedWeeklyGoals } from './weeklyGoalPoints';
 import { withHydratedPoints } from './stateAwards';
 import { createLeagueStandingsRefresher, leaguePeriodKey } from './leagueStandingsRefresh';
 import { clockReady, trustedNow, trustedNowMs } from './clock';
@@ -1872,6 +1872,7 @@ export function useAppState() {
                 user2DoneDates: u2DoneDates,
                 status: row.status as 'active' | 'completed' | 'expired',
                 createdAt: row.created_at,
+                ...(typeof row.start_date === 'string' && row.start_date ? { startDate: row.start_date } : {}),
               });
 
               // Our own write to this pact is still on its way: keep the tick on screen; the
