@@ -87,7 +87,7 @@ export const CURATED_BOOKS: CuratedBook[] = [
     title: "Can't Hurt Me",
     author: 'David Goggins',
     description:
-      'Master your mind and defy the odds. A story of extreme perseverance showing how to callous your mind, overcome pain, and reach your full potential.',
+      'David Goggins’ memoir of going from a hard childhood to Navy SEAL and ultra-runner, and how he trains his mind to push through pain.',
     category: 'Discipline',
     isCurated: true,
     pointsOnCompletion: 50,
@@ -102,7 +102,7 @@ export const CURATED_BOOKS: CuratedBook[] = [
     title: 'Think and Grow Rich',
     author: 'Napoleon Hill',
     description:
-      'The classic guide to wealth-building philosophy. Thirteen proven steps toward riches and the power of organized, personal initiative.',
+      'Napoleon Hill’s 13 principles for building wealth, drawn from his study of successful people of his time.',
     category: 'Finance',
     isCurated: true,
     pointsOnCompletion: 35,
@@ -177,7 +177,7 @@ export const CURATED_BOOKS: CuratedBook[] = [
     title: 'The Compound Effect',
     author: 'Darren Hardy',
     description:
-      'Multiplying your success, one simple step at a time. Small, smart, consistent choices + time = radical difference between where you are and where you want to be.',
+      'Darren Hardy on how small choices, repeated every day, add up over time to big results.',
     category: 'Productivity',
     isCurated: true,
     pointsOnCompletion: 30,
@@ -222,7 +222,7 @@ export const CURATED_BOOKS: CuratedBook[] = [
     title: 'The Intelligent Investor',
     author: 'Benjamin Graham',
     description:
-      'The definitive handbook on value investing and risk management. Master emotional discipline and long-term portfolio growth.',
+      'Benjamin Graham’s guide to value investing: buy with a margin of safety and do not let market moods decide for you.',
     category: 'Finance',
     isCurated: true,
     pointsOnCompletion: 50,
@@ -252,7 +252,7 @@ export const CURATED_BOOKS: CuratedBook[] = [
     title: 'Secrets of the Millionaire Mind',
     author: 'T. Harv Eker',
     description:
-      'Reset your internal money and success blueprint. Recondition subconscious beliefs to attract and sustain enduring abundance.',
+      'T. Harv Eker argues that the money beliefs you learned growing up shape how much you earn and keep.',
     category: 'Finance',
     isCurated: true,
     pointsOnCompletion: 35,
@@ -267,7 +267,7 @@ export const CURATED_BOOKS: CuratedBook[] = [
     title: 'The Science of Getting Rich',
     author: 'Wallace D. Wattles',
     description:
-      'A timeless formula for creating wealth through purposeful thought and decisive action. Harmonize clear ambition with creative gratitude.',
+      'A 1910 book by Wallace D. Wattles that says clear purpose, gratitude and steady action bring wealth.',
     category: 'Finance',
     isCurated: true,
     pointsOnCompletion: 30,
@@ -282,7 +282,7 @@ export const CURATED_BOOKS: CuratedBook[] = [
     title: "Rich Dad's Cashflow Quadrant",
     author: 'Robert Kiyosaki',
     description:
-      'A guide to financial freedom across Employee, Self-Employed, Business, and Investor paths. Master the shift toward passive income generation.',
+      'Robert Kiyosaki compares four ways to earn money: employee, self-employed, business owner and investor.',
     category: 'Finance',
     isCurated: true,
     pointsOnCompletion: 40,
@@ -312,7 +312,7 @@ export const CURATED_BOOKS: CuratedBook[] = [
     title: 'The Millionaire Fastlane',
     author: 'MJ DeMarco',
     description:
-      'Crack the code to accelerated wealth creation through entrepreneurship. Escape the slow financial treadmill and engineer scalable value.',
+      'MJ DeMarco argues that building a business that can grow beats saving slowly from a job for decades.',
     category: 'Finance',
     isCurated: true,
     pointsOnCompletion: 45,
@@ -327,7 +327,7 @@ export const CURATED_BOOKS: CuratedBook[] = [
     title: 'Money Master the Game',
     author: 'Tony Robbins',
     description:
-      '7 simple steps to financial freedom from world-class financial minds. Build an all-weather investment blueprint for lifelong security.',
+      'Tony Robbins turns his interviews with well-known investors into 7 steps toward financial freedom.',
     category: 'Finance',
     isCurated: true,
     pointsOnCompletion: 50,
@@ -342,7 +342,7 @@ export const CURATED_BOOKS: CuratedBook[] = [
     title: 'Tax-Free Wealth',
     author: 'Tom Wheelwright',
     description:
-      'How to use the tax code to legally build massive wealth. Transform government tax incentives into powerful engines of business growth.',
+      'Tom Wheelwright explains how business owners and investors can lower their taxes legally using the rules in the tax code.',
     category: 'Finance',
     isCurated: true,
     pointsOnCompletion: 35,
@@ -357,7 +357,7 @@ export const CURATED_BOOKS: CuratedBook[] = [
     title: 'The ABCs of Real Estate Investing',
     author: 'Ken McElroy',
     description:
-      'Fundamental strategies for finding, evaluating, and managing cash-flowing real estate. Unlock passive cash flow through disciplined property acquisition.',
+      'Ken McElroy explains how to find, judge and manage rental property that brings in steady cash flow.',
     category: 'Finance',
     isCurated: true,
     pointsOnCompletion: 35,
@@ -387,7 +387,7 @@ export const CURATED_BOOKS: CuratedBook[] = [
     title: 'The House of Morgan',
     author: 'Ron Chernow',
     description:
-      'An epic history of the American banking dynasty that shaped global finance. Witness the rise, power, and transformation of Wall Street.',
+      'Ron Chernow’s history of the Morgan banking family and its firms, from the 1830s to the late 1980s.',
     category: 'Finance',
     isCurated: true,
     pointsOnCompletion: 50,
@@ -402,7 +402,7 @@ export const CURATED_BOOKS: CuratedBook[] = [
     title: 'Devil Take the Hindmost',
     author: 'Edward Chancellor',
     description:
-      'A captivating history of financial speculation and market bubbles. Learn crucial psychological lessons from three centuries of economic euphoria.',
+      'Edward Chancellor’s history of financial speculation and market bubbles, from the Dutch tulip mania to the 1990s.',
     category: 'Finance',
     isCurated: true,
     pointsOnCompletion: 45,
@@ -432,7 +432,7 @@ export const CURATED_BOOKS: CuratedBook[] = [
     title: 'The 10X Rule',
     author: 'Grant Cardone',
     description:
-      'The sole difference between success and failure is taking massive action. Multiply your effort by ten to shatter self-imposed limitations.',
+      'Grant Cardone says to set goals ten times bigger than you think you should and to put in ten times the effort.',
     category: 'Mindset',
     isCurated: true,
     pointsOnCompletion: 35,
@@ -447,7 +447,7 @@ export const CURATED_BOOKS: CuratedBook[] = [
     title: 'The Magic of Thinking Big',
     author: 'David J. Schwartz',
     description:
-      'Achieve exponential success by expanding your mental horizon. Overcome excuse-itis, conquer self-doubt, and cultivate high-level ambition.',
+      'David J. Schwartz on believing in yourself, dropping excuses and aiming higher in work and life.',
     category: 'Mindset',
     isCurated: true,
     pointsOnCompletion: 40,
@@ -477,7 +477,7 @@ export const CURATED_BOOKS: CuratedBook[] = [
     title: 'Ten Days to Self-Esteem',
     author: 'David D. Burns',
     description:
-      'Evidence-based cognitive behavioral techniques to dismantle negative self-talk. Uncover distorted thoughts and replace them with empowering clarity.',
+      'David D. Burns’ ten-step workbook that uses CBT to spot distorted thoughts and replace them with more realistic ones.',
     category: 'Mindset',
     isCurated: true,
     pointsOnCompletion: 40,
@@ -492,7 +492,7 @@ export const CURATED_BOOKS: CuratedBook[] = [
     title: 'The Power of Your Subconscious Mind',
     author: 'Joseph Murphy',
     description:
-      'Unlock the hidden reserves of your mind to overcome obstacles and manifest prosperity. Channel mental affirmations to reshape daily reality.',
+      'Joseph Murphy teaches that repeated positive thoughts and prayer shape the subconscious mind and, through it, your life.',
     category: 'Mindset',
     isCurated: true,
     pointsOnCompletion: 35,
@@ -507,7 +507,7 @@ export const CURATED_BOOKS: CuratedBook[] = [
     title: 'How to Stop Worrying and Start Living',
     author: 'Dale Carnegie',
     description:
-      'Practical, time-tested formulas to conquer chronic anxiety and fatigue. Learn to live in day-tight compartments and banish destructive worry.',
+      'Dale Carnegie’s practical advice on handling worry, such as living one day at a time and facing the worst case.',
     category: 'Mindset',
     isCurated: true,
     pointsOnCompletion: 40,
@@ -522,7 +522,7 @@ export const CURATED_BOOKS: CuratedBook[] = [
     title: 'The Power of Positive Thinking',
     author: 'Norman Vincent Peale',
     description:
-      'Practical spiritual techniques to build faith in yourself and eliminate defeatist attitudes. Harness calm confidence to achieve life goals.',
+      'Norman Vincent Peale on using faith, prayer and positive thinking to build self-confidence and calm.',
     category: 'Mindset',
     isCurated: true,
     pointsOnCompletion: 35,
@@ -537,7 +537,7 @@ export const CURATED_BOOKS: CuratedBook[] = [
     title: 'The Laws of Human Nature',
     author: 'Robert Greene',
     description:
-      'Master self-awareness and decode people’s hidden motivations and psychological biases. Transform destructive emotional impulses into rational influence.',
+      'Robert Greene explains the patterns behind how people think and act, with stories from history, to help you read others and yourself.',
     category: 'Mindset',
     isCurated: true,
     pointsOnCompletion: 50,
@@ -567,7 +567,7 @@ export const CURATED_BOOKS: CuratedBook[] = [
     title: 'The Four Agreements',
     author: 'Don Miguel Ruiz',
     description:
-      'A practical guide to personal freedom based on ancient Toltec wisdom. Transform life through impeccable word, non-attachment, and doing your best.',
+      'Don Miguel Ruiz sets out four rules from Toltec teaching: be impeccable with your word, take nothing personally, make no assumptions and always do your best.',
     category: 'Spirituality',
     isCurated: true,
     pointsOnCompletion: 30,
@@ -582,7 +582,7 @@ export const CURATED_BOOKS: CuratedBook[] = [
     title: 'The Secret',
     author: 'Rhonda Byrne',
     description:
-      'Harness the universal Law of Attraction to align thought, emotion, and action. Direct intentional focus to create abundance and well-being.',
+      'Rhonda Byrne presents the law of attraction: the idea that your thoughts draw matching events into your life.',
     category: 'Mindset',
     isCurated: true,
     pointsOnCompletion: 30,
@@ -597,7 +597,7 @@ export const CURATED_BOOKS: CuratedBook[] = [
     title: 'Reality Transurfing',
     author: 'Vadim Zeland',
     description:
-      'A transformative model for navigating alternative reality tracks without struggle. Free yourself from energetic pendulums to choose your destiny.',
+      'Vadim Zeland’s model of life as many possible paths you can choose between, without being pulled along by group beliefs he calls pendulums.',
     category: 'Spirituality',
     isCurated: true,
     pointsOnCompletion: 50,
@@ -612,7 +612,7 @@ export const CURATED_BOOKS: CuratedBook[] = [
     title: 'Unscripted',
     author: 'MJ DeMarco',
     description:
-      'Break free from the conventional corporate script and build an authentic life. Engineer an enterprise that creates true autonomy and generational wealth.',
+      'MJ DeMarco’s follow-up to The Millionaire Fastlane, on leaving the usual job-and-retire path by building a business of your own.',
     category: 'Business',
     isCurated: true,
     pointsOnCompletion: 45,
@@ -627,7 +627,7 @@ export const CURATED_BOOKS: CuratedBook[] = [
     title: 'The Personal MBA',
     author: 'Josh Kaufman',
     description:
-      'A world-class business education condensing core commercial principles. Master value creation, marketing, sales, value delivery, and finance.',
+      'Josh Kaufman covers the core ideas of business, from creating value and marketing to sales, delivery and finance.',
     category: 'Business',
     isCurated: true,
     pointsOnCompletion: 50,
@@ -642,7 +642,7 @@ export const CURATED_BOOKS: CuratedBook[] = [
     title: 'The 4-Hour Workweek',
     author: 'Tim Ferriss',
     description:
-      'Escape the 9-to-5, live anywhere, and join the new rich. Leverage lifestyle design, selective outsourcing, and ruthless elimination of non-essentials.',
+      'Tim Ferriss on cutting low-value work, outsourcing tasks and building income that does not need you in an office.',
     category: 'Productivity',
     isCurated: true,
     pointsOnCompletion: 45,
@@ -657,7 +657,7 @@ export const CURATED_BOOKS: CuratedBook[] = [
     title: 'The Lean Startup',
     author: 'Eric Ries',
     description:
-      'How constant innovation creates radically successful businesses. Test ideas rapidly through minimum viable products and validated learning cycles.',
+      'Eric Ries on building a startup by testing ideas early with a minimum viable product and learning from real customers.',
     category: 'Business',
     isCurated: true,
     pointsOnCompletion: 40,
@@ -672,7 +672,7 @@ export const CURATED_BOOKS: CuratedBook[] = [
     title: 'Dotcom Secrets',
     author: 'Russell Brunson',
     description:
-      'The underground playbook for growing your company online with sales funnels. Master value ladders, attractive characters, and conversion psychology.',
+      'Russell Brunson explains sales funnels and value ladders for selling products online.',
     category: 'Business',
     isCurated: true,
     pointsOnCompletion: 40,
@@ -687,7 +687,7 @@ export const CURATED_BOOKS: CuratedBook[] = [
     title: 'The Psychology of Selling',
     author: 'Brian Tracy',
     description:
-      'Increase your sales faster and easier than you ever thought possible. Master inner game confidence, prospect psychology, and persuasive closing.',
+      'Brian Tracy on the mindset and methods of selling, from self-confidence to finding prospects and closing the sale.',
     category: 'Influence',
     isCurated: true,
     pointsOnCompletion: 35,
@@ -702,7 +702,7 @@ export const CURATED_BOOKS: CuratedBook[] = [
     title: 'The Greatest Salesman in the World',
     author: 'Og Mandino',
     description:
-      'A timeless allegory providing ten transformative scrolls on life philosophy. Build unshakable perseverance, master emotions, and serve with love.',
+      'Og Mandino’s short story of a camel boy, Hafid, who becomes a great salesman by living by ten scrolls of advice.',
     category: 'Influence',
     isCurated: true,
     pointsOnCompletion: 30,
@@ -717,7 +717,7 @@ export const CURATED_BOOKS: CuratedBook[] = [
     title: 'Cashvertising',
     author: 'Drew Eric Whitman',
     description:
-      'How to use more than 100 secrets of ad-agency psychology to make big money. Tap into primal human desires to craft compelling sales copy.',
+      'Drew Eric Whitman’s guide to writing ads, based on the basic human desires that lead people to buy.',
     category: 'Business',
     isCurated: true,
     pointsOnCompletion: 35,
@@ -732,7 +732,7 @@ export const CURATED_BOOKS: CuratedBook[] = [
     title: 'Confessions of an Advertising Man',
     author: 'David Ogilvy',
     description:
-      'Timeless principles on direct response advertising, client relationships, and campaign craft from the undisputed father of modern advertising.',
+      'David Ogilvy on running an ad agency, winning and keeping clients, and writing ads that sell.',
     category: 'Business',
     isCurated: true,
     pointsOnCompletion: 35,
@@ -762,7 +762,7 @@ export const CURATED_BOOKS: CuratedBook[] = [
     title: 'The 48 Laws of Power',
     author: 'Robert Greene',
     description:
-      'Three thousand years of power dynamics distilled into forty-eight pragmatic rules. Learn to navigate organizational politics and protect yourself.',
+      'Robert Greene sets out 48 rules about power, each shown with stories from history.',
     category: 'Influence',
     isCurated: true,
     pointsOnCompletion: 50,
@@ -777,7 +777,7 @@ export const CURATED_BOOKS: CuratedBook[] = [
     title: 'Influence: The Psychology of Persuasion',
     author: 'Robert B. Cialdini',
     description:
-      'The foundational scientific study on why people say yes. Master reciprocity, commitment, social proof, authority, liking, and scarcity.',
+      'Robert B. Cialdini on six ways people are moved to say yes: reciprocity, commitment, social proof, authority, liking and scarcity.',
     category: 'Influence',
     isCurated: true,
     pointsOnCompletion: 45,
@@ -792,7 +792,7 @@ export const CURATED_BOOKS: CuratedBook[] = [
     title: 'Never Split the Difference',
     author: 'Chris Voss',
     description:
-      'Negotiating as if your life depended on it from a former FBI hostage negotiator. Deploy tactical empathy, calibrated questions, and calibrated pauses.',
+      'Former FBI hostage negotiator Chris Voss teaches negotiation through tactical empathy, mirroring and calibrated questions.',
     category: 'Influence',
     isCurated: true,
     pointsOnCompletion: 40,
@@ -807,7 +807,7 @@ export const CURATED_BOOKS: CuratedBook[] = [
     title: 'Why We Want You to Be Rich',
     author: 'Donald Trump & Robert Kiyosaki',
     description:
-      'Two billionaire perspectives on financial education, entrepreneurship, and overcoming middle-class stagnation through smart risk taking.',
+      'Donald Trump and Robert Kiyosaki on why they think financial education matters and why the middle class is shrinking.',
     category: 'Business',
     isCurated: true,
     pointsOnCompletion: 40,
