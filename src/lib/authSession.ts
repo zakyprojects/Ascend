@@ -255,8 +255,10 @@ export async function hydrateUserSession(
     if (authUser?.app_metadata?.provider === 'google') markProfileSetupDue(userId);
   } else if (profileData && !profileData.uid) {
     // DB profile exists but lacks uid (created prior to migration) — backfill it once
+    // supabase-js returns a database error in { error } rather than throwing it.
     try {
-      await supabase.from('profiles').update({ uid: user.uid }).eq('id', userId);
+      const { error } = await supabase.from('profiles').update({ uid: user.uid }).eq('id', userId);
+      if (error) console.warn('Profile UID backfill skipped:', error);
     } catch (e) {
       console.warn('Profile UID backfill skipped:', e);
     }
@@ -450,7 +452,9 @@ export async function hydrateUserSession(
   if (typeof window !== 'undefined') {
     try {
       localStorage.removeItem('ascend_guest_state_v2');
-    } catch (e) {}
+    } catch {
+      // Storage blocked (private mode): nothing to clear.
+    }
   }
 
   // Only push an immediate save during hydration if this is explicitly a fresh signup with initial defaults

@@ -910,22 +910,24 @@ export async function deleteFollowedPlanFromSupabase(followedPlanId: string): Pr
   }
 }
 
-function parseArrayField(val: any): any[] {
-  if (Array.isArray(val)) return val;
-  if (typeof val === 'string') {
-    try {
-      const parsed = JSON.parse(val);
-      if (Array.isArray(parsed)) return parsed;
-    } catch (e) {}
+/** A JSON column that may arrive as text: parsed when it is valid JSON, otherwise returned as is. */
+function parseJsonField(val: unknown): any {
+  if (typeof val !== 'string') return val;
+  try {
+    return JSON.parse(val);
+  } catch {
+    // Not valid JSON: the caller treats the raw text as an empty value.
+    return val;
   }
-  return [];
+}
+
+function parseArrayField(val: unknown): any[] {
+  const parsed = parseJsonField(val);
+  return Array.isArray(parsed) ? parsed : [];
 }
 
 export function mapRowToImprovementPlan(row: any): ImprovementPlan {
-  let rawSteps = row?.steps;
-  if (typeof rawSteps === 'string') {
-    try { rawSteps = JSON.parse(rawSteps); } catch (e) {}
-  }
+  const rawSteps = parseJsonField(row?.steps);
   const isStepsArray = Array.isArray(rawSteps);
   const stepsMeta = !isStepsArray && typeof rawSteps === 'object' && rawSteps !== null ? rawSteps : {};
   const stepsList = isStepsArray ? rawSteps : (Array.isArray(stepsMeta.items) ? stepsMeta.items : []);
@@ -969,10 +971,7 @@ export function mapRowToImprovementPlan(row: any): ImprovementPlan {
 }
 
 export function mapRowToUserPlanFollow(row: any): UserPlanFollow {
-  let rawSteps = row?.steps;
-  if (typeof rawSteps === 'string') {
-    try { rawSteps = JSON.parse(rawSteps); } catch (e) {}
-  }
+  const rawSteps = parseJsonField(row?.steps);
   const isStepsArray = Array.isArray(rawSteps);
   const stepsMeta = !isStepsArray && typeof rawSteps === 'object' && rawSteps !== null ? rawSteps : {};
   const stepsList = isStepsArray ? rawSteps : (Array.isArray(stepsMeta.items) ? stepsMeta.items : []);
