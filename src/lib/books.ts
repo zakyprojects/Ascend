@@ -27,7 +27,7 @@ export const CURATED_BOOKS: CuratedBook[] = [
     title: 'Atomic Habits',
     author: 'James Clear',
     description:
-      'An easy & proven way to build good habits & break bad ones. Tiny changes, remarkable results. Focus on 1% improvements every day.',
+      'James Clear on building good habits and breaking bad ones through small changes, using four laws: make it obvious, attractive, easy and satisfying.',
     category: 'Habits',
     isCurated: true,
     pointsOnCompletion: 40,
@@ -42,7 +42,7 @@ export const CURATED_BOOKS: CuratedBook[] = [
     title: 'The 7 Habits of Highly Effective People',
     author: 'Stephen R. Covey',
     description:
-      'A principle-centered framework for personal and interpersonal effectiveness. Move from dependence to independence to interdependence.',
+      'Stephen R. Covey sets out seven habits that take a person from depending on others, to standing on their own, to working well with others.',
     category: 'Habits',
     isCurated: true,
     pointsOnCompletion: 45,
@@ -57,7 +57,7 @@ export const CURATED_BOOKS: CuratedBook[] = [
     title: 'Deep Work',
     author: 'Cal Newport',
     description:
-      'Rules for focused success in a distracted world. Cultivate the ability to focus without distraction on cognitively demanding tasks.',
+      'Cal Newport on the value of long stretches of focused work without distraction, and rules for making room for it in your days.',
     category: 'Productivity',
     isCurated: true,
     pointsOnCompletion: 35,
@@ -72,7 +72,7 @@ export const CURATED_BOOKS: CuratedBook[] = [
     title: 'The Power of Now',
     author: 'Eckhart Tolle',
     description:
-      'A guide to spiritual enlightenment. Learn to transcend ego-based thinking and embrace the present moment to find peace and fulfillment.',
+      'Eckhart Tolle’s spiritual book on living in the present moment instead of in thoughts about the past and the future.',
     category: 'Spirituality',
     isCurated: true,
     pointsOnCompletion: 30,
@@ -117,7 +117,7 @@ export const CURATED_BOOKS: CuratedBook[] = [
     title: "The Subtle Art of Not Giving a F*ck",
     author: 'Mark Manson',
     description:
-      'A counterintuitive approach to living a good life. Let go of what you think your life should be and embrace the messiness of reality.',
+      'Mark Manson argues for caring about fewer, well-chosen things and accepting that problems and pain are part of life.',
     category: 'Mindset',
     isCurated: true,
     pointsOnCompletion: 30,
@@ -132,7 +132,7 @@ export const CURATED_BOOKS: CuratedBook[] = [
     title: 'Mindset: The New Psychology of Success',
     author: 'Carol S. Dweck',
     description:
-      'How we can learn to fulfill our potential by adopting a growth mindset over a fixed mindset. The power of believing you can improve.',
+      'Carol S. Dweck’s research on fixed and growth mindsets, and how believing that ability can grow changes how people learn and handle failure.',
     category: 'Mindset',
     isCurated: true,
     pointsOnCompletion: 35,
@@ -147,7 +147,7 @@ export const CURATED_BOOKS: CuratedBook[] = [
     title: 'The Alchemist',
     author: 'Paulo Coelho',
     description:
-      'A mystical fable about following your dreams. A shepherd boy embarks on a journey to find his personal legend and discovers treasures within.',
+      'Paulo Coelho’s novel about Santiago, a shepherd boy who travels from Spain to Egypt in search of a treasure he dreamed of.',
     category: 'Spirituality',
     isCurated: true,
     pointsOnCompletion: 25,
@@ -162,7 +162,7 @@ export const CURATED_BOOKS: CuratedBook[] = [
     title: 'Ikigai: The Japanese Secret to a Long and Happy Life',
     author: 'Hector Garcia & Francesc Miralles',
     description:
-      'Find your reason for being. The intersection of what you love, what you are good at, what the world needs, and what you can be paid for.',
+      'Hector Garcia and Francesc Miralles on the Japanese idea of ikigai, a reason to get up each day, drawn from interviews with long-lived people in Okinawa.',
     category: 'Mindset',
     isCurated: true,
     pointsOnCompletion: 25,
@@ -192,7 +192,7 @@ export const CURATED_BOOKS: CuratedBook[] = [
     title: "Man's Search for Meaning",
     author: 'Viktor E. Frankl',
     description:
-      'Lessons from a Nazi concentration camp on the importance of finding purpose and meaning in suffering, and how that drives the will to survive.',
+      'Viktor E. Frankl’s account of life in Nazi concentration camps and his view that finding meaning helps people endure suffering.',
     category: 'Spirituality',
     isCurated: true,
     pointsOnCompletion: 40,
@@ -207,7 +207,7 @@ export const CURATED_BOOKS: CuratedBook[] = [
     title: 'Rich Dad Poor Dad',
     author: 'Robert Kiyosaki',
     description:
-      'Challenges traditional beliefs about money and investing. Learn how acquiring assets and building financial literacy creates true independence.',
+      'Robert Kiyosaki contrasts the money lessons of his two father figures and argues for buying assets that bring in income.',
     category: 'Finance',
     isCurated: true,
     pointsOnCompletion: 40,
@@ -237,7 +237,7 @@ export const CURATED_BOOKS: CuratedBook[] = [
     title: 'The Millionaire Next Door',
     author: 'Thomas J. Stanley',
     description:
-      'Surprising secrets of America’s wealthy through frugality and discipline. Learn how living below your means leads to real wealth accumulation.',
+      'Thomas J. Stanley’s research on American millionaires, many of whom built their wealth by spending well below their income.',
     category: 'Finance',
     isCurated: true,
     pointsOnCompletion: 35,
@@ -297,7 +297,7 @@ export const CURATED_BOOKS: CuratedBook[] = [
     title: 'The Psychology of Money',
     author: 'Morgan Housel',
     description:
-      'Timeless lessons on wealth, greed, and happiness. Understand that doing well with money is far more about behavior than raw intelligence.',
+      'Morgan Housel on why doing well with money depends more on behavior than on intelligence, told in short stories.',
     category: 'Finance',
     isCurated: true,
     pointsOnCompletion: 40,
@@ -372,7 +372,7 @@ export const CURATED_BOOKS: CuratedBook[] = [
     title: 'The Creature from Jekyll Island',
     author: 'G. Edward Griffin',
     description:
-      'A deep-dive investigation into the origins and mechanisms of the Federal Reserve. Understand central banking, fiat currency, and inflation.',
+      'G. Edward Griffin’s critical history of the US Federal Reserve, from the 1910 Jekyll Island meeting to how central banks create money.',
     category: 'Finance',
     isCurated: true,
     pointsOnCompletion: 50,
@@ -417,7 +417,7 @@ export const CURATED_BOOKS: CuratedBook[] = [
     title: 'The Power of Habit',
     author: 'Charles Duhigg',
     description:
-      'Explores the neurological loop of cue, routine, and reward. Learn how individual and organizational habits can be reshaped for lasting change.',
+      'Charles Duhigg on the cue, routine and reward loop behind habits, and how people and companies can change them.',
     category: 'Habits',
     isCurated: true,
     pointsOnCompletion: 45,
@@ -462,7 +462,7 @@ export const CURATED_BOOKS: CuratedBook[] = [
     title: 'How to Raise Your Self-Esteem',
     author: 'Nathaniel Branden',
     description:
-      'Actionable sentence-completion exercises to build authentic self-worth. Cultivate genuine self-acceptance, personal integrity, and emotional resilience.',
+      'Nathaniel Branden on what self-esteem is and how to build it, with sentence-completion exercises.',
     category: 'Mindset',
     isCurated: true,
     pointsOnCompletion: 30,
@@ -552,7 +552,7 @@ export const CURATED_BOOKS: CuratedBook[] = [
     title: 'Misbehaving: The Making of Behavioral Economics',
     author: 'Richard H. Thaler',
     description:
-      'How human irrationality challenges standard economic theory. Discover how cognitive quirks and real behavior drive real-world choices.',
+      'Richard H. Thaler’s account of how behavioral economics grew from showing that real people do not choose the way standard economic models expect.',
     category: 'Mindset',
     isCurated: true,
     pointsOnCompletion: 45,
@@ -747,7 +747,7 @@ export const CURATED_BOOKS: CuratedBook[] = [
     title: 'How to Win Friends and Influence People',
     author: 'Dale Carnegie',
     description:
-      'The classic handbook for building genuine interpersonal rapport and persuasion. Win people to your way of thinking with empathy and sincere appreciation.',
+      'Dale Carnegie’s advice on getting along with people, such as listening well, giving honest appreciation and avoiding arguments.',
     category: 'Influence',
     isCurated: true,
     pointsOnCompletion: 40,
@@ -822,7 +822,7 @@ export const CURATED_BOOKS: CuratedBook[] = [
     title: "Facts are Facts: The Untold Story of India's Partition",
     author: 'Abdul Wali Khan',
     description:
-      'A critical historical analysis examining the socio-political machinations behind the Partition of India, British policy, and constitutional politics.',
+      'Abdul Wali Khan’s history of the Partition of India, drawn from British government records of the time.',
     category: 'Influence',
     isCurated: true,
     pointsOnCompletion: 35,
