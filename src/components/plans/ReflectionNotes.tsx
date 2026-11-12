@@ -64,6 +64,7 @@ export function ReflectionNotes({
             aria-label="New check-in note"
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
+            onSubmitShortcut={submitDraft}
             placeholder="How is it going? What will you change?"
             rows={2}
             maxLength={NOTE_MAX}
@@ -114,6 +115,7 @@ export function ReflectionNotes({
                       aria-label="Edit check-in note"
                       value={editing.text}
                       onChange={(e) => setEditing({ key, text: e.target.value })}
+                      onSubmitShortcut={saveEdit}
                       rows={3}
                       maxLength={NOTE_MAX}
                     />

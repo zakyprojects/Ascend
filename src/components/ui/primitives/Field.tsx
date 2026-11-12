@@ -2,6 +2,7 @@ import React from 'react';
 import { AlertCircle } from 'lucide-react';
 import { cx } from './shared';
 import { toUserMessage } from '@/lib/app/userMessage';
+import { runSubmitShortcut } from './submitShortcut';
 
 export interface BaseFieldProps {
   label?: string;
@@ -56,7 +57,10 @@ export interface InputProps
 
 export interface TextareaProps
   extends React.TextareaHTMLAttributes<HTMLTextAreaElement>,
-    BaseFieldProps {}
+    BaseFieldProps {
+  /** Ctrl/Cmd+Enter runs this instead of submitting the form; for a textarea outside a form. */
+  onSubmitShortcut?: () => void;
+}
 
 interface FieldShellProps {
   id: string;
@@ -187,6 +191,8 @@ export const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
       id: idProp,
       className,
       'aria-describedby': describedByProp,
+      onKeyDown,
+      onSubmitShortcut,
       ...props
     },
     ref
@@ -199,6 +205,11 @@ export const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
       errorProp,
       hint
     );
+
+    const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
+      onKeyDown?.(event);
+      runSubmitShortcut(event, onSubmitShortcut);
+    };
 
     return (
       <FieldShell id={id} label={label} hint={hint} error={error} optional={optional}>
@@ -218,6 +229,7 @@ export const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
             className
           )}
           {...props}
+          onKeyDown={handleKeyDown}
         />
       </FieldShell>
     );

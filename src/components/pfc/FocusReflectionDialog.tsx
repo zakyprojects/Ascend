@@ -46,6 +46,7 @@ export function FocusReflectionDialog({ store }: { store: AppStore }) {
         optional
         value={text}
         onChange={(e) => setText(e.target.value)}
+        onSubmitShortcut={save}
         placeholder="What did you get done? What got in the way?"
         className="min-h-24"
         maxLength={2000}
