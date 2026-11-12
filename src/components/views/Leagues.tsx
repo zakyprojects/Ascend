@@ -250,7 +250,7 @@ export function Leagues({ store, onOpenAuth }: LeaguesProps) {
 
         {activeLeague === 'ninetyDay' && (
           <Disclosure title="Why 90 days" icon={Brain}>
-            In one well-known study (Lally, 2010), a new daily habit took a median of 66 days to feel automatic,
+            In one well-known study (Lally, 2009), a new daily habit took a median of 66 days to feel automatic,
             anywhere from 18 to 254 days. A 90-day season gives a new habit time to settle in.
           </Disclosure>
         )}
