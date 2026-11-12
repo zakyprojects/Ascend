@@ -96,5 +96,12 @@ export function getNavStatuses(state: AppState, isHabitDone: (habit: Habit) => b
     statuses.skills = { tone: 'pending', label: 'not practised today' };
   }
 
+  // Recovery: today's check-in saved (its id is the local day key); open only while a tracker exists.
+  if (state.addictionTracker) {
+    statuses.recovery = (state.recoveryCheckins ?? []).some((c) => c.id === today)
+      ? { tone: 'done', label: 'checked in today' }
+      : { tone: late ? 'risk' : 'pending', label: 'not checked in today' };
+  }
+
   return statuses;
 }
