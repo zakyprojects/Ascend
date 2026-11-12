@@ -39,6 +39,7 @@ import { isSupabaseConfigured } from '@/lib/supabase';
 import { useLeaguePeriodRollover } from '@/lib/useLeaguePeriodRollover';
 import { useLeagueStandingsRefresh } from '@/lib/useLeagueStandingsRefresh';
 import { useLocalDayKey } from '@/lib/useLocalDayKey';
+import { quoteForDay } from '@/lib/quoteOfDay';
 import { useMinuteTick } from '@/lib/useMinuteTick';
 import { useCompletionPop } from '@/lib/useCompletionPop';
 import { pageLinkProps } from '@/lib/pageLink';
@@ -150,6 +151,7 @@ export function Dashboard({ store, onViewChange, onOpenAuth }: DashboardProps) {
   useLeagueStandingsRefresh(store, { poll: false });
   // Today's habits, week chart and time-tracker summary roll over at local midnight.
   const today = useLocalDayKey();
+  const quote = quoteForDay(today);
   // Greeting and days clean move with the clock.
   useMinuteTick();
 
@@ -266,6 +268,13 @@ export function Dashboard({ store, onViewChange, onOpenAuth }: DashboardProps) {
       <div>
         <h1 className="page-title">{greeting()}</h1>
         <p className="page-subtitle">{formatDateLong(today)}</p>
+        {/* Quote of the day: follows the same local day key as the date line, so it changes at local midnight. */}
+        <figure className="mt-3 max-w-prose" aria-label="Quote of the day">
+          <blockquote className="text-sm text-content-secondary [text-wrap:pretty]">
+            <p>“{quote.text}”</p>
+          </blockquote>
+          <figcaption className="mt-1 text-xs text-content-muted">{quote.author}</figcaption>
+        </figure>
       </div>
 
       {store.state.currentUser?.isAnonymous && onOpenAuth && (
