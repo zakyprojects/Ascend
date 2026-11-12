@@ -4,7 +4,7 @@ import { useCallback } from 'react';
 import type { AppState, JournalEntry } from '@/types';
 import { uid, todayKey } from '../time/dates';
 import { journalEntryEarns } from '../points/journalAwards';
-import { applyJournalEntryEdit } from '../journalEdits';
+import { applyJournalEntryEdit } from '../items/journalEdits';
 import { computeLessonAward, isLessonReadInSeason, lessonReadId } from '../points/lessonAwards';
 import { leagueNow, getSeasonNumber } from '../time/leagueTime';
 import { applyJournalAwardInternal } from '../points/stateAwards';

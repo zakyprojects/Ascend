@@ -9,7 +9,7 @@ import {
   planLinkedPactRepairs,
   tickLinkedPacts,
   type LinkedPactReconcileInput,
-} from '../pactLifecycle';
+} from '../partners/pactLifecycle';
 import { trustedNow } from '../time/clock';
 
 function assert(condition: boolean, msg: string) {

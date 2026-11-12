@@ -9,7 +9,7 @@ import { weeklyGoalsGuide } from '@/components/howItWorks/weeklyGoals';
 import { EmptyState, PageColumns } from '@/components/ui/primitives';
 import { useToast } from '@/components/ui/Toast';
 import { useAsyncActionKey } from '@/lib/actions/useAsyncAction';
-import { applyListOrder, LIST_ORDER_KEYS, reorderInSlots, savedOrderIds } from '@/lib/listOrder';
+import { applyListOrder, LIST_ORDER_KEYS, reorderInSlots, savedOrderIds } from '@/lib/items/listOrder';
 import { confirmLeave } from '@/lib/unsavedChanges';
 import { LazyReorderList, ReorderButton } from '@/components/ui/Reorder';
 import { trustedNow } from '@/lib/time/clock';
@@ -17,7 +17,7 @@ import { weekKey, getWeekDates, offsetWeekKey, formatWeekRange, parseDate, local
 import { useLocalDayKey } from '@/lib/time/useLocalDayKey';
 import { isReflectionWindowOpen, weeklyScoringGoals } from '@/lib/points/weeklyAwards';
 import { WeeklyGoalItem } from '@/types';
-import { computeLinkedGoalProgress, GoalProgressResult, linkedItemExists } from '@/lib/linkedGoalMetrics';
+import { computeLinkedGoalProgress, GoalProgressResult, linkedItemExists } from '@/lib/items/linkedGoalMetrics';
 import { TAP_TARGET } from '@/components/ui/primitives/shared';
 import { BarChart } from '@/components/ui/charts';
 import { CountUp, Reveal } from '@/components/ui/Motion';

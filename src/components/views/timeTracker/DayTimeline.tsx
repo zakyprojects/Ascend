@@ -7,7 +7,7 @@ import {
   formatTime12h,
   getActivityDisplayColor,
   timeStringToMinutes,
-} from '@/lib/timeTracker';
+} from '@/lib/timeTracker/timeTracker';
 import { cx, TAP_TARGET } from '@/components/ui/primitives/shared';
 import { blockName, launchModules, MODULE_LABELS } from './dayMeta';
 

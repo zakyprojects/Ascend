@@ -42,7 +42,7 @@ await story('badHabits.hook (bad-habit actions)', async () => {
   const custom = h.s().addBadHabit('HookHabitBad');
   await until(() => byName('HookHabitBad').length === 1, 'T28: custom bad habit in state');
   await until(() => rows('bad_habits').some((r) => r.id === custom.id), 'T28: custom bad habit reached bad_habits', 5000);
-  const { PRESET_BAD_HABITS } = await import('../presets');
+  const { PRESET_BAD_HABITS } = await import('../content/presets');
   h.s().addBadHabit(PRESET_BAD_HABITS[0].name, true);
   await until(() => byName(PRESET_BAD_HABITS[0].name).length === 1, 'T28: Library bad habit in state');
   h.s().addBadHabit(PRESET_BAD_HABITS[0].name, true);

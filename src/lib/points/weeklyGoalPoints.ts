@@ -8,7 +8,7 @@ import { getWeeklyGoalEntryId, getWeeklyGoalSeasonSplitEntryId, getSeasonBoundar
 import { weeklyScoringGoals, heldCountedGoals, legacyHeldWeeklyPoints, weeklyGoalAwardTimestamp, countedGoalRefs, reflectionWindow, isReflectionWindowOpen } from './weeklyAwards';
 import { calculateWeeklyGoalsPoints, calculateWeeklyGoalsPointsBefore, POINTS_V2_START_DATE_KEY, WEEKLY_REFLECTION_POINTS } from './pointsConfig';
 import { leagueNow, getSeasonStart } from '../time/leagueTime';
-import { computeLinkedGoalProgress, linkedGoalCrossing, linkedEntryPresent } from '../linkedGoalMetrics';
+import { computeLinkedGoalProgress, linkedGoalCrossing, linkedEntryPresent } from '../items/linkedGoalMetrics';
 import { trustedNow } from '../time/clock';
 
 /**

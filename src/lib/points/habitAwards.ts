@@ -1,5 +1,5 @@
 import type { Habit, PointsEntry } from '@/types';
-import { findPresetHabit } from '../presets';
+import { findPresetHabit } from '../content/presets';
 import { PRESET_HABIT_POINTS, recomputeTodayPresetPoints, type PresetHabitCapItem } from './pointsConfig';
 import { timeMsOr } from '../time/dates';
 

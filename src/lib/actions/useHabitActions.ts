@@ -4,11 +4,11 @@
 import { useCallback } from 'react';
 import type { AppState, Habit } from '@/types';
 import { uid, periodKey, todayKey, weekKey } from '../time/dates';
-import type { LinkedPactTick } from '../pactLifecycle';
-import { runningPactsLinkedTo, tickPactsLinkedTo } from '../pactLifecycle';
-import type { PresetHabit } from '../presets';
+import type { LinkedPactTick } from '../partners/pactLifecycle';
+import { runningPactsLinkedTo, tickPactsLinkedTo } from '../partners/pactLifecycle';
+import type { PresetHabit } from '../content/presets';
 import { presetHabitPoints } from '../points/habitAwards';
-import { renameHabitIn } from '../itemEdits';
+import { renameHabitIn } from '../items/itemEdits';
 import { removeLinkedWeeklyGoals, reconcileLinkedWeeklyGoals } from '../points/weeklyGoalPoints';
 import { applyHabitAwardsInternal } from '../points/stateAwards';
 import { trustedNow } from '../time/clock';

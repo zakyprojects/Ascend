@@ -5,7 +5,7 @@ import { cx, FOCUS_RING } from '@/components/ui/primitives/shared';
 import { useToast } from '@/components/ui/Toast';
 import { clockSettled, trustedNowMs } from '@/lib/time/clock';
 import { useLocalDayKey } from '@/lib/time/useLocalDayKey';
-import { blockName, formatTime12h, formatTimeLeft, getActivityDisplayColor } from '@/lib/timeTracker';
+import { blockName, formatTime12h, formatTimeLeft, getActivityDisplayColor } from '@/lib/timeTracker/timeTracker';
 import {
   blockPillState,
   hideHint,
@@ -16,7 +16,7 @@ import {
   useBlockPillHidden,
   useBlockPillPrefs,
   wakeAfterMs,
-} from '@/lib/blockPill';
+} from '@/lib/timeTracker/blockPill';
 
 interface BlockPillProps {
   timeTracker: TimeTrackerState;

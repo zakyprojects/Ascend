@@ -18,9 +18,9 @@ import {
   skillNameProblem,
   subtaskTitleProblem,
   workoutFields,
-} from '../itemEdits';
+} from '../items/itemEdits';
 import { computeWorkoutAwards } from '../points/workoutAwards';
-import { runningPactsLinkedTo, runningPactsLinkedToBadHabit } from '../pactLifecycle';
+import { runningPactsLinkedTo, runningPactsLinkedToBadHabit } from '../partners/pactLifecycle';
 
 function assert(condition: boolean, msg: string) {
   if (!condition) throw new Error(`Assertion failed: ${msg}`);

@@ -1,5 +1,5 @@
-import { formatDurationHuman } from '@/lib/timeTracker';
-import { TIME_GROUPS, type GroupMinutes } from '@/lib/timeTrackerGroups';
+import { formatDurationHuman } from '@/lib/timeTracker/timeTracker';
+import { TIME_GROUPS, type GroupMinutes } from '@/lib/timeTracker/timeTrackerGroups';
 import { cx } from '@/components/ui/primitives/shared';
 
 interface TimeGroupsProps {

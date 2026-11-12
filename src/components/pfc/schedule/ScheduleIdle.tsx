@@ -1,5 +1,5 @@
 import { CalendarDays, Play, PowerOff } from 'lucide-react';
-import { formatDurationHuman } from '@/lib/timeTracker';
+import { formatDurationHuman } from '@/lib/timeTracker/timeTracker';
 
 export function ScheduleStart({
   blockCount,

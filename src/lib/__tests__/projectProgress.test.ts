@@ -1,7 +1,7 @@
 // Projects & Goals progress (lib/projectProgress.ts): a project or goal with parts reaches 100% and
 // completes / is achieved only when every part is done. Rounding must never finish it early (PG-M1).
 import type { Goal, Project, Task } from '../../types';
-const { projectProgressOf, goalProgressOf, autoStatusChanges, tasksByProjectId } = await import('../projectProgress');
+const { projectProgressOf, goalProgressOf, autoStatusChanges, tasksByProjectId } = await import('../items/projectProgress');
 const { lockStatusOf } = await import('../../components/projects/hierarchy');
 
 function assert(condition: boolean, msg: string) {

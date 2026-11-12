@@ -1,5 +1,5 @@
 import { type ReactNode, useLayoutEffect, useRef, useState } from 'react';
-import { getCategoryMeta } from '@/lib/books';
+import { getCategoryMeta } from '@/lib/reading/books';
 import type { BookCategory } from '@/types';
 
 export function ClampedText({ text, lines = 2 }: { text?: string; lines?: 2 | 3 }) {

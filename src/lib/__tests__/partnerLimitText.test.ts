@@ -1,6 +1,6 @@
 // partnerLimitText (lib/partnerRules.ts): the server's partner-limit errors (send/accept invite
 // RPCs, exact strings as of 2026-11-10) read as plain words; other messages are left alone.
-const { partnerLimitText } = await import('../partnerRules');
+const { partnerLimitText } = await import('../partners/partnerRules');
 
 function assert(condition: boolean, msg: string) {
   if (!condition) throw new Error(`Assertion failed: ${msg}`);

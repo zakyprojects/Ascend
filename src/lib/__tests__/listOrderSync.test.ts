@@ -2,7 +2,7 @@
 // the list_orders sync collection, the merge branch, and that a reorder uploads only its own row
 // (never a habit, skill, book, weekly-goal, workout or points row, so points cannot change).
 import { DEFAULT_STATE, type AppState, type Habit, type ListOrder, type Project } from '../../types';
-const { applyListOrder, byCreatedAsc, byCreatedDesc, moveId, reorderInSlots, sameOrder, savedOrderIds, LIST_ORDER_KEYS } = await import('../listOrder');
+const { applyListOrder, byCreatedAsc, byCreatedDesc, moveId, reorderInSlots, sameOrder, savedOrderIds, LIST_ORDER_KEYS } = await import('../items/listOrder');
 const { SYNCED_COLLECTIONS } = await import('../sync/syncedCollections');
 const { diffSyncedCollections, hashRow } = await import('../sync/outbox');
 const { mergeAppState } = await import('../store/stateMerger');

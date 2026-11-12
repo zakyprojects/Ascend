@@ -8,7 +8,7 @@ import { JOURNAL_POINTS } from '@/lib/points/pointsConfig';
 import { ptsText } from '@/lib/leagues/leagues';
 import { journalPointsInSeason } from '@/lib/points/journalAwards';
 import { trustedNow } from '@/lib/time/clock';
-import { MIN_JOURNAL_CONTENT_LENGTH } from '@/lib/journalRules';
+import { MIN_JOURNAL_CONTENT_LENGTH } from '@/lib/items/journalRules';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { useAsyncAction } from '@/lib/actions/useAsyncAction';
 import { AscendLoadingIndicator } from '@/components/ui/AscendLoadingIndicator';
@@ -25,7 +25,7 @@ import { useUnsavedChanges } from '@/lib/unsavedChanges';
 import { toUserMessage } from '@/lib/userMessage';
 import { getDailyPrompt } from '@/data/journalPrompts';
 import { MOODS, MOOD_MAP, MoodBadge, MoodPicker } from '@/components/journal/moods';
-import { journalEditNotesOk } from '@/lib/journalEdits';
+import { journalEditNotesOk } from '@/lib/items/journalEdits';
 
 const PROMPT_PREF_STORAGE_KEY = 'ascend_journal_prompt_mode';
 const ENTRIES_PAGE = 10;

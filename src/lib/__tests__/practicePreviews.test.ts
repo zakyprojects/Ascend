@@ -4,7 +4,7 @@ import type { ReadingLog, UserBook, WorkoutLog } from '@/types';
 import { readingProgressPreview, workoutEditPreview } from '../points/practicePreviews';
 import { computeWorkoutAwards } from '../points/workoutAwards';
 import { calculateWorkoutPoints } from '../points/pointsConfig';
-import { editWorkoutIn, workoutFields } from '../itemEdits';
+import { editWorkoutIn, workoutFields } from '../items/itemEdits';
 
 function eq<T>(got: T, want: T, msg: string) {
   if (got !== want) throw new Error(`Assertion failed: ${msg} (got ${JSON.stringify(got)}, want ${JSON.stringify(want)})`);

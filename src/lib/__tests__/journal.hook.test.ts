@@ -4,7 +4,7 @@
 //        after the re-render (it reads the current state); an edit saves the new text; a lesson read
 //        reaches readLessonIds and lesson_reads; deleting the entry removes it and leaves a tombstone.
 import { bootHook, story, until, quiet, rows, assert, pass, server, UID } from './harness/bootHook';
-import { LESSONS } from '../lessons';
+import { LESSONS } from '../content/lessons';
 
 const blobAt = 'Sun 2026-11-01 5:00 AM PKT (UTC+05:00)';
 

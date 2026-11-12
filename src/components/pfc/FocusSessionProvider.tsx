@@ -12,7 +12,7 @@ import {
   rowClose,
   supabaseFocusTransport,
   type FocusServerRow,
-} from '@/lib/focusServerSession';
+} from '@/lib/focus/focusServerSession';
 import {
   FOCUS_MIN_MINUTES_TO_SAVE,
   activeMinutesAt,

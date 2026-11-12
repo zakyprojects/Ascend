@@ -16,7 +16,7 @@ const mem = new Map<string, string>();
   clear: () => mem.clear(),
 } as Storage;
 
-const { applyJournalEntryEdit, journalEditNotesOk } = await import('../journalEdits');
+const { applyJournalEntryEdit, journalEditNotesOk } = await import('../items/journalEdits');
 const { computeJournalAward, journalPointsInSeason } = await import('../points/journalAwards');
 const { getSeasonStart } = await import('../time/leagueTime');
 

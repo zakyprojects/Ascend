@@ -1,12 +1,12 @@
 import { useRef, useState } from 'react';
 import { BookMarked, Calendar, Check, Pencil, Plus, Repeat } from 'lucide-react';
 import type { Habit, HabitFrequency } from '@/types';
-import { PRESET_CATEGORIES, type PresetHabit } from '@/lib/presets';
+import { PRESET_CATEGORIES, type PresetHabit } from '@/lib/content/presets';
 import { PRESET_HABIT_POINTS } from '@/lib/points/pointsConfig';
 import { CUSTOM_HABIT_POINTS } from '@/lib/points/habitAwards';
 import { ptsText } from '@/lib/leagues/leagues';
 import { useUnsavedChanges } from '@/lib/unsavedChanges';
-import { nameTaken, sameName } from '@/lib/uniqueNames';
+import { nameTaken, sameName } from '@/lib/items/uniqueNames';
 import { Dialog, Form, Input, StaticTabPanel, Tabs } from '@/components/ui/primitives';
 import { cx, FOCUS_RING, TRANSITION } from '@/components/ui/primitives/shared';
 

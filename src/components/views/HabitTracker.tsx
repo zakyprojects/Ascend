@@ -1,9 +1,9 @@
 import { useMemo, useState } from 'react';
-import { applyListOrder, byCreatedAsc, LIST_ORDER_KEYS, savedOrderIds } from '@/lib/listOrder';
+import { applyListOrder, byCreatedAsc, LIST_ORDER_KEYS, savedOrderIds } from '@/lib/items/listOrder';
 import { LazyReorderList, ReorderButton } from '@/components/ui/Reorder';
 import { ListChecks, Plus } from 'lucide-react';
 import { AppStore } from '@/lib/store/store';
-import { pactUnlinkNote, runningPactsLinkedTo } from '@/lib/pactLifecycle';
+import { pactUnlinkNote, runningPactsLinkedTo } from '@/lib/partners/pactLifecycle';
 import { Habit } from '@/types';
 import { trustedNow } from '@/lib/time/clock';
 import { weekKey, formatWeekdayDate, formatWeekdayShort } from '@/lib/time/dates';
@@ -25,7 +25,7 @@ import { HabitRow } from '@/components/habits/HabitRow';
 import { AddHabitDialog } from '@/components/habits/AddHabitDialog';
 import { isReadingLinked } from '@/components/habits/HabitCheck';
 import { RenameDialog } from '@/components/ui/RenameDialog';
-import { canRenameHabit, habitNameProblem, HABIT_NAME_MAX, HABIT_PACT_RENAME_MESSAGE } from '@/lib/itemEdits';
+import { canRenameHabit, habitNameProblem, HABIT_NAME_MAX, HABIT_PACT_RENAME_MESSAGE } from '@/lib/items/itemEdits';
 
 const WEEK_DAYS = 7;
 

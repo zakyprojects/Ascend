@@ -14,11 +14,11 @@ import { trustedNow, trustedNowMs } from '../time/clock';
 import { ilikeExact, isUsernameTakenError, looksLikeUsername, sameUsername, USERNAME_TAKEN, usernameFormatProblem } from './usernameRules';
 import { NETWORK_MESSAGE } from '../userMessage';
 import { clearDrafts } from '../unsavedChanges';
-import { dropStoredSession, pauseStoredSessionsForSignOut, readStoredSession } from '../focusSession';
-import { flushOps, supabaseFocusTransport } from '../focusServerSession';
+import { dropStoredSession, pauseStoredSessionsForSignOut, readStoredSession } from '../focus/focusSession';
+import { flushOps, supabaseFocusTransport } from '../focus/focusServerSession';
 import { FunctionRegion, FunctionsHttpError } from '@supabase/supabase-js';
 import { CaptchaRejectedError, isCaptchaRejection } from './captcha';
-import { TERMS_VERSION } from '../legal';
+import { TERMS_VERSION } from '../content/legal';
 import { googleDeleteReauthResult, parseGoogleDeleteMark, type GoogleDeleteMark, type GoogleDeleteReauthResult } from './googleDeleteReauth';
 
 let cachedProfiles: any[] = [];

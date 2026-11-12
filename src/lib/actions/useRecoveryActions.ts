@@ -4,7 +4,7 @@ import { useCallback } from 'react';
 import type { AppState, AddictionTracker, CravingLog, RecoveryCheckin } from '@/types';
 import { uid, todayKey } from '../time/dates';
 import { canUndoRecoveryCheckin, computeRecoveryCheckinAward, RECOVERY_CHECKIN_SOURCE, RECOVERY_MILESTONES, recoveryCheckinDays, recoveryDayAwardId, trackerStartMs } from '../points/recoveryAwards';
-import { renameTracker } from '../itemEdits';
+import { renameTracker } from '../items/itemEdits';
 import { CLEAR_CRAVING_LOGS_MAX } from '../store/clearLimits';
 import { excisePointsEntriesInternal } from '../points/stateAwards';
 import { addPointsInternal } from '../points/pointsLedger';

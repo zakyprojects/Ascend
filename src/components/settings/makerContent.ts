@@ -1,5 +1,5 @@
 import { Coffee, CupSoda, Flame, type LucideIcon } from 'lucide-react';
-import { LEGAL_CONTACT_EMAIL } from '@/lib/legal';
+import { LEGAL_CONTACT_EMAIL } from '@/lib/content/legal';
 
 /**
  * The maker's story and the "buy me a coffee" menu, written once and shown in two places:

@@ -2,11 +2,11 @@ import { useState } from 'react';
 import { Check, Plus } from 'lucide-react';
 import { Dialog, FieldRow, Form, Input, NumberField, Select, Textarea } from '@/components/ui/primitives';
 import type { AppStore } from '@/lib/store/store';
-import { BOOK_CATEGORIES } from '@/lib/books';
+import { BOOK_CATEGORIES } from '@/lib/reading/books';
 import type { BookCategory, UserBook, UserBookStatus } from '@/types';
 import { earliestTargetDate, isNewPastDate } from '@/lib/time/dates';
 import { useUnsavedChanges } from '@/lib/unsavedChanges';
-import { unitSwitchDefaults } from '@/lib/bookUnits';
+import { unitSwitchDefaults } from '@/lib/reading/bookUnits';
 import {
   DEFAULT_BOOK_LENGTH,
   UNIT_FINISHED_HINT,

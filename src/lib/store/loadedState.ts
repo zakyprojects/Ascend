@@ -16,12 +16,12 @@ import { trustedNow, trustedNowMs } from '../time/clock';
 import { leagueNow, getSeasonNumber, getSeasonStart } from '../time/leagueTime';
 import { isWeekBeforeSeason, getSeasonBoundaryInWeek } from '../leagues/weeklyGoalSeasons';
 import { toArchivedCompetitor, getUserRank, calculateSeasonalTotal } from '../leagues/leagues';
-import { findCuratedBook } from '../books';
+import { findCuratedBook } from '../reading/books';
 import { isLegitimateTombstoneId, deduplicatePresetHabits } from './stateMerger';
 import { normalizeThemePreference, deviceThemeFields } from '../theme';
-import { reconcileSharedChallengeLifecycle } from '../pactLifecycle';
+import { reconcileSharedChallengeLifecycle } from '../partners/pactLifecycle';
 import { NOTIFICATION_MAX_AGE_DAYS, NOTIFICATION_WINDOW } from '../auth/supabase';
-import { ensureDefaultActivities, autoHydrateDailyLog } from '../timeTracker';
+import { ensureDefaultActivities, autoHydrateDailyLog } from '../timeTracker/timeTracker';
 
 export const RETIRED_PRESET_HABIT_NAMES = new Set<string>([
   'Exercise / workout',

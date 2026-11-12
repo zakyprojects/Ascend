@@ -3,10 +3,10 @@
 import { useCallback } from 'react';
 import type { AppState, BadHabit, BadHabitLog } from '@/types';
 import { uid, todayKey } from '../time/dates';
-import { tickLinkedBadHabitPacts, pactSideIn, runningPactsLinkedToBadHabit } from '../pactLifecycle';
-import type { LinkedPactTick } from '../pactLifecycle';
-import { sameName } from '../uniqueNames';
-import { renameBadHabitIn } from '../itemEdits';
+import { tickLinkedBadHabitPacts, pactSideIn, runningPactsLinkedToBadHabit } from '../partners/pactLifecycle';
+import type { LinkedPactTick } from '../partners/pactLifecycle';
+import { sameName } from '../items/uniqueNames';
+import { renameBadHabitIn } from '../items/itemEdits';
 import { applyBadHabitAwardsInternal } from '../points/stateAwards';
 import { badHabitCreatedDay, getBadHabitBadDaysBefore } from '../points/habitPenalties';
 import { trustedNow } from '../time/clock';

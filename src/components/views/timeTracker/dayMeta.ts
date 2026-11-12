@@ -3,9 +3,9 @@ import type { AppState, TimeTrackerActivity, TimeTrackerBlock } from '@/types';
 import { trustedNow } from '@/lib/time/clock';
 import { calculateTimeTrackerDailyPoints, TIME_TRACKER_POINTS } from '@/lib/points/pointsConfig';
 import { timeTrackerAwardId } from '@/lib/points/timeTrackerAwards';
-import { formatTime12h } from '@/lib/timeTracker';
+import { formatTime12h } from '@/lib/timeTracker/timeTracker';
 
-export { blockName } from '@/lib/timeTracker';
+export { blockName } from '@/lib/timeTracker/timeTracker';
 
 export function blockRange(block: Pick<TimeTrackerBlock, 'startTime' | 'endTime'>): string {
   return `${formatTime12h(block.startTime)}–${formatTime12h(block.endTime)}`;

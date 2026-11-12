@@ -1,5 +1,5 @@
 import type { HowItWorksGuide } from '@/components/ui/HowItWorks';
-import { CHALLENGE_LENGTH_OPTIONS, MAX_PARTNERS } from '@/lib/partnerRules';
+import { CHALLENGE_LENGTH_OPTIONS, MAX_PARTNERS } from '@/lib/partners/partnerRules';
 
 /**
  * Partners. Rules from lib/partnerRules.ts (partner limit, challenge lengths), AccountabilityPartner.tsx

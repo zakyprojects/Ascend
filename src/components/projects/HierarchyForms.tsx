@@ -7,7 +7,7 @@ import { earliestTargetDate, isNewPastDate, todayKey, uid } from '@/lib/time/dat
 import { trustedNow } from '@/lib/time/clock';
 import { useUnsavedChanges } from '@/lib/unsavedChanges';
 import { toUserMessage } from '@/lib/userMessage';
-import { nameTaken, sameName } from '@/lib/uniqueNames';
+import { nameTaken, sameName } from '@/lib/items/uniqueNames';
 
 /**
  * Create/edit dialogs for goals, projects and tasks. Each is mounted fresh for every open (the

@@ -1,6 +1,6 @@
 import { Fig, Gain, pts, type HowItWorksGuide } from '@/components/ui/HowItWorks';
 import { JOURNAL_POINTS } from '@/lib/points/pointsConfig';
-import { MIN_JOURNAL_CONTENT_LENGTH } from '@/lib/journalRules';
+import { MIN_JOURNAL_CONTENT_LENGTH } from '@/lib/items/journalRules';
 
 /**
  * Journal. Rules from lib/pointsConfig.ts JOURNAL_POINTS (one entry a day, server-written),

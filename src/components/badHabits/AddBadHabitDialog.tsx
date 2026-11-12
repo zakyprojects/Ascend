@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import { BookMarked, Check, Pencil, Plus } from 'lucide-react';
 import type { BadHabit } from '@/types';
-import { PRESET_BAD_HABITS, type PresetBadHabit } from '@/lib/presets';
+import { PRESET_BAD_HABITS, type PresetBadHabit } from '@/lib/content/presets';
 import { BAD_HABIT_POINTS } from '@/lib/points/pointsConfig';
 import { ptsText } from '@/lib/leagues/leagues';
 import { useUnsavedChanges } from '@/lib/unsavedChanges';
-import { nameTaken, sameName } from '@/lib/uniqueNames';
+import { nameTaken, sameName } from '@/lib/items/uniqueNames';
 import { Dialog, Form, Input, StaticTabPanel, Tabs } from '@/components/ui/primitives';
 import { cx, FOCUS_RING, TRANSITION } from '@/components/ui/primitives/shared';
 

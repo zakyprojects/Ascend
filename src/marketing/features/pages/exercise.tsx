@@ -1,5 +1,5 @@
 import { WORKOUT_POINTS } from '@/lib/points/pointsConfig';
-import { DEFAULT_WORKOUT_TYPES } from '@/lib/workoutTypes';
+import { DEFAULT_WORKOUT_TYPES } from '@/lib/content/workoutTypes';
 import { LINK_CLASS } from '../../components/MarketingLayout';
 import { featurePath } from '../catalog';
 import { Block, Cards, Note, Rules, Steps, type FeatureContent } from '../blocks';

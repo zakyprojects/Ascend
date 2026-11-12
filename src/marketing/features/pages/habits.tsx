@@ -1,7 +1,7 @@
 import { CUSTOM_HABIT_POINTS } from '@/lib/points/habitAwards';
 import { getMissPenaltyMultiplier } from '@/lib/points/missPenalty';
 import { PRESET_HABIT_POINTS } from '@/lib/points/pointsConfig';
-import { PRESET_CATEGORIES } from '@/lib/presets';
+import { PRESET_CATEGORIES } from '@/lib/content/presets';
 import { TIERS } from '@/lib/leagues/tiers';
 import { LINK_CLASS } from '../../components/MarketingLayout';
 import { featurePath } from '../catalog';

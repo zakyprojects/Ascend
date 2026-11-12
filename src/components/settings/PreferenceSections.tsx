@@ -8,7 +8,7 @@ import { pageLinkProps } from '@/lib/pageLink';
 import { pathForLegalRoute } from '@/lib/routes';
 import { resolveTheme } from '@/lib/theme';
 import { toggleThemeWithReveal } from '@/lib/themeTransition';
-import { pillLayout, setBlockPillEnabled, setBlockPillPosition, useBlockPillPrefs } from '@/lib/blockPill';
+import { pillLayout, setBlockPillEnabled, setBlockPillPosition, useBlockPillPrefs } from '@/lib/timeTracker/blockPill';
 import { SettingRow, SettingsCard } from './SettingRow';
 
 export function PrivacySection({ store }: { store: AppStore }) {

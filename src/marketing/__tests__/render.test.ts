@@ -6,7 +6,7 @@ import { shellWithHead } from '../prerender';
 import appShell from '../../../index.html?raw';
 import { absoluteUrl, SITE_FORMER_NAME, SITE_NAME, SITE_TAGLINE } from '../site';
 import { TIERS } from '@/lib/leagues/tiers';
-import { LESSONS } from '@/lib/lessons';
+import { LESSONS } from '@/lib/content/lessons';
 import { RECOVERY_POINTS } from '@/lib/points/pointsConfig';
 import { fmt, pts } from '../features/format';
 import { FUEL_MENU, fuelMailto, MAKER_STORY } from '@/components/settings/makerContent';

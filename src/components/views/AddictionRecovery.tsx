@@ -20,7 +20,7 @@ import { toUserMessage } from '@/lib/userMessage';
 import { useUnsavedChanges } from '@/lib/unsavedChanges';
 import { FOCUS_RING, TAP_TARGET, cx } from '@/components/ui/primitives/shared';
 import { trustedNow } from '@/lib/time/clock';
-import { CRISIS_ELSEWHERE, CRISIS_LINES } from '@/lib/crisisLines';
+import { CRISIS_ELSEWHERE, CRISIS_LINES } from '@/lib/content/crisisLines';
 
 const CRAVINGS_PAGE = 10;
 

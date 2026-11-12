@@ -1,12 +1,12 @@
 import type { TimeTrackerBlock, TimeTrackerState, TimeTrackerTemplate } from '@/types';
-import { commitTimeTrackerDays, mergeTimeTrackerDays, templateBlocksForDate } from '../timeTracker';
+import { commitTimeTrackerDays, mergeTimeTrackerDays, templateBlocksForDate } from '../timeTracker/timeTracker';
 import {
   linkedTemplateBlockId,
   newLinkedBlockId,
   planTemplateEditReach,
   templateEditReachDays,
   type TemplateEditReachDay,
-} from '../timeTrackerTemplateReach';
+} from '../timeTracker/timeTrackerTemplateReach';
 
 let failures = 0;
 function check(cond: boolean, msg: string, detail?: unknown) {

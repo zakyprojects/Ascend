@@ -16,7 +16,7 @@ import {
   categoryTintStyle,
   templateDays,
   suggestNewBlockTimes,
-} from '@/lib/timeTracker';
+} from '@/lib/timeTracker/timeTracker';
 import { appliedTheme } from '@/lib/theme';
 import { ActivityIcon } from './ActivityIcon';
 import { TimeBlockModal, type BlockDraft } from './TimeBlockModal';
@@ -25,7 +25,7 @@ import { Plus, Trash2, Edit2, Check } from 'lucide-react';
 import { useUnsavedChanges } from '@/lib/unsavedChanges';
 import { TAP_TARGET_Y } from '@/components/ui/primitives/shared';
 import { toUserMessage } from '@/lib/userMessage';
-import { nameTaken } from '@/lib/uniqueNames';
+import { nameTaken } from '@/lib/items/uniqueNames';
 
 interface TemplateEditorModalProps {
   open: boolean;

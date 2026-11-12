@@ -3,7 +3,7 @@ import { CheckCircle2, ChevronRight, Coffee, RotateCcw, SkipForward } from 'luci
 import type { AppStore } from '@/lib/store/store';
 import type { View } from '@/lib/views';
 import type { TimeTrackerActivity, TimeTrackerBlock } from '@/types';
-import { blockIntervalMs, formatTime12h, getAscendViewForModule } from '@/lib/timeTracker';
+import { blockIntervalMs, formatTime12h, getAscendViewForModule } from '@/lib/timeTracker/timeTracker';
 import { todayKey } from '@/lib/time/dates';
 import { ProgressBar } from '@/components/ui/primitives';
 import { cx } from '@/components/ui/primitives/shared';

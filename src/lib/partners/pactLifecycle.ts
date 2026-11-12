@@ -1,9 +1,9 @@
 import { AppState, BadHabit, BadHabitLog, Habit, SharedChallenge } from '@/types';
 import { isPartnershipUser1 } from './partnershipSide';
-import { trustedNow } from './time/clock';
-import { todayKey, previousPeriodKey, addDays, parseDate, localDayStartMs } from './time/dates';
-import { sameName } from './uniqueNames';
-import { PRESET_BAD_HABITS, PRESET_CATEGORIES, type PresetBadHabit, type PresetHabit } from './presets';
+import { trustedNow } from '../time/clock';
+import { todayKey, previousPeriodKey, addDays, parseDate, localDayStartMs } from '../time/dates';
+import { sameName } from '../items/uniqueNames';
+import { PRESET_BAD_HABITS, PRESET_CATEGORIES, type PresetBadHabit, type PresetHabit } from '../content/presets';
 
 const safeNum = (val: any): number => {
   const n = Number(val);

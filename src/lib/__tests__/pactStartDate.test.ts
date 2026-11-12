@@ -14,7 +14,7 @@ import {
   pactStartDay,
   reconcileSharedChallengeLifecycle,
   tickLinkedPacts,
-} from '../pactLifecycle';
+} from '../partners/pactLifecycle';
 import { trustedNow } from '../time/clock';
 import { addDays, todayKey } from '../time/dates';
 

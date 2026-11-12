@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import type { AppStore } from './store/store';
-import { RELEASE_NOTE } from './releaseNote';
+import type { AppStore } from '../store/store';
+import { RELEASE_NOTE } from '../releaseNote';
 import { shouldShowWhatsNew } from './whatsNew';
 
 /** After the boot loader has left and after the rank-up overlay's own delay (900 ms), so that one goes first. */

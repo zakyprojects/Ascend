@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { applyListOrder, byCreatedAsc, LIST_ORDER_KEYS, reorderInSlots, savedOrderIds } from '@/lib/listOrder';
+import { applyListOrder, byCreatedAsc, LIST_ORDER_KEYS, reorderInSlots, savedOrderIds } from '@/lib/items/listOrder';
 import { LazyReorderList, ReorderButton } from '@/components/ui/Reorder';
 import { Clock, Flame, Pencil, Plus, Target, Trash2, X } from 'lucide-react';
 import { AppStore, CLEAR_SKILL_LOGS_MAX } from '@/lib/store/store';
@@ -27,9 +27,9 @@ import { AscendLoadingIndicator } from '@/components/ui/AscendLoadingIndicator';
 import { CountUp, Reveal } from '@/components/ui/Motion';
 import { lastDayKeys, sumPerDay } from '@/lib/time/weeklyActivity';
 import { useUnsavedChanges } from '@/lib/unsavedChanges';
-import { nameTaken } from '@/lib/uniqueNames';
-import { skillNameProblem } from '@/lib/itemEdits';
-import { SKILL_LEVELS } from '@/lib/skillLevels';
+import { nameTaken } from '@/lib/items/uniqueNames';
+import { skillNameProblem } from '@/lib/items/itemEdits';
+import { SKILL_LEVELS } from '@/lib/content/skillLevels';
 import {
   DRILL_COUNT_MAX,
   DRILL_NAME_MAX_LENGTH,
@@ -45,7 +45,7 @@ import {
   isDrillGoal,
   liveDrills,
   prepareLogDrills,
-} from '@/lib/skillDrills';
+} from '@/lib/content/skillDrills';
 import { GoalFormDialog, type GoalPayload } from '@/components/weekly/GoalFormDialog';
 import { toUserMessage } from '@/lib/userMessage';
 import type { View } from '@/lib/views';

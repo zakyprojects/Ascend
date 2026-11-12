@@ -1,5 +1,5 @@
 import { ASCEND_RECOMMENDED_DAY_BLOCKS, DEFAULT_TIME_TRACKER_ACTIVITIES } from '@/types';
-import { activityGroup, blockGroup, groupMinutes } from '../timeTrackerGroups';
+import { activityGroup, blockGroup, groupMinutes } from '../timeTracker/timeTrackerGroups';
 
 function eq<T>(actual: T, want: T, msg: string) {
   const a = JSON.stringify(actual);

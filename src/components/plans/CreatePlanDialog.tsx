@@ -7,7 +7,7 @@ import { addDays, isNewPastDate, todayKey } from '@/lib/time/dates';
 import { useUnsavedChanges } from '@/lib/unsavedChanges';
 import { STARTER_TEMPLATES, type PlanTemplate } from '@/data/planTemplates';
 import { PLAN_NAME_TAKEN, PLAN_TYPES, PLAN_TYPE_META, ownPlans } from './planMeta';
-import { nameTaken } from '@/lib/uniqueNames';
+import { nameTaken } from '@/lib/items/uniqueNames';
 import { PlanFields, type PlanFormValues } from './PlanFields';
 
 function blankValues(type: PlanType): PlanFormValues {

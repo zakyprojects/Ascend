@@ -3,7 +3,7 @@
 import { useCallback } from 'react';
 import type { WeeklyGoal, WeeklyGoalItem, WeeklyGoalReflection } from '@/types';
 import { uid, weekKey } from '../time/dates';
-import { linkedItemExists, linkedGoalUnit } from '../linkedGoalMetrics';
+import { linkedItemExists, linkedGoalUnit } from '../items/linkedGoalMetrics';
 import { isReflectionWindowOpen } from '../points/weeklyAwards';
 import { reconcileWeeklyGoalsPointsForAllWeeks, reconcileLinkedWeeklyGoals, reconcileReflectionPoints, withDeletedGoalIds, recomputeWeeklyGoalsPointsForState } from '../points/weeklyGoalPoints';
 import { trustedNow } from '../time/clock';

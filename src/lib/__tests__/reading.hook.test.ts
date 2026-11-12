@@ -44,7 +44,7 @@ await story('reading.hook (reading actions)', async () => {
   const bookId = book('HookBook')!.id;
   await until(() => rows('reading_books').some((r) => r.id === bookId), 'T29: custom book reached reading_books', 5000);
 
-  const { CURATED_BOOKS } = await import('../books');
+  const { CURATED_BOOKS } = await import('../reading/books');
   const curated = CURATED_BOOKS[0];
   h.s().addCuratedBookToLibrary(curated);
   await until(() => h.s().state.libraryBooks.some((b) => b.curatedBookId === curated.id), 'T29: curated book in state');

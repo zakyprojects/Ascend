@@ -2,7 +2,7 @@ import type { BookCategory, PointsEntry, UserBook } from '@/types';
 import { formatDateLong, todayKey } from '@/lib/time/dates';
 import { PAGES_PER_CHAPTER, isChapterBook, readingBonusId } from '@/lib/points/readingAwards';
 import { trustedNow } from '@/lib/time/clock';
-import { sameName } from '@/lib/uniqueNames';
+import { sameName } from '@/lib/items/uniqueNames';
 
 export type BookUnit = 'pages' | 'chapters';
 

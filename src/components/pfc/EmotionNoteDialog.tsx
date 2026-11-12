@@ -4,7 +4,7 @@ import { Dialog, Form, Textarea, useFormController } from '@/components/ui/primi
 import { useUnsavedChanges } from '@/lib/unsavedChanges';
 import { toUserMessage } from '@/lib/userMessage';
 import { formatDateLong } from '@/lib/time/dates';
-import { EMOTION_CONTEXT_MAX } from '@/lib/pfcLogEdits';
+import { EMOTION_CONTEXT_MAX } from '@/lib/focus/pfcLogEdits';
 import { localDayOf, timeOfDay } from './pfcLists';
 
 /** Edit an emotion entry's note. The emotion, intensity and time stay. */

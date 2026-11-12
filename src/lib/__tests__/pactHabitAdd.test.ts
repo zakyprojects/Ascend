@@ -1,5 +1,5 @@
 import type { Habit, SharedChallenge } from '@/types';
-import { pactHabitToAdd } from '../pactLifecycle';
+import { pactHabitToAdd } from '../partners/pactLifecycle';
 
 function assert(condition: boolean, msg: string) {
   if (!condition) {

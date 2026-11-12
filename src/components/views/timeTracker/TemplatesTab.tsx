@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { Brain, Heart, Layers, Moon, Pencil, Plus, Sparkles, Trash2 } from 'lucide-react';
 import { ASCEND_RECOMMENDED_DAY_BLOCKS, ASCEND_RECOMMENDED_DAY_TITLE, TimeTrackerActivity, TimeTrackerTemplate } from '@/types';
 import { AppStore } from '@/lib/store/store';
-import { firstFreeName } from '@/lib/uniqueNames';
+import { firstFreeName } from '@/lib/items/uniqueNames';
 import {
   calculateBlockDurationMinutes,
   DAYS_OF_WEEK,
@@ -12,14 +12,14 @@ import {
   templateDays,
   templateSignature,
   timeStringToMinutes,
-} from '@/lib/timeTracker';
+} from '@/lib/timeTracker/timeTracker';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { useToast } from '@/components/ui/Toast';
 import { Dialog, Disclosure, EmptyState } from '@/components/ui/primitives';
 import { cx, TAP_TARGET } from '@/components/ui/primitives/shared';
-import { LIST_ORDER_KEYS } from '@/lib/listOrder';
+import { LIST_ORDER_KEYS } from '@/lib/items/listOrder';
 import { LazyReorderList, ReorderButton } from '@/components/ui/Reorder';
-import { groupMinutes } from '@/lib/timeTrackerGroups';
+import { groupMinutes } from '@/lib/timeTracker/timeTrackerGroups';
 import { TimeGroups } from './TimeGroups';
 
 interface TemplatesTabProps {

@@ -1,7 +1,7 @@
 import { Fig, Gain, pts, type HowItWorksGuide } from '@/components/ui/HowItWorks';
 import { PFC_POINTS } from '@/lib/points/pointsConfig';
 import { FOCUS_MINUTES_PER_POINT, FOCUS_MIN_MINUTES, focusPointsForMinutes } from '@/lib/points/focusPoints';
-import { FOCUS_PRESETS, FOCUS_RESUME_WINDOW_MINUTES, focusFinishedPoints } from '@/lib/focusSession';
+import { FOCUS_PRESETS, FOCUS_RESUME_WINDOW_MINUTES, focusFinishedPoints } from '@/lib/focus/focusSession';
 
 /**
  * Prefrontal Cortex. Points from lib/focusPoints.ts (rule 2: 1 pt per 12 active min, a day's

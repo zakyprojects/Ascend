@@ -1,7 +1,7 @@
 import { User } from '@supabase/supabase-js';
 import { AppState, DEFAULT_STATE, UserProfile, Partnership } from '@/types';
 import { generateNumericUID, todayKey, weekKey } from '../time/dates';
-import { reconcileSharedChallengeLifecycle } from '../pactLifecycle';
+import { reconcileSharedChallengeLifecycle } from '../partners/pactLifecycle';
 import { cachedSyncedCollections } from '../sync/syncedCollections';
 import { cachedDeviceLocalState } from '../store/deviceLocalState';
 import { applyRemoteChanges, pullSyncedRows, type PullResult } from '../sync/pull';

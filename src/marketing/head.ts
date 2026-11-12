@@ -4,7 +4,7 @@ import type { FaqItem } from './components/Sections';
 import { LANDING_FAQ, LANDING_WHY } from './landingQa';
 import { plainText } from './plainText';
 import type { MarketingRoute } from './routes';
-import { LEGAL_CONTACT_EMAIL } from '@/lib/legal';
+import { LEGAL_CONTACT_EMAIL } from '@/lib/content/legal';
 import { absoluteUrl, SITE_ALTERNATE_NAMES, SITE_DEFINITION, SITE_DESCRIPTOR, SITE_HOST, SITE_MAKER, SITE_NAME, SITE_URL } from './site';
 
 /** The built CSS/JS a page loads (from dist/.vite/manifest.json; the dev server passes its own). */

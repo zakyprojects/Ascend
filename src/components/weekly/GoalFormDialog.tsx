@@ -10,14 +10,14 @@ import {
   type LinkedGoalMetricDefinition,
   type LinkedModule,
   type MetricKey,
-} from '@/lib/linkedGoalMetrics';
-import { workoutMeasureOf, workoutTypeKey, workoutTypeNames, type WorkoutMeasure } from '@/lib/workoutTypes';
+} from '@/lib/items/linkedGoalMetrics';
+import { workoutMeasureOf, workoutTypeKey, workoutTypeNames, type WorkoutMeasure } from '@/lib/content/workoutTypes';
 import { pageLinkProps } from '@/lib/pageLink';
 import type { View } from '@/lib/views';
 import { useUnsavedChanges } from '@/lib/unsavedChanges';
 import { toUserMessage } from '@/lib/userMessage';
-import { nameTaken } from '@/lib/uniqueNames';
-import { DRILL_WEEKLY_TARGET_MAX, drillMetricKey, findDrill, liveDrills, parseDrillMetricKey } from '@/lib/skillDrills';
+import { nameTaken } from '@/lib/items/uniqueNames';
+import { DRILL_WEEKLY_TARGET_MAX, drillMetricKey, findDrill, liveDrills, parseDrillMetricKey } from '@/lib/content/skillDrills';
 
 export type GoalPayload = Pick<
   WeeklyGoalItem,

@@ -1,6 +1,6 @@
 import { PowerOff, RotateCcw } from 'lucide-react';
 import type { TimeTrackerActivity, TimeTrackerBlock } from '@/types';
-import { formatTime12h, getActivityDisplayColor } from '@/lib/timeTracker';
+import { formatTime12h, getActivityDisplayColor } from '@/lib/timeTracker/timeTracker';
 import { cx, TAP_TARGET_Y } from '@/components/ui/primitives/shared';
 import { ActivityIcon } from '@/components/views/timeTracker/ActivityIcon';
 

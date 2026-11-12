@@ -4,9 +4,9 @@
 import { useCallback, useEffect } from 'react';
 import type { AppState, Goal, Project, ListOrder, Task, TaskSubtask, GoalStatus, ProjectStatus, TaskPriority } from '@/types';
 import { uid } from '../time/dates';
-import { autoStatusChanges } from '../projectProgress';
-import { applyListOrder, nextSequenceOrder, sameOrder, topStandaloneOrder } from '../listOrder';
-import { renameSubtaskIn } from '../itemEdits';
+import { autoStatusChanges } from '../items/projectProgress';
+import { applyListOrder, nextSequenceOrder, sameOrder, topStandaloneOrder } from '../items/listOrder';
+import { renameSubtaskIn } from '../items/itemEdits';
 import { trustedNow } from '../time/clock';
 import type { StoreSetState } from '../store/storeSetState';
 

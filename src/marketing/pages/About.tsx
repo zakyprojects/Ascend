@@ -1,7 +1,7 @@
 import type { CSSProperties } from 'react';
 import { cx, FOCUS_RING } from '@/components/ui/primitives/shared';
 import { FUEL_MENU, fuelMailto, MAKER_INTRO, MAKER_LEAD, MAKER_STORY, SUPPORT_INTRO } from '@/components/settings/makerContent';
-import { LEGAL_CONTACT_EMAIL } from '@/lib/legal';
+import { LEGAL_CONTACT_EMAIL } from '@/lib/content/legal';
 import { Breadcrumb } from '../components/Breadcrumb';
 import { LINK_CLASS, MarketingLayout } from '../components/MarketingLayout';
 import { CtaBand, Section, SectionHeading } from '../components/Sections';

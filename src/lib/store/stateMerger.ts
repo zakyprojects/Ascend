@@ -22,8 +22,8 @@ import {
   DEFAULT_TIME_TRACKER_STATE,
   DEFAULT_STATE,
 } from '@/types';
-import { mergeSharedChallenge } from '../pactLifecycle';
-import { ensureDefaultActivities, mergeTimeTrackerDays, type TimeTrackerDayDoc } from '../timeTracker';
+import { mergeSharedChallenge } from '../partners/pactLifecycle';
+import { ensureDefaultActivities, mergeTimeTrackerDays, type TimeTrackerDayDoc } from '../timeTracker/timeTracker';
 import { parseDate } from '../time/dates';
 import { calculateSeasonalTotal } from '../leagues/leagues';
 import { leagueNow, getSeasonNumber, getSeasonStart } from '../time/leagueTime';
@@ -32,7 +32,7 @@ import { computeStateDataWeight, type UserDataWeight } from './dataWeight';
 import { trustedNow, trustedNowMs } from '../time/clock';
 import { mergeRankCelebrated } from '../leagues/rankCelebration';
 import { normalizeThemePreference } from '../theme';
-import { mergeLastSeenRelease } from '../whatsNew';
+import { mergeLastSeenRelease } from '../content/whatsNew';
 
 /**
  * A stored time as epoch ms, for comparing: an ISO string in any offset (`…Z`, `…+00:00` from

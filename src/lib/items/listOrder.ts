@@ -1,4 +1,4 @@
-import type { ListOrder, Project } from '../types';
+import type { ListOrder, Project } from '../../types';
 
 export type { ListOrder };
 

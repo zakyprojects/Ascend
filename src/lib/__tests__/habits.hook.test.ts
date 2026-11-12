@@ -36,7 +36,7 @@ await story('habits.hook (habit actions)', async () => {
   await until(() => byName('HookHabit').length === 1, 'T27: custom habit in state');
   await until(() => rows('habits').some((r) => r.id === custom.id), 'T27: custom habit reached habits', 5000);
 
-  const { PRESET_CATEGORIES } = await import('../presets');
+  const { PRESET_CATEGORIES } = await import('../content/presets');
   const preset = PRESET_CATEGORIES[0].habits[0];
   h.s().addPresetHabit(preset);
   await until(() => byName(preset.name).length === 1, 'T27: Library habit in state');

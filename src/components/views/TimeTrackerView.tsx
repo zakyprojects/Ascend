@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { applyListOrder, byCreatedAsc, LIST_ORDER_KEYS, savedOrderIds } from '@/lib/listOrder';
+import { applyListOrder, byCreatedAsc, LIST_ORDER_KEYS, savedOrderIds } from '@/lib/items/listOrder';
 import { confirmLeave } from '@/lib/unsavedChanges';
 import { AppStore } from '@/lib/store/store';
 import { TimeTrackerActivity, TimeTrackerBlock, TimeTrackerTemplate } from '@/types';
-import { ensureDefaultActivities, plannedBlocksForDate } from '@/lib/timeTracker';
+import { ensureDefaultActivities, plannedBlocksForDate } from '@/lib/timeTracker/timeTracker';
 import { addDays } from '@/lib/time/dates';
 import { useLocalDayKey } from '@/lib/time/useLocalDayKey';
 import { DayTab } from './timeTracker/DayTab';

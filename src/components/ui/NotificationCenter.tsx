@@ -22,7 +22,7 @@ import {
 } from '@/lib/notificationMeta';
 import { requestSettingsSection, settingsSectionPath } from '@/lib/settingsSections';
 import { DEFAULT_RELEASE_TITLE, RELEASE_NOTE, releaseNoteGroups } from '@/lib/releaseNote';
-import { isReleaseNoteInInbox } from '@/lib/whatsNew';
+import { isReleaseNoteInInbox } from '@/lib/content/whatsNew';
 import { WhatsNewDialog } from './WhatsNewDialog';
 
 const PANEL_WIDTH = 360;

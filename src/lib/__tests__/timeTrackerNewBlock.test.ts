@@ -1,4 +1,4 @@
-import { suggestNewBlockTimes } from '../timeTracker';
+import { suggestNewBlockTimes } from '../timeTracker/timeTracker';
 
 const b = (startTime: string, endTime: string) => ({ startTime, endTime });
 

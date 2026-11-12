@@ -1,5 +1,5 @@
 import { SKILLS_POINTS } from '@/lib/points/pointsConfig';
-import { SKILL_LEVELS } from '@/lib/skillLevels';
+import { SKILL_LEVELS } from '@/lib/content/skillLevels';
 import { LINK_CLASS } from '../../components/MarketingLayout';
 import { featurePath } from '../catalog';
 import { Block, Cards, Note, Rules, Steps, type FeatureContent } from '../blocks';

@@ -31,7 +31,7 @@ import { cx, FOCUS_RING } from '@/components/ui/primitives/shared';
 import { RankChip } from './ui/RankChip';
 import { RankUpCelebration } from './ui/RankUpCelebration';
 import { useRankUpCelebration } from '@/lib/leagues/useRankUpCelebration';
-import { useWhatsNew } from '@/lib/useWhatsNew';
+import { useWhatsNew } from '@/lib/content/useWhatsNew';
 import { RELEASE_NOTE } from '@/lib/releaseNote';
 import { WhatsNewDialog } from './ui/WhatsNewDialog';
 import { ViewEntrance } from './ViewEntrance';

@@ -1,8 +1,8 @@
 import { AppState, ReadingLog, UserBook, WeeklyGoalItem, WorkoutLog } from '@/types';
-import { parseDate, weekKey } from './time/dates';
-import { PAGES_PER_CHAPTER, isChapterBook, logUnit } from './points/readingAwards';
-import { workoutMeasureOf, workoutTypeKey, type WorkoutMeasure } from './workoutTypes';
-import { findDrill, logDrillCount, parseDrillMetricKey } from './skillDrills';
+import { parseDate, weekKey } from '../time/dates';
+import { PAGES_PER_CHAPTER, isChapterBook, logUnit } from '../points/readingAwards';
+import { workoutMeasureOf, workoutTypeKey, type WorkoutMeasure } from '../content/workoutTypes';
+import { findDrill, logDrillCount, parseDrillMetricKey } from '../content/skillDrills';
 
 export type LinkedModule = 'habit' | 'exercise' | 'reading' | 'skill';
 

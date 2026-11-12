@@ -13,7 +13,7 @@ import { toUserMessage } from '@/lib/userMessage';
 import { AppStore } from '@/lib/store/store';
 import { addDays } from '@/lib/time/dates';
 import { useLocalDayKey } from '@/lib/time/useLocalDayKey';
-import { percentOf } from '@/lib/linkedGoalMetrics';
+import { percentOf } from '@/lib/items/linkedGoalMetrics';
 import type { Goal, GoalStatus, Project, ProjectStatus, Task, TaskPriority, TaskSubtask } from '@/types';
 import { EmptyState } from '@/components/views/ProjectsGoalsEmptyState';
 import { goalStatusPatch, lockStatusOf, projectStatusPatch, sortBySequence, useHierarchy } from '@/components/projects/hierarchy';
@@ -32,7 +32,7 @@ import {
   reorderInSlots,
   savedOrderIds,
   sortStandalone,
-} from '@/lib/listOrder';
+} from '@/lib/items/listOrder';
 import { confirmLeave } from '@/lib/unsavedChanges';
 import { LazyReorderList, ReorderButton } from '@/components/ui/Reorder';
 import { Chip } from '@/components/projects/ItemCard';

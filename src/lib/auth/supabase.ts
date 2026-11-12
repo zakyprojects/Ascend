@@ -3,7 +3,7 @@ import { ImprovementPlan, PartnerInvite, Partnership, AppState, SharedChallenge,
 import { buildMemberStats, toSeasonCard } from '../leagues/memberStats';
 import { getSeasonStart, leagueNow } from '../time/leagueTime';
 import { mergeAppState } from '../store/stateMerger';
-import { reconcileSharedChallengeLifecycle } from '../pactLifecycle';
+import { reconcileSharedChallengeLifecycle } from '../partners/pactLifecycle';
 import { todayKey } from '../time/dates';
 import { GuardBlockedError, PreFetchSyncError, SessionLostError } from '../store/errors';
 import {

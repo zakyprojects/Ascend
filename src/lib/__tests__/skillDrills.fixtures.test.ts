@@ -19,8 +19,8 @@ import {
   parseDrillMetricKey,
   addLogDrills,
   prepareLogDrills,
-} from '../skillDrills';
-import { LINKED_GOAL_METRICS, computeLinkedGoalProgress, linkedGoalCrossing, linkedGoalUnit, linkedItemExists } from '../linkedGoalMetrics';
+} from '../content/skillDrills';
+import { LINKED_GOAL_METRICS, computeLinkedGoalProgress, linkedGoalCrossing, linkedGoalUnit, linkedItemExists } from '../items/linkedGoalMetrics';
 import { computeSkillAwards } from '../points/skillAwards';
 import { mergeAppState } from '../store/stateMerger';
 import { getWeekDates, weekKey } from '../time/dates';

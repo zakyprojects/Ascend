@@ -8,7 +8,7 @@ import {
   describeBlockSpan,
   formatDurationHuman,
   getActivityDisplayColor,
-} from '@/lib/timeTracker';
+} from '@/lib/timeTracker/timeTracker';
 import { addDays, formatDateKeyHuman, formatWeekdayDate } from '@/lib/time/dates';
 import { appliedTheme } from '@/lib/theme';
 import { ActivityIcon } from './ActivityIcon';

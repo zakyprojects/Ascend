@@ -14,8 +14,8 @@ import {
   wakeAfterMs,
   type BlockPillHidden,
   type BlockPillInput,
-} from '../blockPill';
-import { formatTimeLeft, getDayOfWeekName, liveBlocksAt } from '../timeTracker';
+} from '../timeTracker/blockPill';
+import { formatTimeLeft, getDayOfWeekName, liveBlocksAt } from '../timeTracker/timeTracker';
 
 function assert(condition: unknown, msg: string): void {
   if (!condition) throw new Error(`Assertion failed: ${msg}`);

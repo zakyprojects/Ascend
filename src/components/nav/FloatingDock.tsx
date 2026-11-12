@@ -3,7 +3,7 @@ import { cx } from '@/components/ui/primitives/shared';
 import { SLOP_PX } from '@/lib/gestures';
 import { prefersReducedMotion } from '@/lib/motion';
 import { getFeedbackPrefs, vibrate } from '@/lib/actionFeedback';
-import { PILL_DESKTOP_QUERY, setBlockPillPosition, useBlockPillPrefs, type PillLayout, type PillSide } from '@/lib/blockPill';
+import { PILL_DESKTOP_QUERY, setBlockPillPosition, useBlockPillPrefs, type PillLayout, type PillSide } from '@/lib/timeTracker/blockPill';
 
 /** Gap between the dock and the page content it keeps clear (`--dock-clear`). */
 const CLEAR_GAP_PX = 8;

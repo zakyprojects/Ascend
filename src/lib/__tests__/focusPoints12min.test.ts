@@ -6,8 +6,8 @@ import type { FocusSessionLog, PointsEntry } from '@/types';
 
 const P = await import('../points/focusPoints');
 const A = await import('../points/focusAwards');
-const S = await import('../focusSession');
-const { focusSkillLogFor } = await import('../focusSkillLog');
+const S = await import('../focus/focusSession');
+const { focusSkillLogFor } = await import('../focus/focusSkillLog');
 
 function assert(condition: boolean, msg: string) {
   if (!condition) throw new Error(`Assertion failed: ${msg}`);

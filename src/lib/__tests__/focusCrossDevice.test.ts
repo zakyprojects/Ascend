@@ -17,11 +17,11 @@ const mem = new Map<string, string>();
   clear: () => mem.clear(),
 } as Storage;
 
-const S = await import('../focusSession');
-const X = await import('../focusServerSession');
-const K = await import('../focusSkillLog');
-type Row = import('../focusServerSession').FocusServerRow;
-type Reply = import('../focusServerSession').FocusServerReply;
+const S = await import('../focus/focusSession');
+const X = await import('../focus/focusServerSession');
+const K = await import('../focus/focusSkillLog');
+type Row = import('../focus/focusServerSession').FocusServerRow;
+type Reply = import('../focus/focusServerSession').FocusServerReply;
 
 function assert(condition: boolean, msg: string) {
   if (!condition) throw new Error(`Assertion failed: ${msg}`);
@@ -202,7 +202,7 @@ class FakeServer {
 
 const server = new FakeServer();
 let online = true;
-const transport: import('../focusServerSession').FocusTransport = {
+const transport: import('../focus/focusServerSession').FocusTransport = {
   call: async (fn, args) => (online ? { ok: true, reply: JSON.parse(JSON.stringify(server.call(fn, args))) } : { ok: false, missing: false }),
 };
 
@@ -215,10 +215,10 @@ const localOf = (d: Device) => d.local;
 /** A device: its own stored copy + queue under its own user key (the real app has one per browser). */
 class Device {
   constructor(public uid: string) {}
-  local: import('../focusSession').FocusSession | null = null;
-  logs: import('../focusSession').FocusClose[] = [];
+  local: import('../focus/focusSession').FocusSession | null = null;
+  logs: import('../focus/focusSession').FocusClose[] = [];
   notices: unknown[] = [];
-  queue(op: import('../focusSession').FocusOp) {
+  queue(op: import('../focus/focusSession').FocusOp) {
     const waiting = S.readFocusOps(this.uid).some((o) => o.sessionId === op.sessionId);
     if (op.kind !== 'start' && !waiting && this.local?.revision !== undefined) op = { ...op, baseRevision: this.local.revision };
     S.enqueueFocusOp(this.uid, op);

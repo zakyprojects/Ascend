@@ -3,7 +3,7 @@
 import { useCallback } from 'react';
 import type { AppState, WorkoutLog } from '@/types';
 import { uid, todayKey } from '../time/dates';
-import { editWorkoutIn, workoutFields } from '../itemEdits';
+import { editWorkoutIn, workoutFields } from '../items/itemEdits';
 import { CLEAR_WORKOUTS_MAX } from '../store/clearLimits';
 import { reconcileLinkedWeeklyGoals } from '../points/weeklyGoalPoints';
 import { applyWorkoutAwardsInternal } from '../points/stateAwards';

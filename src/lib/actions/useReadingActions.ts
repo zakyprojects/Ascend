@@ -4,9 +4,9 @@
 import { useCallback } from 'react';
 import type { AppState, ReadingLog, UserBook, UserBookStatus, CuratedBook, BookCategory } from '@/types';
 import { periodKey, todayKey, weekKey } from '../time/dates';
-import type { LinkedPactTick } from '../pactLifecycle';
-import { tickPactsLinkedTo } from '../pactLifecycle';
-import { stampLogUnits, switchBookUnit, takeBackTodaysReading, unitSwitchDefaults } from '../bookUnits';
+import type { LinkedPactTick } from '../partners/pactLifecycle';
+import { tickPactsLinkedTo } from '../partners/pactLifecycle';
+import { stampLogUnits, switchBookUnit, takeBackTodaysReading, unitSwitchDefaults } from '../reading/bookUnits';
 import { isChapterBook, meetsReadingBonusGates, readingBonusCooldown, readingBonusAlreadyGiven, readingBonusId } from '../points/readingAwards';
 import { removeLinkedWeeklyGoals, reconcileLinkedWeeklyGoals } from '../points/weeklyGoalPoints';
 import { excisePointsEntriesInternal, applyReadingAwardsInternal } from '../points/stateAwards';

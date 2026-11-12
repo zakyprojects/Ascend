@@ -2,8 +2,8 @@
 // season's start date and wrapped over the 90-quote list. CI runs them in more than one time zone.
 import { addDays, todayKey } from '../time/dates';
 import { getSeasonStartByNumber } from '../time/leagueTime';
-import { quoteForDay, quoteIndexForDay } from '../quoteOfDay';
-import { QUOTES } from '../quotes';
+import { quoteForDay, quoteIndexForDay } from '../content/quoteOfDay';
+import { QUOTES } from '../content/quotes';
 
 function assert(condition: boolean, msg: string) {
   if (!condition) {

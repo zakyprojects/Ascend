@@ -1,4 +1,4 @@
-import { CHALLENGE_LENGTH_OPTIONS, MAX_PARTNERS } from '@/lib/partnerRules';
+import { CHALLENGE_LENGTH_OPTIONS, MAX_PARTNERS } from '@/lib/partners/partnerRules';
 import { LINK_CLASS } from '../../components/MarketingLayout';
 import { featurePath } from '../catalog';
 import { Block, Cards, Note, Rules, Steps, type FeatureContent } from '../blocks';

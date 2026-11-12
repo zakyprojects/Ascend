@@ -1,6 +1,6 @@
 import { Check, Play, Plus, SkipForward } from 'lucide-react';
 import type { TimeTrackerActivity, TimeTrackerBlock } from '@/types';
-import { formatDurationHuman, formatTime12h, getActivityDisplayColor, minutesToTimeString, timeStringToMinutes } from '@/lib/timeTracker';
+import { formatDurationHuman, formatTime12h, getActivityDisplayColor, minutesToTimeString, timeStringToMinutes } from '@/lib/timeTracker/timeTracker';
 import { ProgressBar } from '@/components/ui/primitives';
 import { ActivityIcon } from './ActivityIcon';
 import { LiveCountdown } from './LiveCountdown';

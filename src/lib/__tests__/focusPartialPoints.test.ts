@@ -5,7 +5,7 @@
 // paused time never counting, the 30-minute resume window, a running session counting wall time
 // while the app is closed or the phone locked, and logout pausing it for the same account only.
 import type { FocusSessionLog, PointsEntry } from '@/types';
-import type { FocusSession } from '../focusSession';
+import type { FocusSession } from '../focus/focusSession';
 
 // Node has no localStorage: a small in-memory one.
 const store = new Map<string, string>();
@@ -22,7 +22,7 @@ const store = new Map<string, string>();
 
 const { focusR1Points, FOCUS_DAILY_CAP } = await import('../points/focusPoints');
 const { computeFocusAwards, creditedFocusMinutes, focusFloorDay } = await import('../points/focusAwards');
-const S = await import('../focusSession');
+const S = await import('../focus/focusSession');
 const { PFC_POINTS } = await import('../points/pointsConfig');
 
 function assert(condition: boolean, msg: string) {

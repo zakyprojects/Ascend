@@ -1,7 +1,7 @@
 import type { AppState, Habit } from '@/types';
 import type { View } from '@/lib/views';
 import { todayKey } from '@/lib/time/dates';
-import { dayProgress } from '@/lib/timeTracker';
+import { dayProgress } from '@/lib/timeTracker/timeTracker';
 import { getActiveBadHabitsOrdered } from '@/lib/points/badHabitEligibility';
 import { trustedNow } from './time/clock';
 

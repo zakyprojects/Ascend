@@ -3,7 +3,7 @@ import type { AppStore } from '@/lib/store/store';
 import type { View } from '@/lib/views';
 import { todayKey } from '@/lib/time/dates';
 import { trustedNow } from '@/lib/time/clock';
-import { ensureDefaultActivities, timeStringToMinutes } from '@/lib/timeTracker';
+import { ensureDefaultActivities, timeStringToMinutes } from '@/lib/timeTracker/timeTracker';
 import { currentScheduleBlock } from '../scheduleBlocks';
 import { ScheduleStart, ScheduleStopConfirm } from './ScheduleIdle';
 import { ScheduleOverdue } from './ScheduleOverdue';

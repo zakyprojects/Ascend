@@ -3,9 +3,9 @@
 import { useCallback } from 'react';
 import type { AppState, Skill, SkillSessionLog, SkillLevel, SkillDrill, SkillDrillCount } from '@/types';
 import { uid, todayKey, weekKey } from '../time/dates';
-import { addLogDrills, drillNameProblem, foldClearedCounts, isDrillGoal, keepValidDrillCounts, normalizeDrillName, normalizeDrillUnit } from '../skillDrills';
-import type { NewLogDrill } from '../skillDrills';
-import { renameSkillIn } from '../itemEdits';
+import { addLogDrills, drillNameProblem, foldClearedCounts, isDrillGoal, keepValidDrillCounts, normalizeDrillName, normalizeDrillUnit } from '../content/skillDrills';
+import type { NewLogDrill } from '../content/skillDrills';
+import { renameSkillIn } from '../items/itemEdits';
 import { CLEAR_SKILL_LOGS_MAX } from '../store/clearLimits';
 import { removeLinkedWeeklyGoals, reconcileLinkedWeeklyGoals, removeWeeklyGoalsWhere } from '../points/weeklyGoalPoints';
 import { applySkillAwardsInternal } from '../points/stateAwards';

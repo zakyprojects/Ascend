@@ -1,13 +1,13 @@
 import { useMemo, useState } from 'react';
 import { BookOpen, CheckCircle2, ListTodo, Pause, Pencil, PlayCircle, Plus, RotateCcw, Search, Trash2 } from 'lucide-react';
 import { AppStore } from '@/lib/store/store';
-import { pactUnlinkNote, runningPactsLinkedTo } from '@/lib/pactLifecycle';
-import { applyListOrder, applyListOrderTouchedFirst, LIST_ORDER_KEYS, reorderInSlots, savedOrderIds } from '@/lib/listOrder';
+import { pactUnlinkNote, runningPactsLinkedTo } from '@/lib/partners/pactLifecycle';
+import { applyListOrder, applyListOrderTouchedFirst, LIST_ORDER_KEYS, reorderInSlots, savedOrderIds } from '@/lib/items/listOrder';
 import { LazyReorderList, ReorderButton } from '@/components/ui/Reorder';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { Badge, Dialog, EmptyState, PageColumns, ProgressBar, Switch, TabPanel, Tabs, ToolbarInput, ToolbarSelect } from '@/components/ui/primitives';
 import { TAP_TARGET, cx } from '@/components/ui/primitives/shared';
-import { CURATED_BOOKS, BOOK_CATEGORIES } from '@/lib/books';
+import { CURATED_BOOKS, BOOK_CATEGORIES } from '@/lib/reading/books';
 import type { BookCategory, CuratedBook, ReadingLog, UserBook } from '@/types';
 import { formatDateLong, weekKey, formatWeekdayDate, formatWeekdayShort, calculateStreak, parseDate } from '@/lib/time/dates';
 import { READING_POINTS } from '@/lib/points/pointsConfig';

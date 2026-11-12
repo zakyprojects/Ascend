@@ -13,7 +13,7 @@ import {
   suggestNewBlockTimes,
   minutesToTimeString,
   timeStringToMinutes,
-} from '@/lib/timeTracker';
+} from '@/lib/timeTracker/timeTracker';
 import { calculateTimeTrackerDailyPoints, TIME_TRACKER_POINTS } from '@/lib/points/pointsConfig';
 import { TIME_TRACKER_GRACE_MINUTES, timeTrackerGraceDay } from '@/lib/points/timeTrackerAwards';
 import { formatDateKeyHuman, formatWeekdayDate } from '@/lib/time/dates';
@@ -30,7 +30,7 @@ import { NowCard } from './NowCard';
 import { DayTimeline, type TimelineBlock } from './DayTimeline';
 import { blockName, blockRange, ledgerDayPoints, nextTierHint, useNowTick } from './dayMeta';
 import { actionFeedback } from '@/lib/actionFeedback';
-import { groupMinutes } from '@/lib/timeTrackerGroups';
+import { groupMinutes } from '@/lib/timeTracker/timeTrackerGroups';
 import { TimeGroups } from './TimeGroups';
 
 interface DayTabProps {

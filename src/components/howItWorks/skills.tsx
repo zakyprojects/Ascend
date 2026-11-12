@@ -1,6 +1,6 @@
 import { Fig, Gain, pts, type HowItWorksGuide } from '@/components/ui/HowItWorks';
 import { SKILLS_POINTS, WEEKLY_GOALS_POINTS } from '@/lib/points/pointsConfig';
-import { SKILL_LEVELS } from '@/lib/skillLevels';
+import { SKILL_LEVELS } from '@/lib/content/skillLevels';
 
 /**
  * Skills. Rules from lib/pointsConfig.ts SKILLS_POINTS (minutes only), lib/skillLevels.ts, lib/skillDrills.ts

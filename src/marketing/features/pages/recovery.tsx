@@ -1,6 +1,6 @@
 import { RECOVERY_MILESTONES } from '@/lib/points/recoveryAwards';
 import { RECOVERY_POINTS } from '@/lib/points/pointsConfig';
-import { CRISIS_ELSEWHERE, CRISIS_LINES } from '@/lib/crisisLines';
+import { CRISIS_ELSEWHERE, CRISIS_LINES } from '@/lib/content/crisisLines';
 import { LINK_CLASS } from '../../components/MarketingLayout';
 import { featurePath } from '../catalog';
 import { Block, Cards, Note, Rules, Steps, type FeatureContent } from '../blocks';

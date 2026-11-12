@@ -15,7 +15,7 @@ import { computeJournalAward, isJournalDayEntry } from './journalAwards';
 import { computeReadingDayAward, isReadingDayEntry } from './readingAwards';
 import { timeTrackerGraceDay } from './timeTrackerAwards';
 import { todayKey } from '../time/dates';
-import { lastBlockOfDay } from '../timeTracker';
+import { lastBlockOfDay } from '../timeTracker/timeTracker';
 
 export function excisePointsEntriesInternal(
   prev: AppState,

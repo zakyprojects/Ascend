@@ -5,7 +5,7 @@ import type { AppStore } from '@/lib/store/store';
 import type { CuratedBook, UserBook } from '@/types';
 import { earliestTargetDate, isNewPastDate } from '@/lib/time/dates';
 import { useUnsavedChanges } from '@/lib/unsavedChanges';
-import { unitSwitchDefaults } from '@/lib/bookUnits';
+import { unitSwitchDefaults } from '@/lib/reading/bookUnits';
 import { bookProgress, bookUnit, lengthsByUnit, unitSwitchNote, type BookUnit } from './bookMeta';
 
 /**

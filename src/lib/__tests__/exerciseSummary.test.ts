@@ -1,7 +1,7 @@
 // exerciseSummary (lib/exerciseSummary.ts): exercise amounts in their own unit with the member card's
 // exact strings, and the card's ranking (days, then logs, then newest; one row per exercise and unit).
 import type { WorkoutLog } from '@/types';
-const { exerciseAmountText, minutesText, topWorkouts } = await import('../exerciseSummary');
+const { exerciseAmountText, minutesText, topWorkouts } = await import('../items/exerciseSummary');
 
 function assert(condition: boolean, msg: string) {
   if (!condition) throw new Error(`Assertion failed: ${msg}`);

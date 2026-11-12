@@ -1,8 +1,8 @@
 import type { CSSProperties, ReactNode } from 'react';
 import { ArrowRight, CalendarDays } from 'lucide-react';
 import { cx, FOCUS_RING } from '@/components/ui/primitives/shared';
-import { LEGAL_CONTACT_EMAIL, MIN_AGE } from '@/lib/legal';
-import { LESSONS } from '@/lib/lessons';
+import { LEGAL_CONTACT_EMAIL, MIN_AGE } from '@/lib/content/legal';
+import { LESSONS } from '@/lib/content/lessons';
 import {
   BAD_HABIT_POINTS,
   JOURNAL_POINTS,
@@ -16,7 +16,7 @@ import {
   WEEKLY_REFLECTION_POINTS,
   WORKOUT_POINTS,
 } from '@/lib/points/pointsConfig';
-import { PRESET_BAD_HABITS, PRESET_CATEGORIES } from '@/lib/presets';
+import { PRESET_BAD_HABITS, PRESET_CATEGORIES } from '@/lib/content/presets';
 import { TIERS } from '@/lib/leagues/tiers';
 import { FOCUS_MINUTES_PER_POINT, FOCUS_MIN_MINUTES } from '@/lib/points/focusPoints';
 import { LINK_CLASS, MarketingLayout } from '../components/MarketingLayout';

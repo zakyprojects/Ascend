@@ -8,7 +8,7 @@ import {
   resolveActivityColor,
   AVAILABLE_ACTIVITY_ICONS,
   AVAILABLE_ACTIVITY_COLORS,
-} from '@/lib/timeTracker';
+} from '@/lib/timeTracker/timeTracker';
 import { appliedTheme } from '@/lib/theme';
 import { AscendLoadingIndicator } from '@/components/ui/AscendLoadingIndicator';
 import { Shapes, Check } from 'lucide-react';

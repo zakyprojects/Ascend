@@ -1,7 +1,7 @@
 import type { ReadingLog, UserBook } from '@/types';
 import { findCuratedBook } from './books';
-import { addDays } from './time/dates';
-import { PAGES_PER_CHAPTER, isChapterBook, logPageAmount, logUnit } from './points/readingAwards';
+import { addDays } from '../time/dates';
+import { PAGES_PER_CHAPTER, isChapterBook, logPageAmount, logUnit } from '../points/readingAwards';
 
 export type BookUnitName = 'pages' | 'chapters';
 

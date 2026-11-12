@@ -2,7 +2,7 @@
 // fixed fallback sorts, projects grouped by goal, new project orders, a done project never locked.
 import type { Goal, Project } from '../../types';
 const { byCreatedAsc, byCreatedDesc, sortBySequence, sortStandalone, projectsInDisplayOrder, nextSequenceOrder, topStandaloneOrder } =
-  await import('../listOrder');
+  await import('../items/listOrder');
 const { lockStatusOf } = await import('../../components/projects/hierarchy');
 
 function assert(condition: boolean, msg: string) {
@@ -77,7 +77,7 @@ console.log('listOrder: all assertions passed');
 
 // Currently reading: a saved order, and a book touched after it still goes to the top.
 {
-  const { applyListOrderTouchedFirst } = await import('../listOrder');
+  const { applyListOrderTouchedFirst } = await import('../items/listOrder');
   const t = (iso: string) => Date.parse(iso);
   const books = [
     { id: 'a', at: '2026-11-07T08:00:00.000Z' },

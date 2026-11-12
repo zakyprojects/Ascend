@@ -11,7 +11,7 @@ import { toUserMessage } from '@/lib/userMessage';
 import { looksLikeUsername } from '@/lib/auth/usernameRules';
 import { preloadCaptcha, withCaptcha } from '@/lib/auth/captcha';
 import { CaptchaSlot } from '@/components/ui/CaptchaSlot';
-import { LEGAL_CONTACT_EMAIL, MIN_AGE } from '@/lib/legal';
+import { LEGAL_CONTACT_EMAIL, MIN_AGE } from '@/lib/content/legal';
 import { pathForLegalRoute } from '@/lib/routes';
 
 /** How long the sign-in/sign-up success screen shows before `onDone` runs. */

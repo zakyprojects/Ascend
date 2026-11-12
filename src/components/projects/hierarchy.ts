@@ -8,8 +8,8 @@ import {
   tasksByProjectId,
   type GoalProgress,
   type ProjectProgress,
-} from '@/lib/projectProgress';
-import { sortBySequence } from '@/lib/listOrder';
+} from '@/lib/items/projectProgress';
+import { sortBySequence } from '@/lib/items/listOrder';
 
 export type { GoalProgress, ProjectProgress };
 

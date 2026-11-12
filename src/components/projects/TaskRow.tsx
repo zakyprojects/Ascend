@@ -7,8 +7,8 @@ import { TAP_TARGET, TAP_TARGET_Y } from '@/components/ui/primitives/shared';
 import { useCompletionPop } from '@/lib/useCompletionPop';
 import { Chip } from './ItemCard';
 import { actionFeedback } from '@/lib/actionFeedback';
-import { nameTaken } from '@/lib/uniqueNames';
-import { SUBTASK_TITLE_MAX, subtaskTitleProblem } from '@/lib/itemEdits';
+import { nameTaken } from '@/lib/items/uniqueNames';
+import { SUBTASK_TITLE_MAX, subtaskTitleProblem } from '@/lib/items/itemEdits';
 import { toUserMessage } from '@/lib/userMessage';
 import { LazyReorderList, ReorderButton } from '@/components/ui/Reorder';
 

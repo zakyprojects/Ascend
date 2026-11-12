@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Plus, ShieldAlert } from 'lucide-react';
 import { AppStore } from '@/lib/store/store';
-import { pactUnlinkNote, runningPactsLinkedToBadHabit } from '@/lib/pactLifecycle';
+import { pactUnlinkNote, runningPactsLinkedToBadHabit } from '@/lib/partners/pactLifecycle';
 import { useToast } from '@/components/ui/Toast';
 import { BadHabit } from '@/types';
 import { trustedNow } from '@/lib/time/clock';
@@ -13,7 +13,7 @@ import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { PageHero } from '@/components/ui/PageHero';
 import { EmptyState, PageColumns } from '@/components/ui/primitives';
 import { getActiveBadHabitsOrdered } from '@/lib/points/badHabitEligibility';
-import { applyListOrder, LIST_ORDER_KEYS, savedOrderIds } from '@/lib/listOrder';
+import { applyListOrder, LIST_ORDER_KEYS, savedOrderIds } from '@/lib/items/listOrder';
 import { LazyReorderList, ReorderButton } from '@/components/ui/Reorder';
 import { getCapStatus } from '@/lib/points/capStatus';
 import { getEffectiveSeasonPoints } from '@/lib/leagues/leagues';
@@ -24,7 +24,7 @@ import { CountUp, Reveal } from '@/components/ui/Motion';
 import { BadHabitRow } from '@/components/badHabits/BadHabitRow';
 import { AddBadHabitDialog } from '@/components/badHabits/AddBadHabitDialog';
 import { RenameDialog } from '@/components/ui/RenameDialog';
-import { badHabitNameProblem, canRenameBadHabit, HABIT_NAME_MAX, HABIT_PACT_RENAME_MESSAGE } from '@/lib/itemEdits';
+import { badHabitNameProblem, canRenameBadHabit, HABIT_NAME_MAX, HABIT_PACT_RENAME_MESSAGE } from '@/lib/items/itemEdits';
 
 export function BadHabitTracker({ store }: { store: AppStore }) {
   const guide = useHowItWorks();

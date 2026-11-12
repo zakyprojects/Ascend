@@ -1,7 +1,7 @@
 import { useEffect, useRef, type ReactNode } from 'react';
 import { AppLockup } from '@/components/ui/AppLogo';
 import { cx, FOCUS_RING } from '@/components/ui/primitives/shared';
-import { LEGAL_CONTACT_EMAIL, LEGAL_OPERATOR, LEGAL_UPDATED, MIN_AGE } from '@/lib/legal';
+import { LEGAL_CONTACT_EMAIL, LEGAL_OPERATOR, LEGAL_UPDATED, MIN_AGE } from '@/lib/content/legal';
 import { DASHBOARD_PATH, pathForLegalRoute, type LegalRoute } from '@/lib/routes';
 
 export interface LegalPageProps {

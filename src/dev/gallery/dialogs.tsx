@@ -12,7 +12,7 @@ import { FocusLogEditDialog } from '@/components/pfc/FocusLogEditDialog';
 import { EmotionNoteDialog } from '@/components/pfc/EmotionNoteDialog';
 import { DecisionFormDialog } from '@/components/pfc/DecisionFormDialog';
 import { MOODS, MoodBadge, MoodPicker } from '@/components/journal/moods';
-import { HABIT_NAME_MAX } from '@/lib/itemEdits';
+import { HABIT_NAME_MAX } from '@/lib/items/itemEdits';
 import { todayKey } from '@/lib/time/dates';
 import { trustedNowMs } from '@/lib/time/clock';
 import type { DecisionLog, EmotionLog, FocusSessionLog, Mood } from '@/types';

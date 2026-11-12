@@ -1,7 +1,7 @@
 import { FOCUS_PRESETS, FOCUS_RESUME_WINDOW_MINUTES, focusFinishedPoints } from '@/components/pfc/focusSession';
 import { FOCUS_MINUTES_PER_POINT, FOCUS_MIN_MINUTES, focusPointsForMinutes } from '@/lib/points/focusPoints';
 import { COMMON_EMOTIONS } from '@/components/pfc/pfcLists';
-import { LESSONS, LESSON_CATEGORIES } from '@/lib/lessons';
+import { LESSONS, LESSON_CATEGORIES } from '@/lib/content/lessons';
 import { PFC_POINTS } from '@/lib/points/pointsConfig';
 import { LINK_CLASS } from '../../components/MarketingLayout';
 import { Screenshot } from '../../components/Screenshot';

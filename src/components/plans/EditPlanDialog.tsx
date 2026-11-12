@@ -4,7 +4,7 @@ import type { AppStore } from '@/lib/store/store';
 import { isNewPastDate, todayKey } from '@/lib/time/dates';
 import { useUnsavedChanges } from '@/lib/unsavedChanges';
 import { type AnyPlan, PLAN_NAME_TAKEN, PLAN_TYPE_META, ownPlans, planTypeOf } from './planMeta';
-import { nameTaken } from '@/lib/uniqueNames';
+import { nameTaken } from '@/lib/items/uniqueNames';
 import { PlanFields, type PlanFormValues } from './PlanFields';
 
 function valuesFrom(plan: AnyPlan): PlanFormValues {

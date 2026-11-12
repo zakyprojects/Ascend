@@ -1,4 +1,4 @@
-import { MIN_AGE, LEGAL_CONTACT_EMAIL } from '@/lib/legal';
+import { MIN_AGE, LEGAL_CONTACT_EMAIL } from '@/lib/content/legal';
 import { FEATURE_GROUPS, FEATURE_SLUGS, featurePath, featuresInGroup } from './features/catalog';
 import { FEATURE_CONTENT } from './features/content';
 import { LANDING_FITS, LANDING_NOT_FOR, LANDING_WHY } from './landingQa';

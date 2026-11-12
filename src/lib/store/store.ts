@@ -11,8 +11,8 @@ import { isDeviceOffline } from './deviceOffline';
 import { dispatchToastError } from './storeShared';
 import { generateNumericUID, todayKey, getNextDateKey, formatWeekdayDate } from '../time/dates';
 import { singleFlight } from './singleFlight';
-import { reconcileSharedChallengeLifecycle, mergeSharedChallenge, pactTickRefused, type LinkedPactTick } from '../pactLifecycle';
-import { pauseStoredSessionsForSignOut } from '../focusSession';
+import { reconcileSharedChallengeLifecycle, mergeSharedChallenge, pactTickRefused, type LinkedPactTick } from '../partners/pactLifecycle';
+import { pauseStoredSessionsForSignOut } from '../focus/focusSession';
 import {
   leagueNow,
   syncSeasonConfig,

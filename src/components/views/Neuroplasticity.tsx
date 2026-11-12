@@ -21,7 +21,7 @@ import type { Lesson } from '@/types';
 import type { AppStore } from '@/lib/store/store';
 import { cx, PageColumns } from '@/components/ui/primitives';
 import { Reveal } from '@/components/ui/Motion';
-import { LESSONS } from '@/lib/lessons';
+import { LESSONS } from '@/lib/content/lessons';
 import { getSeasonNumber, leagueNow } from '@/lib/time/leagueTime';
 import { isLessonReadInSeason } from '@/lib/points/lessonAwards';
 import { LessonReader, pointsLabel } from '@/components/lessons/LessonReader';

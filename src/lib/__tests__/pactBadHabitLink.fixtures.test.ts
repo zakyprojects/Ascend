@@ -15,7 +15,7 @@ import {
   resistPactTitle,
   tickLinkedBadHabitPacts,
   type LinkedPactReconcileInput,
-} from '../pactLifecycle';
+} from '../partners/pactLifecycle';
 
 function assert(condition: boolean, msg: string) {
   if (!condition) {

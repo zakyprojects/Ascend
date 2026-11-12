@@ -1,13 +1,13 @@
 import { useState } from 'react';
 import { Check, Circle, Edit3, Trash2, Zap } from 'lucide-react';
 import type { AppState, WeeklyGoalItem, WeeklyGoalPriority } from '@/types';
-import type { GoalProgressResult } from '@/lib/linkedGoalMetrics';
+import type { GoalProgressResult } from '@/lib/items/linkedGoalMetrics';
 import { ProgressBar } from '@/components/ui/primitives';
 import { TAP_TARGET, TAP_TARGET_Y } from '@/components/ui/primitives/shared';
 import { ProgressUpdateDialog, UpdateProgressButton } from '@/components/ui/ProgressUpdateDialog';
 import { useCompletionPop } from '@/lib/useCompletionPop';
-import { linkedItemExists } from '@/lib/linkedGoalMetrics';
-import { findDrill, parseDrillMetricKey } from '@/lib/skillDrills';
+import { linkedItemExists } from '@/lib/items/linkedGoalMetrics';
+import { findDrill, parseDrillMetricKey } from '@/lib/content/skillDrills';
 import { deletedLinkNoun, formatAmount, formatNumber, isGoalAchieved, isLinkedGoal } from './weekMeta';
 
 const PRIORITY_DOT: Record<WeeklyGoalPriority, string> = {

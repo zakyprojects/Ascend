@@ -16,16 +16,16 @@ import { FOCUS_RING, TAP_TARGET, TAP_TARGET_Y, cx } from '@/components/ui/primit
 import { leagueNow } from '@/lib/time/leagueTime';
 import { leaguePeriodKey } from '@/lib/leagues/leagueStandingsRefresh';
 import { getCurrentTier } from '@/lib/leagues/tiers';
-import { isPartnershipUser1 } from '@/lib/partnershipSide';
-import { CHALLENGE_LENGTH_OPTIONS, MAX_PARTNERS, partnerLimitText } from '@/lib/partnerRules';
+import { isPartnershipUser1 } from '@/lib/partners/partnershipSide';
+import { CHALLENGE_LENGTH_OPTIONS, MAX_PARTNERS, partnerLimitText } from '@/lib/partners/partnerRules';
 import { addDays, todayKey } from '@/lib/time/dates';
 import { useLocalDayKey } from '@/lib/time/useLocalDayKey';
-import { usePartnerDayKeys } from '@/lib/usePartnerDayKeys';
+import { usePartnerDayKeys } from '@/lib/partners/usePartnerDayKeys';
 import { ptUnit, ptsText } from '@/lib/leagues/leagues';
 import { createNotificationSupabase } from '@/lib/auth/supabase';
 import { calculateUnifiedStreak } from '@/lib/time/streakLogic';
 import { toUserMessage } from '@/lib/userMessage';
-import { sameName } from '@/lib/uniqueNames';
+import { sameName } from '@/lib/items/uniqueNames';
 import {
   badHabitForPactGoal,
   badHabitStatusOn,
@@ -42,7 +42,7 @@ import {
   pactSideGoal,
   resistPactTitle,
   type PactDayCellState,
-} from '@/lib/pactLifecycle';
+} from '@/lib/partners/pactLifecycle';
 import { BadHabit, BadHabitLog, Partnership, SharedChallenge, PartnerInvite } from '@/types';
 import type { View } from '@/components/AppShell';
 import { actionFeedback } from '@/lib/actionFeedback';

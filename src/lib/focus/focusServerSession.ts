@@ -8,7 +8,7 @@ import {
   type FocusNotice,
   type FocusOp,
   type FocusSession,
-} from '@/lib/focusSession';
+} from '@/lib/focus/focusSession';
 
 /**
  * One running Deep Focus session per account, shared by all its devices (Zakria 2026-11-05).
@@ -224,7 +224,7 @@ const isMissingFunction = (error: { code?: string; message?: string } | null): b
 export const supabaseFocusTransport: FocusTransport = {
   async call(fn, args) {
     try {
-      const { supabase, isSupabaseConfigured } = await import('./auth/supabase');
+      const { supabase, isSupabaseConfigured } = await import('../auth/supabase');
       if (!isSupabaseConfigured) return { ok: false, missing: true };
       const { data, error } = await supabase.rpc(fn, args);
       if (error) return { ok: false, missing: isMissingFunction(error) };

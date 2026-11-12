@@ -7,8 +7,8 @@ import type { AppState, PlanStep, ImprovementPlan, UserPlanFollow, PlanReflectio
 import { dispatchToastError } from '../store/storeShared';
 import { uid, generateUUID, todayKey, isPlanJourneyDoneThisPeriod, calculateActivePlanStreak } from '../time/dates';
 import { trustedNow, trustedNowMs } from '../time/clock';
-import { editedPlanStructure } from '../planStructure';
-import type { PlanStructureEdits } from '../planStructure';
+import { editedPlanStructure } from '../items/planStructure';
+import type { PlanStructureEdits } from '../items/planStructure';
 import { supabase, syncBroadcaster, syncPlanToSupabase, syncFollowedPlanToSupabase, deletePlanFromSupabase, deleteFollowedPlanFromSupabase } from '../auth/supabase';
 import type { StoreSetState } from '../store/storeSetState';
 

@@ -1,9 +1,9 @@
 import type { AppState, WeeklyGoalItem } from '@/types';
-import type { GoalProgressResult } from '@/lib/linkedGoalMetrics';
+import type { GoalProgressResult } from '@/lib/items/linkedGoalMetrics';
 import { formatWeekRange, offsetWeekKey } from '@/lib/time/dates';
 import { calculateWeeklyGoalsPoints } from '@/lib/points/pointsConfig';
 import { heldCountedGoals, weeklyScoringGoals, type CountedGoalRef } from '@/lib/points/weeklyAwards';
-import { parseDrillMetricKey } from '@/lib/skillDrills';
+import { parseDrillMetricKey } from '@/lib/content/skillDrills';
 
 /** "This week", "Last week", "Next week", or the week's dates, never the raw week key. */
 export function weekLabel(targetWeekKey: string, currentWeekKey: string): string {

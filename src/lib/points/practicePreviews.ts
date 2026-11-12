@@ -8,8 +8,8 @@
 import type { ReadingLog, UserBook, WorkoutLog } from '@/types';
 import { computeWorkoutAwards } from './workoutAwards';
 import { computeReadingDayAward, isChapterBook } from './readingAwards';
-import { takeBackTodaysReading } from '../bookUnits';
-import { workoutFields } from '../itemEdits';
+import { takeBackTodaysReading } from '../reading/bookUnits';
+import { workoutFields } from '../items/itemEdits';
 
 /** The preview line's label when the whole amount counts. */
 export const PREVIEW_EARN_LABEL = 'You earn';

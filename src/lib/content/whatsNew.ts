@@ -1,4 +1,4 @@
-import type { ReleaseNote } from './releaseNote';
+import type { ReleaseNote } from '../releaseNote';
 
 /*
  * "What's new" rules (settings doc `lastSeenRelease` = id of the newest note already shown).

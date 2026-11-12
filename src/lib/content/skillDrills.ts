@@ -1,5 +1,5 @@
 import type { Skill, SkillDrill, SkillDrillCount, SkillSessionLog, WeeklyGoalItem } from '@/types';
-import { nameTaken, sameName } from './uniqueNames';
+import { nameTaken, sameName } from '../items/uniqueNames';
 
 /**
  * Drills: things inside a skill that are counted, not timed (Guitar → Scales, 50 reps; Zakria

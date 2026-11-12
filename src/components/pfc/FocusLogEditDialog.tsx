@@ -4,7 +4,7 @@ import { Dialog, Form, Input, Textarea, useFormController } from '@/components/u
 import { useUnsavedChanges } from '@/lib/unsavedChanges';
 import { toUserMessage } from '@/lib/userMessage';
 import { formatDateLong } from '@/lib/time/dates';
-import { FOCUS_REFLECTION_MAX, FOCUS_TASK_MAX } from '@/lib/pfcLogEdits';
+import { FOCUS_REFLECTION_MAX, FOCUS_TASK_MAX } from '@/lib/focus/pfcLogEdits';
 import { timeOfDay } from './pfcLists';
 
 /** Edit a focus session's words: task name and note. Minutes, time, skill and points stay. */

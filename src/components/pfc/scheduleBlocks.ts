@@ -1,5 +1,5 @@
 import type { TimeTrackerActivity, TimeTrackerBlock } from '@/types';
-import { computeLiveSchedule, getBlockTimingAt, liveBlocksAt, timeStringToMinutes } from '@/lib/timeTracker';
+import { computeLiveSchedule, getBlockTimingAt, liveBlocksAt, timeStringToMinutes } from '@/lib/timeTracker/timeTracker';
 import { todayKey } from '@/lib/time/dates';
 
 /**

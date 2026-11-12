@@ -6,7 +6,7 @@
  * allowed on today (the server drops an edit of any other day and recomputes today's award).
  */
 import type { AddictionTracker, BadHabit, Habit, Skill, Task, WorkoutLog } from '@/types';
-import { PRESET_BAD_HABITS, PRESET_CATEGORIES } from './presets';
+import { PRESET_BAD_HABITS, PRESET_CATEGORIES } from '../content/presets';
 import { nameTaken, sameName } from './uniqueNames';
 
 export const SKILL_NAME_MAX = 80;

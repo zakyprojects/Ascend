@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { trustedNowMs } from '@/lib/time/clock';
-import { formatTimeLeft } from '@/lib/timeTracker';
+import { formatTimeLeft } from '@/lib/timeTracker/timeTracker';
 
 interface LiveCountdownProps {
   /** Real end instant of the block (computeLiveSchedule's activeBlockEndMs): a block ending at

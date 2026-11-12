@@ -1,6 +1,6 @@
 import type { WorkoutLog } from '@/types';
-import { compactNumber } from './leagues/numberFormat';
-import { workoutAmountOf, workoutMeasureOf, workoutTypeKey, type WorkoutMeasure } from './workoutTypes';
+import { compactNumber } from '../leagues/numberFormat';
+import { workoutAmountOf, workoutMeasureOf, workoutTypeKey, type WorkoutMeasure } from '../content/workoutTypes';
 
 /**
  * Exercise amounts in their own unit, the way the member card shows them, and the client mirror of

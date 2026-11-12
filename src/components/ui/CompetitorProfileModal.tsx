@@ -8,7 +8,7 @@ import { getCurrentTier } from '@/lib/leagues/tiers';
 import { formatDateShort } from '@/lib/time/dates';
 import { ptUnit } from '@/lib/leagues/leagues';
 import { compactNumber } from '@/lib/leagues/numberFormat';
-import { exerciseAmountText as exerciseText, minutesText } from '@/lib/exerciseSummary';
+import { exerciseAmountText as exerciseText, minutesText } from '@/lib/items/exerciseSummary';
 import type { MemberDetails } from '@/lib/leagues/useMemberDetails';
 
 interface CompetitorProfileModalProps {

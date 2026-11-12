@@ -4,7 +4,7 @@
 import { useCallback } from 'react';
 import type { AppState, NotificationPreferenceKey, RankCelebrated } from '@/types';
 import { mergeRankCelebrated } from '../leagues/rankCelebration';
-import { mergeLastSeenRelease } from '../whatsNew';
+import { mergeLastSeenRelease } from '../content/whatsNew';
 import { dispatchToastError } from '../store/storeShared';
 import type { ProfileSwitchKey } from '../store/storeShared';
 import { updateProfilePrivacy, updateProfileAcceptPartnerInvites, updateProfileNotificationPreferences } from '../auth/auth';

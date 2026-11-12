@@ -27,7 +27,7 @@ import { useLeaguePeriodRollover } from '@/lib/leagues/useLeaguePeriodRollover';
 import { useLeagueStandingsRefresh } from '@/lib/leagues/useLeagueStandingsRefresh';
 import { useMemberDetails } from '@/lib/leagues/useMemberDetails';
 import { CountUp, Reveal } from '@/components/ui/Motion';
-import { isPartnershipUser1 } from '@/lib/partnershipSide';
+import { isPartnershipUser1 } from '@/lib/partners/partnershipSide';
 
 const LEAGUE_TYPES: LeagueType[] = ['weekly', 'monthly', 'ninetyDay'];
 

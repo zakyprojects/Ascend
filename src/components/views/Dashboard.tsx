@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { applyListOrder, byCreatedAsc, LIST_ORDER_KEYS, savedOrderIds } from '@/lib/listOrder';
+import { applyListOrder, byCreatedAsc, LIST_ORDER_KEYS, savedOrderIds } from '@/lib/items/listOrder';
 import {
   BookOpen,
   Check,
@@ -24,12 +24,12 @@ import { View } from '@/components/AppShell';
 import { Habit, LeagueType } from '@/types';
 import { habitPointsMeta } from '@/components/habits/habitPointsMeta';
 import { addDays, formatDateLong, startOfWeek, todayKey } from '@/lib/time/dates';
-import { exerciseAmountText, topWorkouts } from '@/lib/exerciseSummary';
+import { exerciseAmountText, topWorkouts } from '@/lib/items/exerciseSummary';
 import { ProgressRing } from '@/components/ui/charts';
 import { LEAGUE_CONFIG, pointsText, ptsText } from '@/lib/leagues/leagues';
 import { leagueNow } from '@/lib/time/leagueTime';
 import { leaguePeriodKey } from '@/lib/leagues/leagueStandingsRefresh';
-import { calculateBlockDurationMinutes, dayProgress, formatDurationHuman } from '@/lib/timeTracker';
+import { calculateBlockDurationMinutes, dayProgress, formatDurationHuman } from '@/lib/timeTracker/timeTracker';
 import { JOURNAL_POINTS } from '@/lib/points/pointsConfig';
 import { AutoNum, CountUp, Reveal } from '@/components/ui/Motion';
 import { LeagueCountdown } from '@/components/ui/LeagueCountdown';
@@ -39,7 +39,7 @@ import { isSupabaseConfigured } from '@/lib/auth/supabase';
 import { useLeaguePeriodRollover } from '@/lib/leagues/useLeaguePeriodRollover';
 import { useLeagueStandingsRefresh } from '@/lib/leagues/useLeagueStandingsRefresh';
 import { useLocalDayKey } from '@/lib/time/useLocalDayKey';
-import { quoteForDay } from '@/lib/quoteOfDay';
+import { quoteForDay } from '@/lib/content/quoteOfDay';
 import { useMinuteTick } from '@/lib/time/useMinuteTick';
 import { useCompletionPop } from '@/lib/useCompletionPop';
 import { pageLinkProps } from '@/lib/pageLink';

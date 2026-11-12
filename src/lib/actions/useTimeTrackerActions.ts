@@ -3,10 +3,10 @@
 import { useCallback } from 'react';
 import type { AppState, TimeTrackerActivity, TimeTrackerTemplate, TimeTrackerState, TimeTrackerBlock } from '@/types';
 import { DEFAULT_TIME_TRACKER_STATE } from '@/types';
-import { ensureDefaultActivities, autoHydrateDailyLog, checkTimeCollision, normalizeOrSplitMidnightBlock, timeStringToMinutes, minutesToTimeString, commitTimeTrackerDays, describeBlockSpan, findSplitPartner, plannedBlocksForDate, templateDays } from '../timeTracker';
+import { ensureDefaultActivities, autoHydrateDailyLog, checkTimeCollision, normalizeOrSplitMidnightBlock, timeStringToMinutes, minutesToTimeString, commitTimeTrackerDays, describeBlockSpan, findSplitPartner, plannedBlocksForDate, templateDays } from '../timeTracker/timeTracker';
 import { uid, todayKey, addDays } from '../time/dates';
 import { computeTimeTrackerAward, timeTrackerAwardId, timeTrackerGraceDay } from '../points/timeTrackerAwards';
-import { planTemplateEditReach, templateEditReachDays, newLinkedBlockId } from '../timeTrackerTemplateReach';
+import { planTemplateEditReach, templateEditReachDays, newLinkedBlockId } from '../timeTracker/timeTrackerTemplateReach';
 import { excisePointsEntriesInternal, canToggleTimeBlock } from '../points/stateAwards';
 import { addPointsInternal } from '../points/pointsLedger';
 import { trustedNow } from '../time/clock';

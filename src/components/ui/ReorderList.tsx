@@ -16,7 +16,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { ChevronDown, ChevronUp, GripVertical } from 'lucide-react';
 import { Button } from '@/components/ui/primitives';
 import { cx, FOCUS_RING, TAP_TARGET_Y } from '@/components/ui/primitives/shared';
-import { moveId, sameOrder } from '@/lib/listOrder';
+import { moveId, sameOrder } from '@/lib/items/listOrder';
 import { prefersReducedMotion } from '@/lib/motion';
 import { useUnsavedChanges } from '@/lib/unsavedChanges';
 import { returnFocusToReorderButton } from './reorderFocus';

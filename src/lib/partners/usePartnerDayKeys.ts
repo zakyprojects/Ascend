@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
-import { trustedNow } from './time/clock';
-import { todayKeyInZone } from './time/dates';
-import { isSupabaseConfigured, supabase } from './auth/supabase';
-import { isDeviceOffline } from './store/deviceOffline';
+import { trustedNow } from '../time/clock';
+import { todayKeyInZone } from '../time/dates';
+import { isSupabaseConfigured, supabase } from '../auth/supabase';
+import { isDeviceOffline } from '../store/deviceOffline';
 
 const CHECK_INTERVAL_MS = 30000;
 

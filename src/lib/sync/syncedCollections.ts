@@ -16,7 +16,7 @@ import type {
 } from '../../types';
 import { DEFAULT_TIME_TRACKER_STATE } from '../../types';
 import { isServerOwnedBadHabitLogId } from '../points/badHabitAwards';
-import { mergeTimeTrackerDays, type TimeTrackerDayDoc } from '../timeTracker';
+import { mergeTimeTrackerDays, type TimeTrackerDayDoc } from '../timeTracker/timeTracker';
 import { canonical } from '../store/stateEquality';
 import type { Baseline } from './tabVersions';
 

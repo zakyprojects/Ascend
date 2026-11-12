@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Check, Pencil, Plus, Trash2 } from 'lucide-react';
 import { TimeTrackerActivity } from '@/types';
 import { AppStore } from '@/lib/store/store';
-import { getActivityDisplayColor } from '@/lib/timeTracker';
+import { getActivityDisplayColor } from '@/lib/timeTracker/timeTracker';
 import { ActivityIcon } from './ActivityIcon';
 import { useToast } from '@/components/ui/Toast';
 import { Dialog, FieldGroup, Form, useFormController } from '@/components/ui/primitives';
@@ -10,7 +10,7 @@ import { cx, FOCUS_RING, TAP_TARGET } from '@/components/ui/primitives/shared';
 import { toUserMessage } from '@/lib/userMessage';
 import { MODULE_LABELS } from './dayMeta';
 import { categoryDisplayNames } from './categoryNames';
-import { LIST_ORDER_KEYS } from '@/lib/listOrder';
+import { LIST_ORDER_KEYS } from '@/lib/items/listOrder';
 import { LazyReorderList, ReorderButton } from '@/components/ui/Reorder';
 
 interface ActivitiesTabProps {

@@ -1,5 +1,5 @@
 import type { JournalEntry, Mood } from '@/types';
-import { journalEntryEarns } from './points/journalAwards';
+import { journalEntryEarns } from '../points/journalAwards';
 import { MIN_JOURNAL_CONTENT_LENGTH } from './journalRules';
 
 /**

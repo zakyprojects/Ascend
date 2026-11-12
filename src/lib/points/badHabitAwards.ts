@@ -1,6 +1,6 @@
 import type { BadHabit, BadHabitLog, PointsEntry } from '@/types';
 import { BAD_HABIT_POINTS } from './pointsConfig';
-import { PRESET_BAD_HABITS } from '../presets';
+import { PRESET_BAD_HABITS } from '../content/presets';
 import { badHabitCreatedDay, getBadHabitBadDaysBefore, getMissPenaltyMultiplier } from './habitPenalties';
 import { timeMsOr } from '../time/dates';
 

@@ -2,8 +2,8 @@
 // session, a decision or an emotion entry. Minutes, dates, times, plan, skill tag, intensity and
 // points stay, and the linked skill log note follows a focus reflection edit.
 import type { DecisionLog, EmotionLog, FocusSessionLog, SkillSessionLog } from '@/types';
-import { editDecisionText, editEmotionNote, editFocusLogText, FOCUS_TASK_MAX } from '../pfcLogEdits';
-import { focusSkillLogId } from '../focusSkillLog';
+import { editDecisionText, editEmotionNote, editFocusLogText, FOCUS_TASK_MAX } from '../focus/pfcLogEdits';
+import { focusSkillLogId } from '../focus/focusSkillLog';
 import { computeFocusAwards } from '../points/focusAwards';
 
 function assert(condition: boolean, msg: string) {

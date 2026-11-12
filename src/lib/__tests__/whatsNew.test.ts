@@ -1,7 +1,7 @@
 // Release note rules (lib/whatsNew.ts, lib/releaseNote.ts): seen mark merge, who sees a note,
 // pop up once then inbox only, group order and empty groups, and the shipped note's shape.
 import type { ReleaseNote } from '../releaseNote';
-const { mergeLastSeenRelease, isReleaseNoteFor, shouldShowWhatsNew, isReleaseNoteInInbox } = await import('../whatsNew');
+const { mergeLastSeenRelease, isReleaseNoteFor, shouldShowWhatsNew, isReleaseNoteInInbox } = await import('../content/whatsNew');
 const { RELEASE_NOTE, RELEASE_NOTE_GROUPS, releaseNoteGroups, MAX_RELEASE_ITEMS, MAX_RELEASE_ITEM_LENGTH } = await import('../releaseNote');
 
 function assert(condition: boolean, msg: string) {

@@ -1,5 +1,5 @@
 import type { PartnerInvite } from '@/types';
-import { adoptServerInviteId } from '../partnerInvites';
+import { adoptServerInviteId } from '../partners/partnerInvites';
 
 function assert(condition: boolean, msg: string) {
   if (!condition) {

@@ -5,7 +5,7 @@ import type { FocusSessionLog } from '@/types';
 import { formatDateLong, localDayStartMs } from '@/lib/time/dates';
 import { trustedNowMs } from '@/lib/time/clock';
 import { computeFocusAwards } from '@/lib/points/focusAwards';
-import { focusSkillLogId } from '@/lib/focusSkillLog';
+import { focusSkillLogId } from '@/lib/focus/focusSkillLog';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { useToast } from '@/components/ui/Toast';
 import { useAsyncActionKey } from '@/lib/actions/useAsyncAction';

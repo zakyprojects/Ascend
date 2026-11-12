@@ -1,4 +1,4 @@
-import { BOOK_CATEGORIES, CURATED_BOOKS } from '@/lib/books';
+import { BOOK_CATEGORIES, CURATED_BOOKS } from '@/lib/reading/books';
 import { READING_POINTS } from '@/lib/points/pointsConfig';
 import { PAGES_PER_CHAPTER, READING_BONUS_COOLDOWN_DAYS, READING_BONUS_MIN_LOG_DAYS, READING_BONUS_MIN_SPAN_DAYS } from '@/lib/points/readingAwards';
 import { LINK_CLASS } from '../../components/MarketingLayout';

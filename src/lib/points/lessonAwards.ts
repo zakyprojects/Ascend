@@ -1,5 +1,5 @@
 import type { PointsEntry } from '@/types';
-import { LESSONS } from '../lessons';
+import { LESSONS } from '../content/lessons';
 
 /**
  * Lesson points are written by the server (supabase/migrations/20261015210000_server_lesson_awards.sql):

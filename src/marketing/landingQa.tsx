@@ -1,4 +1,4 @@
-import { MIN_AGE } from '@/lib/legal';
+import { MIN_AGE } from '@/lib/content/legal';
 import { getMissPenaltyMultiplier } from '@/lib/points/missPenalty';
 import { BAD_HABIT_POINTS, PRESET_HABIT_POINTS, READING_POINTS, WORKOUT_POINTS } from '@/lib/points/pointsConfig';
 import { TIERS } from '@/lib/leagues/tiers';
