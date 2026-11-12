@@ -303,7 +303,7 @@ export function TemplateEditorModal({
                     key={day}
                     onClick={() => toggleDay(day)}
                     aria-pressed={isSelected}
-                    className={`min-h-11 sm:min-h-8 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all cursor-pointer ${
+                    className={`min-h-11 sm:min-h-8 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-colors cursor-pointer ${
                       isSelected
                         ? 'bg-primary-500/15 border-primary-500/50 text-brand-text'
                         : 'border-overlay-subtle text-content-muted hover:bg-overlay-subtle'

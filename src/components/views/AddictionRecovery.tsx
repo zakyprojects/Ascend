@@ -798,7 +798,7 @@ function BreathingCircle() {
   return (
     <div className="flex flex-col items-center justify-center space-y-4 py-4">
       <div className="relative w-36 h-36 flex items-center justify-center">
-        <div className={`w-28 h-28 rounded-full border-2 transition-all duration-1000 motion-reduce:transition-none motion-reduce:scale-100 flex flex-col items-center justify-center ${circleClass}`}>
+        <div className={`w-28 h-28 rounded-full border-2 transition-[transform,background-color,border-color] duration-1000 motion-reduce:transition-none motion-reduce:scale-100 flex flex-col items-center justify-center ${circleClass}`}>
           <span className="text-xs font-medium text-purple-hierarchy">{phase}</span>
           <span className="figure text-2xl text-content-primary mt-0.5">{seconds}s</span>
         </div>

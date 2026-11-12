@@ -553,7 +553,7 @@ export function NotificationCenter({
         aria-expanded={open}
         title="Notifications"
         className={cx(
-          'p-2 rounded-xl transition-all',
+          'p-2 rounded-xl transition-colors',
           TAP_TARGET,
           FOCUS_RING,
           open

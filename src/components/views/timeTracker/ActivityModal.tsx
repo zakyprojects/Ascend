@@ -178,8 +178,8 @@ export function ActivityModal({
                   key={col.value}
                   onClick={() => setColor(col.value)}
                   aria-pressed={isSelected}
-                  className={`w-9 h-9 sm:w-7 sm:h-7 rounded-full border-2 transition-transform cursor-pointer ${
-                    isSelected ? 'scale-110 border-content-primary shadow-sm' : 'border-transparent hover:scale-105 opacity-80 hover:opacity-100'
+                  className={`w-9 h-9 sm:w-7 sm:h-7 rounded-full border-2 transition-[border-color,opacity] cursor-pointer ${
+                    isSelected ? 'border-content-primary shadow-sm' : 'border-transparent opacity-80 hover:opacity-100'
                   }`}
                   style={{ backgroundColor: displaySwatchColor }}
                   title={col.name}
@@ -201,7 +201,7 @@ export function ActivityModal({
                   onClick={() => setIcon(ic)}
                   aria-label={`Icon ${ic}`}
                   aria-pressed={isSelected}
-                  className={`min-h-11 sm:min-h-9 p-2 rounded-lg flex items-center justify-center transition-all cursor-pointer border ${
+                  className={`min-h-11 sm:min-h-9 p-2 rounded-lg flex items-center justify-center transition-colors cursor-pointer border ${
                     isSelected
                       ? 'bg-primary-500/15 text-brand-text border-primary-500/40'
                       : 'border-transparent text-content-muted hover:text-content-secondary hover:bg-overlay-subtle'

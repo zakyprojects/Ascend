@@ -231,7 +231,7 @@ function LegalLinks() {
 const RESET_RESEND_SECONDS = 60;
 
 const INPUT_CLASS =
-  'w-full py-2.5 bg-bg-800 border border-overlay-default rounded-xl text-sm text-content-primary placeholder:text-content-disabled focus:outline-none focus:border-primary-400 aria-[invalid=true]:border-rose-500/70 transition-all';
+  'w-full py-2.5 bg-bg-800 border border-overlay-default rounded-xl text-sm text-content-primary placeholder:text-content-disabled focus:outline-none focus:border-primary-400 aria-[invalid=true]:border-rose-500/70 transition-[color,background-color,border-color,box-shadow]';
 
 /** A small check that fades and scales in when its field is valid. */
 function FieldCheck({ show }: { show: boolean }) {
@@ -1150,7 +1150,7 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
                           aria-label={`Select avatar ${emoji}`}
                           aria-pressed={avatar === emoji}
                           onClick={() => setAvatar(emoji)}
-                          className={`min-h-11 w-full rounded-lg text-lg flex items-center justify-center transition-all ${
+                          className={`min-h-11 w-full rounded-lg text-lg flex items-center justify-center transition-[background-color,border-color,transform] ${
                             avatar === emoji
                               ? 'bg-primary-500/25 border-2 border-primary-400 scale-110'
                               : 'hover:bg-overlay-subtle'

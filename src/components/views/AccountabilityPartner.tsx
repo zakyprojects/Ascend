@@ -641,7 +641,7 @@ export function AccountabilityPartner({ store, onNavigate }: { store: AppStore; 
             }
             title={notStarted && !mineDone ? `${startsText} for you` : readingLinked ? 'Log pages in Reading to tick this' : slipped ? 'Slipped today. Tap to undo.' : undefined}
             className={cx(
-              'shrink-0 w-11 h-11 rounded-xl flex items-center justify-center transition-all duration-300 active:scale-90 disabled:cursor-not-allowed',
+              'shrink-0 w-11 h-11 rounded-xl flex items-center justify-center transition-[color,background-color,transform] duration-300 active:scale-90 disabled:cursor-not-allowed',
               mineDone
                 ? 'bg-primary-600 text-on-brand'
                 : slipped

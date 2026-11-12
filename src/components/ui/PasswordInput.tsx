@@ -58,7 +58,7 @@ export function PasswordInput({
           aria-describedby={message && inputId ? `${inputId}-error` : undefined}
           className={`w-full ${
             leftIcon ? 'input-has-icon' : 'px-3'
-          } pr-10 py-2.5 bg-bg-800 border border-overlay-default rounded-xl text-sm text-content-primary placeholder:text-content-disabled focus:outline-none focus:border-primary-400 aria-[invalid=true]:border-rose-500/70 transition-all ${className}`}
+          } pr-10 py-2.5 bg-bg-800 border border-overlay-default rounded-xl text-sm text-content-primary placeholder:text-content-disabled focus:outline-none focus:border-primary-400 aria-[invalid=true]:border-rose-500/70 transition-[color,background-color,border-color,box-shadow] ${className}`}
           {...props}
         />
         <button
