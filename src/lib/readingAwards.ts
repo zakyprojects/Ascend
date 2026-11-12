@@ -1,6 +1,6 @@
 import type { BookUnitSwitch, PointsEntry, ReadingLog, UserBook } from '@/types';
 import { READING_POINTS } from './pointsConfig';
-import { addDays as addDayKeys, todayKey } from './dates';
+import { addDays as addDayKeys, localDayOf, timeMsOr } from './dates';
 
 /**
  * Reading points are written by the server (supabase/migrations/20261015160000_server_reading_awards.sql):
@@ -30,11 +30,6 @@ export const readingBonusId = (bookId: string) => `reading_bonus_${bookId}`;
 export const isServerOwnedReadingPointId = (id: string): boolean =>
   id.startsWith('reading_award_') || id.startsWith('reading_bonus_');
 
-const localDayOf = (timestamp: string): string | null => {
-  const at = new Date(timestamp);
-  return Number.isNaN(at.getTime()) ? null : todayKey(at);
-};
-
 /** A page award the app wrote itself ("Read N pages of …"), on the local day it was logged. */
 const appWrittenAwardDay = (entry: PointsEntry): string | null =>
   !isServerOwnedReadingPointId(entry.id || '') && entry.source === 'reading' && entry.amount > 0
@@ -53,10 +48,7 @@ export const isRetiredAppReadingAward = (entry: PointsEntry): boolean => {
   return day !== null && day >= READING_AWARDS_SERVER_SINCE;
 };
 
-const timeOf = (value: string): number => {
-  const ms = new Date(value).getTime();
-  return Number.isNaN(ms) ? Infinity : ms;
-};
+const timeOf = (value: string): number => timeMsOr(value, Infinity);
 
 /** Mirror of ascend_reading_log_pages: only a positive numeric page count counts. */
 const logPages = (log: ReadingLog): number =>

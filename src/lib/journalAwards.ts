@@ -1,6 +1,6 @@
 import type { JournalEntry, PointsEntry } from '@/types';
 import { JOURNAL_POINTS } from './pointsConfig';
-import { todayKey } from './dates';
+import { localDayOf } from './dates';
 import { getSeasonEnd, getSeasonStart } from './leagueTime';
 
 /**
@@ -18,11 +18,6 @@ export const journalAwardId = (day: string) => `journal_award_${day}`;
 
 /** Point entry ids only the server writes. */
 export const isServerOwnedJournalPointId = (id: string): boolean => id.startsWith('journal_award_');
-
-const localDayOf = (timestamp: string): string | null => {
-  const at = new Date(timestamp);
-  return Number.isNaN(at.getTime()) ? null : todayKey(at);
-};
 
 /** A journal row the app wrote itself (award or deduction), on the local day it was written. */
 const appWrittenRowDay = (entry: PointsEntry): string | null =>

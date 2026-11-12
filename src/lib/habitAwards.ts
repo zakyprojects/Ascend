@@ -1,6 +1,7 @@
 import type { Habit, PointsEntry } from '@/types';
 import { findPresetHabit } from './presets';
 import { PRESET_HABIT_POINTS, recomputeTodayPresetPoints, type PresetHabitCapItem } from './pointsConfig';
+import { timeMsOr } from './dates';
 
 /**
  * Habit awards are written by the server (supabase/migrations/20261015120000_server_habit_awards.sql).
@@ -42,10 +43,7 @@ export function presetHabitPoints(habit: Pick<Habit, 'isPreset' | 'name' | 'freq
   return findPresetHabit(habit.name)?.points ?? 0;
 }
 
-const timeOf = (value: string): number => {
-  const ms = new Date(value).getTime();
-  return Number.isNaN(ms) ? Infinity : ms;
-};
+const timeOf = (value: string): number => timeMsOr(value, Infinity);
 
 /**
  * Mirror of ascend_recompute_habit_awards: the award entries of one local day. Checked daily

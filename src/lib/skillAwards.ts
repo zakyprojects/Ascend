@@ -1,6 +1,6 @@
 import type { PointsEntry, Skill, SkillSessionLog } from '@/types';
 import { SKILLS_POINTS, calculateSkillPoints } from './pointsConfig';
-import { addDays, todayKey } from './dates';
+import { addDays, localDayOf, timeMsOr } from './dates';
 
 /**
  * Skill practice points are written by the server (supabase/migrations/20261015150000_server_skill_awards.sql):
@@ -19,11 +19,6 @@ export const SKILL_AWARDS_SERVER_SINCE = '2026-10-15';
 
 export const skillAwardId = (day: string) => `skill_award_${day}`;
 
-const localDayOf = (timestamp: string): string | null => {
-  const at = new Date(timestamp);
-  return Number.isNaN(at.getTime()) ? null : todayKey(at);
-};
-
 /** A skill award the app wrote itself ("Skill practiced"), on the local day it was logged. */
 const appWrittenAwardDay = (entry: PointsEntry): string | null =>
   !(entry.id || '').startsWith('skill_award_') && entry.source === 'skill' && entry.amount > 0
@@ -40,10 +35,7 @@ export const isRetiredAppSkillAward = (entry: PointsEntry): boolean => {
   return day !== null && day >= SKILL_AWARDS_SERVER_SINCE;
 };
 
-const timeOf = (value: string): number => {
-  const ms = new Date(value).getTime();
-  return Number.isNaN(ms) ? Infinity : ms;
-};
+const timeOf = (value: string): number => timeMsOr(value, Infinity);
 
 /** Mirror of ascend_skill_session_points: only a numeric duration counts. */
 const sessionMinutes = (log: SkillSessionLog): number =>

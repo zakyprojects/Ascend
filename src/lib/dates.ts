@@ -8,6 +8,21 @@ export function todayKey(date?: Date): string {
   return `${y}-${m}-${day}`;
 }
 
+/** The local day (todayKey) of a timestamp, or null when it does not parse. */
+export const localDayOf = (timestamp: string): string | null => {
+  const at = new Date(timestamp);
+  return Number.isNaN(at.getTime()) ? null : todayKey(at);
+};
+
+/**
+ * Epoch ms of a timestamp, or `fallback` when it does not parse. The award mirrors pass their own
+ * fallback (Infinity = unknown times sort last, 0 = first), so keep it explicit at each caller.
+ */
+export const timeMsOr = (value: string | undefined, fallback: number): number => {
+  const ms = new Date(value as string).getTime();
+  return Number.isNaN(ms) ? fallback : ms;
+};
+
 /** Start of the current week (Monday) as a Date */
 export function startOfWeek(date?: Date): Date {
   const d = new Date(date || trustedNow());

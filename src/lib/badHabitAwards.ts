@@ -2,6 +2,7 @@ import type { BadHabit, BadHabitLog, PointsEntry } from '@/types';
 import { BAD_HABIT_POINTS } from './pointsConfig';
 import { PRESET_BAD_HABITS } from './presets';
 import { badHabitCreatedDay, getBadHabitBadDaysBefore, getMissPenaltyMultiplier } from './habitPenalties';
+import { timeMsOr } from './dates';
 
 /**
  * Bad-habit points are written by the server (supabase/migrations/20261015130000_server_bad_habit_awards.sql).
@@ -56,10 +57,7 @@ export const isRetiredAppBadHabitAward = (entry: PointsEntry): boolean =>
   typeof entry.metadata?.date === 'string' &&
   entry.metadata.date >= BAD_HABIT_AWARDS_SERVER_SINCE;
 
-const timeOf = (value?: string): number => {
-  const ms = new Date(value || 0).getTime();
-  return Number.isNaN(ms) ? 0 : ms;
-};
+const timeOf = (value?: string): number => timeMsOr(value, 0);
 
 const byTimeThenId = (a: BadHabitLog, b: BadHabitLog) =>
   timeOf(a.createdAt) - timeOf(b.createdAt) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);

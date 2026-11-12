@@ -1,6 +1,6 @@
 import type { PointsEntry, WorkoutLog } from '@/types';
 import { WORKOUT_POINTS, calculateWorkoutPoints } from './pointsConfig';
-import { todayKey } from './dates';
+import { localDayOf, timeMsOr } from './dates';
 
 /**
  * Workout points are written by the server (supabase/migrations/20261015140000_server_workout_awards.sql):
@@ -13,11 +13,6 @@ import { todayKey } from './dates';
 export const WORKOUT_AWARDS_SERVER_SINCE = '2026-10-15';
 
 export const workoutAwardId = (day: string) => `workout_award_${day}`;
-
-const localDayOf = (timestamp: string): string | null => {
-  const at = new Date(timestamp);
-  return Number.isNaN(at.getTime()) ? null : todayKey(at);
-};
 
 /** A workout award the app wrote itself ("Workout logged"), on the local day it was logged. */
 const appWrittenAwardDay = (entry: PointsEntry): string | null =>
@@ -35,10 +30,7 @@ export const isRetiredAppWorkoutAward = (entry: PointsEntry): boolean => {
   return day !== null && day >= WORKOUT_AWARDS_SERVER_SINCE;
 };
 
-const timeOf = (value: string): number => {
-  const ms = new Date(value).getTime();
-  return Number.isNaN(ms) ? Infinity : ms;
-};
+const timeOf = (value: string): number => timeMsOr(value, Infinity);
 
 /**
  * Mirror of ascend_recompute_workout_awards: the award entry of one local day (null when the

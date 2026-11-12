@@ -1,6 +1,6 @@
 import type { FocusSessionLog, PointsEntry } from '@/types';
 import { PFC_POINTS, calculateFocusPoints } from './pointsConfig';
-import { addDays, localDayStartMs, todayKey } from './dates';
+import { addDays, localDayStartMs, todayKey, localDayOf } from './dates';
 import { FOCUS_MILESTONES, FOCUS_MIN_MINUTES, finishBonus, focusDayPoints, milestonePoints, type FocusDayTally } from './focusPoints';
 
 /**
@@ -35,11 +35,6 @@ export const focusAwardId = (day: string) => `focus_award_${day}`;
 /** Point entry ids only the server writes. */
 export const isServerOwnedFocusPointId = (id: string): boolean => id.startsWith('focus_award_');
 
-const localDayOf = (timestamp: string): string | null => {
-  const at = new Date(timestamp);
-  return Number.isNaN(at.getTime()) ? null : todayKey(at);
-};
-
 /** A focus row the app wrote itself (award or delete delta), on the local day it was written. */
 const appWrittenRowDay = (entry: PointsEntry): string | null =>
   !isServerOwnedFocusPointId(entry.id || '') && entry.source === 'focus' ? localDayOf(entry.timestamp) : null;
@@ -54,6 +49,7 @@ export const isRetiredAppFocusAward = (entry: PointsEntry): boolean => {
   return day !== null && day >= FOCUS_AWARDS_SERVER_SINCE;
 };
 
+// Not timeMsOr: a null or empty value (milestonesAt comes from JSON) must give Infinity here, timeMsOr(null) gives 0.
 const timeOf = (value: string | undefined): number => {
   const ms = value ? new Date(value).getTime() : NaN;
   return Number.isNaN(ms) ? Infinity : ms;
