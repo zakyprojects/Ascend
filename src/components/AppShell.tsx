@@ -24,9 +24,9 @@ import { QuickLog } from './nav/QuickLog';
 import { useNavShortcuts } from './nav/useNavShortcuts';
 import { useSidebarCollapsed } from './nav/useSidebarCollapsed';
 import { CommandPalette } from './nav/CommandPalette';
-import { getNavStatuses } from '@/lib/navStatus';
-import { prefersReducedMotion } from '@/lib/motion';
-import { pageLinkProps } from '@/lib/pageLink';
+import { getNavStatuses } from '@/lib/ui/navStatus';
+import { prefersReducedMotion } from '@/lib/ui/motion';
+import { pageLinkProps } from '@/lib/ui/pageLink';
 import { cx, FOCUS_RING } from '@/components/ui/primitives/shared';
 import { RankChip } from './ui/RankChip';
 import { RankUpCelebration } from './ui/RankUpCelebration';
@@ -43,15 +43,15 @@ import { LogoutConfirmModal } from './ui/LogoutConfirmModal';
 import { NotificationCenter } from './ui/NotificationCenter';
 import { AppLogo } from './ui/AppLogo';
 import { ThemeToggle } from './ui/ThemeToggle';
-import type { View } from '@/lib/views';
+import type { View } from '@/lib/app/views';
 import { DEFAULT_TIME_TRACKER_STATE } from '@/types';
-import type { NavigationKind } from '@/lib/useViewRoute';
+import type { NavigationKind } from '@/lib/app/useViewRoute';
 import { useLocalDayKey } from '@/lib/time/useLocalDayKey';
 import { useMinuteTick } from '@/lib/time/useMinuteTick';
 import { FocusTimerChip } from './pfc/FocusTimerChip';
 import { FloatingDock } from './nav/FloatingDock';
 import { BlockPill } from './nav/BlockPill';
-import { PageSwipeContext, usePageSwipe } from '@/lib/pageSwipe';
+import { PageSwipeContext, usePageSwipe } from '@/lib/ui/pageSwipe';
 
 // Below lg the window scrolls; from lg up the shell is viewport-high and <main> scrolls.
 const DESKTOP_QUERY = '(min-width: 1024px)';
@@ -72,7 +72,7 @@ function writeScroll(main: HTMLElement, top: number): void {
   else window.scrollTo({ top, behavior: 'instant' });
 }
 
-export type { View } from '@/lib/views';
+export type { View } from '@/lib/app/views';
 
 interface AppShellProps {
   currentView: View;

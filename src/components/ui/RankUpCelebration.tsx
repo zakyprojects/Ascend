@@ -4,8 +4,8 @@ import { Compass } from 'lucide-react';
 import { Button } from './primitives';
 import { TIER_ICONS } from './TierBadge';
 import { TIERS } from '@/lib/leagues/tiers';
-import { useReducedMotion } from '@/lib/motion';
-import { celebrationFeedback } from '@/lib/actionFeedback';
+import { useReducedMotion } from '@/lib/ui/motion';
+import { celebrationFeedback } from '@/lib/ui/actionFeedback';
 import { playRankUpFanfare, rankUpVibration } from '@/lib/leagues/rankUpSound';
 
 /**

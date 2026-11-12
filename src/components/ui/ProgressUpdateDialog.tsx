@@ -3,8 +3,8 @@ import { ArrowRight, Minus, Plus, TrendingUp } from 'lucide-react';
 import { Dialog, Form, NumberField, ProgressBar, SlidingPill, cx, useFormController } from './primitives';
 import type { ProgressTone } from './primitives';
 import { AscendLoadingIndicator } from './AscendLoadingIndicator';
-import { useUnsavedChanges } from '@/lib/unsavedChanges';
-import { toUserMessage } from '@/lib/userMessage';
+import { useUnsavedChanges } from '@/lib/ui/unsavedChanges';
+import { toUserMessage } from '@/lib/app/userMessage';
 
 type Mode = 'add' | 'set';
 

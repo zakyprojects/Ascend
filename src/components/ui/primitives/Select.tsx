@@ -2,7 +2,7 @@ import React from 'react';
 import { createPortal } from 'react-dom';
 import { Check, ChevronDown } from 'lucide-react';
 import { cx } from './shared';
-import { useHoverGlide } from '@/lib/useHoverGlide';
+import { useHoverGlide } from '@/lib/ui/useHoverGlide';
 import { FieldShell, fieldBorder, controlBase, useFieldLinking, type BaseFieldProps } from './Field';
 import {
   anchorOutOfView,

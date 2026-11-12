@@ -76,8 +76,8 @@ import { clearDirtyAfterSave, dirtyMark, markDirty } from '../sync/dirtyFlag';
 import { adoptTabState, applyRemoteChanges, prepareRemoteRows, pullSyncedRows, takePeerVersions, type RemoteChange } from '../sync/pull';
 import { SYNCED_COLLECTIONS, cacheWithHydratedCollections, itemsOf, rowIdOf, syncKeyOf } from '../sync/syncedCollections';
 import { mergeAppState, mergeAppStateWithGuardResult, signInMergeBase } from './stateMerger';
-import { toUserMessage } from '../userMessage';
-import { disablePush } from '../push';
+import { toUserMessage } from '../app/userMessage';
+import { disablePush } from '../app/push';
 import { keepIfUnchanged } from './stateEquality';
 import {
   applyTheme,
@@ -85,7 +85,7 @@ import {
   resolveTheme,
   setLocalThemePreference,
   useSystemTheme,
-} from '../theme';
+} from '../ui/theme';
 
 // Cross-tab real-time state synchronization channel
 export const STATE_SYNC_CHANNEL_NAME = 'ascend-state-sync';

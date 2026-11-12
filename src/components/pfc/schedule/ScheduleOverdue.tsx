@@ -3,11 +3,11 @@ import type { AppStore } from '@/lib/store/store';
 import type { TimeTrackerActivity, TimeTrackerBlock } from '@/types';
 import { formatTime12h } from '@/lib/timeTracker/timeTracker';
 import { useToast } from '@/components/ui/Toast';
-import { toUserMessage } from '@/lib/userMessage';
+import { toUserMessage } from '@/lib/app/userMessage';
 import { getSkipToastMessage } from '../scheduleMessages';
 import { cx } from '@/components/ui/primitives/shared';
 import { ActivityTile, SCHEDULE_ACTION, StopScheduleButton, blockRange, blockTitle, type Theme } from './shared';
-import { actionFeedback } from '@/lib/actionFeedback';
+import { actionFeedback } from '@/lib/ui/actionFeedback';
 
 /** A block whose end has passed without being marked done or skipped: the schedule waits for an answer. */
 export function ScheduleOverdue({

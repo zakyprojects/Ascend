@@ -1,6 +1,6 @@
 import { createContext, RefObject, useLayoutEffect, useMemo, useRef } from 'react';
-import { hasUnsavedChanges } from '@/lib/unsavedChanges';
-import { slideIn, useTabSwipe, type SwipeDirection, type SwipeEdge } from '@/lib/useTabSwipe';
+import { hasUnsavedChanges } from '@/lib/ui/unsavedChanges';
+import { slideIn, useTabSwipe, type SwipeDirection, type SwipeEdge } from '@/lib/ui/useTabSwipe';
 
 /** A page's own tab strip, as the page-level swipe sees it (TabPanel registers it). */
 export interface PageTabs {

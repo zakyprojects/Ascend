@@ -3,12 +3,12 @@ import { NAV_GROUPS } from './navConfig';
 import { Dialog } from '@/components/ui/primitives';
 import { cx, FOCUS_RING, TRANSITION } from '@/components/ui/primitives/shared';
 import type { AppStore } from '@/lib/store/store';
-import type { View } from '@/lib/views';
-import type { NavStatuses } from '@/lib/navStatus';
-import { pageLinkProps } from '@/lib/pageLink';
+import type { View } from '@/lib/app/views';
+import type { NavStatuses } from '@/lib/ui/navStatus';
+import { pageLinkProps } from '@/lib/ui/pageLink';
 import { HabitCheck } from '@/components/habits/HabitCheck';
 import { habitPointsMeta } from '@/components/habits/habitPointsMeta';
-import { actionFeedback } from '@/lib/actionFeedback';
+import { actionFeedback } from '@/lib/ui/actionFeedback';
 
 /** Pages Quick log jumps to: their logging needs the page's own form. */
 const JUMPS: View[] = ['journal', 'exercise', 'reading', 'time-tracker'];

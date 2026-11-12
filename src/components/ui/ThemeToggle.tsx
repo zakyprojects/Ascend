@@ -1,5 +1,5 @@
 import { Moon, Sun } from 'lucide-react';
-import { toggleThemeWithReveal } from '@/lib/themeTransition';
+import { toggleThemeWithReveal } from '@/lib/ui/themeTransition';
 import { Button } from './primitives';
 
 interface ThemeToggleProps {

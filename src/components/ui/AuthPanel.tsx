@@ -7,12 +7,12 @@ import { PasswordInput } from './PasswordInput';
 import { FieldErrorBubble, FieldMessage, Form, FormAlert, focusField, isFinePointer, useFormController } from './primitives';
 import { PasswordStaircase } from './PasswordStaircase';
 import { newPasswordProblem } from '@/lib/auth/passwordRules';
-import { toUserMessage } from '@/lib/userMessage';
+import { toUserMessage } from '@/lib/app/userMessage';
 import { looksLikeUsername } from '@/lib/auth/usernameRules';
 import { preloadCaptcha, withCaptcha } from '@/lib/auth/captcha';
 import { CaptchaSlot } from '@/components/ui/CaptchaSlot';
 import { LEGAL_CONTACT_EMAIL, MIN_AGE } from '@/lib/content/legal';
-import { pathForLegalRoute } from '@/lib/routes';
+import { pathForLegalRoute } from '@/lib/app/routes';
 
 /** How long the sign-in/sign-up success screen shows before `onDone` runs. */
 const AUTH_SUCCESS_MS = 900;

@@ -1,7 +1,7 @@
 import { lazy, useState, type ComponentType } from 'react';
-import { VIEWS, type View } from '@/lib/views';
-import { viewFromPath } from '@/lib/routes';
-import { reloadOnceForStaleChunk } from '@/lib/chunkReload';
+import { VIEWS, type View } from '@/lib/app/views';
+import { viewFromPath } from '@/lib/app/routes';
+import { reloadOnceForStaleChunk } from '@/lib/app/chunkReload';
 
 /**
  * Every page is its own chunk, loaded on first need: the app shell boots without the 19 pages.

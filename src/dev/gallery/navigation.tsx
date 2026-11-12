@@ -11,11 +11,11 @@ import { CommandPalette } from '@/components/nav/CommandPalette';
 import { NotificationCenter } from '@/components/ui/NotificationCenter';
 import { RankChip } from '@/components/ui/RankChip';
 import { useToast } from '@/components/ui/Toast';
-import { IS_APPLE_PLATFORM } from '@/lib/platform';
-import type { View } from '@/lib/views';
+import { IS_APPLE_PLATFORM } from '@/lib/ui/platform';
+import type { View } from '@/lib/app/views';
 import { useGalleryTheme } from './util';
 import { useFakeNotificationStore } from './fakes';
-import type { NavStatuses } from '@/lib/navStatus';
+import type { NavStatuses } from '@/lib/ui/navStatus';
 import { Caption, Section } from './shared';
 import { CHART_TREND } from './fixtures';
 

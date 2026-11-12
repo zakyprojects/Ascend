@@ -1,8 +1,8 @@
 import { memo } from 'react';
 import { NAV_DASHBOARD, NAV_GROUPS, type NavGroup } from './navConfig';
 import { cx, FOCUS_RING } from '@/components/ui/primitives/shared';
-import { pageLinkProps } from '@/lib/pageLink';
-import type { View } from '@/lib/views';
+import { pageLinkProps } from '@/lib/ui/pageLink';
+import type { View } from '@/lib/app/views';
 
 type ZoneId = NavGroup['id'];
 

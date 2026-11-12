@@ -1,7 +1,7 @@
 import { RefObject, useEffect, useLayoutEffect, useRef } from 'react';
-import { nearScreenEdge, SLOP_PX, startsInsideOwnGesture } from '@/lib/gestures';
-import { actionFeedback } from '@/lib/actionFeedback';
-import { prefersReducedMotion } from '@/lib/motion';
+import { nearScreenEdge, SLOP_PX, startsInsideOwnGesture } from '@/lib/ui/gestures';
+import { actionFeedback } from '@/lib/ui/actionFeedback';
+import { prefersReducedMotion } from '@/lib/ui/motion';
 
 export type SwipeDirection = 'next' | 'prev';
 

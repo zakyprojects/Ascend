@@ -1,5 +1,5 @@
 import type { AppStore } from '@/lib/store/store';
-import type { View } from '@/lib/views';
+import type { View } from '@/lib/app/views';
 import { useFocusSession } from './FocusSessionProvider';
 import { RunningTimerStrip } from './FocusTimerCard';
 import { FollowSchedule } from './schedule/FollowSchedule';

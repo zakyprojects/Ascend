@@ -1,8 +1,8 @@
 import vercelJson from '../../../vercel.json?raw';
 import appShell from '../../../index.html?raw';
 import serviceWorker from '../../../public/sw.js?raw';
-import { pathForAuthRoute, pathForView } from '../routes';
-import { VIEWS } from '../views';
+import { pathForAuthRoute, pathForView } from '../app/routes';
+import { VIEWS } from '../app/views';
 import { buildSite } from '@/marketing/prerender';
 import { MARKETING_ROUTES } from '@/marketing/routes';
 import { APP_PATHS, checkSite } from '@/marketing/seoChecks';

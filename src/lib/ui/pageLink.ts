@@ -1,6 +1,6 @@
 import type { MouseEvent } from 'react';
-import type { View } from './views';
-import { pathForView } from './routes';
+import type { View } from '../app/views';
+import { pathForView } from '../app/routes';
 
 /**
  * Props for a real link to a page (`<a href="/habits">`): a plain left click stays in the app

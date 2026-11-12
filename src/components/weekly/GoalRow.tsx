@@ -5,7 +5,7 @@ import type { GoalProgressResult } from '@/lib/items/linkedGoalMetrics';
 import { ProgressBar } from '@/components/ui/primitives';
 import { TAP_TARGET, TAP_TARGET_Y } from '@/components/ui/primitives/shared';
 import { ProgressUpdateDialog, UpdateProgressButton } from '@/components/ui/ProgressUpdateDialog';
-import { useCompletionPop } from '@/lib/useCompletionPop';
+import { useCompletionPop } from '@/lib/ui/useCompletionPop';
 import { linkedItemExists } from '@/lib/items/linkedGoalMetrics';
 import { findDrill, parseDrillMetricKey } from '@/lib/content/skillDrills';
 import { deletedLinkNoun, formatAmount, formatNumber, isGoalAchieved, isLinkedGoal } from './weekMeta';

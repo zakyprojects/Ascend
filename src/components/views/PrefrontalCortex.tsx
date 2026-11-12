@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { AppStore } from '@/lib/store/store';
-import type { View } from '@/lib/views';
-import { pathForView } from '@/lib/routes';
+import type { View } from '@/lib/app/views';
+import { pathForView } from '@/lib/app/routes';
 import { addDays, startOfWeek, todayKey } from '@/lib/time/dates';
 import { useLocalDayKey } from '@/lib/time/useLocalDayKey';
 import { isFocusDayEntry } from '@/lib/points/focusAwards';

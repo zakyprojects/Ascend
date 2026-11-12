@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from 'react';
-import { findActionSound, playActionSound, SWIPE_SOUND_ID, TICK_SOUND_ID, type ActionSound } from '@/lib/actionSounds';
+import { findActionSound, playActionSound, SWIPE_SOUND_ID, TICK_SOUND_ID, type ActionSound } from '@/lib/ui/actionSounds';
 
 /**
  * Feedback for the user's own actions: a short vibration or a soft sound, chosen per action kind

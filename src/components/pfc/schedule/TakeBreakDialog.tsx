@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Coffee } from 'lucide-react';
 import { Dialog, FieldErrorBubble, NumberField } from '@/components/ui/primitives';
 import { cx } from '@/components/ui/primitives/shared';
-import { toUserMessage } from '@/lib/userMessage';
+import { toUserMessage } from '@/lib/app/userMessage';
 
 const QUICK_MINUTES = [5, 10, 15];
 

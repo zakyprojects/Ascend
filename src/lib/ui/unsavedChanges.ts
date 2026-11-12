@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useSyncExternalStore } from 'react';
-import { trustedNowMs } from './time/clock';
-import { storedAuthSession } from './auth/supabase';
+import { trustedNowMs } from '../time/clock';
+import { storedAuthSession } from '../auth/supabase';
 
 /**
  * Leave guard for typing that has not been saved yet.

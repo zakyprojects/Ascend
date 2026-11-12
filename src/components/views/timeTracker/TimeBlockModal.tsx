@@ -10,12 +10,12 @@ import {
   getActivityDisplayColor,
 } from '@/lib/timeTracker/timeTracker';
 import { addDays, formatDateKeyHuman, formatWeekdayDate } from '@/lib/time/dates';
-import { appliedTheme } from '@/lib/theme';
+import { appliedTheme } from '@/lib/ui/theme';
 import { ActivityIcon } from './ActivityIcon';
 import { AscendLoadingIndicator } from '@/components/ui/AscendLoadingIndicator';
 import { Clock, MoonStar, Check } from 'lucide-react';
-import { useUnsavedChanges } from '@/lib/unsavedChanges';
-import { toUserMessage } from '@/lib/userMessage';
+import { useUnsavedChanges } from '@/lib/ui/unsavedChanges';
+import { toUserMessage } from '@/lib/app/userMessage';
 
 export interface BlockDraft {
   activityId: string;

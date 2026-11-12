@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useCallback, ReactNode, useEffect, useRef } from 'react';
 import { CheckCircle2, AlertCircle, AlertTriangle, Info, X } from 'lucide-react';
 import { TAP_TARGET } from '@/components/ui/primitives/shared';
-import { prefersReducedMotion } from '@/lib/motion';
+import { prefersReducedMotion } from '@/lib/ui/motion';
 
 export type ToastType = 'success' | 'error' | 'warning' | 'info';
 

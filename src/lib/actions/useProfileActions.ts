@@ -9,9 +9,9 @@ import { dispatchToastError } from '../store/storeShared';
 import type { ProfileSwitchKey } from '../store/storeShared';
 import { updateProfilePrivacy, updateProfileAcceptPartnerInvites, updateProfileNotificationPreferences } from '../auth/auth';
 import { trustedNow } from '../time/clock';
-import { toUserMessage } from '../userMessage';
-import { applyTheme, resolveTheme, setLocalThemePreference } from '../theme';
-import type { ThemePreference } from '../theme';
+import { toUserMessage } from '../app/userMessage';
+import { applyTheme, resolveTheme, setLocalThemePreference } from '../ui/theme';
+import type { ThemePreference } from '../ui/theme';
 import type { StoreSetState } from '../store/storeSetState';
 
 export function useProfileActions(setState: StoreSetState, get: () => AppState, stateRef: { current: AppState }) {

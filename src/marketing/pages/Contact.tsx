@@ -2,7 +2,7 @@ import type { CSSProperties } from 'react';
 import { Check } from 'lucide-react';
 import { cx, FOCUS_RING } from '@/components/ui/primitives/shared';
 import { FieldErrorBubble, Input, Textarea } from '@/components/ui/primitives/Field';
-import { FEEDBACK_KINDS } from '@/lib/feedbackPayload';
+import { FEEDBACK_KINDS } from '@/lib/app/feedbackPayload';
 import { LEGAL_CONTACT_EMAIL } from '@/lib/content/legal';
 import { Breadcrumb } from '../components/Breadcrumb';
 import { LINK_CLASS, MarketingLayout } from '../components/MarketingLayout';

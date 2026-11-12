@@ -10,7 +10,7 @@ import {
   newFeedbackRefAt,
   validRating,
   type FeedbackPayloadInput,
-} from '../feedbackPayload';
+} from '../app/feedbackPayload';
 
 function assert(condition: boolean, msg: string) {
   if (!condition) throw new Error(`Assertion failed: ${msg}`);

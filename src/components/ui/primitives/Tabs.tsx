@@ -1,12 +1,12 @@
 import React from 'react';
 import type { LucideIcon } from 'lucide-react';
-import { useActiveBox } from '@/lib/useActiveBox';
-import { useHoverGlide } from '@/lib/useHoverGlide';
-import { useScrollFade } from '@/lib/useScrollFade';
-import { PageSwipeContext } from '@/lib/pageSwipe';
-import { useTabSwipe, type SwipeDirection } from '@/lib/useTabSwipe';
+import { useActiveBox } from '@/lib/ui/useActiveBox';
+import { useHoverGlide } from '@/lib/ui/useHoverGlide';
+import { useScrollFade } from '@/lib/ui/useScrollFade';
+import { PageSwipeContext } from '@/lib/ui/pageSwipe';
+import { useTabSwipe, type SwipeDirection } from '@/lib/ui/useTabSwipe';
 import { cx, FOCUS_RING, TRANSITION, TAP_TARGET } from './shared';
-import type { NavStatusTone } from '@/lib/navStatus';
+import type { NavStatusTone } from '@/lib/ui/navStatus';
 
 export interface TabItem {
   id: string;

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
-import { applyTheme, setLocalThemePreference } from '@/lib/theme';
+import { applyTheme, setLocalThemePreference } from '@/lib/ui/theme';
 import { ToastProvider } from '@/components/ui/Toast';
 import { DiscardChangesDialog } from '@/components/ui/DiscardChangesDialog';
 import { GALLERY_GROUPS } from './gallery/registry';

@@ -9,8 +9,8 @@ import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 import { trustedNowMs } from '@/lib/time/clock';
 import { AscendLoadingIndicator, AscendLoadingOverlay, OVERLAY_EXIT_MS } from '@/components/ui/AscendLoadingIndicator';
 import { useToast } from '@/components/ui/Toast';
-import { canVibrate, playSoundAt, vibrate, type SoundVolume, type VibrationStrength } from '@/lib/actionFeedback';
-import { SWIPE_SOUNDS, SWIPE_SOUND_ID, TICK_SOUNDS, TICK_SOUND_ID, type ActionSound } from '@/lib/actionSounds';
+import { canVibrate, playSoundAt, vibrate, type SoundVolume, type VibrationStrength } from '@/lib/ui/actionFeedback';
+import { SWIPE_SOUNDS, SWIPE_SOUND_ID, TICK_SOUNDS, TICK_SOUND_ID, type ActionSound } from '@/lib/ui/actionSounds';
 import { Caption, Section } from './shared';
 import { useGalleryTheme } from './util';
 

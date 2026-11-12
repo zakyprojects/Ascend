@@ -6,7 +6,7 @@ import {
   getLocalThemePreference,
   normalizeThemePreference,
   resolveTheme,
-} from '../theme';
+} from '../ui/theme';
 
 function assert(condition: boolean, msg: string) {
   if (!condition) {

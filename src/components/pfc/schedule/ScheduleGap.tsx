@@ -4,7 +4,7 @@ import type { TimeTrackerActivity } from '@/types';
 import { formatTime12h, timeStringToMinutes } from '@/lib/timeTracker/timeTracker';
 import { EmptyState } from '@/components/ui/primitives';
 import { useToast } from '@/components/ui/Toast';
-import { toUserMessage } from '@/lib/userMessage';
+import { toUserMessage } from '@/lib/app/userMessage';
 import { formatClock } from '../focusSession';
 import type { CurrentScheduleBlock } from '../scheduleBlocks';
 import { getEarlyCompletionContextualMessage, getSkipContextualMessage } from '../scheduleMessages';

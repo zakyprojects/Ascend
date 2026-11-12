@@ -23,13 +23,13 @@ import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { CountUp, Reveal } from '@/components/ui/Motion';
 import { Dialog, EmptyState } from '@/components/ui/primitives';
 import { useToast } from '@/components/ui/Toast';
-import { toUserMessage } from '@/lib/userMessage';
+import { toUserMessage } from '@/lib/app/userMessage';
 import { View } from '@/components/AppShell';
 import { WeekStrip } from './WeekStrip';
 import { NowCard } from './NowCard';
 import { DayTimeline, type TimelineBlock } from './DayTimeline';
 import { blockName, blockRange, ledgerDayPoints, nextTierHint, useNowTick } from './dayMeta';
-import { actionFeedback } from '@/lib/actionFeedback';
+import { actionFeedback } from '@/lib/ui/actionFeedback';
 import { groupMinutes } from '@/lib/timeTracker/timeTrackerGroups';
 import { TimeGroups } from './TimeGroups';
 

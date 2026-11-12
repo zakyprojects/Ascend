@@ -4,7 +4,7 @@ import { Badge, Dialog, Form } from '@/components/ui/primitives';
 import type { AppStore } from '@/lib/store/store';
 import type { PlanType } from '@/types';
 import { addDays, isNewPastDate, todayKey } from '@/lib/time/dates';
-import { useUnsavedChanges } from '@/lib/unsavedChanges';
+import { useUnsavedChanges } from '@/lib/ui/unsavedChanges';
 import { STARTER_TEMPLATES, type PlanTemplate } from '@/data/planTemplates';
 import { PLAN_NAME_TAKEN, PLAN_TYPES, PLAN_TYPE_META, ownPlans } from './planMeta';
 import { nameTaken } from '@/lib/items/uniqueNames';

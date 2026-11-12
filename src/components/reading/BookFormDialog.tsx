@@ -5,7 +5,7 @@ import type { AppStore } from '@/lib/store/store';
 import { BOOK_CATEGORIES } from '@/lib/reading/books';
 import type { BookCategory, UserBook, UserBookStatus } from '@/types';
 import { earliestTargetDate, isNewPastDate } from '@/lib/time/dates';
-import { useUnsavedChanges } from '@/lib/unsavedChanges';
+import { useUnsavedChanges } from '@/lib/ui/unsavedChanges';
 import { unitSwitchDefaults } from '@/lib/reading/bookUnits';
 import {
   DEFAULT_BOOK_LENGTH,

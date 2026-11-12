@@ -7,10 +7,10 @@
  * Imports only DOM-level helpers from lib/ (no React), so the pages load a few KB of script.
  */
 import './marketing.css';
-import { installAnalytics } from '@/lib/analytics';
-import { installCardSpotlight } from '@/lib/cardSpotlight';
-import { installPressGlow } from '@/lib/pressGlow';
-import { installScrollRise } from '@/lib/scrollRise';
+import { installAnalytics } from '@/lib/app/analytics';
+import { installCardSpotlight } from '@/lib/ui/cardSpotlight';
+import { installPressGlow } from '@/lib/ui/pressGlow';
+import { installScrollRise } from '@/lib/ui/scrollRise';
 
 const THEME_KEY = 'ascend_theme'; // lib/theme.ts LOCAL_THEME_STORAGE_KEY ('system' | 'dark' | 'light')
 const LEGACY_THEME_KEY = 'ascend_theme_preference'; // lib/theme.ts: only its 'light' counts

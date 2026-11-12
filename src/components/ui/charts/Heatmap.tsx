@@ -1,5 +1,5 @@
 import { PointerEvent, useRef } from 'react';
-import { useIntroMotion, useSeen } from '@/lib/motion';
+import { useIntroMotion, useSeen } from '@/lib/ui/motion';
 import { cx } from '../primitives/shared';
 import { ChartTooltip } from './ChartTooltip';
 import { ChartTone, toneText, useChartHover } from './chartShared';

@@ -9,7 +9,7 @@
  * account's subscription is checked and saved again (syncPushSubscription), so a server row lost
  * to cleanup, an account switch or a browser-rotated endpoint comes back without a tap.
  */
-import { supabase } from './auth/supabase';
+import { supabase } from '../auth/supabase';
 
 // Public half of the VAPID key pair (the private half is a send-push secret). Safe to ship.
 const VAPID_PUBLIC_KEY = 'BCm0FKHm8dST6fMA1txExLaijZvgYrl20Zy_jmS9oCDazA7lyEVVsnrYiNxXTw829zeFvaDoEl_VzMSgkP8ydGU';

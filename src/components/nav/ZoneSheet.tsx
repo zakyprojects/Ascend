@@ -2,10 +2,10 @@ import { memo, useCallback, useEffect, useRef, useState, type MouseEvent as Reac
 import { createPortal } from 'react-dom';
 import type { NavGroup } from './navConfig';
 import { cx, FOCUS_RING } from '@/components/ui/primitives/shared';
-import type { View } from '@/lib/views';
-import type { NavStatuses } from '@/lib/navStatus';
-import { prefersReducedMotion } from '@/lib/motion';
-import { pageLinkProps } from '@/lib/pageLink';
+import type { View } from '@/lib/app/views';
+import type { NavStatuses } from '@/lib/ui/navStatus';
+import { prefersReducedMotion } from '@/lib/ui/motion';
+import { pageLinkProps } from '@/lib/ui/pageLink';
 
 /** Slide-down time when the sheet closes (matches .zone-sheet-closing). */
 const CLOSE_MS = 260;

@@ -41,8 +41,8 @@ import { useLeagueStandingsRefresh } from '@/lib/leagues/useLeagueStandingsRefre
 import { useLocalDayKey } from '@/lib/time/useLocalDayKey';
 import { quoteForDay } from '@/lib/content/quoteOfDay';
 import { useMinuteTick } from '@/lib/time/useMinuteTick';
-import { useCompletionPop } from '@/lib/useCompletionPop';
-import { pageLinkProps } from '@/lib/pageLink';
+import { useCompletionPop } from '@/lib/ui/useCompletionPop';
+import { pageLinkProps } from '@/lib/ui/pageLink';
 import { dailyHabitCompletions, dailyPoints, habitsDueToday, lastDayKeys } from '@/lib/time/weeklyActivity';
 import { HabitCheck } from '@/components/habits/HabitCheck';
 import { MoodBadge } from '@/components/journal/moods';

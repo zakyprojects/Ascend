@@ -1,7 +1,7 @@
 import { Component, ErrorInfo, ReactNode } from 'react';
 import { AlertTriangle, Bug, RefreshCw, Wrench } from 'lucide-react';
-import { isBuildFileError, repairBuildFiles } from '@/lib/assetRecovery';
-import { reportError } from '@/lib/errorReporting';
+import { isBuildFileError, repairBuildFiles } from '@/lib/app/assetRecovery';
+import { reportError } from '@/lib/app/errorReporting';
 
 interface Props {
   children: ReactNode;

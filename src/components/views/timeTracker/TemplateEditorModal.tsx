@@ -17,14 +17,14 @@ import {
   templateDays,
   suggestNewBlockTimes,
 } from '@/lib/timeTracker/timeTracker';
-import { appliedTheme } from '@/lib/theme';
+import { appliedTheme } from '@/lib/ui/theme';
 import { ActivityIcon } from './ActivityIcon';
 import { TimeBlockModal, type BlockDraft } from './TimeBlockModal';
 import { AscendLoadingIndicator } from '@/components/ui/AscendLoadingIndicator';
 import { Plus, Trash2, Edit2, Check } from 'lucide-react';
-import { useUnsavedChanges } from '@/lib/unsavedChanges';
+import { useUnsavedChanges } from '@/lib/ui/unsavedChanges';
 import { TAP_TARGET_Y } from '@/components/ui/primitives/shared';
-import { toUserMessage } from '@/lib/userMessage';
+import { toUserMessage } from '@/lib/app/userMessage';
 import { nameTaken } from '@/lib/items/uniqueNames';
 
 interface TemplateEditorModalProps {

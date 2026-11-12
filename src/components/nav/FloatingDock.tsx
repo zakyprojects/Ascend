@@ -1,8 +1,8 @@
 import { useEffect, useLayoutEffect, useReducer, useRef, useState, useSyncExternalStore, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
 import { cx } from '@/components/ui/primitives/shared';
-import { SLOP_PX } from '@/lib/gestures';
-import { prefersReducedMotion } from '@/lib/motion';
-import { getFeedbackPrefs, vibrate } from '@/lib/actionFeedback';
+import { SLOP_PX } from '@/lib/ui/gestures';
+import { prefersReducedMotion } from '@/lib/ui/motion';
+import { getFeedbackPrefs, vibrate } from '@/lib/ui/actionFeedback';
 import { PILL_DESKTOP_QUERY, setBlockPillPosition, useBlockPillPrefs, type PillLayout, type PillSide } from '@/lib/timeTracker/blockPill';
 
 /** Gap between the dock and the page content it keeps clear (`--dock-clear`). */

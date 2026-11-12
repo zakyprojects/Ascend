@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import { ArrowRight, Check, Clock } from 'lucide-react';
 import type { Lesson } from '@/types';
 import { Dialog } from '@/components/ui/primitives';
-import { actionFeedback } from '@/lib/actionFeedback';
+import { actionFeedback } from '@/lib/ui/actionFeedback';
 
 export const pointsLabel = (n: number) => `+${n} ${n === 1 ? 'pt' : 'pts'}`;
 

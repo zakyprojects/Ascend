@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import type { EmotionLog } from '@/types';
 import { Dialog, Form, Textarea, useFormController } from '@/components/ui/primitives';
-import { useUnsavedChanges } from '@/lib/unsavedChanges';
-import { toUserMessage } from '@/lib/userMessage';
+import { useUnsavedChanges } from '@/lib/ui/unsavedChanges';
+import { toUserMessage } from '@/lib/app/userMessage';
 import { formatDateLong } from '@/lib/time/dates';
 import { EMOTION_CONTEXT_MAX } from '@/lib/focus/pfcLogEdits';
 import { localDayOf, timeOfDay } from './pfcLists';

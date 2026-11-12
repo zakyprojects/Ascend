@@ -21,9 +21,9 @@ import { HowItWorksButton, HowItWorksDialog, useHowItWorks } from '@/components/
 import { exerciseGuide } from '@/components/howItWorks/exercise';
 import { PageHero } from '@/components/ui/PageHero';
 import { Dialog, EmptyState, Form, Input, NumberField, PageColumns, useFormController } from '@/components/ui/primitives';
-import { useUnsavedChanges } from '@/lib/unsavedChanges';
+import { useUnsavedChanges } from '@/lib/ui/unsavedChanges';
 import { WORKOUT_PAST_DAY_MESSAGE } from '@/lib/items/itemEdits';
-import { toUserMessage } from '@/lib/userMessage';
+import { toUserMessage } from '@/lib/app/userMessage';
 import { TAP_TARGET, cx } from '@/components/ui/primitives/shared';
 import { BarChart } from '@/components/ui/charts';
 import { CountUp, Reveal } from '@/components/ui/Motion';

@@ -31,7 +31,7 @@ import { isWeeklyGoalSeasonSplitEntryId } from '../leagues/weeklyGoalSeasons';
 import { computeStateDataWeight, type UserDataWeight } from './dataWeight';
 import { trustedNow, trustedNowMs } from '../time/clock';
 import { mergeRankCelebrated } from '../leagues/rankCelebration';
-import { normalizeThemePreference } from '../theme';
+import { normalizeThemePreference } from '../ui/theme';
 import { mergeLastSeenRelease } from '../content/whatsNew';
 
 /**

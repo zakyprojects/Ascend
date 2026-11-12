@@ -9,7 +9,7 @@ import { trustedNow } from '@/lib/time/clock';
 import { weekKey, formatWeekdayDate, formatWeekdayShort } from '@/lib/time/dates';
 import { getEffectiveSeasonPoints } from '@/lib/leagues/leagues';
 import { leagueNow } from '@/lib/time/leagueTime';
-import { actionFeedback } from '@/lib/actionFeedback';
+import { actionFeedback } from '@/lib/ui/actionFeedback';
 import { useLocalDayKey } from '@/lib/time/useLocalDayKey';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { useToast } from '@/components/ui/Toast';

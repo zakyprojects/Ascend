@@ -4,9 +4,9 @@ import { AppStore } from '@/lib/store/store';
 import { NotificationPreferenceKey } from '@/types';
 import { Switch } from '@/components/ui/primitives';
 import { useAsyncAction, useAsyncActionKey } from '@/lib/actions/useAsyncAction';
-import { toUserMessage } from '@/lib/userMessage';
+import { toUserMessage } from '@/lib/app/userMessage';
 import { useToast } from '@/components/ui/Toast';
-import { disablePush, enablePush, getPushStatus, markPushPromptDone, type PushStatus } from '@/lib/push';
+import { disablePush, enablePush, getPushStatus, markPushPromptDone, type PushStatus } from '@/lib/app/push';
 import { FOCUS_NOTIFS_PREF_KEY } from '@/components/pfc/focusSession';
 import { SettingRow, SettingsCard } from './SettingRow';
 

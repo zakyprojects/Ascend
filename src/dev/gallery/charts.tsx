@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { BarChart, Heatmap, ProgressRing, Sparkline } from '@/components/ui/charts';
-import { IntroMotionContext } from '@/lib/motion';
+import { IntroMotionContext } from '@/lib/ui/motion';
 import { Button } from '@/components/ui/primitives';
 import { ChartTooltip } from '@/components/ui/charts/ChartTooltip';
 import { Caption, Section } from './shared';

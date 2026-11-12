@@ -2,8 +2,8 @@ import React from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { cx, FOCUS_RING, TRANSITION, TAP_TARGET } from './shared';
-import { prefersReducedMotion } from '@/lib/motion';
-import { requestDiscard } from '@/lib/unsavedChanges';
+import { prefersReducedMotion } from '@/lib/ui/motion';
+import { requestDiscard } from '@/lib/ui/unsavedChanges';
 import { focusField, isFinePointer, isTypingField } from './focus';
 
 export interface DialogProps {

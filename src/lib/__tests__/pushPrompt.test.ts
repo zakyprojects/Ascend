@@ -1,5 +1,5 @@
 // Node has no window/localStorage; the browser pieces push.ts reads are stubbed per case.
-import { disablePush, markPushPromptDone, shouldOfferHomeScreenHint } from '../push';
+import { disablePush, markPushPromptDone, shouldOfferHomeScreenHint } from '../app/push';
 
 function assert(condition: boolean, msg: string) {
   if (!condition) {

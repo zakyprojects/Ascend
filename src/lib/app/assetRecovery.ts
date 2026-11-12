@@ -1,4 +1,4 @@
-import { trustedNowMs } from './time/clock';
+import { trustedNowMs } from '../time/clock';
 
 /**
  * Recovers a page whose build files did not load: the main stylesheet came back empty or broken

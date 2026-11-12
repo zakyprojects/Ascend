@@ -15,9 +15,9 @@ import {
   readingBonusCooldown,
   readingBonusProgress,
 } from '@/lib/points/readingAwards';
-import { useUnsavedChanges } from '@/lib/unsavedChanges';
+import { useUnsavedChanges } from '@/lib/ui/unsavedChanges';
 import { bookProgress } from './bookMeta';
-import { actionFeedback } from '@/lib/actionFeedback';
+import { actionFeedback } from '@/lib/ui/actionFeedback';
 
 /**
  * Finishes a book with its key takeaway (required). Shows whether the one-time finish bonus

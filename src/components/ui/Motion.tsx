@@ -1,5 +1,5 @@
 import { CSSProperties, ReactNode, useEffect, useRef, useState } from 'react';
-import { useCountUp, useIntroMotion, useSeen } from '@/lib/motion';
+import { useCountUp, useIntroMotion, useSeen } from '@/lib/ui/motion';
 import { cx } from './primitives/shared';
 
 const STAGGER_MS = 60;

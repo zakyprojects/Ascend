@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Check, ImagePlus, X } from 'lucide-react';
 import type { AppStore } from '@/lib/store/store';
-import type { View } from '@/lib/views';
+import type { View } from '@/lib/app/views';
 import { Button, Card, FieldErrorBubble, Form, FormAlert, Input, Select, Textarea, cx, useFocusOnRender, useFormController } from '@/components/ui/primitives';
 import { FOCUS_RING, TAP_TARGET } from '@/components/ui/primitives/shared';
 import { NAV_DASHBOARD, NAV_GROUPS, NAV_SETTINGS, getViewLabel, isFeedbackView } from '@/components/nav/navConfig';
-import { useUnsavedChanges } from '@/lib/unsavedChanges';
-import { pageLinkProps } from '@/lib/pageLink';
+import { useUnsavedChanges } from '@/lib/ui/unsavedChanges';
+import { pageLinkProps } from '@/lib/ui/pageLink';
 import {
   FEEDBACK_KINDS,
   FeedbackKind,
@@ -21,7 +21,7 @@ import {
   pendingFeedbackStart,
   prepareScreenshot,
   submitFeedback,
-} from '@/lib/feedback';
+} from '@/lib/app/feedback';
 import { trustedNowMs } from '@/lib/time/clock';
 
 interface FeedbackViewProps {

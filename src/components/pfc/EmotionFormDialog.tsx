@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Dialog, Form, Input, Select, Textarea } from '@/components/ui/primitives';
-import { useUnsavedChanges } from '@/lib/unsavedChanges';
+import { useUnsavedChanges } from '@/lib/ui/unsavedChanges';
 import { COMMON_EMOTIONS } from './pfcLists';
 
 const OTHER = 'Other';

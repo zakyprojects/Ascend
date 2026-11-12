@@ -1,5 +1,5 @@
 import { lazy } from 'react';
-import { reloadOnceForStaleChunk } from '@/lib/chunkReload';
+import { reloadOnceForStaleChunk } from '@/lib/app/chunkReload';
 
 /**
  * The Terms and Privacy Policy are their own chunk: most visits never open them. main.tsx starts

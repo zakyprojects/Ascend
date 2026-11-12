@@ -5,8 +5,8 @@ import { cx, FOCUS_RING, TRANSITION } from '@/components/ui/primitives/shared';
 import { CountUp } from '@/components/ui/Motion';
 import { LeagueCountdown } from '@/components/ui/LeagueCountdown';
 import { LEAGUE_CONFIG, pointsText } from '@/lib/leagues/leagues';
-import { pageLinkProps } from '@/lib/pageLink';
-import type { View } from '@/lib/views';
+import { pageLinkProps } from '@/lib/ui/pageLink';
+import type { View } from '@/lib/app/views';
 import type { LeagueType } from '@/types';
 
 // Copies of four small components that live inside page files and are not exported:

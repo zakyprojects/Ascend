@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { DecisionLog } from '@/types';
 import { Dialog, Form, Textarea } from '@/components/ui/primitives';
-import { useUnsavedChanges } from '@/lib/unsavedChanges';
+import { useUnsavedChanges } from '@/lib/ui/unsavedChanges';
 
 export function DecisionReflectDialog({
   decision,

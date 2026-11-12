@@ -12,8 +12,8 @@ import {
 } from './supabase';
 import { trustedNow, trustedNowMs } from '../time/clock';
 import { ilikeExact, isUsernameTakenError, looksLikeUsername, sameUsername, USERNAME_TAKEN, usernameFormatProblem } from './usernameRules';
-import { NETWORK_MESSAGE } from '../userMessage';
-import { clearDrafts } from '../unsavedChanges';
+import { NETWORK_MESSAGE } from '../app/userMessage';
+import { clearDrafts } from '../ui/unsavedChanges';
 import { dropStoredSession, pauseStoredSessionsForSignOut, readStoredSession } from '../focus/focusSession';
 import { flushOps, supabaseFocusTransport } from '../focus/focusServerSession';
 import { FunctionRegion, FunctionsHttpError } from '@supabase/supabase-js';

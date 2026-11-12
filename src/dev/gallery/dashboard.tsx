@@ -4,7 +4,7 @@ import { LeagueRow, ModuleLink } from './appCopies';
 import { AscentProfile } from '@/components/views/AscentProfile';
 import { exerciseAmountText, minutesText } from '@/lib/items/exerciseSummary';
 import { TIERS } from '@/lib/leagues/tiers';
-import type { View } from '@/lib/views';
+import type { View } from '@/lib/app/views';
 import { Caption, Section } from './shared';
 
 // Dashboard parts with fake values. ModuleLink and LeagueRow are copies of the Dashboard's own

@@ -11,8 +11,8 @@ import {
   viewFromLegacyHash,
   viewFromLocation,
   viewFromPath,
-} from '../routes';
-import { VIEWS } from '../views';
+} from '../app/routes';
+import { VIEWS } from '../app/views';
 
 function assert(condition: boolean, msg: string) {
   if (!condition) {

@@ -18,7 +18,7 @@ import { LazyReorderList, ReorderButton } from '@/components/ui/Reorder';
 import { getCapStatus } from '@/lib/points/capStatus';
 import { getEffectiveSeasonPoints } from '@/lib/leagues/leagues';
 import { leagueNow } from '@/lib/time/leagueTime';
-import { actionFeedback } from '@/lib/actionFeedback';
+import { actionFeedback } from '@/lib/ui/actionFeedback';
 import { useLocalDayKey } from '@/lib/time/useLocalDayKey';
 import { CountUp, Reveal } from '@/components/ui/Motion';
 import { BadHabitRow } from '@/components/badHabits/BadHabitRow';

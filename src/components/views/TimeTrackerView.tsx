@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { applyListOrder, byCreatedAsc, LIST_ORDER_KEYS, savedOrderIds } from '@/lib/items/listOrder';
-import { confirmLeave } from '@/lib/unsavedChanges';
+import { confirmLeave } from '@/lib/ui/unsavedChanges';
 import { AppStore } from '@/lib/store/store';
 import { TimeTrackerActivity, TimeTrackerBlock, TimeTrackerTemplate } from '@/types';
 import { ensureDefaultActivities, plannedBlocksForDate } from '@/lib/timeTracker/timeTracker';

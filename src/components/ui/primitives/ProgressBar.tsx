@@ -1,5 +1,5 @@
 import { CSSProperties, useRef } from 'react';
-import { useIntroMotion, useSeen } from '@/lib/motion';
+import { useIntroMotion, useSeen } from '@/lib/ui/motion';
 import { cx } from './shared';
 
 export type ProgressTone = 'brand' | 'success' | 'warning' | 'purple' | 'cyan';

@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react';
 import type { DecisionLog } from '@/types';
 import { Dialog, Form, Input, Textarea, useFormController } from '@/components/ui/primitives';
 import { todayKey } from '@/lib/time/dates';
-import { useUnsavedChanges } from '@/lib/unsavedChanges';
-import { toUserMessage } from '@/lib/userMessage';
+import { useUnsavedChanges } from '@/lib/ui/unsavedChanges';
+import { toUserMessage } from '@/lib/app/userMessage';
 
 /**
  * Log a decision, or (with `editing`) change its words: title, why, expected outcome, and the

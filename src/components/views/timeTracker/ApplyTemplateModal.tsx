@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Dialog, FieldGroup, Form, Input, useFormController } from '@/components/ui/primitives';
-import { toUserMessage } from '@/lib/userMessage';
+import { toUserMessage } from '@/lib/app/userMessage';
 import { TimeTrackerBlock, TimeTrackerTemplate } from '@/types';
 import { AscendLoadingIndicator } from '@/components/ui/AscendLoadingIndicator';
 import { Check, RefreshCw, Plus } from 'lucide-react';

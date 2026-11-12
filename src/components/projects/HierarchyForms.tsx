@@ -5,8 +5,8 @@ import { Dialog, FieldMessage, FieldRow, Form, Input, Select, Switch, Textarea, 
 import { TAP_TARGET } from '@/components/ui/primitives/shared';
 import { earliestTargetDate, isNewPastDate, todayKey, uid } from '@/lib/time/dates';
 import { trustedNow } from '@/lib/time/clock';
-import { useUnsavedChanges } from '@/lib/unsavedChanges';
-import { toUserMessage } from '@/lib/userMessage';
+import { useUnsavedChanges } from '@/lib/ui/unsavedChanges';
+import { toUserMessage } from '@/lib/app/userMessage';
 import { nameTaken, sameName } from '@/lib/items/uniqueNames';
 
 /**

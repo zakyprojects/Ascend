@@ -2,7 +2,7 @@ import { lazy, Suspense, useLayoutEffect, useRef } from 'react';
 import { ArrowUpDown } from 'lucide-react';
 import { Button } from '@/components/ui/primitives';
 import { AscendLoadingIndicator } from '@/components/ui/AscendLoadingIndicator';
-import { reloadOnceForStaleChunk } from '@/lib/chunkReload';
+import { reloadOnceForStaleChunk } from '@/lib/app/chunkReload';
 import { takeReturnFocus } from './reorderFocus';
 import type { ReorderListProps } from './ReorderList';
 

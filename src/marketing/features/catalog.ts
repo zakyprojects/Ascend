@@ -16,7 +16,7 @@ import {
   Users,
   Zap,
 } from 'lucide-react';
-import type { View } from '@/lib/views';
+import type { View } from '@/lib/app/views';
 
 /** The public feature pages, `/features/<slug>`. Slugs never change once published (redirect if one must). */
 export const FEATURE_SLUGS = [

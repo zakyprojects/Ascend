@@ -3,7 +3,7 @@ import { Edit3, Trash2 } from 'lucide-react';
 import type { PlanReflectionNote } from '@/types';
 import { Textarea } from '@/components/ui/primitives';
 import { formatDateShort } from '@/lib/time/dates';
-import { useUnsavedChanges } from '@/lib/unsavedChanges';
+import { useUnsavedChanges } from '@/lib/ui/unsavedChanges';
 import { PlanIconButton } from './PlanIconButton';
 import { ShowMoreText, ShowMoreToggle } from './ShowMore';
 

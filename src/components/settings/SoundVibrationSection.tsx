@@ -11,7 +11,7 @@ import {
   type FeedbackPrefs,
   type SoundVolume,
   type VibrationStrength,
-} from '@/lib/actionFeedback';
+} from '@/lib/ui/actionFeedback';
 import { SettingRow, SettingsCard } from './SettingRow';
 
 interface Choice<T extends string> {

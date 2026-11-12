@@ -15,7 +15,7 @@ import {
   planTypeOf,
   targetProgress,
 } from './planMeta';
-import { actionFeedback } from '@/lib/actionFeedback';
+import { actionFeedback } from '@/lib/ui/actionFeedback';
 
 /** What the user can do on their own plan or copy. Discover cards pass none and stay read-only. */
 export interface PlanActions {

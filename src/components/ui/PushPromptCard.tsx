@@ -3,8 +3,8 @@ import { Bell, X } from 'lucide-react';
 import { Button } from '@/components/ui/primitives';
 import { useToast } from '@/components/ui/Toast';
 import { useAsyncAction } from '@/lib/actions/useAsyncAction';
-import { toUserMessage } from '@/lib/userMessage';
-import { enablePush, markPushPromptDone, shouldOfferHomeScreenHint, shouldOfferPush } from '@/lib/push';
+import { toUserMessage } from '@/lib/app/userMessage';
+import { enablePush, markPushPromptDone, shouldOfferHomeScreenHint, shouldOfferPush } from '@/lib/app/push';
 
 /**
  * A one-time offer to turn on push on this device (push is opt-in per device and easy to miss in

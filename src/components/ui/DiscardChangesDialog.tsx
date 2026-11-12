@@ -1,5 +1,5 @@
 import { Dialog } from './primitives';
-import { useDiscardRequest } from '@/lib/unsavedChanges';
+import { useDiscardRequest } from '@/lib/ui/unsavedChanges';
 
 /** The app's one "Discard changes?" question, raised by `requestDiscard` / `confirmLeave`. */
 export function DiscardChangesDialog() {

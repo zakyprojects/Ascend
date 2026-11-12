@@ -8,7 +8,7 @@ import {
   captchaFailureMessage,
   classifyTurnstileCode,
 } from '../auth/captcha';
-import { toUserMessage } from '../userMessage';
+import { toUserMessage } from '../app/userMessage';
 
 function assert(condition: boolean, msg: string) {
   if (!condition) {

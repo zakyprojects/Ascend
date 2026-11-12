@@ -12,10 +12,10 @@ import {
   type MetricKey,
 } from '@/lib/items/linkedGoalMetrics';
 import { workoutMeasureOf, workoutTypeKey, workoutTypeNames, type WorkoutMeasure } from '@/lib/content/workoutTypes';
-import { pageLinkProps } from '@/lib/pageLink';
-import type { View } from '@/lib/views';
-import { useUnsavedChanges } from '@/lib/unsavedChanges';
-import { toUserMessage } from '@/lib/userMessage';
+import { pageLinkProps } from '@/lib/ui/pageLink';
+import type { View } from '@/lib/app/views';
+import { useUnsavedChanges } from '@/lib/ui/unsavedChanges';
+import { toUserMessage } from '@/lib/app/userMessage';
 import { nameTaken } from '@/lib/items/uniqueNames';
 import { DRILL_WEEKLY_TARGET_MAX, drillMetricKey, findDrill, liveDrills, parseDrillMetricKey } from '@/lib/content/skillDrills';
 

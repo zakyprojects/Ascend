@@ -1,5 +1,5 @@
 import { ReactNode } from 'react';
-import { IntroMotionContext } from '@/lib/motion';
+import { IntroMotionContext } from '@/lib/ui/motion';
 
 /**
  * Page entrance: a short rise-and-fade (250ms, 8px) every time a view is shown. Keyed by view in

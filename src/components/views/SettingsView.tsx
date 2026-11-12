@@ -2,10 +2,10 @@ import { useEffect, useRef, useState } from 'react';
 import { Bell, Coffee, Eye, Info, KeyRound, MessageSquare, Palette, User, UserRound, Vibrate, type LucideIcon } from 'lucide-react';
 import { GuestSaveBanner } from '@/components/ui/GuestSaveBanner';
 import { AppStore } from '@/lib/store/store';
-import type { View } from '@/lib/views';
+import type { View } from '@/lib/app/views';
 import { cx, FOCUS_RING, TabPanel, Tabs } from '@/components/ui/primitives';
 import { Reveal } from '@/components/ui/Motion';
-import { confirmLeave } from '@/lib/unsavedChanges';
+import { confirmLeave } from '@/lib/ui/unsavedChanges';
 import {
   clearPendingSettingsSection,
   initialSettingsSection,
@@ -13,7 +13,7 @@ import {
   SETTINGS_SECTION_EVENT,
   settingsSectionPath,
   type SettingsSection,
-} from '@/lib/settingsSections';
+} from '@/lib/app/settingsSections';
 import { ProfileSection } from '@/components/settings/ProfileSection';
 import { AccountSection } from '@/components/settings/AccountSection';
 import { NotificationsSection } from '@/components/settings/NotificationsSection';

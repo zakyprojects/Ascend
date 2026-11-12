@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Dialog, FieldGroup, Form, Input, Select, useFormController } from '@/components/ui/primitives';
-import { useUnsavedChanges } from '@/lib/unsavedChanges';
+import { useUnsavedChanges } from '@/lib/ui/unsavedChanges';
 import { TimeTrackerActivity } from '@/types';
 import { ActivityIcon } from './ActivityIcon';
 import {
@@ -9,10 +9,10 @@ import {
   AVAILABLE_ACTIVITY_ICONS,
   AVAILABLE_ACTIVITY_COLORS,
 } from '@/lib/timeTracker/timeTracker';
-import { appliedTheme } from '@/lib/theme';
+import { appliedTheme } from '@/lib/ui/theme';
 import { AscendLoadingIndicator } from '@/components/ui/AscendLoadingIndicator';
 import { Shapes, Check } from 'lucide-react';
-import { toUserMessage } from '@/lib/userMessage';
+import { toUserMessage } from '@/lib/app/userMessage';
 import { categoryNameTaken } from './categoryNames';
 
 interface ActivityModalProps {

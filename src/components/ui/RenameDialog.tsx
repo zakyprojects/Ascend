@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Dialog, Form, Input, useFormController } from '@/components/ui/primitives';
-import { useUnsavedChanges } from '@/lib/unsavedChanges';
-import { toUserMessage } from '@/lib/userMessage';
+import { useUnsavedChanges } from '@/lib/ui/unsavedChanges';
+import { toUserMessage } from '@/lib/app/userMessage';
 
 /**
  * One name field in a dialog (rename a custom habit or bad habit). Mount it with `key` set to the

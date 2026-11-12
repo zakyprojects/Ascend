@@ -19,9 +19,9 @@ import {
 } from 'lucide-react';
 import type { AppNotification } from '@/types';
 import type { View } from './views';
-import { formatWeekdayDate, getWeekDates } from './time/dates';
-import { ptsText } from './leagues/leagues';
-import { planningWeekKey, weekSearch } from './time/weekParam';
+import { formatWeekdayDate, getWeekDates } from '../time/dates';
+import { ptsText } from '../leagues/leagues';
+import { planningWeekKey, weekSearch } from '../time/weekParam';
 
 /**
  * How the app shows each notification type: icon, tone, the page a tap opens, and the title and

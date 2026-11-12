@@ -1,5 +1,5 @@
 import React from 'react';
-import { useActiveBox } from '@/lib/useActiveBox';
+import { useActiveBox } from '@/lib/ui/useActiveBox';
 import { cx } from './shared';
 
 export interface SlidingPillProps {

@@ -1,19 +1,19 @@
 import { useState } from 'react';
 import { CheckCircle2, ChevronRight, Coffee, RotateCcw, SkipForward } from 'lucide-react';
 import type { AppStore } from '@/lib/store/store';
-import type { View } from '@/lib/views';
+import type { View } from '@/lib/app/views';
 import type { TimeTrackerActivity, TimeTrackerBlock } from '@/types';
 import { blockIntervalMs, formatTime12h, getAscendViewForModule } from '@/lib/timeTracker/timeTracker';
 import { todayKey } from '@/lib/time/dates';
 import { ProgressBar } from '@/components/ui/primitives';
 import { cx } from '@/components/ui/primitives/shared';
 import { useToast } from '@/components/ui/Toast';
-import { toUserMessage } from '@/lib/userMessage';
+import { toUserMessage } from '@/lib/app/userMessage';
 import { formatClock } from '../focusSession';
 import { getBlockContextualMessage, getSkipToastMessage } from '../scheduleMessages';
 import { ActivityTile, SCHEDULE_ACTION as ACTION, StopScheduleButton, blockRange, blockTitle, hhmm, type Theme } from './shared';
 import { TakeBreakDialog } from './TakeBreakDialog';
-import { actionFeedback } from '@/lib/actionFeedback';
+import { actionFeedback } from '@/lib/ui/actionFeedback';
 
 /** The block happening now: countdown to its end, break, skip, complete. */
 export function ScheduleActiveBlock({

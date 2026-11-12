@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Dialog, FieldErrorBubble } from './primitives';
 import { Trash2 } from 'lucide-react';
 import { AscendLoadingIndicator } from './AscendLoadingIndicator';
-import { toUserMessage } from '@/lib/userMessage';
+import { toUserMessage } from '@/lib/app/userMessage';
 
 interface ConfirmDeleteModalProps {
   open: boolean;

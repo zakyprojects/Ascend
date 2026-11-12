@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { applyListOrder, byCreatedDesc, LIST_ORDER_KEYS, reorderInSlots, savedOrderIds } from '@/lib/items/listOrder';
 import { LazyReorderList, ReorderButton } from '@/components/ui/Reorder';
-import { confirmLeave } from '@/lib/unsavedChanges';
+import { confirmLeave } from '@/lib/ui/unsavedChanges';
 import { Edit3, Globe, Lock, Plus, Trash2 } from 'lucide-react';
 import { AppStore } from '@/lib/store/store';
 import { useToast } from '@/components/ui/Toast';
@@ -15,7 +15,7 @@ import { plansGuide } from '@/components/howItWorks/plans';
 import { CountUp, Reveal } from '@/components/ui/Motion';
 import { Badge, Dialog, EmptyState, Form, NumberField, TabPanel, Tabs } from '@/components/ui/primitives';
 import { ImprovementPlan, UserPlanFollow } from '@/types';
-import { toUserMessage } from '@/lib/userMessage';
+import { toUserMessage } from '@/lib/app/userMessage';
 import { PlanCard } from '@/components/plans/PlanCard';
 import { PlanIconButton } from '@/components/plans/PlanIconButton';
 import type { PlanActions } from '@/components/plans/PlanBody';

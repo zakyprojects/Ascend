@@ -1,7 +1,7 @@
 import React from 'react';
 import type { LucideIcon } from 'lucide-react';
-import { nearScreenEdge, SLOP_PX } from '@/lib/gestures';
-import { actionFeedback } from '@/lib/actionFeedback';
+import { nearScreenEdge, SLOP_PX } from '@/lib/ui/gestures';
+import { actionFeedback } from '@/lib/ui/actionFeedback';
 import { cx } from './primitives/shared';
 
 export interface SwipeAction {

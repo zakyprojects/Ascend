@@ -6,7 +6,7 @@ import { trustedNow } from '../time/clock';
 import { clearTabSyncedHashes, setTabSyncedHashes, tabSyncedHashes, type Baseline } from './tabVersions';
 import { hashRow } from './rowHash';
 import { clearEditTimes, editTimeOf, pruneEditTimes, readEditTimes, type EditTimes } from './editTimes';
-import { reportError } from '../errorReporting';
+import { reportError } from '../app/errorReporting';
 
 /**
  * Relational sync outbox (DB normalization, S2 dual-write).

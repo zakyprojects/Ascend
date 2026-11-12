@@ -5,7 +5,7 @@ import { clearProfileSetupDue, isUsernameAvailable, updateUsernameWithCooldown, 
 import { cx, Dialog, Form, FOCUS_RING, Input, useFormController } from '@/components/ui/primitives';
 import { AscendLoadingIndicator } from '@/components/ui/AscendLoadingIndicator';
 import { useAsyncAction } from '@/lib/actions/useAsyncAction';
-import { toUserMessage } from '@/lib/userMessage';
+import { toUserMessage } from '@/lib/app/userMessage';
 import { USERNAME_TAKEN, usernameFormatProblem } from '@/lib/auth/usernameRules';
 
 type NameCheck = { state: 'idle' } | { state: 'available' } | { state: 'problem'; message: string };

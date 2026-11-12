@@ -1,4 +1,4 @@
-import { NETWORK_MESSAGE, toUserMessage } from '../userMessage';
+import { NETWORK_MESSAGE, toUserMessage } from '../app/userMessage';
 
 function assert(condition: boolean, msg: string) {
   if (!condition) {

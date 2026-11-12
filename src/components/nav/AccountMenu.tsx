@@ -1,9 +1,9 @@
 import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { LogIn, LogOut, Moon, Settings, Sun, UserRound } from 'lucide-react';
-import { toggleThemeWithReveal } from '@/lib/themeTransition';
+import { toggleThemeWithReveal } from '@/lib/ui/themeTransition';
 import { cx, FOCUS_RING, TRANSITION } from '@/components/ui/primitives/shared';
-import type { View } from '@/lib/views';
+import type { View } from '@/lib/app/views';
 import { NAV_HELP, isFeedbackView } from './navConfig';
 
 interface AccountMenuProps {

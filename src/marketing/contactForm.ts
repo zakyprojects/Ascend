@@ -12,7 +12,7 @@ import {
   isFeedbackKind,
   looksLikeEmail,
   newFeedbackRefAt,
-} from '@/lib/feedbackPayload';
+} from '@/lib/app/feedbackPayload';
 
 const SEND_LABEL = 'Send message';
 // The app's field border, normal and with a problem (components/ui/primitives/Field.tsx fieldBorder).

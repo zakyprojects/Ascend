@@ -1,5 +1,5 @@
-import { pathForAuthRoute, pathForView } from '@/lib/routes';
-import { VIEWS } from '@/lib/views';
+import { pathForAuthRoute, pathForView } from '@/lib/app/routes';
+import { VIEWS } from '@/lib/app/views';
 import { MARKETING_ROUTES } from './routes';
 import { absoluteUrl, INDEXNOW_KEY } from './site';
 import { headersFor, resolveRoute, type VercelConfig } from './vercelRules';

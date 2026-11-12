@@ -1,5 +1,5 @@
 import { CSSProperties, useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
-import { useReducedMotion } from '@/lib/motion';
+import { useReducedMotion } from '@/lib/ui/motion';
 
 export type EmberPhase = 'idle' | 'submitting' | 'success';
 export type EmberRoute = 'account' | 'guest';

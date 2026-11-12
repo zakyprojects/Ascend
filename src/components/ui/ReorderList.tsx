@@ -17,8 +17,8 @@ import { ChevronDown, ChevronUp, GripVertical } from 'lucide-react';
 import { Button } from '@/components/ui/primitives';
 import { cx, FOCUS_RING, TAP_TARGET_Y } from '@/components/ui/primitives/shared';
 import { moveId, sameOrder } from '@/lib/items/listOrder';
-import { prefersReducedMotion } from '@/lib/motion';
-import { useUnsavedChanges } from '@/lib/unsavedChanges';
+import { prefersReducedMotion } from '@/lib/ui/motion';
+import { useUnsavedChanges } from '@/lib/ui/unsavedChanges';
 import { returnFocusToReorderButton } from './reorderFocus';
 
 /**

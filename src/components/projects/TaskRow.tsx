@@ -4,12 +4,12 @@ import type { Task, TaskPriority, TaskSubtask } from '@/types';
 import { formatDateShort } from '@/lib/time/dates';
 import { cx, FieldErrorBubble, ProgressBar } from '@/components/ui/primitives';
 import { TAP_TARGET, TAP_TARGET_Y } from '@/components/ui/primitives/shared';
-import { useCompletionPop } from '@/lib/useCompletionPop';
+import { useCompletionPop } from '@/lib/ui/useCompletionPop';
 import { Chip } from './ItemCard';
-import { actionFeedback } from '@/lib/actionFeedback';
+import { actionFeedback } from '@/lib/ui/actionFeedback';
 import { nameTaken } from '@/lib/items/uniqueNames';
 import { SUBTASK_TITLE_MAX, subtaskTitleProblem } from '@/lib/items/itemEdits';
-import { toUserMessage } from '@/lib/userMessage';
+import { toUserMessage } from '@/lib/app/userMessage';
 import { LazyReorderList, ReorderButton } from '@/components/ui/Reorder';
 
 const PRIORITY_DOT: Record<TaskPriority, string> = {

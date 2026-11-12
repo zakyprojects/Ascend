@@ -7,7 +7,7 @@ import { ActivityIcon } from './ActivityIcon';
 import { useToast } from '@/components/ui/Toast';
 import { Dialog, FieldGroup, Form, useFormController } from '@/components/ui/primitives';
 import { cx, FOCUS_RING, TAP_TARGET } from '@/components/ui/primitives/shared';
-import { toUserMessage } from '@/lib/userMessage';
+import { toUserMessage } from '@/lib/app/userMessage';
 import { MODULE_LABELS } from './dayMeta';
 import { categoryDisplayNames } from './categoryNames';
 import { LIST_ORDER_KEYS } from '@/lib/items/listOrder';

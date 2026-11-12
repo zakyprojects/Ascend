@@ -6,8 +6,8 @@ import { isUsernameAvailable, updateUsernameWithCooldown, updateUserAvatar } fro
 import { cx, FieldErrorBubble, FOCUS_RING, Form, Input, useFormController } from '@/components/ui/primitives';
 import { AscendLoadingIndicator } from '@/components/ui/AscendLoadingIndicator';
 import { useAsyncAction } from '@/lib/actions/useAsyncAction';
-import { useUnsavedChanges } from '@/lib/unsavedChanges';
-import { toUserMessage } from '@/lib/userMessage';
+import { useUnsavedChanges } from '@/lib/ui/unsavedChanges';
+import { toUserMessage } from '@/lib/app/userMessage';
 import { trustedNowMs } from '@/lib/time/clock';
 import { useToast } from '@/components/ui/Toast';
 import { SettingsCard } from './SettingRow';

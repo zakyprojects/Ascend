@@ -1,10 +1,10 @@
 import type { ReactNode } from 'react';
 import { Bug, Lightbulb, MessageSquare } from 'lucide-react';
-import type { View } from '@/lib/views';
-import { FEEDBACK_KINDS, setPendingFeedbackStart, type FeedbackKind } from '@/lib/feedback';
+import type { View } from '@/lib/app/views';
+import { FEEDBACK_KINDS, setPendingFeedbackStart, type FeedbackKind } from '@/lib/app/feedback';
 import { cx, FOCUS_RING } from '@/components/ui/primitives';
 import { LEGAL_CONTACT_EMAIL } from '@/lib/content/legal';
-import { pageLinkProps } from '@/lib/pageLink';
+import { pageLinkProps } from '@/lib/ui/pageLink';
 import { SettingsCard } from './SettingRow';
 import { FUEL_MENU, fuelMailto, MAKER_INTRO, MAKER_LEAD, MAKER_STORY, SUPPORT_INTRO } from './makerContent';
 

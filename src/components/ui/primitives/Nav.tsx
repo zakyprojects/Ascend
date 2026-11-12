@@ -1,7 +1,7 @@
 import React from 'react';
 import { Check, ChevronRight, type LucideIcon } from 'lucide-react';
 import { cx, FOCUS_RING, TRANSITION, TAP_TARGET } from './shared';
-import type { NavStatus } from '@/lib/navStatus';
+import type { NavStatus } from '@/lib/ui/navStatus';
 
 export interface NavItemProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement> {

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Check } from 'lucide-react';
 import type { AppStore } from '@/lib/store/store';
 import { Dialog, Textarea } from '@/components/ui/primitives';
-import { useUnsavedChanges } from '@/lib/unsavedChanges';
+import { useUnsavedChanges } from '@/lib/ui/unsavedChanges';
 import { useFocusSession } from './FocusSessionProvider';
 
 /** After a focus session ends: an optional note, saved on that session's own log. */

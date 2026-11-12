@@ -3,7 +3,7 @@ import { CornerDownLeft, Search } from 'lucide-react';
 import { Dialog, cx } from '@/components/ui/primitives';
 import type { View } from '@/components/AppShell';
 import { NAV_DASHBOARD, NAV_FEEDBACK_SHORTCUTS, NAV_GROUPS, NAV_HELP, NAV_SETTINGS, NavEntry } from './navConfig';
-import { IS_APPLE_PLATFORM } from '@/lib/platform';
+import { IS_APPLE_PLATFORM } from '@/lib/ui/platform';
 
 /** "g" then this key jumps to the page. Kept to the most visited pages so the letters stay memorable. */
 const GO_KEYS: Partial<Record<View, string>> = {

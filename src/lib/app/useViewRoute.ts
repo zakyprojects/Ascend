@@ -11,8 +11,8 @@ import {
   viewFromLegacyHash,
   viewFromPath,
 } from './routes';
-import { runPageTransition } from './pageTransition';
-import { confirmLeave, hasUnsavedChanges } from './unsavedChanges';
+import { runPageTransition } from '../ui/pageTransition';
+import { confirmLeave, hasUnsavedChanges } from '../ui/unsavedChanges';
 
 /**
  * Path routing for the app's pages: `/habits`. Refresh keeps the page, links open a page

@@ -1,9 +1,9 @@
 import type { AppState, Habit } from '@/types';
-import type { View } from '@/lib/views';
+import type { View } from '@/lib/app/views';
 import { todayKey } from '@/lib/time/dates';
 import { dayProgress } from '@/lib/timeTracker/timeTracker';
 import { getActiveBadHabitsOrdered } from '@/lib/points/badHabitEligibility';
-import { trustedNow } from './time/clock';
+import { trustedNow } from '../time/clock';
 
 /** done = today's part is finished; pending = still open; risk = still open late in the day. */
 export type NavStatusTone = 'done' | 'pending' | 'risk';

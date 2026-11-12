@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { actionFeedback } from '@/lib/actionFeedback';
+import { actionFeedback } from '@/lib/ui/actionFeedback';
 
 /**
  * Completion-check "pop", driven by the user's own click rather than by state.

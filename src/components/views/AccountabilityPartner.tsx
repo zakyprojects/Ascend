@@ -7,7 +7,7 @@ import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { TierBadge } from '@/components/ui/TierBadge';
 import { useToast } from '@/components/ui/Toast';
 import { Button, Dialog, EmptyState, Form, Input, Select, Skeleton, StaticTabPanel, Switch, Tabs, useFormController } from '@/components/ui/primitives';
-import { useUnsavedChanges } from '@/lib/unsavedChanges';
+import { useUnsavedChanges } from '@/lib/ui/unsavedChanges';
 import { CountUp, Reveal } from '@/components/ui/Motion';
 import { PageHero } from '@/components/ui/PageHero';
 import { HowItWorksButton, HowItWorksDialog, useHowItWorks } from '@/components/ui/HowItWorks';
@@ -24,7 +24,7 @@ import { usePartnerDayKeys } from '@/lib/partners/usePartnerDayKeys';
 import { ptUnit, ptsText } from '@/lib/leagues/leagues';
 import { createNotificationSupabase } from '@/lib/auth/supabase';
 import { calculateUnifiedStreak } from '@/lib/time/streakLogic';
-import { toUserMessage } from '@/lib/userMessage';
+import { toUserMessage } from '@/lib/app/userMessage';
 import { sameName } from '@/lib/items/uniqueNames';
 import {
   badHabitForPactGoal,
@@ -45,7 +45,7 @@ import {
 } from '@/lib/partners/pactLifecycle';
 import { BadHabit, BadHabitLog, Partnership, SharedChallenge, PartnerInvite } from '@/types';
 import type { View } from '@/components/AppShell';
-import { actionFeedback } from '@/lib/actionFeedback';
+import { actionFeedback } from '@/lib/ui/actionFeedback';
 import { BadHabitDayAction } from '@/components/badHabits/BadHabitRow';
 
 const EMPTY_PARTNERSHIPS: Partnership[] = [];

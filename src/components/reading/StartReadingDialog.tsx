@@ -4,7 +4,7 @@ import { Dialog, FieldRow, Form, Input, NumberField, Select } from '@/components
 import type { AppStore } from '@/lib/store/store';
 import type { CuratedBook, UserBook } from '@/types';
 import { earliestTargetDate, isNewPastDate } from '@/lib/time/dates';
-import { useUnsavedChanges } from '@/lib/unsavedChanges';
+import { useUnsavedChanges } from '@/lib/ui/unsavedChanges';
 import { unitSwitchDefaults } from '@/lib/reading/bookUnits';
 import { bookProgress, bookUnit, lengthsByUnit, unitSwitchNote, type BookUnit } from './bookMeta';
 

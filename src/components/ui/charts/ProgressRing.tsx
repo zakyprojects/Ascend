@@ -1,5 +1,5 @@
 import { ReactNode, useRef } from 'react';
-import { useIntroMotion, useSeen } from '@/lib/motion';
+import { useIntroMotion, useSeen } from '@/lib/ui/motion';
 import { cx } from '../primitives/shared';
 import { ChartTone, toneText } from './chartShared';
 

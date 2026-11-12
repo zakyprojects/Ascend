@@ -5,7 +5,7 @@ import { PRESET_CATEGORIES, type PresetHabit } from '@/lib/content/presets';
 import { PRESET_HABIT_POINTS } from '@/lib/points/pointsConfig';
 import { CUSTOM_HABIT_POINTS } from '@/lib/points/habitAwards';
 import { ptsText } from '@/lib/leagues/leagues';
-import { useUnsavedChanges } from '@/lib/unsavedChanges';
+import { useUnsavedChanges } from '@/lib/ui/unsavedChanges';
 import { nameTaken, sameName } from '@/lib/items/uniqueNames';
 import { Dialog, Form, Input, StaticTabPanel, Tabs } from '@/components/ui/primitives';
 import { cx, FOCUS_RING, TRANSITION } from '@/components/ui/primitives/shared';

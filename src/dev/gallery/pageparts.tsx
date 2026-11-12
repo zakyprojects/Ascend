@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { IntroMotionContext } from '@/lib/motion';
+import { IntroMotionContext } from '@/lib/ui/motion';
 import { Plus, Inbox } from 'lucide-react';
 import { Button, Card, EmptyState, ProgressBar, Skeleton, type ProgressTone } from '@/components/ui/primitives';
 import { WeekActivityCard } from '@/components/views/WeekActivityCard';

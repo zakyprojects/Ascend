@@ -9,7 +9,7 @@ import { AscendLoadingIndicator } from '@/components/ui/AscendLoadingIndicator';
 import { ProgressUpdateDialog } from '@/components/ui/ProgressUpdateDialog';
 import { useToast } from '@/components/ui/Toast';
 import { useAsyncActionKey } from '@/lib/actions/useAsyncAction';
-import { toUserMessage } from '@/lib/userMessage';
+import { toUserMessage } from '@/lib/app/userMessage';
 import { AppStore } from '@/lib/store/store';
 import { addDays } from '@/lib/time/dates';
 import { useLocalDayKey } from '@/lib/time/useLocalDayKey';
@@ -33,7 +33,7 @@ import {
   savedOrderIds,
   sortStandalone,
 } from '@/lib/items/listOrder';
-import { confirmLeave } from '@/lib/unsavedChanges';
+import { confirmLeave } from '@/lib/ui/unsavedChanges';
 import { LazyReorderList, ReorderButton } from '@/components/ui/Reorder';
 import { Chip } from '@/components/projects/ItemCard';
 

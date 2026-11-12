@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Button, Dialog, Form, Input, NumberField, Switch, useFormController } from '@/components/ui/primitives';
 import { AscendLoadingIndicator } from '@/components/ui/AscendLoadingIndicator';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
-import { useUnsavedChanges } from '@/lib/unsavedChanges';
+import { useUnsavedChanges } from '@/lib/ui/unsavedChanges';
 import { LogoutConfirmModal } from '@/components/ui/LogoutConfirmModal';
 import { GuestLogoutWarningModal } from '@/components/ui/GuestLogoutWarningModal';
 import { RenameDialog } from '@/components/ui/RenameDialog';

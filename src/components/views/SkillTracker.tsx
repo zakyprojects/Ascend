@@ -26,7 +26,7 @@ import { BarChart } from '@/components/ui/charts';
 import { AscendLoadingIndicator } from '@/components/ui/AscendLoadingIndicator';
 import { CountUp, Reveal } from '@/components/ui/Motion';
 import { lastDayKeys, sumPerDay } from '@/lib/time/weeklyActivity';
-import { useUnsavedChanges } from '@/lib/unsavedChanges';
+import { useUnsavedChanges } from '@/lib/ui/unsavedChanges';
 import { nameTaken } from '@/lib/items/uniqueNames';
 import { skillNameProblem } from '@/lib/items/itemEdits';
 import { SKILL_LEVELS } from '@/lib/content/skillLevels';
@@ -47,8 +47,8 @@ import {
   prepareLogDrills,
 } from '@/lib/content/skillDrills';
 import { GoalFormDialog, type GoalPayload } from '@/components/weekly/GoalFormDialog';
-import { toUserMessage } from '@/lib/userMessage';
-import type { View } from '@/lib/views';
+import { toUserMessage } from '@/lib/app/userMessage';
+import type { View } from '@/lib/app/views';
 
 const DAYS_PAGE = 7;
 const QUICK_MINUTES = [45, 60, 120, 180];

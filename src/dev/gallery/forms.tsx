@@ -20,7 +20,7 @@ import {
   useFormController,
 } from '@/components/ui/primitives';
 import { StatusSelect } from '@/components/projects/ItemCard';
-import { useUnsavedChanges } from '@/lib/unsavedChanges';
+import { useUnsavedChanges } from '@/lib/ui/unsavedChanges';
 import { Caption, Section } from './shared';
 import { wait } from './util';
 

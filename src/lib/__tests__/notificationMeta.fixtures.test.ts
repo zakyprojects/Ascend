@@ -1,5 +1,5 @@
 import type { AppNotification } from '@/types';
-import { describeGroup, describeNotification, groupNotifications, notificationPenalty } from '../notificationMeta';
+import { describeGroup, describeNotification, groupNotifications, notificationPenalty } from '../app/notificationMeta';
 
 function assert(condition: boolean, msg: string) {
   if (!condition) {

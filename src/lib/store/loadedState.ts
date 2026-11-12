@@ -18,7 +18,7 @@ import { isWeekBeforeSeason, getSeasonBoundaryInWeek } from '../leagues/weeklyGo
 import { toArchivedCompetitor, getUserRank, calculateSeasonalTotal } from '../leagues/leagues';
 import { findCuratedBook } from '../reading/books';
 import { isLegitimateTombstoneId, deduplicatePresetHabits } from './stateMerger';
-import { normalizeThemePreference, deviceThemeFields } from '../theme';
+import { normalizeThemePreference, deviceThemeFields } from '../ui/theme';
 import { reconcileSharedChallengeLifecycle } from '../partners/pactLifecycle';
 import { NOTIFICATION_MAX_AGE_DAYS, NOTIFICATION_WINDOW } from '../auth/supabase';
 import { ensureDefaultActivities, autoHydrateDailyLog } from '../timeTracker/timeTracker';

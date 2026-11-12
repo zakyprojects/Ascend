@@ -2,8 +2,8 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react
 import { flushSync } from 'react-dom';
 import { AppState } from '@/types';
 import { AuthClimbState, AuthPanel, AuthPanelMode, authPanelTitle } from '@/components/ui/AuthPanel';
-import { authPathWithNext, nextFromSearch } from '@/lib/routes';
-import { prefersReducedMotion } from '@/lib/motion';
+import { authPathWithNext, nextFromSearch } from '@/lib/app/routes';
+import { prefersReducedMotion } from '@/lib/ui/motion';
 import { CLIMB_PANEL_BG, ClimbPanel, ClimbPanelMode, ClimbPanelSide } from './ClimbPanel';
 
 /** The screens of the sign-in pages: /login, /signup, and /signup for a guest (save progress). */

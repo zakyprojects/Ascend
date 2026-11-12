@@ -12,9 +12,9 @@ import { TAP_TARGET_Y } from '@/components/ui/primitives/shared';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { useToast } from '@/components/ui/Toast';
 import { useAsyncActionKey } from '@/lib/actions/useAsyncAction';
-import { useUnsavedChanges } from '@/lib/unsavedChanges';
+import { useUnsavedChanges } from '@/lib/ui/unsavedChanges';
 import { useMinuteTick } from '@/lib/time/useMinuteTick';
-import { toUserMessage } from '@/lib/userMessage';
+import { toUserMessage } from '@/lib/app/userMessage';
 
 /** Where the week's Reflection Window stands, with the time left while it is open. */
 function windowStatus(targetWeekKey: string, now: Date): { open: boolean; text: string } {

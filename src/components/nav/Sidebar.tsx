@@ -5,11 +5,11 @@ import { NAV_DASHBOARD, NAV_GROUPS, type NavGroup } from './navConfig';
 import { AppLogo } from '@/components/ui/AppLogo';
 import { NavItem, NavSection } from '@/components/ui/primitives';
 import { cx, FOCUS_RING, TRANSITION } from '@/components/ui/primitives/shared';
-import { IS_APPLE_PLATFORM } from '@/lib/platform';
-import { useHoverGlide } from '@/lib/useHoverGlide';
-import { pageLinkProps } from '@/lib/pageLink';
-import type { View } from '@/lib/views';
-import type { NavStatus, NavStatuses } from '@/lib/navStatus';
+import { IS_APPLE_PLATFORM } from '@/lib/ui/platform';
+import { useHoverGlide } from '@/lib/ui/useHoverGlide';
+import { pageLinkProps } from '@/lib/ui/pageLink';
+import type { View } from '@/lib/app/views';
+import type { NavStatus, NavStatuses } from '@/lib/ui/navStatus';
 
 type ZoneId = NavGroup['id'];
 export type AccountPlacement = 'below' | 'side';
