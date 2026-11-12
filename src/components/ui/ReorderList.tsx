@@ -1,4 +1,4 @@
-import { useMemo, useState, type CSSProperties, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import {
   DndContext,
   KeyboardSensor,
@@ -19,6 +19,7 @@ import { cx, FOCUS_RING, TAP_TARGET_Y } from '@/components/ui/primitives/shared'
 import { moveId, sameOrder } from '@/lib/listOrder';
 import { prefersReducedMotion } from '@/lib/motion';
 import { useUnsavedChanges } from '@/lib/unsavedChanges';
+import { returnFocusToReorderButton } from './reorderFocus';
 
 /**
  * Reorder mode of a list (knowledge/mode-a-reorder-items-2026-11-07.md §4.1): one compact column,
@@ -56,6 +57,18 @@ export default function ReorderList({ items, label, onDone, onCancel, renderMeta
   const changed = !sameOrder(ids, initial);
   const { confirmDiscard } = useUnsavedChanges(`reorder:${label}`, ids);
   const reduced = prefersReducedMotion();
+  const listRef = useRef<HTMLOListElement>(null);
+
+  // Keyboard focus starts on the first row's drag handle, not lost on the page when the mode opens.
+  useEffect(() => {
+    listRef.current?.querySelector<HTMLButtonElement>('button')?.focus();
+  }, []);
+
+  // Closing hands focus back to the Reorder button that opened this list.
+  const leave = (close: () => void) => {
+    returnFocusToReorderButton(label);
+    close();
+  };
 
   const sensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: 4 } }),
@@ -85,10 +98,10 @@ export default function ReorderList({ items, label, onDone, onCancel, renderMeta
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-xs text-content-tertiary">Drag a row by its handle, or use the arrows.</p>
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="sm" onClick={() => confirmDiscard(onCancel)}>
+          <Button variant="ghost" size="sm" onClick={() => confirmDiscard(() => leave(onCancel))}>
             Cancel
           </Button>
-          <Button size="sm" onClick={() => (changed ? onDone(ids) : onCancel())}>
+          <Button size="sm" onClick={() => leave(changed ? () => onDone(ids) : onCancel)}>
             Done
           </Button>
         </div>
@@ -106,7 +119,7 @@ export default function ReorderList({ items, label, onDone, onCancel, renderMeta
         }}
       >
         <SortableContext items={ids} strategy={verticalListSortingStrategy}>
-          <ol className="card divide-y divide-overlay-subtle overflow-hidden p-0">
+          <ol ref={listRef} className="card divide-y divide-overlay-subtle overflow-hidden p-0">
             {ids.map((id, index) => (
               <SortableRow
                 key={id}
@@ -151,6 +164,24 @@ function SortableRow({
     transform: CSS.Translate.toString(transform),
     transition: reduced ? undefined : transition,
   };
+  // A move that takes the row to the top or bottom disables the arrow just pressed, which would drop
+  // focus to the page: focus goes to the row's other arrow instead (and stays on the pressed one otherwise).
+  const upRef = useRef<HTMLButtonElement>(null);
+  const downRef = useRef<HTMLButtonElement>(null);
+  const pressed = useRef<'up' | 'down' | null>(null);
+  useLayoutEffect(() => {
+    const was = pressed.current;
+    if (!was) return;
+    pressed.current = null;
+    const [same, other] = was === 'up' ? [upRef.current, downRef.current] : [downRef.current, upRef.current];
+    const target = same && !same.disabled ? same : other;
+    if (target && !target.disabled && document.activeElement !== target) target.focus();
+  });
+  const press = (dir: 'up' | 'down') => {
+    // Only when the arrow had focus (keyboard, or a click that focused it); a tap elsewhere keeps its place.
+    if (document.activeElement === (dir === 'up' ? upRef.current : downRef.current)) pressed.current = dir;
+    onMove(id, dir === 'up' ? -1 : 1);
+  };
   const arrow = cx(
     'flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-content-muted hover:bg-overlay-subtle hover:text-content-primary disabled:opacity-30 disabled:pointer-events-none',
     FOCUS_RING,
@@ -180,10 +211,10 @@ function SortableRow({
         <p className="truncate text-sm font-medium text-content-primary">{title}</p>
         {meta && <div className="mt-0.5 flex flex-wrap items-center gap-1.5">{meta}</div>}
       </div>
-      <button type="button" className={arrow} disabled={first} aria-label={`Move "${title}" up`} onClick={() => onMove(id, -1)}>
+      <button type="button" ref={upRef} className={arrow} disabled={first} aria-label={`Move "${title}" up`} onClick={() => press('up')}>
         <ChevronUp size={18} aria-hidden="true" />
       </button>
-      <button type="button" className={arrow} disabled={last} aria-label={`Move "${title}" down`} onClick={() => onMove(id, 1)}>
+      <button type="button" ref={downRef} className={arrow} disabled={last} aria-label={`Move "${title}" down`} onClick={() => press('down')}>
         <ChevronDown size={18} aria-hidden="true" />
       </button>
     </li>

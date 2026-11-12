@@ -1,8 +1,9 @@
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useLayoutEffect, useRef } from 'react';
 import { ArrowUpDown } from 'lucide-react';
 import { Button } from '@/components/ui/primitives';
 import { AscendLoadingIndicator } from '@/components/ui/AscendLoadingIndicator';
 import { reloadOnceForStaleChunk } from '@/lib/chunkReload';
+import { takeReturnFocus } from './reorderFocus';
 import type { ReorderListProps } from './ReorderList';
 
 export type { ReorderItem, ReorderListProps } from './ReorderList';
@@ -32,8 +33,12 @@ export function LazyReorderList(props: ReorderListProps) {
 
 /** "Reorder" in a list's header: shown when the list has two or more items to order. */
 export function ReorderButton({ onClick, label }: { onClick: () => void; label: string }) {
+  const ref = useRef<HTMLButtonElement>(null);
+  useLayoutEffect(() => {
+    if (takeReturnFocus(label)) ref.current?.focus();
+  });
   return (
-    <Button variant="ghost" size="sm" onClick={onClick} aria-label={`Reorder ${label}`}>
+    <Button ref={ref} variant="ghost" size="sm" onClick={onClick} aria-label={`Reorder ${label}`}>
       <ArrowUpDown size={14} aria-hidden="true" />
       <span>Reorder</span>
     </Button>
