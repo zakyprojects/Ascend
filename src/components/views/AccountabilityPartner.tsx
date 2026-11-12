@@ -642,14 +642,14 @@ export function AccountabilityPartner({ store, onNavigate }: { store: AppStore; 
               notStarted && !mineDone
                 ? `${mine}: ${startsText.toLowerCase()} for you`
                 : readingLinked
-                ? `${mine}: ${mineDone ? 'done today' : 'not done yet'}. Open Reading to log pages.`
+                ? `${mine}: ${mineDone ? 'done today' : 'not done yet'}. Open Reading to log reading.`
                 : slipped
                 ? `${mine}: slipped today. Undo today's log`
                 : resist
                 ? (mineDone ? `Undo resisted today for ${mine}` : `Mark ${mine} resisted today`) + (linked ? ' (your bad habit too)' : '')
                 : (mineDone ? `Undo today for ${mine}` : `Mark ${mine} done today`) + (linked ? ' (your habit too)' : '')
             }
-            title={notStarted && !mineDone ? `${startsText} for you` : readingLinked ? 'Log pages in Reading to tick this' : slipped ? 'Slipped today. Tap to undo.' : undefined}
+            title={notStarted && !mineDone ? `${startsText} for you` : readingLinked ? 'Log reading in Reading to tick this' : slipped ? 'Slipped today. Tap to undo.' : undefined}
             className={cx(
               'shrink-0 w-11 h-11 rounded-xl flex items-center justify-center transition-[color,background-color,transform] duration-300 active:scale-90 disabled:cursor-not-allowed',
               mineDone
@@ -686,7 +686,7 @@ export function AccountabilityPartner({ store, onNavigate }: { store: AppStore; 
               </span>
               {linked && (
                 <span className="text-content-muted">
-                  {readingLinked ? 'Log pages in Reading to tick this' : resist ? 'Linked to your bad habit' : 'Linked to your habit'}
+                  {readingLinked ? 'Log reading in Reading to tick this' : resist ? 'Linked to your bad habit' : 'Linked to your habit'}
                 </span>
               )}
               {(canAddHabit || canAddBadHabit) && (

@@ -11,14 +11,15 @@ const eq = (got: unknown, want: unknown, msg: string) =>
 
 // The member card's strings (CompetitorProfileModal exerciseText/minutesText).
 const amounts: Array<[number, 'mins' | 'reps' | 'sets' | 'km', string]> = [
-  [45, 'mins', '45 min'],
-  [1, 'mins', '1 min'],
-  [0, 'mins', '0 min'],
-  [44.6, 'mins', '45 min'],
-  [59.4, 'mins', '59 min'],
-  [60, 'mins', '1 h'],
-  [90, 'mins', '1.5 h'],
-  [1250, 'mins', '20.8 h'],
+  // One duration style everywhere (Zakria 2026-11-12): "1h 30m" (lib/time/duration.ts).
+  [45, 'mins', '45m'],
+  [1, 'mins', '1m'],
+  [0, 'mins', '0m'],
+  [44.6, 'mins', '45m'],
+  [59.4, 'mins', '59m'],
+  [60, 'mins', '1h'],
+  [90, 'mins', '1h 30m'],
+  [1250, 'mins', '20h 50m'],
   [5.75, 'km', '5.75 km'],
   [0.1, 'km', '0.1 km'],
   [1, 'km', '1 km'],
@@ -31,7 +32,17 @@ const amounts: Array<[number, 'mins' | 'reps' | 'sets' | 'km', string]> = [
   [5, 'sets', '5 sets'],
 ];
 for (const [n, unit, want] of amounts) eq(exerciseAmountText(n, unit), want, `${n} ${unit}`);
-eq(minutesText(600000), '10k h', 'minutes in hours, short from 10,000');
+eq(minutesText(600000), '10k h', 'hours short from 10,000, minutes left out');
+{
+  const { durationText } = await import('../time/duration');
+  const { formatDurationHuman } = await import('../timeTracker/timeTracker');
+  eq(
+    [durationText(0), durationText(-5), durationText(NaN), durationText(119.6), durationText(120), durationText(125), durationText(60 * 1234 + 5), durationText(599999)],
+    ['0m', '0m', '0m', '2h', '2h', '2h 5m', '1,234h 5m', '9,999h 59m'],
+    'durationText: whole minutes, never "1h 60m", grouping below 10,000 h'
+  );
+  eq([formatDurationHuman(90), minutesText(90)], ['1h 30m', '1h 30m'], 'Time Tracker and the member card share the style');
+}
 
 let seq = 0;
 const w = (date: string, type: string, amount: number | undefined, unit?: string, durationMinutes = 0): WorkoutLog => ({
@@ -91,7 +102,7 @@ const w = (date: string, type: string, amount: number | undefined, unit?: string
     '2026-11-02',
     '2026-11-08'
   );
-  eq(rows.map((r) => `${r.name}:${exerciseAmountText(r.total, r.unit)}`), ['Walk:1 h', 'Running:5.75 km'], 'decimals, legacy minutes, range');
+  eq(rows.map((r) => `${r.name}:${exerciseAmountText(r.total, r.unit)}`), ['Walk:1h', 'Running:5.75 km'], 'decimals, legacy minutes, range');
 }
 
 eq(topWorkouts([], '2026-11-02', '2026-11-08'), [], 'empty');

@@ -343,7 +343,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
                 <div className="min-w-0">
                   <h2 className="section-title">Daily habit</h2>
                   <p className="mt-0.5 text-xs text-content-muted">
-                    {readingHabit ? 'Ticks itself on days you log pages.' : 'Add a Reading habit that ticks itself when you log pages.'}
+                    {readingHabit ? 'Ticks itself on days you log reading.' : 'Add a Reading habit that ticks itself when you log reading.'}
                   </p>
                 </div>
                 <Switch

@@ -1,5 +1,6 @@
 import type { WorkoutLog } from '@/types';
 import { compactNumber } from '../leagues/numberFormat';
+import { durationText } from '../time/duration';
 import { workoutAmountOf, workoutMeasureOf, workoutTypeKey, type WorkoutMeasure } from '../content/workoutTypes';
 
 /**
@@ -8,13 +9,10 @@ import { workoutAmountOf, workoutMeasureOf, workoutTypeKey, type WorkoutMeasure 
  * caps and the ledger never read this.
  */
 
-/** Minutes as "45 min", or hours with one decimal from an hour up ("6.5 h"). */
-export function minutesText(min: number): string {
-  if (min < 60) return `${compactNumber(min)} min`;
-  return `${compactNumber(Math.round((min / 60) * 10) / 10)} h`;
-}
+/** Minutes in the app's one duration style (durationText): "45m", "1h 30m". */
+export const minutesText = durationText;
 
-/** An exercise amount in its own unit: "45 min", "1.5 h", "5.75 km", "1 rep", "12.5k reps", "5 sets". */
+/** An exercise amount in its own unit: "45m", "1h 30m", "5.75 km", "1 rep", "12.5k reps", "5 sets". */
 export function exerciseAmountText(n: number, unit: WorkoutMeasure): string {
   if (unit === 'mins') return minutesText(Math.round(n));
   if (unit === 'km') return `${compactNumber(n)} km`;

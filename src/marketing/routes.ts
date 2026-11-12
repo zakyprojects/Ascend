@@ -156,7 +156,7 @@ export const MARKETING_ROUTES: MarketingRoute[] = [
     ogImage: 'privacy',
     ogAlt: 'AscendDay Privacy Policy: what AscendDay collects and who can see it',
     index: true,
-    updated: '2026-11-07', // legal text (LegalPage, no marketing footer): feedback rating, reply email and contact page, Last updated 7 November 2026
+    updated: '2026-11-12', // legal text (LegalPage, no marketing footer): reading stats in pages or chapters on the member card, Last updated 12 November 2026
   },
   {
     path: '/terms',

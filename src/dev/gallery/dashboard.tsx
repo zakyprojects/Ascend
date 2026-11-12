@@ -33,10 +33,10 @@ function ModuleTilesDemo() {
             sub={`Running · ${exerciseAmountText(7.5, 'km')} · +2 more`}
           />
           <ModuleLink tone="amber" icon={BookMarked} title="Reading" view="reading" navigate={navigate} value={2} unit="books in progress" sub="5 finished" />
-          <ModuleLink tone="purple" icon={Zap} title="Skills" view="skills" navigate={navigate} value={12.5} unit="hrs total" sub="3 skills tracked" />
+          <ModuleLink tone="purple" icon={Zap} title="Skills" view="skills" navigate={navigate} value="12h 30m" unit="total" sub="3 skills tracked" />
           <ModuleLink tone="rose" icon={ShieldAlert} title="Bad habits" view="bad-habits" navigate={navigate} value={2} unit="resisted today" sub="3 tracked" />
           <ModuleLink tone="red" icon={HeartPulse} title="Recovery" view="recovery" navigate={navigate} value={41} unit="days clean" sub="No sugar" />
-          <ModuleLink tone="cyan" icon={Timer} title="Focus" view="prefrontal" navigate={navigate} value={145} unit="min this week" sub="6 sessions this week" />
+          <ModuleLink tone="cyan" icon={Timer} title="Focus" view="prefrontal" navigate={navigate} value="2h 25m" unit="this week" sub="6 sessions this week" />
           <ModuleLink tone="indigo" icon={Clock} title="Time Tracker" view="time-tracker" navigate={navigate} value="6h 30m" unit="planned today" sub="3 done, 1 skipped of 7" />
         </div>
       </div>

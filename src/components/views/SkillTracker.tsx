@@ -49,6 +49,7 @@ import {
 import { GoalFormDialog, type GoalPayload } from '@/components/weekly/GoalFormDialog';
 import { toUserMessage } from '@/lib/app/userMessage';
 import type { View } from '@/lib/app/views';
+import { durationText } from '@/lib/time/duration';
 
 const DAYS_PAGE = 7;
 const QUICK_MINUTES = [45, 60, 120, 180];
@@ -65,8 +66,6 @@ const LEVEL_BADGE: Record<SkillLevel, string> = {
 
 const minutesOf = (l: SkillSessionLog): number =>
   typeof l.durationMinutes === 'number' && Number.isFinite(l.durationMinutes) ? l.durationMinutes : 0;
-
-const formatHours = (minutes: number): string => `${(Math.round(minutes / 6) / 10).toFixed(1)} hrs`;
 
 /** A drill row's icon buttons sit side by side, so their tap areas grow in height only. */
 const DRILL_ICON_BUTTON = cx(
@@ -527,12 +526,12 @@ export function SkillTracker({ store, onNavigate }: { store: AppStore; onNavigat
           }}
           lead={{
             label: 'Practice this week',
-            value: formatHours(weekMinutes),
+            value: durationText(weekMinutes),
             hint: `${weekActiveDays} of 7 days active`,
             valueClassName: 'text-purple-hierarchy',
           }}
           stats={[
-            { label: 'Total practice', value: formatHours(totalMinutes), valueClassName: 'text-brand-text' },
+            { label: 'Total practice', value: durationText(totalMinutes), valueClassName: 'text-brand-text' },
             { label: 'Skills', value: <CountUp value={skills.length} />, valueClassName: 'text-brand-text' },
           ]}
           side={<CapMeterConnected state={store.state} capId="skills" bare onExplain={guide.showPoints} />}

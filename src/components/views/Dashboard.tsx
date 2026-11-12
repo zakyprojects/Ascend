@@ -235,12 +235,9 @@ export function Dashboard({ store, onViewChange, onOpenAuth }: DashboardProps) {
   const activeBooks = (store.state.libraryBooks || []).filter((b) => b.status === 'reading').length;
   const finishedBooks = (store.state.libraryBooks || []).filter((b) => b.status === 'completed').length;
 
-  const totalSkillHours =
-    Math.round(
-      (store.state.skillLogs.reduce((sum, l) => sum + l.durationMinutes, 0) +
-        store.state.skills.reduce((sum, s) => sum + (s.clearedMinutes || 0), 0)) /
-        6
-    ) / 10;
+  const totalSkillMinutes =
+    store.state.skillLogs.reduce((sum, l) => sum + l.durationMinutes, 0) +
+    store.state.skills.reduce((sum, s) => sum + (s.clearedMinutes || 0), 0);
 
   const weeklyFocusLogs = store.state.focusLogs.filter((l) => l.date >= weekStartKey && l.date <= today);
   const weeklyFocusMins = weeklyFocusLogs.reduce((sum, l) => sum + l.durationMinutes, 0);
@@ -503,8 +500,8 @@ export function Dashboard({ store, onViewChange, onOpenAuth }: DashboardProps) {
                   title="Skills"
                   view="skills"
                   navigate={onViewChange}
-                  value={<CountUp value={totalSkillHours} decimals={totalSkillHours === 0 ? 0 : 1} />}
-                  unit="hrs total"
+                  value={<AutoNum text={formatDurationHuman(totalSkillMinutes)} />}
+                  unit="total"
                   sub={<><CountUp value={store.state.skills.length} /> {plural(store.state.skills.length, 'skill')} tracked</>}
                 />
                 <ModuleLink
@@ -539,8 +536,8 @@ export function Dashboard({ store, onViewChange, onOpenAuth }: DashboardProps) {
                   title="Focus"
                   view="prefrontal"
                   navigate={onViewChange}
-                  value={<CountUp value={weeklyFocusMins} />}
-                  unit="min this week"
+                  value={<AutoNum text={formatDurationHuman(weeklyFocusMins)} />}
+                  unit="this week"
                   sub={<><CountUp value={weeklyFocusLogs.length} /> {plural(weeklyFocusLogs.length, 'session')} this week</>}
                 />
                 <ModuleLink

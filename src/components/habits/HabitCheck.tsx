@@ -29,7 +29,7 @@ export function HabitCheck({ habit, done, onToggle, size = 'md', iconClassName, 
   const md = size === 'md';
   const when = habit.frequency === 'weekly' ? ' this week' : '';
   const label = linked
-    ? `${habit.name}: ${done ? `done${when || ' today'}` : 'not done yet'}. ${opensReading ? 'Open Reading Hub to log pages.' : 'Log pages in Reading Hub to tick it.'}`
+    ? `${habit.name}: ${done ? `done${when || ' today'}` : 'not done yet'}. ${opensReading ? 'Open Reading Hub to log reading.' : 'Log reading in Reading Hub to tick it.'}`
     : `Mark ${habit.name} done${when}`;
 
   return (
@@ -39,7 +39,7 @@ export function HabitCheck({ habit, done, onToggle, size = 'md', iconClassName, 
       aria-disabled={(linked && !opensReading) || undefined}
       aria-pressed={linked ? undefined : done}
       aria-label={label}
-      title={linked ? 'Log pages in Reading Hub to tick this' : undefined}
+      title={linked ? 'Log reading in Reading Hub to tick this' : undefined}
       className={cx(
         'flex shrink-0 items-center justify-center border',
         md ? 'h-11 w-11 rounded-xl' : 'h-9 w-9 rounded-lg',

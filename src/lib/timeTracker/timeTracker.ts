@@ -8,6 +8,7 @@ import {
 } from '@/types';
 import { uid, todayKey, parseDate, addDays } from '../time/dates';
 import { trustedNow } from '../time/clock';
+import { durationText } from '../time/duration';
 
 export const DAYS_OF_WEEK = [
   'Monday',
@@ -198,15 +199,8 @@ export function calculateBlockDurationMinutes(startTime: string, endTime: string
   return MINUTES_PER_DAY - startMins + endMins;
 }
 
-/** Minutes as "1h 30m", "45m" or "2h". */
-export function formatDurationHuman(minutes: number): string {
-  if (minutes <= 0) return '0m';
-  const h = Math.floor(minutes / 60);
-  const m = Math.round(minutes % 60);
-  if (h === 0) return `${m}m`;
-  if (m === 0) return `${h}h`;
-  return `${h}h ${m}m`;
-}
+/** Minutes as "1h 30m", "45m" or "2h" (the app's one duration style, durationText). */
+export const formatDurationHuman = durationText;
 
 /** How a start/end pair is stored: one block, or two halves when it runs past midnight. */
 export function describeBlockSpan(
