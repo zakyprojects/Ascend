@@ -6,7 +6,7 @@
 // scripts/run-tests.mjs starts *.hook.test.ts files with VITE_SUPABASE_URL = SB (import.meta.env
 // is fixed when vite-node starts, so the test file cannot set it itself).
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { FakeServer, SYNCED_TABLES } from './fakeServer';
+import { ACCOUNT_TZ, FakeServer, SYNCED_TABLES } from './fakeServer';
 
 export const REF = 'fakeproj';
 export const SB = `https://${REF}.supabase.co`;
@@ -38,7 +38,7 @@ export function session() {
 export const server = new FakeServer();
 server.g('profiles').push({
   id: UID, uid: '424242', username: 'hooktester', avatar: '🧑', created_at: CREATED, is_profile_public: true,
-  accept_partner_invites: true, device_timezone: 'Asia/Karachi', onboarding_completed: true,
+  accept_partner_invites: true, device_timezone: ACCOUNT_TZ, onboarding_completed: true,
 });
 
 export type Req = { method: string; table: string; path: string; search: string; body: any };
@@ -135,7 +135,7 @@ async function route(req: Request, url: URL, r: Req): Promise<Response> {
     const fn = table.slice(4);
     // eslint-disable-next-line no-restricted-syntax -- the fake server's clock
     if (fn === 'server_now') return json(200, new Date(Date.now()).toISOString());
-    if (fn === 'ascend_my_profile') return json(200, { email: EMAIL, device_timezone: 'Asia/Karachi', timezone: 'Asia/Karachi' });
+    if (fn === 'ascend_my_profile') return json(200, { email: EMAIL, device_timezone: ACCOUNT_TZ, timezone: ACCOUNT_TZ });
     return json(200, null);
   }
   const body = r.body;

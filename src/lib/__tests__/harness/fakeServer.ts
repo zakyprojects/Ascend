@@ -17,6 +17,12 @@ export const SYNCED_TABLES = new Set([
   'time_tracker_templates', 'time_tracker_days',
 ]);
 const ts = (v: any) => Date.parse(v);
+// The test account's timezone (profiles.timezone and device_timezone in fakeSupabase.ts): the zone
+// the test runs in (TZ), as for a member who lives there. The server's "today" for the guards is
+// this zone's date, so it matches the app's local today in every CI zone (a fixed Asia/Karachi
+// here made the reading/skill log guards drop today's logs under TZ=America/New_York whenever the
+// two dates differ, i.e. from 14:00 to midnight New York time).
+export const ACCOUNT_TZ = Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Karachi';
 
 export class FakeServer {
   legacyNoCap: boolean;
@@ -38,14 +44,14 @@ export class FakeServer {
   nowMs() { return Date.now(); }
   nowIso() { return new Date(this.nowMs()).toISOString(); }
   stamp() { const s = Math.max(this.nowMs(), this.lastStamp + 1); this.lastStamp = s; return new Date(s).toISOString(); }
-  todayKarachi() { return new Date(this.nowMs() + 5 * 3600e3).toISOString().slice(0, 10); }
+  accountToday() { return new Intl.DateTimeFormat('en-CA', { timeZone: ACCOUNT_TZ }).format(new Date(this.nowMs())); }
   t(table: string): Map<string, any> { if (!this.tables.has(table)) this.tables.set(table, new Map()); return this.tables.get(table)!; }
   row(table: string, uid: string, id: string): any { return this.t(table).get(`${uid}:${id}`); }
   note(kind: string, table: string, id: string, why: string, who: string) { this.log.push({ at: this.nowIso(), kind, table, id, why, who }); }
 
   guardFuture(table: string, NEW: any, OLD: any): string | null {
     if (NEW.deleted_at) return null;
-    const latest = this.todayKarachi();
+    const latest = this.accountToday();
     if (table === 'habits') {
       const c = NEW.data?.completions;
       if (c && typeof c === 'object' && !Array.isArray(c)) {
@@ -64,7 +70,7 @@ export class FakeServer {
   }
   guardToday(table: string, NEW: any, OLD: any): boolean {
     if (!['reading_logs', 'skill_logs'].includes(table) || NEW.deleted_at) return true;
-    const today = this.todayKarachi();
+    const today = this.accountToday();
     if (NEW.data?.date !== today) return false;
     if (OLD && OLD.data?.date !== today) return false;
     return true;
