@@ -116,7 +116,7 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
       <div className="page-header">
         <div>
           <h1 className="page-title">Bad habits</h1>
-          <p className="page-subtitle">Resist each day, one day at a time.</p>
+          <p className="page-subtitle">Mark each day you resist the habits you're quitting.</p>
           <HowItWorksButton onClick={guide.show} />
         </div>
         <button type="button" onClick={openAdd} className="btn-primary sm:shrink-0">

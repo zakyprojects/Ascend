@@ -130,7 +130,7 @@ export function HabitTracker({ store }: { store: AppStore }) {
       <div className="page-header">
         <div>
           <h1 className="page-title">Habits</h1>
-          <p className="page-subtitle">Build consistency, one day at a time.</p>
+          <p className="page-subtitle">Tick off today's habits and keep your streaks going.</p>
           <HowItWorksButton onClick={guide.show} />
         </div>
         <button type="button" onClick={() => setShowAdd(true)} className="btn-primary sm:shrink-0">

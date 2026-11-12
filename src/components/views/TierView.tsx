@@ -77,7 +77,7 @@ export function TierView({ store }: { store: AppStore }) {
     <div className="space-y-6">
       <div>
         <h1 className="page-title">Ranks</h1>
-        <p className="page-subtitle">Climb the ladder from Beginner to Master.</p>
+        <p className="page-subtitle">Your rank this season and the points each rank needs.</p>
       </div>
 
       <Reveal index={0}>

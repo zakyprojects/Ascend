@@ -699,7 +699,7 @@ export function ProjectsGoalsView({
       <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div>
           <h1 className="page-title">Projects & Goals</h1>
-          <p className="page-subtitle">Dream it, plan it, do it.</p>
+          <p className="page-subtitle">Your goals, the projects linked to them, and their tasks.</p>
           <HowItWorksButton onClick={guide.show} />
         </div>
         <button type="button" onClick={primaryAction.onClick} className="btn-primary self-start md:self-auto">
