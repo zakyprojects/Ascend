@@ -1,5 +1,5 @@
 import type { CSSProperties, ReactNode } from 'react';
-import { ArrowRight, CalendarDays, Layers, MonitorSmartphone, Plus, Scale, Swords, Trophy, TrendingUp } from 'lucide-react';
+import { ArrowRight, CalendarDays } from 'lucide-react';
 import { cx, FOCUS_RING } from '@/components/ui/primitives/shared';
 import { LEGAL_CONTACT_EMAIL, MIN_AGE } from '@/lib/legal';
 import { LESSONS } from '@/lib/lessons';
@@ -133,13 +133,11 @@ function Hero() {
           </span>
         </h1>
         <p
-          className="m-enter mx-auto mt-6 max-w-2xl text-base leading-relaxed text-content-tertiary sm:text-lg"
+          className="m-enter mx-auto mt-6 max-w-3xl text-base leading-relaxed text-content-tertiary sm:text-lg"
           style={enter(2)}
         >
-          {SITE_NAME} (formerly just {SITE_FORMER_NAME}) is a free self-improvement app that plays like a game. Instead of one app for habits, another for your
-          journal and another for goals, you log your habits, workouts, reading, skills and journal in one place, earn
-          points for each one, rise through {TIERS.length} ranks and climb weekly, monthly and 90-day leagues against
-          real people.
+          {SITE_NAME} (formerly just {SITE_FORMER_NAME}) is a free self-improvement app that plays like a game. Log your
+          day in one place, earn points, rise through {TIERS.length} ranks and climb leagues against real people.
         </p>
         <div className="m-enter mt-8 flex flex-wrap justify-center gap-3" style={enter(3)}>
           <a href="/signup" data-cta="" className="btn-primary min-h-12 px-6 text-base">
@@ -181,9 +179,9 @@ function Hero() {
 }
 
 const LOOP = [
-  { icon: Plus, title: 'Log what you do', text: 'Tick off habits, log a workout, read a few pages, write today’s entry. Each one earns points.' },
-  { icon: TrendingUp, title: 'Rank up', text: `Season points move you up ${TIERS.length} ranks, from ${TIERS[0].name} to ${topRank.name}. Missing a habit you chose costs points.` },
-  { icon: Trophy, title: 'Compete', text: 'Weekly, monthly and 90-day leagues rank everyone by the points they earned, so every week is a new race.' },
+  { title: 'Log what you do', text: 'Tick off habits, log a workout, read a few pages, write today’s entry. Each one earns points.' },
+  { title: 'Rank up', text: `Season points move you up ${TIERS.length} ranks, from ${TIERS[0].name} to ${topRank.name}. Missing a habit you chose costs points.` },
+  { title: 'Compete', text: 'Weekly, monthly and 90-day leagues rank everyone by the points they earned, so every week is a new race.' },
 ];
 
 function WhatItIs() {
@@ -195,17 +193,17 @@ function WhatItIs() {
         you put in becomes points, the points become a rank, and the leagues show how your week compares with
         everyone else’s.
       </SectionHeading>
-      <ol className="mt-10 grid gap-4 grid-cols-1 md:grid-cols-3">
-        {LOOP.map(({ icon: Icon, title, text }, i) => (
-          <li key={title} className="card card-hover p-6">
-            <div className="flex items-center gap-3">
-              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary-500/10 text-brand-text">
-                <Icon size={20} aria-hidden="true" />
-              </span>
-              <span className="stat-label">Step {i + 1}</span>
+      {/* The loop as one numbered row: step number, then what you do. */}
+      <ol className="scroll-rise mt-10 grid grid-cols-1 gap-x-10 gap-y-8 md:grid-cols-3">
+        {LOOP.map(({ title, text }, i) => (
+          <li key={title} className="flex gap-4 border-t border-overlay-default pt-5">
+            <span aria-hidden="true" className="text-2xl font-semibold leading-none tabular-nums text-brand-text">
+              {i + 1}
+            </span>
+            <div className="min-w-0">
+              <h3 className="text-lg font-semibold text-content-primary">{title}</h3>
+              <p className="mt-2 text-sm leading-relaxed text-content-tertiary">{text}</p>
             </div>
-            <h3 className="mt-4 text-lg font-semibold text-content-primary">{title}</h3>
-            <p className="mt-2 text-sm leading-relaxed text-content-tertiary">{text}</p>
           </li>
         ))}
       </ol>
@@ -215,22 +213,18 @@ function WhatItIs() {
 
 const REASONS = [
   {
-    icon: Layers,
     title: 'All in one app',
     text: 'Habits, bad habits, workouts, reading, skills, journal, time blocks, weekly goals and projects live together. No switching between five apps, and nothing forgotten because it was in the wrong one.',
   },
   {
-    icon: Swords,
     title: 'Competition that builds you',
     text: 'You compete with real people in weekly, monthly and 90-day leagues. Beating someone feels as good as it does in a game, but every point came from something that made you better.',
   },
   {
-    icon: Scale,
     title: 'An honest score',
     text: 'Everything you log adds to one total, and skipping a habit you chose costs points. Doing nothing is never neutral, so your rank shows how you really did.',
   },
   {
-    icon: MonitorSmartphone,
     title: 'Free, on phone and PC',
     text: 'No download and no payment. Open it in the browser or install it like an app.',
   },
@@ -239,14 +233,11 @@ const REASONS = [
 function WhyAscend() {
   return (
     <Section labelledBy="why-title">
-      <SectionHeading id="why-title" kicker="One app, and a reason to keep going" title="Why AscendDay" />
-      <ul className="mt-10 grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
-        {REASONS.map(({ icon: Icon, title, text }) => (
-          <li key={title} className="card card-hover p-6">
-            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary-500/10 text-brand-text">
-              <Icon size={20} aria-hidden="true" />
-            </span>
-            <h3 className="mt-4 text-lg font-semibold text-content-primary">{title}</h3>
+      <SectionHeading id="why-title" title="Why AscendDay" />
+      <ul className="scroll-rise mt-10 grid grid-cols-1 gap-x-10 gap-y-8 sm:grid-cols-2">
+        {REASONS.map(({ title, text }) => (
+          <li key={title} className="border-t border-overlay-default pt-5">
+            <h3 className="text-lg font-semibold text-content-primary">{title}</h3>
             <p className="mt-2 text-sm leading-relaxed text-content-tertiary">{text}</p>
           </li>
         ))}
@@ -416,7 +407,7 @@ function PointsRanksLeagues() {
 function WhyItWorks() {
   return (
     <Section labelledBy="reasons-title">
-      <SectionHeading id="reasons-title" kicker="The reasons behind the rules" title="Why AscendDay works the way it does">
+      <SectionHeading id="reasons-title" title="Why AscendDay works the way it does">
         Points, penalties, leagues and seasons each have a job. Here is what each one is for.
       </SectionHeading>
       <Cards cols={2} items={LANDING_WHY.map(({ q, a }) => ({ title: q, text: a }))} />
@@ -465,7 +456,7 @@ function Platforms() {
 function WhoFor() {
   return (
     <Section labelledBy="who-title">
-      <SectionHeading id="who-title" kicker="Who it is for" title="Made for people who like to compete" />
+      <SectionHeading id="who-title" title="Made for people who like to compete" />
       <div className="mt-10 grid gap-6 grid-cols-1 md:grid-cols-2">
         <div className="card p-6 sm:p-8">
           <h3 className="text-lg font-semibold text-content-primary">AscendDay fits if</h3>
@@ -565,7 +556,7 @@ function About() {
 function Faq() {
   return (
     <Section labelledBy="faq-title">
-      <SectionHeading id="faq-title" kicker="FAQ" title="Questions people ask" />
+      <SectionHeading id="faq-title" title="Questions people ask" />
       <FaqList items={LANDING_FAQ} />
     </Section>
   );

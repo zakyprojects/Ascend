@@ -8,7 +8,7 @@ export function SectionHeading({ id, kicker, title, children }: { id: string; ki
   return (
     <div className="scroll-rise max-w-2xl">
       {kicker && <p className="text-sm font-medium text-brand-text">{kicker}</p>}
-      <h2 id={id} className="mt-2 text-2xl sm:text-3xl font-semibold tracking-tight text-content-primary">
+      <h2 id={id} className={cx(kicker && 'mt-2', 'text-2xl sm:text-3xl font-semibold tracking-tight text-content-primary')}>
         {title}
       </h2>
       {children && <p className="mt-3 text-base leading-relaxed text-content-tertiary">{children}</p>}
