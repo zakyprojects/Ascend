@@ -73,7 +73,7 @@ export const reading: FeatureContent = {
         lead={
           <p>
             Discover holds {CURATED_BOOKS.length} books in {categories.length} categories: {list(categories)}. Search by
-            title, author or takeaway, filter by category, and sort by trending, bestsellers or A to Z. A book you add from
+            title, author or takeaway, filter by category, and sort by suggested order, classics first or A to Z. A book you add from
             Discover keeps its length, so you only have to log pages.
           </p>
         }

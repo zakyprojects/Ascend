@@ -35,6 +35,8 @@ import { bookBonus, bookProgress, byNewest, formatAmount, matchesBookFilter, sam
 
 type ReadingHubTab = 'reading' | 'library' | 'finished' | 'discover';
 const READING_TABS: ReadingHubTab[] = ['reading', 'library', 'finished', 'discover'];
+// The curated books' trendingRank / bestSellerRank are a hand-picked order, not measured data, so
+// the labels shown are "Suggested" and "Classics first" (the values are not saved anywhere).
 type DiscoverSort = 'trending' | 'bestsellers' | 'az';
 
 const TARGET_TONE = {
@@ -404,8 +406,8 @@ export function ReadingHub({ store }: { store: AppStore }) {
                     onChange={(e) => setSortBy(e.target.value as DiscoverSort)}
                     wrapperClassName="flex-1 sm:w-36 sm:flex-none"
                   >
-                    <option value="trending">Trending</option>
-                    <option value="bestsellers">Bestsellers</option>
+                    <option value="trending">Suggested</option>
+                    <option value="bestsellers">Classics first</option>
                     <option value="az">A to Z</option>
                   </ToolbarSelect>
                 )}
