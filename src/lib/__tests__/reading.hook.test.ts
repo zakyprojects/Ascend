@@ -96,6 +96,23 @@ await story('reading.hook (reading actions)', async () => {
   await until(() => !rows('reading_books').some((r) => r.id === bookId), 'T29: deleted book row removed', 5000);
   await until(() => !habitDone(), 'T29: deleting the only book read today unticks the Reading habit');
   await until(() => !pactRowDone(), 'T29: the delete untick reached shared_challenges', 5000);
+  // I3: a chapter book logs in tenths; 1.1 -> 1.3 stores exactly 0.2 (1.3 - 1.1 = 0.19999999999999996 unsnapped).
+  h.s().addCustomBookToLibrary('HookChapters', 'HookAuthor', undefined, undefined, 12, 'chapters', 'reading');
+  await until(() => book('HookChapters'), 'T29b: chapter book in state');
+  const chId = book('HookChapters')!.id;
+  const chLogs = () => h.s().state.readingLogs.filter((l) => l.bookId === chId && l.date === today);
+  h.s().updateReadingProgress(chId, 1.1, 1.1);
+  await until(() => chLogs().length === 1, 'T29b: first chapter log');
+  h.s().updateReadingProgress(chId, 0.2, 1.3);
+  await until(() => chLogs().length === 2, 'T29b: second chapter log');
+  eq(chLogs().map((l) => l.pagesRead).sort(), [0.2, 1.1], 'T29b: logs are 1.1 and exactly 0.2 chapters');
+  eq(book('HookChapters')!.currentAmount, 1.3, 'T29b: the book is at 1.3 chapters');
+  h.s().updateReadingProgress(chId, -0.2, 1.1);
+  await until(() => chLogs().length === 1, 'T29b: lowering to 1.1 takes the 0.2 back');
+  eq([chLogs()[0].pagesRead, book('HookChapters')!.currentAmount], [1.1, 1.1], 'T29b: 1.1 left, no float residue');
+  h.s().deleteBook(chId);
+  await until(() => !book('HookChapters'), 'T29b: chapter book removed');
+
   fake.unfail('partnerships');
   pass('T29 books added, pages logged and taken back (with the Reading habit and its pact), status, details, finish, restart and delete saved');
 });

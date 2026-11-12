@@ -39,10 +39,10 @@ assert(PAGES_PER_CHAPTER === 20, 'config: 1 chapter = 20 pages');
   assert(short.current === 180 && short.total === 180, 'length never below the place');
 }
 
-// 2. Defaults: pages -> chapters (place rounds down, total rounds up, at least 1).
+// 2. Defaults: pages -> chapters (place rounds down to a tenth, I3 2026-11-12; total rounds up, at least 1).
 {
   const d = unitSwitchDefaults(book({ currentAmount: 150, totalAmount: 300 }), 'chapters');
-  assert(d.current === 7 && d.total === 15, `150/300 pages -> 7/15 chapters (${JSON.stringify(d)})`);
+  assert(d.current === 7.5 && d.total === 15, `150/300 pages -> 7.5/15 chapters (${JSON.stringify(d)})`);
   assert(unitSwitchDefaults(book({ currentAmount: 5, totalAmount: 10 }), 'chapters').total === 1, 'at least 1 chapter');
   assert(unitSwitchDefaults(book({ currentAmount: 150, totalAmount: 300, lengthByUnit: { chapters: 12 } }), 'chapters').total === 12, 'saved chapter count');
 }
@@ -120,8 +120,11 @@ assert(PAGES_PER_CHAPTER === 20, 'config: 1 chapter = 20 pages');
   const a = takeBackTodaysReading(logs, b, DAY, 4, at(5), id);
   assert(a.logs.find((l) => l.id === 'p')?.pagesRead === 2 && a.removedIds.length === 0, 'shrinks the newest log first');
   const c = takeBackTodaysReading(logs, b, DAY, 16, at(5), id);
-  const refund = c.logs.find((l) => l.id === 'r1');
-  assert(c.removedIds.join() === 'p,c' && refund?.unit === 'pages' && refund.pagesRead === 10 && refund.createdAt === at(1), 'a chapter log partly taken back: the rest comes back as pages');
+  // Tenths of a chapter (I3 2026-11-12): 10 pages off a 1-chapter log leaves 0.5 chapter, nothing to refund.
+  assert(c.removedIds.join() === 'p' && c.logs.find((l) => l.id === 'c')?.pagesRead === 0.5 && !c.logs.some((l) => l.id === 'r1'), 'a chapter log partly taken back keeps the rest in tenths');
+  const odd = takeBackTodaysReading(logs, b, DAY, 15, at(5), id);
+  const refund = odd.logs.find((l) => l.id === 'r1');
+  assert(odd.logs.find((l) => l.id === 'c')?.pagesRead === 0.5 && refund?.unit === 'pages' && refund.pagesRead === 1 && refund.createdAt === at(1), 'an odd page left over comes back as a pages log');
   assert(c.logs.some((l) => l.id === 'y'), 'earlier days never change');
   assert(points(c.logs, [b]) === 5, 'today keeps exactly the 10 pages still read');
   const all = takeBackTodaysReading(logs, b, DAY, 999, at(5), id);
@@ -143,28 +146,29 @@ assert(PAGES_PER_CHAPTER === 20, 'config: 1 chapter = 20 pages');
   assert(pagesGoal.current === 100 && pagesGoal.unit === 'pages', `pages goal: 60 + 2×20 = 100 pages (${pagesGoal.current} ${pagesGoal.unit})`);
   assert(linkedGoalUnit(goal('pages_read'), state(logs)) === 'pages', 'label from the goal, not the book');
   const chapterGoal = computeLinkedGoalProgress(goal('chapters_read'), state([log('p1', 15, 1, { unit: 'pages' }), log('p2', 10, 2, { unit: 'pages' }), log('c', 2, 3, { unit: 'chapters' })]), week);
-  assert(chapterGoal.current === 3, `chapters goal: 25 pages = 1 whole chapter + 2 chapters (${chapterGoal.current})`);
+  assert(chapterGoal.current === 3.2, `chapters goal: 25 pages = 1.2 chapters (0.1 per 2 pages) + 2 chapters (${chapterGoal.current})`);
   const anyPages = computeLinkedGoalProgress(goal('pages_read', ''), state(logs), week);
   assert(anyPages.current === 60, 'any-book pages goal counts only logs written in pages');
 }
 
 // 9. Bug round 1 (Zakria 2026-11-09): switch back right away. 10 pages -> 0 chapters -> back to pages
-//    starts at 10 pages again (not 0), new reading after that earns, and a raising switch earns nothing.
+//    starts at 10 pages again (not 0). With tenths (I3 2026-11-12) 10 pages is 0.5 chapter exactly, so
+//    the case uses 11 pages (-> 0.5 chapter = 10 pages, a lowering switch); back restores 11, new reading after that earns, and a raising switch earns nothing.
 {
-  const b0 = book({ currentAmount: 10, totalAmount: 256, curatedBookId: 'curated-psychology-of-money' });
-  const logs = [log('p1', 10, 1, { unit: 'pages' })];
+  const b0 = book({ currentAmount: 11, totalAmount: 256, curatedBookId: 'curated-psychology-of-money' });
+  const logs = [log('p1', 11, 1, { unit: 'pages' })];
   const d1 = unitSwitchDefaults(b0, 'chapters');
-  assert(d1.current === 0 && d1.total === 13, `10/256 pages -> 0/13 chapters (${JSON.stringify(d1)})`);
+  assert(d1.current === 0.5 && d1.total === 13, `11/256 pages -> 0.5/13 chapters (${JSON.stringify(d1)})`);
   const b1 = switched(b0, 'chapters', d1.current, d1.total, 2);
   const d2 = unitSwitchDefaults(b1, 'pages');
-  assert(d2.current === 10 && d2.total === 256, `back to pages restores 10/256 (${JSON.stringify(d2)})`);
+  assert(d2.current === 11 && d2.total === 256, `back to pages restores 11/256 (${JSON.stringify(d2)})`);
   const b2 = switched(b1, 'pages', d2.current, d2.total, 3);
-  assert(b2.currentAmount === 10 && b2.totalAmount === 256 && b2.unitSwitches?.length === 2, 'round trip: 10/256 pages, both switches kept');
+  assert(b2.currentAmount === 11 && b2.totalAmount === 256 && b2.unitSwitches?.length === 2, 'round trip: 11/256 pages, both switches kept');
   assert(points(logs, [b2]) === 5, 'round trip keeps 5');
-  assert(points([...logs, log('p2', 6, 4, { unit: 'pages' })], [b2]) === 8, 'new pages after switching back earn (10 + 6 = 8)');
+  assert(points([...logs, log('p2', 6, 4, { unit: 'pages' })], [b2]) === 8, 'new pages after switching back earn (11 + 6 = 8)');
   // Again to chapters and back: still exact.
   const b3 = switched(b2, 'chapters', unitSwitchDefaults(b2, 'chapters').current, 13, 5);
-  assert(unitSwitchDefaults(b3, 'pages').current === 10, 'second round trip restores 10 again');
+  assert(unitSwitchDefaults(b3, 'pages').current === 11, 'second round trip restores 11 again');
   // The place moved after the switch (a chapter logged): plain conversion, no restore.
   assert(unitSwitchDefaults({ ...b1, currentAmount: 1 }, 'pages').current === 20, 'moved since the switch -> chapters × 20');
   // A raise beyond what earlier switches took earns nothing.

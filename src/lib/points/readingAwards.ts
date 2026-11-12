@@ -73,9 +73,28 @@ const validUnit = (unit: unknown): 'pages' | 'chapters' | null => {
 export const logUnit = (log: Pick<ReadingLog, 'unit'>, book: Pick<UserBook, 'unit'> | undefined): 'pages' | 'chapters' =>
   validUnit(log.unit) ?? (book && isChapterBook(book) ? 'chapters' : 'pages');
 
-/** A log's amount in pages (a chapter = PAGES_PER_CHAPTER pages); only a positive number counts. */
+/** Pages a tenth of a chapter counts as (2): chapters are logged in steps of 0.1. */
+export const PAGES_PER_CHAPTER_TENTH = PAGES_PER_CHAPTER / 10;
+
+/**
+ * A chapter amount in whole tenths (1.3 -> 13). Chapters are logged in steps of 0.1 and every amount
+ * is snapped here, so float noise (1.3 - 1.1 = 0.19999999999999996) never loses a point. Mirror of
+ * the server's round(chapters * 10) (20261112200000_reading_chapter_tenths.sql); both round a half
+ * up for the positive amounts that count.
+ */
+export const chapterTenths = (chapters: number): number => Math.round(chapters * 10);
+
+/** An amount in its unit, snapped: chapters to the nearest tenth, pages as they are. */
+export const snapReadingAmount = (n: number, unit: 'pages' | 'chapters'): number =>
+  unit === 'chapters' ? chapterTenths(n) / 10 : n;
+
+/** An amount in pages: chapters snapped to tenths, each tenth PAGES_PER_CHAPTER_TENTH pages (always whole); pages as they are. */
+export const readingAmountPages = (n: number, unit: 'pages' | 'chapters'): number =>
+  unit === 'chapters' ? chapterTenths(n) * PAGES_PER_CHAPTER_TENTH : n;
+
+/** A log's amount in pages (readingAmountPages in the log's unit); only a positive number counts. */
 export const logPageAmount = (log: ReadingLog, book: Pick<UserBook, 'unit'> | undefined): number =>
-  logPages(log) * (logUnit(log, book) === 'chapters' ? PAGES_PER_CHAPTER : 1);
+  readingAmountPages(logPages(log), logUnit(log, book));
 
 /**
  * How far a unit switch moved the book's place, in pages (after minus before): below 0 when it
@@ -103,7 +122,7 @@ const dayLastMs = (day: string): number => new Date(`${addDayKeys(day, 1)}T00:00
  * Mirror of ascend_recompute_reading_awards: the page award entry of one local day (null when the
  * day earns nothing), and each counted log's share in log order (shown on the log). Only logs of
  * books still in the library count, and not the pages Finish adds (finish: true); a log in chapters
- * counts each chapter as PAGES_PER_CHAPTER pages (the log's own unit, logUnit).
+ * counts each tenth of a chapter as PAGES_PER_CHAPTER_TENTH pages (the log's own unit, logUnit).
  * Per book, in time order, each log adds its pages; a unit switch of that day that lowered the
  * book's place subtracts the pages it took off (and owes them), one that raised it gives back at most
  * what earlier switches that day still owe (unitSwitchChange). The book earns for the highest running

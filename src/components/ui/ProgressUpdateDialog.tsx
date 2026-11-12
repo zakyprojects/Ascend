@@ -22,7 +22,7 @@ export interface ProgressUpdateDialogProps {
   /** Field labels for the two ways to update. */
   addLabel: string;
   setLabel: string;
-  /** What the − / + buttons move by (5 for a percentage). */
+  /** What the − / + buttons move by (5 for a percentage). A fractional step with `decimal` (0.1) is also the field's step: 1.05 says "Use steps of 0.1.". */
   step?: number;
   /** Amounts may have decimals (a plan target like 21.1 km). Whole numbers by default. */
   decimal?: boolean;
@@ -208,6 +208,7 @@ export function ProgressUpdateDialog({
               value={value}
               onValueChange={change}
               decimal={decimal}
+              step={decimal && !Number.isInteger(step) ? step : undefined}
               enterKeyHint="done"
               className="text-center figure"
               hint={

@@ -100,8 +100,8 @@ export function BookFormDialog({
   // Switching the unit of a saved book: the place is converted too and always shown to check or edit
   // (also at 0, and right after an earlier switch).
   const switching = Boolean(book && saved && !unitLocked && unit !== saved.unit);
-  // In progress, the length can't go below where the reader is.
-  const minLength = book && !finished ? Math.max(1, switching ? values.current : saved?.current ?? 0) : 1;
+  // In progress, the length can't go below where the reader is (a whole number: 1.5 chapters -> 2).
+  const minLength = book && !finished ? Math.max(1, Math.ceil(switching ? values.current : saved?.current ?? 0)) : 1;
   // A new book: one length per unit, so switching to chapters and back restores the page count.
   const [lengths, setLengths] = useState(() => lengthsByUnit(values.unit, values.totalAmount));
   const changeUnit = (next: BookUnit) => {
@@ -244,7 +244,7 @@ export function BookFormDialog({
             required
             value={values.totalAmount}
             onValueChange={(n) => update({ totalAmount: n })}
-            hint={!switching && minLength > 1 ? `You're at ${formatAmount(minLength, unit)}.` : undefined}
+            hint={!switching && !finished && saved && saved.current > 1 ? `You're at ${formatAmount(saved.current, unit)}.` : undefined}
           />
           <Select
             id="rh-book-unit"
@@ -262,6 +262,8 @@ export function BookFormDialog({
         {switching && (
           <NumberField
             id="rh-book-current"
+            decimal={unit === 'chapters'}
+            step={unit === 'chapters' ? 0.1 : undefined}
             label={`You're at (${unitWord.toLowerCase()})`}
             min={0}
             max={values.totalAmount}

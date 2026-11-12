@@ -43,7 +43,8 @@ export function StartReadingDialog({
   const title = book?.title ?? curated?.title;
   // A saved book that switches unit: its place is converted and always shown to check or edit.
   const switching = Boolean(saved && unit !== saved.unit);
-  const minLength = saved ? Math.max(1, switching ? current : saved.current) : 1;
+  // The length is whole chapters or pages, at or above the place (1.5 chapters -> at least 2).
+  const minLength = saved ? Math.max(1, Math.ceil(switching ? current : saved.current)) : 1;
   const changeUnit = (next: BookUnit) => {
     if (next === unit) return;
     if (book && saved) {
@@ -121,6 +122,8 @@ export function StartReadingDialog({
         {switching && (
           <NumberField
             id="rh-start-current"
+            decimal={unit === 'chapters'}
+            step={unit === 'chapters' ? 0.1 : undefined}
             label={`You're at (${unit})`}
             min={0}
             max={total}

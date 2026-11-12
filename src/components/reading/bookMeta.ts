@@ -1,6 +1,6 @@
 import type { BookCategory, PointsEntry, UserBook } from '@/types';
 import { formatDateLong, todayKey } from '@/lib/time/dates';
-import { PAGES_PER_CHAPTER, isChapterBook, readingBonusId } from '@/lib/points/readingAwards';
+import { PAGES_PER_CHAPTER, chapterTenths, isChapterBook, readingBonusId, snapReadingAmount } from '@/lib/points/readingAwards';
 import { trustedNow } from '@/lib/time/clock';
 import { sameName } from '@/lib/items/uniqueNames';
 
@@ -34,9 +34,11 @@ export const UNIT_FINISHED_HINT = 'A finished book keeps its unit.';
 export const unitSwitchNote = (was: number, unit: BookUnit): string =>
   `You were at ${formatAmount(was, unit)}. Points you already earned don't change.`;
 
-/** "1 page", "12 pages", "3 chapters". */
-export const formatAmount = (n: number, unit: BookUnit): string =>
-  `${n} ${unit === 'chapters' ? (n === 1 ? 'chapter' : 'chapters') : n === 1 ? 'page' : 'pages'}`;
+/** "1 page", "12 pages", "3 chapters", "1.5 chapters" (chapters to the nearest tenth). */
+export const formatAmount = (amount: number, unit: BookUnit): string => {
+  const n = snapReadingAmount(amount, unit);
+  return `${n} ${unit === 'chapters' ? (n === 1 ? 'chapter' : 'chapters') : n === 1 ? 'page' : 'pages'}`;
+};
 
 export interface BookProgress {
   current: number;
@@ -48,14 +50,15 @@ export interface BookProgress {
 
 /** Progress as shown: the current amount never reads above the length. */
 export function bookProgress(book: UserBook): BookProgress {
+  const unit = bookUnit(book);
   const total = Math.max(1, book.totalAmount ?? book.totalPages ?? DEFAULT_BOOK_LENGTH);
-  const current = Math.min(total, Math.max(0, book.currentAmount ?? book.currentPage ?? 0));
+  const current = snapReadingAmount(Math.min(total, Math.max(0, book.currentAmount ?? book.currentPage ?? 0)), unit);
   return {
     current,
     total,
-    unit: bookUnit(book),
+    unit,
     percent: Math.min(100, Math.round((current / total) * 100)),
-    left: total - current,
+    left: snapReadingAmount(total - current, unit),
   };
 }
 
@@ -77,7 +80,9 @@ export function targetLine(book: UserBook): { text: string; tone: TargetTone } |
   if (!target || !/^\d{4}-\d{2}-\d{2}$/.test(target)) return null;
   const daysLeft = dayNumber(target) - dayNumber(todayKey(trustedNow()));
   if (daysLeft < 0) return { text: `Target was ${formatDateLong(target)}`, tone: 'danger' };
-  const perDay = Math.ceil(p.left / (daysLeft + 1));
+  // Chapters in tenths (0.4 chapters a day), pages whole.
+  const perDay =
+    p.unit === 'chapters' ? Math.ceil(chapterTenths(p.left) / (daysLeft + 1)) / 10 : Math.ceil(p.left / (daysLeft + 1));
   if (daysLeft === 0) return { text: `Target is today, ${formatAmount(p.left, p.unit)} to go`, tone: 'warning' };
   return {
     text: `${daysLeft} ${daysLeft === 1 ? 'day' : 'days'} to ${formatDateLong(target)}, about ${formatAmount(perDay, p.unit)} a day`,

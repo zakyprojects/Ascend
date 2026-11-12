@@ -1,12 +1,21 @@
 import type { ReadingLog, UserBook } from '@/types';
 import { findCuratedBook } from './books';
 import { addDays } from '../time/dates';
-import { PAGES_PER_CHAPTER, isChapterBook, logPageAmount, logUnit } from '../points/readingAwards';
+import {
+  PAGES_PER_CHAPTER,
+  PAGES_PER_CHAPTER_TENTH,
+  chapterTenths,
+  isChapterBook,
+  logPageAmount,
+  logUnit,
+  readingAmountPages,
+  snapReadingAmount,
+} from '../points/readingAwards';
 
 export type BookUnitName = 'pages' | 'chapters';
 
 const unitOf = (book: Pick<UserBook, 'unit'>): BookUnitName => (isChapterBook(book) ? 'chapters' : 'pages');
-const toPages = (amount: number, unit: BookUnitName): number => amount * (unit === 'chapters' ? PAGES_PER_CHAPTER : 1);
+const toPages = readingAmountPages;
 const positive = (n: unknown): number | undefined => (typeof n === 'number' && Number.isFinite(n) && n >= 1 ? Math.round(n) : undefined);
 
 /** The ids a book's logs may carry (its own, or the catalogue/linked id it came from). */
@@ -17,15 +26,15 @@ export const bookLogIds = (book: Pick<UserBook, 'id' | 'linkedBookId' | 'curated
  * What a unit switch starts the form at (both editable):
  * - to pages: place = chapters × 20; length = the page count saved before, else the catalogue's,
  *   else chapters × 20.
- * - to chapters: place = whole chapters read (pages / 20 rounded down, never a chapter not finished);
- *   length = the chapter count saved before, else pages / 20 rounded up (at least 1).
+ * - to chapters: place = chapters read in tenths (pages / 2 rounded down, so 31 pages -> 1.5, never a
+ *   tenth not read); length = the chapter count saved before, else pages / 20 rounded up (at least 1).
  * - switching back while the place is still where the last switch put it: the place before that
  *   switch (so 10 pages -> 0 chapters -> back gives 10 pages, not 0).
- * The length is never below the place.
+ * The length (always whole) is never below the place.
  */
 export function unitSwitchDefaults(book: UserBook, next: BookUnitName): { current: number; total: number } {
   const from = unitOf(book);
-  const current = Math.max(0, book.currentAmount ?? book.currentPage ?? 0);
+  const current = snapReadingAmount(Math.max(0, book.currentAmount ?? book.currentPage ?? 0), from);
   const total = Math.max(1, book.totalAmount ?? book.totalPages ?? 1);
   if (next === from) return { current, total };
   const last = Array.isArray(book.unitSwitches) ? book.unitSwitches[book.unitSwitches.length - 1] : undefined;
@@ -34,12 +43,12 @@ export function unitSwitchDefaults(book: UserBook, next: BookUnitName): { curren
   if (next === 'pages') {
     const curated = findCuratedBook(book.curatedBookId || book.linkedBookId || '');
     const pages = positive(book.lengthByUnit?.pages) ?? positive(curated?.totalPages) ?? total * PAGES_PER_CHAPTER;
-    const place = back ?? current * PAGES_PER_CHAPTER;
+    const place = back ?? toPages(current, from);
     return { current: place, total: Math.max(pages, place) };
   }
-  const place = Math.floor((back ?? current) / PAGES_PER_CHAPTER);
+  const place = Math.floor((back ?? current) / PAGES_PER_CHAPTER_TENTH) / 10;
   const chapters = positive(book.lengthByUnit?.chapters) ?? Math.max(1, Math.ceil(total / PAGES_PER_CHAPTER));
-  return { current: place, total: Math.max(chapters, place) };
+  return { current: place, total: Math.max(chapters, Math.ceil(place)) };
 }
 
 /** The book's saved length per unit with `total` saved for `unit`. */
@@ -64,7 +73,9 @@ export function switchBookUnit(
   const from = unitOf(book);
   if (change.unit === from || book.status === 'completed') return book;
   const total = Math.max(1, Math.round(change.total));
-  const current = Math.min(total, Math.max(0, Math.round(change.current)));
+  // Pages stay whole; chapters keep tenths (1.5).
+  const place = change.unit === 'chapters' ? snapReadingAmount(change.current, 'chapters') : Math.round(change.current);
+  const current = Math.min(total, Math.max(0, place));
   const pagesBefore = toPages(Math.max(0, book.currentAmount ?? book.currentPage ?? 0), from);
   const pagesAfter = toPages(current, change.unit);
   const yesterday = addDays(today, -1);
@@ -103,9 +114,10 @@ export function stampLogUnits(logs: ReadingLog[], book: UserBook): ReadingLog[] 
 
 /**
  * Lowering a book's progress takes back today's reading of that book, newest log first, counted in
- * pages (a chapter = 20 pages), whatever unit each log was written in; earlier days never change.
- * A chapter log that is only partly taken back loses whole chapters and the extra pages come back
- * as a pages log at the same time (refund), so the day keeps exactly the pages still read.
+ * pages (a tenth of a chapter = 2 pages), whatever unit each log was written in; earlier days never
+ * change. A chapter log that is only partly taken back loses whole tenths of a chapter and an odd
+ * page left over comes back as a pages log at the same time (refund), so the day keeps exactly the
+ * pages still read.
  */
 export function takeBackTodaysReading(
   logs: ReadingLog[],
@@ -137,9 +149,9 @@ export function takeBackTodaysReading(
     if (unit === 'pages') {
       changed.set(l.id, { ...l, unit, pagesRead: pages - left, updatedAt: nowIso } as ReadingLog);
     } else {
-      const chapters = Math.ceil(left / PAGES_PER_CHAPTER);
-      const refund = chapters * PAGES_PER_CHAPTER - left;
-      const rest = l.pagesRead - chapters;
+      const tenths = Math.ceil(left / PAGES_PER_CHAPTER_TENTH);
+      const refund = tenths * PAGES_PER_CHAPTER_TENTH - left;
+      const rest = (chapterTenths(l.pagesRead) - tenths) / 10;
       if (rest > 0) changed.set(l.id, { ...l, unit, pagesRead: rest, updatedAt: nowIso } as ReadingLog);
       else {
         removedIds.push(l.id);

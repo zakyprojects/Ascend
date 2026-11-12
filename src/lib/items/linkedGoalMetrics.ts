@@ -1,6 +1,6 @@
 import { AppState, ReadingLog, UserBook, WeeklyGoalItem, WorkoutLog } from '@/types';
 import { parseDate, weekKey } from '../time/dates';
-import { PAGES_PER_CHAPTER, isChapterBook, logUnit } from '../points/readingAwards';
+import { PAGES_PER_CHAPTER_TENTH, isChapterBook, logUnit, readingAmountPages, snapReadingAmount } from '../points/readingAwards';
 import { workoutMeasureOf, workoutTypeKey, type WorkoutMeasure } from '../content/workoutTypes';
 import { findDrill, logDrillCount, parseDrillMetricKey } from '../content/skillDrills';
 
@@ -57,7 +57,8 @@ export const linkedBook = (state: Pick<AppState, 'libraryBooks'>, bookId: string
 /**
  * Reading logs of the week for a goal, each in its own unit (logUnit). A goal on one book counts all
  * of the book's logs in the goal's unit: a book can switch units, so a log in the other unit counts
- * converted (1 chapter = 20 pages; pages count as whole chapters as they add up). A goal on any book
+ * converted (1 chapter = 20 pages; pages count in tenths of a chapter, 0.1 per 2 pages, as they add
+ * up). Chapter amounts are snapped to tenths (snapReadingAmount). A goal on any book
  * counts the logs written in its metric's unit (a log whose book is gone counts in its own unit,
  * else as pages). Finish logs count (Zakria 2026-10-19).
  */
@@ -68,24 +69,24 @@ const readingEntries = (chapters: boolean) => (state: AppState, item: WeeklyGoal
   const logs = (state.readingLogs || []).filter((l) => dateStrings.includes(l.date));
   const entry = (l: ReadingLog, value: number): MetricEntry => ({ id: l.id, at: l.createdAt || dayInstant(l.date), value });
   if (!item.linkedItemId) {
-    return logs.filter((l) => unitOf(l) === unit).map((l) => entry(l, l.pagesRead || 0));
+    return logs.filter((l) => unitOf(l) === unit).map((l) => entry(l, snapReadingAmount(l.pagesRead || 0, unit)));
   }
   const book = linkedBook(state, item.linkedItemId);
   const ids = new Set([item.linkedItemId, book?.id, book?.linkedBookId].filter(Boolean));
   const own = logs.filter((l) => Boolean(l.bookId && ids.has(l.bookId)));
   if (!chapters) {
-    return own.map((l) => entry(l, (l.pagesRead || 0) * (unitOf(l) === 'chapters' ? PAGES_PER_CHAPTER : 1)));
+    return own.map((l) => entry(l, readingAmountPages(l.pagesRead || 0, unitOf(l))));
   }
-  // A chapters goal: pages logs add a chapter each time their running total (in time order) passes 20 more pages.
+  // A chapters goal: pages logs add 0.1 chapter each time their running total (in time order) passes 2 more pages.
   let pages = 0;
   return own
-    .map((l) => ({ l, e: entry(l, l.pagesRead || 0) }))
+    .map((l) => ({ l, e: entry(l, snapReadingAmount(l.pagesRead || 0, 'chapters')) }))
     .sort((a, b) => (a.e.at < b.e.at ? -1 : a.e.at > b.e.at ? 1 : 0))
     .map(({ l, e }) => {
       if (unitOf(l) === 'chapters') return e;
-      const before = Math.floor(pages / PAGES_PER_CHAPTER);
+      const before = Math.floor(pages / PAGES_PER_CHAPTER_TENTH);
       pages += l.pagesRead || 0;
-      return { ...e, value: Math.floor(pages / PAGES_PER_CHAPTER) - before };
+      return { ...e, value: (Math.floor(pages / PAGES_PER_CHAPTER_TENTH) - before) / 10 };
     });
 };
 
@@ -202,6 +203,9 @@ export function linkedItemExists(item: WeeklyGoalItem, state: Pick<AppState, 'ha
   }
 }
 
+/** A running total of entry values without float noise (ten 0.1-chapter logs reach exactly 1, not 0.9999999999999999). */
+const addValue = (sum: number, value: number): number => Math.round((sum + value) * 1e6) / 1e6;
+
 const sortedEntries = (entries: MetricEntry[]): MetricEntry[] =>
   [...entries].sort((a, b) => (a.at < b.at ? -1 : a.at > b.at ? 1 : 0));
 
@@ -215,7 +219,7 @@ export function linkedGoalCrossing(item: WeeklyGoalItem, state: AppState, dateSt
   const target = item.targetValue && item.targetValue > 0 ? item.targetValue : 1;
   let sum = 0;
   for (const entry of sortedEntries(metric.entries(state, item, dateStrings))) {
-    sum += entry.value;
+    sum = addValue(sum, entry.value);
     if (sum >= target) return entry;
   }
   return undefined;
@@ -292,7 +296,7 @@ export function computeLinkedGoalProgress(
     };
   }
 
-  const current = metric.entries(state, item, dateStrings).reduce((sum, e) => sum + e.value, 0);
+  const current = metric.entries(state, item, dateStrings).reduce((sum, e) => addValue(sum, e.value), 0);
   return {
     needsMetricSelection: false,
     current,

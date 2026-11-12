@@ -7,7 +7,7 @@
  */
 import type { ReadingLog, UserBook, WorkoutLog } from '@/types';
 import { computeWorkoutAwards } from './workoutAwards';
-import { computeReadingDayAward, isChapterBook } from './readingAwards';
+import { computeReadingDayAward, isChapterBook, snapReadingAmount } from './readingAwards';
 import { takeBackTodaysReading } from '../reading/bookUnits';
 import { workoutFields } from '../items/itemEdits';
 
@@ -62,13 +62,14 @@ export function readingProgressPreview(
   const before = dayPoints(all);
   const book = books.find((b) => b && (b.id === bookId || b.linkedBookId === bookId));
   if (!book) return { before, after: before };
-  const existing = book.currentAmount ?? book.currentPage ?? 0;
+  const unit = isChapterBook(book) ? 'chapters' : 'pages';
+  const existing = snapReadingAmount(book.currentAmount ?? book.currentPage ?? 0, unit);
   const max = book.totalAmount ?? book.totalPages ?? 250;
-  const delta = Math.min(max, Math.max(0, newCurrent)) - existing;
+  const delta = snapReadingAmount(snapReadingAmount(Math.min(max, Math.max(0, newCurrent)), unit) - existing, unit);
   let next = all;
   if (delta > 0) {
     next = [
-      { id: 'preview', bookId: book.id, date: today, pagesRead: delta, unit: isChapterBook(book) ? 'chapters' : 'pages', pointsAwarded: 0, createdAt: nowIso },
+      { id: 'preview', bookId: book.id, date: today, pagesRead: delta, unit, pointsAwarded: 0, createdAt: nowIso },
       ...all,
     ];
   } else if (delta < 0) {

@@ -11,7 +11,7 @@ import { CURATED_BOOKS, BOOK_CATEGORIES } from '@/lib/reading/books';
 import type { BookCategory, CuratedBook, ReadingLog, UserBook } from '@/types';
 import { formatDateLong, weekKey, formatWeekdayDate, formatWeekdayShort, calculateStreak, parseDate } from '@/lib/time/dates';
 import { READING_POINTS } from '@/lib/points/pointsConfig';
-import { bookRemovalPoints, isRetiredAppReadingAward, logUnit } from '@/lib/points/readingAwards';
+import { bookRemovalPoints, chapterTenths, isRetiredAppReadingAward, logUnit } from '@/lib/points/readingAwards';
 import { getCapStatus } from '@/lib/points/capStatus';
 import { ptsText } from '@/lib/leagues/leagues';
 import { trustedNow } from '@/lib/time/clock';
@@ -117,9 +117,11 @@ export function ReadingHub({ store }: { store: AppStore }) {
   const bookById = useMemo(() => new Map(libraryBooks.filter(Boolean).map((b) => [b.id, b])), [libraryBooks]);
   const inChapters = (l: ReadingLog) => logUnit(l, bookById.get(l.bookId ?? '')) === 'chapters';
   const pagesByDay = sumPerDay(readingLogs, pageDays, (l) => (inChapters(l) ? 0 : l.pagesRead));
-  const chaptersByDay = sumPerDay(readingLogs, pageDays, (l) => (inChapters(l) ? l.pagesRead : 0));
+  // Chapters add up in whole tenths, so 0.1 + 0.2 reads 0.3.
+  const chapterTenthsByDay = sumPerDay(readingLogs, pageDays, (l) => (inChapters(l) ? chapterTenths(l.pagesRead) : 0));
+  const chaptersByDay = chapterTenthsByDay.map((t) => t / 10);
   const pagesThisWeek = pagesByDay.reduce((sum, p) => sum + p, 0);
-  const chaptersThisWeek = chaptersByDay.reduce((sum, c) => sum + c, 0);
+  const chaptersThisWeek = chapterTenthsByDay.reduce((sum, t) => sum + t, 0) / 10;
   // Bars show pages, unless the week has only chapters.
   const chartInChapters = pagesThisWeek === 0 && chaptersThisWeek > 0;
   const chartByDay = chartInChapters ? chaptersByDay : pagesByDay;
@@ -325,7 +327,8 @@ export function ReadingHub({ store }: { store: AppStore }) {
                     {chaptersThisWeek > 0 && (
                       <>
                         {!chartInChapters && ' · '}
-                        <CountUp value={chaptersThisWeek} /> {chaptersThisWeek === 1 ? 'chapter' : 'chapters'}
+                        <CountUp value={chaptersThisWeek} decimals={Number.isInteger(chaptersThisWeek) ? 0 : 1} />{' '}
+                        {chaptersThisWeek === 1 ? 'chapter' : 'chapters'}
                       </>
                     )}
                   </span>
@@ -791,7 +794,10 @@ export function ReadingHub({ store }: { store: AppStore }) {
         target={progressBook ? bookProgress(progressBook).total : 1}
         format={(n) => formatAmount(n, progressBook ? bookProgress(progressBook).unit : 'pages')}
         addLabel={progressBook && bookProgress(progressBook).unit === 'chapters' ? 'Chapters read' : 'Pages read'}
-        setLabel={progressBook && bookProgress(progressBook).unit === 'chapters' ? 'Chapter you’re on' : 'Page you’re on'}
+        setLabel={progressBook && bookProgress(progressBook).unit === 'chapters' ? 'Chapters read' : 'Page you’re on'}
+        // Chapters go in steps of 0.1 (1.1 … 1.9, then 2); pages stay whole.
+        decimal={Boolean(progressBook && bookProgress(progressBook).unit === 'chapters')}
+        step={progressBook && bookProgress(progressBook).unit === 'chapters' ? 0.1 : 1}
         preview={progressPointsLine}
         onSave={handleProgressSave}
       />

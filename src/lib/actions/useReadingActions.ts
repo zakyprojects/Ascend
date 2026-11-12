@@ -7,7 +7,14 @@ import { periodKey, todayKey, weekKey } from '../time/dates';
 import type { LinkedPactTick } from '../partners/pactLifecycle';
 import { tickPactsLinkedTo } from '../partners/pactLifecycle';
 import { stampLogUnits, switchBookUnit, takeBackTodaysReading, unitSwitchDefaults } from '../reading/bookUnits';
-import { isChapterBook, meetsReadingBonusGates, readingBonusCooldown, readingBonusAlreadyGiven, readingBonusId } from '../points/readingAwards';
+import {
+  isChapterBook,
+  meetsReadingBonusGates,
+  readingBonusCooldown,
+  readingBonusAlreadyGiven,
+  readingBonusId,
+  snapReadingAmount,
+} from '../points/readingAwards';
 import { removeLinkedWeeklyGoals, reconcileLinkedWeeklyGoals } from '../points/weeklyGoalPoints';
 import { excisePointsEntriesInternal, applyReadingAwardsInternal } from '../points/stateAwards';
 import { addPointsInternal } from '../points/pointsLedger';
@@ -27,10 +34,12 @@ export function useReadingActions(setState: StoreSetState, afterCommit: (fn: () 
       const targetUserBook = prev.libraryBooks.find((lb) => lb.id === bookId || lb.linkedBookId === bookId);
       if (!targetUserBook) return prev;
 
-      const existingPage = targetUserBook.currentAmount ?? targetUserBook.currentPage ?? 0;
+      // Chapters are counted in tenths: the place and the change are snapped, so 1.3 - 1.1 logs exactly 0.2.
+      const unit = isChapterBook(targetUserBook) ? 'chapters' : 'pages';
+      const existingPage = snapReadingAmount(targetUserBook.currentAmount ?? targetUserBook.currentPage ?? 0, unit);
       const maxPages = targetUserBook.totalAmount ?? targetUserBook.totalPages ?? 250;
-      const clampedPage = Math.min(maxPages, Math.max(0, newCurrentPage));
-      const pageDelta = clampedPage - existingPage;
+      const clampedPage = snapReadingAmount(Math.min(maxPages, Math.max(0, newCurrentPage)), unit);
+      const pageDelta = snapReadingAmount(clampedPage - existingPage, unit);
 
       const readingHabit = prev.habits.find((h) => h.linkedModule === 'reading');
 
@@ -42,7 +51,7 @@ export function useReadingActions(setState: StoreSetState, afterCommit: (fn: () 
           bookId: targetUserBook.id,
           date,
           pagesRead: pageDelta,
-          unit: isChapterBook(targetUserBook) ? 'chapters' : 'pages',
+          unit,
           pointsAwarded: 0,
           createdAt: trustedNow().toISOString(),
         };
@@ -168,7 +177,7 @@ export function useReadingActions(setState: StoreSetState, afterCommit: (fn: () 
 
         const today = todayKey(trustedNow());
         const currentPage = targetUserBook.currentAmount ?? targetUserBook.currentPage ?? 0;
-        const unreadDelta = Math.max(0, maxPages - currentPage);
+        const unreadDelta = Math.max(0, snapReadingAmount(maxPages - currentPage, isChapterBook(targetUserBook) ? 'chapters' : 'pages'));
 
         let updatedReadingLogs = prev.readingLogs || [];
         if (unreadDelta > 0) {
@@ -586,7 +595,7 @@ export function useReadingActions(setState: StoreSetState, afterCommit: (fn: () 
             const current = b.currentAmount ?? b.currentPage ?? 0;
             const finished = b.status === 'completed';
             // The form keeps the length at or above the progress; a finished book stays read in full.
-            const total = Math.max(1, Math.round(details.totalAmount), finished ? 0 : current);
+            const total = Math.max(1, Math.round(details.totalAmount), finished ? 0 : Math.ceil(current));
             const nextCurrent = finished ? total : current;
             return {
               ...b,
