@@ -7,20 +7,20 @@ export const LESSONS: Lesson[] = [
     category: 'Discipline',
     readTime: 3,
     points: 1,
-    content: `Discipline isn't something you're born with — it's a skill you build through repetition, just like a muscle.
+    content: `Discipline is not something you are born with. It is a skill you build through repetition, like a muscle.
 
 \`\`\`
-The key insight: discipline is not about willpower. Willpower is unreliable: it rises and falls with sleep, stress and mood. Discipline is about systems and habits that reduce the need for willpower.
+Discipline is not about willpower. Willpower is unreliable: it rises and falls with sleep, stress and mood. Discipline comes from systems and habits that reduce the need for willpower.
 \`\`\`
 
 **How to build it:**
 
-1. **Start absurdly small.** Want to exercise daily? Start with 5 push-ups. The goal isn't the workout — it's showing up.
+1. **Start absurdly small.** Want to exercise daily? Start with 5 push-ups. The goal is to show up, not to finish a big workout.
 2. **Reduce friction.** Lay out your gym clothes the night before. Remove apps from your phone's home screen. Make good behavior easy and bad behavior hard.
 3. **Stack habits.** Attach a new habit to an existing one: "After I brush my teeth, I will meditate for 2 minutes."
-4. **Track visually.** Seeing a streak grow is one of the most powerful motivators. That's why this app shows your streaks prominently.
+4. **Track visually.** Seeing a streak grow is one of the strongest motivators, so this app shows your streaks clearly.
 
-The most disciplined people aren't the ones with the most willpower — they're the ones who've designed their environment so that discipline becomes the path of least resistance.`,
+The most disciplined people do not have the most willpower. They have set up their environment so that the disciplined choice is the easy one.`,
   },
   {
     id: 'discipline-2',
@@ -28,20 +28,20 @@ The most disciplined people aren't the ones with the most willpower — they're 
     category: 'Discipline',
     readTime: 2,
     points: 1,
-    content: `Procrastination isn't laziness — it's your brain avoiding discomfort. The task feels big, uncertain, or unpleasant, so your brain redirects you to something easier (like scrolling).
+    content: `Procrastination is not laziness. It is your brain avoiding discomfort. The task feels big, uncertain or unpleasant, so your brain steers you to something easier (like scrolling).
 
-**The 2-Minute Rule:** When you catch yourself procrastinating, commit to doing just 2 minutes of the task. Not the whole thing — just 2 minutes.
+**The 2-Minute Rule:** When you catch yourself procrastinating, commit to doing just 2 minutes of the task. Not the whole thing, just 2 minutes.
 
 Why this works:
-- It bypasses the brain's resistance to "big" tasks
+- It gets around the brain's resistance to "big" tasks
 - Once you start, momentum usually carries you forward
-- Even if you stop after 2 minutes, you've broken the procrastination cycle
+- Even if you stop after 2 minutes, you have broken the procrastination cycle
 
 \`\`\`
 The hardest part of any task is starting. The 2-minute rule makes starting so easy that your brain can't justify avoiding it.
 \`\`\`
 
-Try it: next time you're avoiding something, set a timer for 2 minutes and just begin. You'll be surprised how often you keep going.`,
+Try it: next time you are avoiding something, set a timer for 2 minutes and just begin. You may be surprised how often you keep going.`,
   },
   {
     id: 'habits-1',
@@ -49,25 +49,25 @@ Try it: next time you're avoiding something, set a timer for 2 minutes and just 
     category: 'Bad Habits',
     readTime: 4,
     points: 1,
-    content: `Every habit — good or bad — follows the same three-step loop:
+    content: `Every habit, good or bad, follows the same three-step loop:
 
-1. **Cue** — a trigger that starts the behavior (a time, a place, an emotion, or other people)
-2. **Routine** — the behavior itself
-3. **Reward** — the payoff that makes your brain remember to repeat it
+1. **Cue:** a trigger that starts the behavior (a time, a place, an emotion, or other people)
+2. **Routine:** the behavior itself
+3. **Reward:** the payoff that makes your brain remember to repeat it
 
 To break a bad habit, you can't just "stop." You need to understand the loop and replace the routine.
 
 **Step 1: Identify the cue.** When do you do the bad habit? Where are you? What just happened? How do you feel? Track this for a week.
 
-**Step 2: Experiment with the reward.** What craving is the habit satisfying? Is it boredom? Stress? Social connection? Try substituting different routines to see what satisfies the same craving.
+**Step 2: Experiment with the reward.** What craving is the habit satisfying? Is it boredom? Stress? Social connection? Try different routines to see which one satisfies the same craving.
 
-**Step 3: Replace the routine.** Once you know the cue and the reward, insert a new routine that delivers a similar reward but is healthier.
+**Step 3: Replace the routine.** Once you know the cue and the reward, put in a new routine that gives a similar reward but is healthier.
 
 \`\`\`
 Example: If you scroll social media when stressed (cue = stress, reward = distraction), replace the routine with a 5-minute walk or 10 deep breaths. Same reward (mental break), different behavior.
 \`\`\`
 
-The old cue and reward stay — only the routine changes. That's why this approach works when willpower alone doesn't.`,
+The old cue and reward stay. Only the routine changes. So this approach works when willpower alone doesn't.`,
   },
   {
     id: 'habits-2',
@@ -75,21 +75,21 @@ The old cue and reward stay — only the routine changes. That's why this approa
     category: 'Bad Habits',
     readTime: 3,
     points: 1,
-    content: `Streaks are powerful because they tap into two psychological principles: loss aversion and identity reinforcement.
+    content: `Streaks work because they use two psychological principles: loss aversion and identity reinforcement.
 
-**Loss aversion:** Once you have a 30-day streak, you don't want to lose it. The streak itself becomes a reward — breaking it feels like losing something you own.
+**Loss aversion:** Once you have a 30-day streak, you don't want to lose it. The streak itself becomes a reward, and breaking it feels like losing something you own.
 
-**Identity reinforcement:** Each day you complete a habit, you're casting a vote for "I am the type of person who does this." Over time, the streak isn't just behavior — it becomes who you are.
+**Identity reinforcement:** Each day you complete a habit, you cast a vote for "I am the type of person who does this." Over time, the streak stops being only behavior and becomes part of who you are.
 
-**But streaks break. Here's the key rule:**
+**But streaks break. One rule matters most:**
 
 \`\`\`
 Never miss twice. One missed day is an accident. Two missed days is the start of a new (bad) habit.
 \`\`\`
 
-If you break a streak, don't spiral into guilt. The most important thing is what you do the next day. Get back on track immediately. A 365-day streak with one break is still 364 successful days — that's a massive win.
+If you break a streak, don't spiral into guilt. What matters most is what you do the next day. Get back on track right away. A 365-day streak with one break is still 364 successful days, and that is a big win.
 
-This is why the app tracks your "best streak" alongside your current one. Your past success is proof you can do it again.`,
+The app tracks your "best streak" next to your current one for this reason. Your past success is proof you can do it again.`,
   },
   {
     id: 'goals-1',
@@ -97,9 +97,9 @@ This is why the app tracks your "best streak" alongside your current one. Your p
     category: 'Goal Setting',
     readTime: 3,
     points: 1,
-    content: `Most goal-setting advice focuses on SMART goals (Specific, Measurable, Achievable, Relevant, Time-bound). These work — but they have a flaw: they're binary. You either hit the goal or you don't.
+    content: `Most goal-setting advice focuses on SMART goals (Specific, Measurable, Achievable, Relevant, Time-bound). These work, but they have a flaw: they are binary. You either hit the goal or you don't.
 
-**System goals** are different. Instead of "lose 10 pounds by June," a system goal is "exercise 4 times per week, every week." The system is the goal — the outcome follows.
+**System goals** are different. Instead of "lose 10 pounds by June," a system goal is "exercise 4 times per week, every week." The system is the goal, and the outcome follows.
 
 Why systems beat goals:
 - Goals create a finish line (you stop when you reach it). Systems create a lifestyle (you keep going).
@@ -107,10 +107,10 @@ Why systems beat goals:
 - Goals create either failure or a temporary win. Systems create continuous improvement.
 
 \`\`\`
-"You do not rise to the level of your goals. You fall to the level of your systems." — James Clear
+"You do not rise to the level of your goals. You fall to the level of your systems." (James Clear)
 \`\`\`
 
-**The hybrid approach:** Set a system goal (the habit you'll do consistently) and use SMART goals as milestones to check whether your system is working. If you're hitting your weekly habit targets but not progressing toward your outcome, adjust the system — don't just push harder.`,
+**The hybrid approach:** Set a system goal (the habit you'll do consistently) and use SMART goals as milestones to check whether your system is working. If you are hitting your weekly habit targets but not moving toward your outcome, adjust the system. Don't just push harder.`,
   },
   {
     id: 'goals-2',
@@ -118,19 +118,19 @@ Why systems beat goals:
     category: 'Goal Setting',
     readTime: 2,
     points: 1,
-    content: `The weekly review is the single highest-leverage habit you can build. It takes 30 minutes and compounds over time.
+    content: `The weekly review is one of the most useful habits you can build. It takes 30 minutes and its effect adds up over time.
 
 **How to do it (every Sunday evening):**
 
 1. **Look back (10 min):** What went well this week? What didn't? Did you hit your habit targets? What got in the way?
-2. **Look forward (10 min):** What are your top 3 priorities next week? What's the one thing that would make everything else easier?
-3. **Adjust (10 min):** Do your habits need tweaking? Is anything on your list that shouldn't be? What can you delegate or eliminate?
+2. **Look forward (10 min):** What are your top 3 priorities next week? What one thing would make everything else easier?
+3. **Adjust (10 min):** Do your habits need tweaking? Is anything on your list that shouldn't be? What can you delegate or drop?
 
 \`\`\`
-The weekly review turns your goals from a wish into a system. Without it, you're reacting to life. With it, you're directing it.
+The weekly review turns your goals from a wish into a system. Without it, you react to life. With it, you direct it.
 \`\`\`
 
-Most people skip this because it feels like "extra work." But the 30 minutes you spend reviewing saves hours of wasted effort during the week — because you're intentional about what matters.`,
+Most people skip this because it feels like "extra work." But the 30 minutes you spend reviewing save hours of wasted effort during the week, because you stay clear about what matters.`,
   },
   {
     id: 'mindset-1',
@@ -138,24 +138,24 @@ Most people skip this because it feels like "extra work." But the 30 minutes you
     category: 'Mindset',
     readTime: 4,
     points: 1,
-    content: `A "growth mindset" — the belief that abilities can be developed through effort — isn't just a slogan: practice really does change the brain.
+    content: `A "growth mindset" is the belief that abilities can be developed through effort. It is more than a slogan: practice really does change the brain.
 
-**The science:** Every time you practice a skill, your brain strengthens the neural pathways involved. Neurons that fire together wire together (Hebb's Law). Over time, these pathways become faster and more efficient — this is physical, measurable change in the brain called neuroplasticity.
+**The science:** Every time you practice a skill, your brain strengthens the neural pathways involved. Neurons that fire together wire together (Hebb's Law). Over time, these pathways become faster and more efficient. This physical, measurable change in the brain is called neuroplasticity.
 
 **Fixed vs. Growth mindset:**
 - Fixed: "I'm not good at this" → stops trying → brain doesn't change
 - Growth: "I'm not good at this yet" → keeps practicing → brain rewires
 
 \`\`\`
-The word "yet" is the most powerful word in growth mindset. It transforms a permanent statement into a temporary one.
+The word "yet" matters most in a growth mindset. It turns a permanent statement into a temporary one.
 \`\`\`
 
 **How to practice it:**
 1. Praise effort, not outcome. "I worked hard on that" not "I'm smart."
-2. Reframe failure as data. Each failure tells you what to adjust.
+2. Treat failure as data. Each failure tells you what to adjust.
 3. Focus on the process, not just the result. The process is what rewires your brain.
 
-Your brain is physically changing right now, with every habit you complete on this app. That's not motivation — that's biology.`,
+Your brain is physically changing right now, with every habit you complete on this app. That is biology, not just motivation.`,
   },
   {
     id: 'mindset-2',
@@ -163,7 +163,7 @@ Your brain is physically changing right now, with every habit you complete on th
     category: 'Mindset',
     readTime: 3,
     points: 1,
-    content: `The Stoic philosopher Epictetus taught a principle that's remarkably practical today: the dichotomy of control.
+    content: `The Stoic philosopher Epictetus taught a principle that is very practical today: the dichotomy of control.
 
 **Some things are within your control. Others are not.**
 
@@ -171,7 +171,7 @@ Your brain is physically changing right now, with every habit you complete on th
 - Not in your control: other people's opinions, the weather, the economy, your genetics, the past
 
 \`\`\`
-Suffering comes from trying to control the uncontrollable — or from failing to control what you can.
+Suffering comes from trying to control what you can't, or from failing to control what you can.
 \`\`\`
 
 **Applied to self-improvement:**
@@ -179,9 +179,9 @@ Suffering comes from trying to control the uncontrollable — or from failing to
 - You can't control whether you get the promotion (outcome). You can control whether you do excellent work (action).
 - You can't control whether you'll be happy (outcome). You can control whether you journal, meditate, and connect with others (action).
 
-Focus all your energy on what you can control. Let go of what you can't. This isn't passivity — it's the opposite. It's channeling all your effort where it actually matters.
+Put all your energy into what you can control. Let go of what you can't. This is not passivity. It means putting all your effort where it actually counts.
 
-The habits in this app are all things within your control. That's the point.`,
+The habits in this app are all things within your control. That is the point.`,
   },
   {
     id: 'neuro-1',
@@ -189,7 +189,7 @@ The habits in this app are all things within your control. That's the point.`,
     category: 'Neuroplasticity',
     readTime: 5,
     points: 2,
-    content: `For decades, scientists believed the adult brain was fixed — that after childhood, your neural wiring was set for life. We now know this is completely wrong.
+    content: `For decades, scientists believed the adult brain was fixed: after childhood, your neural wiring was set for life. We now know this is wrong.
 
 **Neuroplasticity** is the brain's ability to reorganize itself by forming new neural connections throughout life. This happens in two ways:
 
@@ -197,7 +197,7 @@ The habits in this app are all things within your control. That's the point.`,
 
 2. **Functional plasticity:** The brain can move functions from a damaged area to an undamaged one. Stroke patients can recover speech by training other brain regions to take over.
 
-**The key principle:**
+**The main principle:**
 
 \`\`\`
 Neurons that fire together, wire together. Neurons that fire out of sync, lose their link.
@@ -206,11 +206,11 @@ Neurons that fire together, wire together. Neurons that fire out of sync, lose t
 This means:
 - Every time you repeat a behavior, you strengthen that neural pathway
 - Every time you avoid a behavior, that pathway weakens
-- Repetition is the currency of brain change — not intensity
+- Repetition drives brain change, not intensity
 
-This is why doing 5 minutes of meditation daily for 90 days is far more powerful than doing 2 hours once a week. The daily repetition keeps those neurons firing together, wiring them into a strong, lasting pathway.
+So 5 minutes of meditation daily for 90 days does far more than 2 hours once a week. The daily repetition keeps those neurons firing together, wiring them into a strong, lasting pathway.
 
-**How long it takes:** In a well-known study (Lally, 2009), a new daily habit took a median of 66 days to feel automatic, with a range from 18 to 254 days. Simple habits come sooner; harder ones take longer. A 90-day season gives most habits time to settle in, which is why the Season league is 90 days long.`,
+**How long it takes:** In a well-known study (Lally, 2009), a new daily habit took a median of 66 days to feel automatic, with a range from 18 to 254 days. Simple habits come sooner; harder ones take longer. A 90-day season gives most habits time to settle in, so the Season league is 90 days long.`,
   },
   {
     id: 'neuro-2',
@@ -222,7 +222,7 @@ This is why doing 5 minutes of meditation daily for 90 days is far more powerful
 
 **Neuroscience explains why consistency wins:**
 
-Brain rewiring (long-term potentiation) happens through repeated, spaced activation of the same neural circuits. A single intense session doesn't create lasting change — it's the repeated activation over days and weeks that physically builds new synapses.
+Brain rewiring (long-term potentiation) happens through repeated, spaced activation of the same neural circuits. A single intense session doesn't create lasting change. The repeated activation over days and weeks is what physically builds new synapses.
 
 \`\`\`
 Think of it like walking a path through a field. One trip doesn't make a trail. Walking the same route every day for a month creates a clear, permanent path.
@@ -231,9 +231,9 @@ Think of it like walking a path through a field. One trip doesn't make a trail. 
 **Practical implications:**
 - A 10-minute daily habit beats a 2-hour weekly session
 - Missing one day barely matters; a run of missed days is what lets the pathway weaken
-- The goal isn't perfection — it's frequency
+- The goal is frequency, not perfection
 
-This is why AscendDay rewards showing up every day: a habit scores each day you complete it, however long it took. Your brain doesn't care how hard you worked once. It cares that the circuit fired again today.`,
+So AscendDay rewards showing up every day: a habit scores each day you complete it, however long it took. Your brain doesn't care how hard you worked once. It cares that the circuit fired again today.`,
   },
   {
     id: 'neuro-3',
@@ -241,24 +241,24 @@ This is why AscendDay rewards showing up every day: a habit scores each day you 
     category: 'Neuroplasticity',
     readTime: 3,
     points: 2,
-    content: `You might think learning happens while you practice. In reality, a huge part of it happens while you sleep.
+    content: `You might think learning happens while you practice. In fact, a large part of it happens while you sleep.
 
 **During sleep, your brain:**
 - Replays the day's experiences, strengthening important neural connections
 - Prunes away unnecessary ones (synaptic pruning)
-- Transfers information from short-term to long-term memory
-- Clears metabolic waste products that accumulate during waking hours
+- Moves information from short-term to long-term memory
+- Clears metabolic waste products that build up during waking hours
 
 \`\`\`
 Practice is the input. Sleep is where the brain actually does the rewiring.
 \`\`\`
 
 **What this means:**
-- Pulling an all-nighter to study is counterproductive — you're skipping the phase where memories get consolidated
-- Consistent sleep of 7 or more hours isn't just "rest" — it's active brain maintenance
-- If you're trying to build a new habit or learn a skill, protecting your sleep is part of the process
+- Pulling an all-nighter to study works against you: you skip the phase where memories get consolidated
+- Consistent sleep of 7 or more hours is active brain maintenance, not just "rest"
+- If you are trying to build a new habit or learn a skill, protecting your sleep is part of the process
 
-This is why "Sleep 7-8 hours" is a preset habit in this app. It's not just a health metric — it's the foundation of neuroplasticity itself. Without good sleep, your daily habit repetitions don't consolidate as effectively.`,
+For this reason "Sleep 7-8 hours" is a preset habit in this app. Sleep is more than a health metric: neuroplasticity depends on it. Without good sleep, your daily habit repetitions don't consolidate as well.`,
   },
   {
     id: 'neuro-4',
@@ -266,9 +266,9 @@ This is why "Sleep 7-8 hours" is a preset habit in this app. It's not just a hea
     category: 'Neuroplasticity',
     readTime: 3,
     points: 2,
-    content: `Your brain is an efficiency machine. It automates repeated behaviors to save energy. This is great for building habits — but it means your brain can get "stuck" in established patterns.
+    content: `Your brain works to save energy. It automates repeated behaviors. This is great for building habits, but it also means your brain can get "stuck" in set patterns.
 
-**Novelty is what triggers new neural growth.** When you encounter something new, your brain releases dopamine and activates neuroplasticity mechanisms. It's literally telling itself: "Pay attention — this is new, we might need to learn this."
+**Novelty is what triggers new neural growth.** When you meet something new, your brain releases dopamine and switches on neuroplasticity mechanisms. In effect it tells itself: "Pay attention, this is new, we might need to learn this."
 
 \`\`\`
 Routine builds efficiency. Novelty builds capacity. You need both.
@@ -281,7 +281,7 @@ Routine builds efficiency. Novelty builds capacity. You need both.
 - Have a conversation with someone from a different field
 - Do a familiar task in a new way
 
-This is why the app includes a "Learn something new" habit and encourages you to log novel experiences. Each new experience is a signal to your brain to stay plastic, adaptable, and growing — even as your habits build efficiency in other areas.`,
+So the app includes a "Learn something new" habit and encourages you to log new experiences. Each new experience signals your brain to stay plastic, adaptable and growing, while your habits build efficiency in other areas.`,
   },
   {
     id: 'pfc-1',
@@ -289,16 +289,16 @@ This is why the app includes a "Learn something new" habit and encourages you to
     category: 'Prefrontal Cortex',
     readTime: 4,
     points: 2,
-    content: `The Prefrontal Cortex (PFC) is the front section of your brain responsible for executive functions: planning, decision making, impulse control, focus, and long-term goal setting.
+    content: `The Prefrontal Cortex (PFC) is the front section of your brain. It handles executive functions: planning, decision making, impulse control, focus, and long-term goal setting.
 
 \`\`\`
-The PFC is like a CEO. It manages impulses from lower brain regions (like the amygdala and limbic system) and ensures actions align with long-term goals.
+The PFC is like a CEO. It manages impulses from lower brain regions (like the amygdala and limbic system) and keeps actions in line with long-term goals.
 \`\`\`
 
 **Why the PFC gets exhausted:**
 - Decision fatigue: many small choices in a row can leave you tired and more likely to take the easy option
-- Stress and lack of sleep drastically reduce PFC activity, allowing impulse-driven brain regions to take over
-- Constant notifications fragment focus and overload executive working memory
+- Stress and lack of sleep sharply reduce PFC activity, so impulse-driven brain regions take over
+- Constant notifications break up focus and overload executive working memory
 
 **How to strengthen your PFC:**
 1. **Single-task with focus blocks (Pomodoro):** One task at a time, with short breaks, makes deep focus easier to keep up.
@@ -311,20 +311,20 @@ The PFC is like a CEO. It manages impulses from lower brain regions (like the am
     category: 'Prefrontal Cortex',
     readTime: 3,
     points: 2,
-    content: `Neuroimaging studies at UCLA showed something counterintuitive: putting feelings into words physically calms the emotional brain.
+    content: `Brain imaging studies at UCLA found something surprising: putting feelings into words calms the emotional brain.
 
 When subjects saw an angry or fearful face, their amygdala (the brain's alarm bell) lit up. But when asked to label the emotion ("angry", "fearful"), amygdala activity decreased significantly while right ventrolateral prefrontal cortex activity increased.
 
 \`\`\`
-"Name it to tame it." — Dr. Daniel Siegel
+"Name it to tame it." (Dr. Daniel Siegel)
 \`\`\`
 
 **How affect labeling works:**
 - Emotion occurs → Limbic system fires
 - You label it explicitly ("I feel anxious about this presentation") → Prefrontal cortex activates
-- Prefrontal activation inhibits limbic overreactivity
+- Prefrontal activation calms limbic overreactivity
 
-Using the Emotion Labeling tool in this app helps convert vague emotional distress into clear data, empowering your prefrontal cortex to respond calmly instead of react impulsively.`,
+The Emotion Labeling tool in this app helps turn a vague bad feeling into a clear label, so your prefrontal cortex can respond calmly instead of reacting on impulse.`,
   },
 ];
 
