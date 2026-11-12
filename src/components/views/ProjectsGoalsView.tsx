@@ -48,6 +48,17 @@ const TAB_ORDER: Record<TabOrder, SubViewTab[]> = {
 };
 const NEXT_ORDER: Record<TabOrder, TabOrder> = { taskFirst: 'projectFirst', projectFirst: 'goalFirst', goalFirst: 'taskFirst' };
 const ORDER_LABEL: Record<TabOrder, string> = { taskFirst: 'Tasks first', projectFirst: 'Projects first', goalFirst: 'Goals first' };
+const TAB_ORDER_KEY = 'ascend_pg_tab_order';
+
+/** The tab order picked on this device last time (Tasks first when none or unreadable). */
+function loadTabOrder(): TabOrder {
+  try {
+    const saved = localStorage.getItem(TAB_ORDER_KEY);
+    return saved && Object.prototype.hasOwnProperty.call(TAB_ORDER, saved) ? (saved as TabOrder) : 'taskFirst';
+  } catch {
+    return 'taskFirst';
+  }
+}
 const TAB_META = {
   tasks: { label: 'Tasks', icon: CheckSquare },
   projects: { label: 'Projects', icon: FolderKanban },
@@ -148,7 +159,14 @@ export function ProjectsGoalsView({
   const today = useLocalDayKey();
 
   const [activeTab, setActiveTab] = useState<SubViewTab>('tasks');
-  const [tabOrder, setTabOrder] = useState<TabOrder>('taskFirst');
+  const [tabOrder, setTabOrder] = useState<TabOrder>(loadTabOrder);
+  useEffect(() => {
+    try {
+      localStorage.setItem(TAB_ORDER_KEY, tabOrder);
+    } catch {
+      /* storage unavailable: the order stays in memory */
+    }
+  }, [tabOrder]);
 
   // Drill-down: a goal's projects, a project's tasks.
   const [filterGoalId, setFilterGoalId] = useState<string | null>(null);
