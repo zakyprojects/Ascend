@@ -90,7 +90,7 @@ export function FocusLogEditDialog({
           value={reflection}
           onChange={(e) => setReflection(e.target.value)}
           placeholder="What did you get done? What got in the way?"
-          className="min-h-[90px]"
+          className="min-h-24"
           maxLength={FOCUS_REFLECTION_MAX}
         />
       </Form>

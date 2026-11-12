@@ -176,9 +176,6 @@ export const AscendLoadingOverlay: React.FC<AscendLoadingOverlayProps> = ({
           <span className="font-display font-bold text-content-primary text-xl tracking-wide">
             Ascend<span className="text-brand-mark">Day</span>
           </span>
-          <span className="text-2xs bg-primary-500/20 text-brand-text border border-primary-500/30 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">
-            Self Growth
-          </span>
         </div>
 
         {/* Primary Message */}

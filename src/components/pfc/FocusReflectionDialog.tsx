@@ -47,7 +47,7 @@ export function FocusReflectionDialog({ store }: { store: AppStore }) {
         value={text}
         onChange={(e) => setText(e.target.value)}
         placeholder="What did you get done? What got in the way?"
-        className="min-h-[90px]"
+        className="min-h-24"
         maxLength={2000}
       />
     </Dialog>

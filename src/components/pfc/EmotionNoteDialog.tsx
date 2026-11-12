@@ -73,7 +73,7 @@ export function EmotionNoteDialog({
           value={context}
           onChange={(e) => setContext(e.target.value)}
           placeholder="e.g. Work deadline, argument with a friend"
-          className="min-h-[90px]"
+          className="min-h-24"
           maxLength={EMOTION_CONTEXT_MAX}
         />
       </Form>

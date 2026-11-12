@@ -160,7 +160,7 @@ export function ReflectionsCard({
             value={newContent}
             onChange={(e) => setNewContent(e.target.value)}
             placeholder="What went well? What got in the way? What will you change next week?"
-            className="min-h-[90px] leading-relaxed"
+            className="min-h-24 leading-relaxed"
             maxLength={2000}
             required
           />
@@ -197,7 +197,7 @@ export function ReflectionsCard({
                   label="Edit reflection"
                   value={editContent}
                   onChange={(e) => setEditContent(e.target.value)}
-                  className="min-h-[90px] leading-relaxed"
+                  className="min-h-24 leading-relaxed"
                   maxLength={2000}
                   required
                 />

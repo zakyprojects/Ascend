@@ -75,7 +75,7 @@ export function ProgressBar({
     >
       <div
         className={cx(
-          'progress-fill h-full rounded-full',
+          'h-full rounded-full',
           live ? 'transition-[width] duration-1000 ease-linear' : 'transition-[width] duration-slow ease-emphasized',
           !fillStyle && toneClasses[tone]
         )}

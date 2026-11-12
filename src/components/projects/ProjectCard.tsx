@@ -79,7 +79,7 @@ export function ProjectCard({
         !hasTasks && !done && !lock.isLocked ? (
           <Nudge
             tone="cyan"
-            text="This project has no tasks yet. Break it into one small step and the engine starts."
+            text="This project has no tasks yet. Add one small step to get started."
             actionLabel="+ Add task"
             onAction={onAddTask}
           />

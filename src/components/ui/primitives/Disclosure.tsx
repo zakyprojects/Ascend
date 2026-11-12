@@ -34,7 +34,7 @@ export function Disclosure({ title, icon: Icon, tone = 'neutral', defaultOpen = 
         {Icon && (
           <Icon size={18} aria-hidden="true" className={cx('shrink-0', warning ? 'text-warning-text' : 'text-content-muted')} />
         )}
-        <span className={cx('min-w-0 flex-1 font-bold', warning ? 'text-warning-text' : 'text-content-secondary')}>{title}</span>
+        <span className={cx('min-w-0 flex-1 font-semibold', warning ? 'text-warning-text' : 'text-content-secondary')}>{title}</span>
         <ChevronDown
           size={16}
           aria-hidden="true"

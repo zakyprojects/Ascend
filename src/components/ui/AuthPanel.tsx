@@ -733,7 +733,7 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
           return;
         }
         // USER_UPDATED re-loads the same account (store), so no page reload is needed.
-        await finishWithSuccess('Progress saved!', onDone);
+        await finishWithSuccess('Progress saved', onDone);
       } else if (mode === 'signup') {
         const check = await isUsernameAvailable(username);
         if (!check.available) {
@@ -764,11 +764,11 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
           return;
         }
 
-        await finishWithSuccess('Welcome to AscendDay!', onDone);
+        await finishWithSuccess('Welcome to AscendDay', onDone);
       } else {
         const timeoutMs = looksLikeUsername(email.trim()) ? USERNAME_SIGN_IN_TIMEOUT_MS : undefined;
         await withCaptcha('sign_in', (captchaToken) => withTimeout(loginUser(email, password, captchaToken), timeoutMs));
-        await finishWithSuccess('Welcome back!', onDone);
+        await finishWithSuccess('Welcome back', onDone);
       }
     } catch (err: unknown) {
       const authErr = err as { code?: string; status?: number; message?: string };
