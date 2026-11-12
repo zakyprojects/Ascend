@@ -1,5 +1,5 @@
-import { RECOVERY_MILESTONES } from '@/lib/recoveryAwards';
-import { RECOVERY_POINTS } from '@/lib/pointsConfig';
+import { RECOVERY_MILESTONES } from '@/lib/points/recoveryAwards';
+import { RECOVERY_POINTS } from '@/lib/points/pointsConfig';
 import { CRISIS_ELSEWHERE, CRISIS_LINES } from '@/lib/crisisLines';
 import { LINK_CLASS } from '../../components/MarketingLayout';
 import { featurePath } from '../catalog';

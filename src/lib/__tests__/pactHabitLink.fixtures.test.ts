@@ -10,7 +10,7 @@ import {
   tickLinkedPacts,
   type LinkedPactReconcileInput,
 } from '../pactLifecycle';
-import { trustedNow } from '../clock';
+import { trustedNow } from '../time/clock';
 
 function assert(condition: boolean, msg: string) {
   if (!condition) {

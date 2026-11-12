@@ -1,8 +1,8 @@
 import type { AppState, WeeklyGoalItem } from '@/types';
 import type { GoalProgressResult } from '@/lib/linkedGoalMetrics';
-import { formatWeekRange, offsetWeekKey } from '@/lib/dates';
-import { calculateWeeklyGoalsPoints } from '@/lib/pointsConfig';
-import { heldCountedGoals, weeklyScoringGoals, type CountedGoalRef } from '@/lib/weeklyAwards';
+import { formatWeekRange, offsetWeekKey } from '@/lib/time/dates';
+import { calculateWeeklyGoalsPoints } from '@/lib/points/pointsConfig';
+import { heldCountedGoals, weeklyScoringGoals, type CountedGoalRef } from '@/lib/points/weeklyAwards';
 import { parseDrillMetricKey } from '@/lib/skillDrills';
 
 /** "This week", "Last week", "Next week", or the week's dates, never the raw week key. */

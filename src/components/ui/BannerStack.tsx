@@ -1,6 +1,6 @@
 import { OfflineBanner, useConnectionStatus } from './OfflineBanner';
 import { TimezoneWaitBanner } from './TimezoneWaitBanner';
-import { useTimezoneWait } from '@/lib/useTimezoneWait';
+import { useTimezoneWait } from '@/lib/time/useTimezoneWait';
 import { UpdateBanner, useUpdateAvailable } from './UpdateBanner';
 
 /**

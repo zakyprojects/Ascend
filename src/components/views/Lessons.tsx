@@ -6,8 +6,8 @@ import type { Lesson } from '@/types';
 import { cx, EmptyState, Switch, TabPanel, Tabs, ToolbarInput } from '@/components/ui/primitives';
 import { CountUp, Reveal } from '@/components/ui/Motion';
 import { PageHero } from '@/components/ui/PageHero';
-import { getSeasonNumber, leagueNow } from '@/lib/leagueTime';
-import { isLessonReadInSeason } from '@/lib/lessonAwards';
+import { getSeasonNumber, leagueNow } from '@/lib/time/leagueTime';
+import { isLessonReadInSeason } from '@/lib/points/lessonAwards';
 import { LessonReader, pointsLabel } from '@/components/lessons/LessonReader';
 
 const ALL = 'all';

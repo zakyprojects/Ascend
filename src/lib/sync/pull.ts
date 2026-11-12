@@ -1,5 +1,5 @@
 import type { AppState } from '../../types';
-import { trustedNow, trustedNowMs } from '../clock';
+import { trustedNow, trustedNowMs } from '../time/clock';
 import { supabase } from '../supabase';
 import {
   DELETED,

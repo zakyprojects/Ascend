@@ -2,7 +2,7 @@ import type { PostgrestError } from '@supabase/supabase-js';
 import type { AppState } from '../../types';
 import { supabase } from '../supabase';
 import { SYNCED_COLLECTIONS, itemsOf, rowIdOf, syncKeyOf } from './syncedCollections';
-import { trustedNow } from '../clock';
+import { trustedNow } from '../time/clock';
 import { clearTabSyncedHashes, setTabSyncedHashes, tabSyncedHashes, type Baseline } from './tabVersions';
 import { hashRow } from './rowHash';
 import { clearEditTimes, editTimeOf, pruneEditTimes, readEditTimes, type EditTimes } from './editTimes';

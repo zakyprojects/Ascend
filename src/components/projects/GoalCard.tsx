@@ -1,6 +1,6 @@
 import { ArrowRight, Calendar, ListOrdered, Plus, Tag } from 'lucide-react';
 import type { Goal, GoalStatus } from '@/types';
-import { formatDateShort } from '@/lib/dates';
+import { formatDateShort } from '@/lib/time/dates';
 import { Chip, ItemCard, Nudge, StatusSelect } from './ItemCard';
 import { GOAL_STATUS_LABEL, type GoalProgress } from './hierarchy';
 

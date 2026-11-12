@@ -3,10 +3,10 @@ import { Bell, BellOff, Check, Coffee, Pause, Play, SkipForward, Square, X } fro
 import type { AppStore } from '@/lib/store';
 import { Dialog, FieldErrorBubble, Input, NumberField, ProgressBar, Select } from '@/components/ui/primitives';
 import { cx } from '@/components/ui/primitives/shared';
-import { trustedNowMs } from '@/lib/clock';
-import { FOCUS_DAILY_CAP, FOCUS_RULE_SHORT, focusDayGain, focusDayPoints, nextFocusReward, type FocusDayTally } from '@/lib/focusPoints';
-import { focusDayTally } from '@/lib/focusAwards';
-import { todayKey } from '@/lib/dates';
+import { trustedNowMs } from '@/lib/time/clock';
+import { FOCUS_DAILY_CAP, FOCUS_RULE_SHORT, focusDayGain, focusDayPoints, nextFocusReward, type FocusDayTally } from '@/lib/points/focusPoints';
+import { focusDayTally } from '@/lib/points/focusAwards';
+import { todayKey } from '@/lib/time/dates';
 import {
   FOCUS_MIN_MINUTES_TO_SAVE,
   FOCUS_PRESETS,
@@ -22,7 +22,7 @@ import {
 } from './focusSession';
 import { useFocusCountdown, useFocusSession } from './FocusSessionProvider';
 import { notificationPermission, requestNotificationPermission } from './focusNotifications';
-import { previewCapReachedText } from '@/lib/practicePreviews';
+import { previewCapReachedText } from '@/lib/points/practicePreviews';
 
 /** Projects' "Start focus" hands its task title over once (the page clears it after its first render). */
 function pendingTask(): string | null {

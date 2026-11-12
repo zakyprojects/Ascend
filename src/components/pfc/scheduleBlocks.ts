@@ -1,6 +1,6 @@
 import type { TimeTrackerActivity, TimeTrackerBlock } from '@/types';
 import { computeLiveSchedule, getBlockTimingAt, liveBlocksAt, timeStringToMinutes } from '@/lib/timeTracker';
-import { todayKey } from '@/lib/dates';
+import { todayKey } from '@/lib/time/dates';
 
 /**
  * Which of today's time blocks Follow schedule shows right now. Everything that decides "the

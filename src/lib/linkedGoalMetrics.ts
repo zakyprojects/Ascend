@@ -1,6 +1,6 @@
 import { AppState, ReadingLog, UserBook, WeeklyGoalItem, WorkoutLog } from '@/types';
-import { parseDate, weekKey } from './dates';
-import { PAGES_PER_CHAPTER, isChapterBook, logUnit } from './readingAwards';
+import { parseDate, weekKey } from './time/dates';
+import { PAGES_PER_CHAPTER, isChapterBook, logUnit } from './points/readingAwards';
 import { workoutMeasureOf, workoutTypeKey, type WorkoutMeasure } from './workoutTypes';
 import { findDrill, logDrillCount, parseDrillMetricKey } from './skillDrills';
 

@@ -1,7 +1,7 @@
 // habitsDueToday (lib/weeklyActivity.ts): the Dashboard's "today" (ring + "All done for today")
 // counts every daily habit, and a weekly habit only once it is done this week or on Sunday.
 import type { Habit } from '@/types';
-const { habitsDueToday } = await import('../weeklyActivity');
+const { habitsDueToday } = await import('../time/weeklyActivity');
 
 function assert(condition: boolean, msg: string) {
   if (!condition) throw new Error(`Assertion failed: ${msg}`);

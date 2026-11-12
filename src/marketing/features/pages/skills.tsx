@@ -1,4 +1,4 @@
-import { SKILLS_POINTS } from '@/lib/pointsConfig';
+import { SKILLS_POINTS } from '@/lib/points/pointsConfig';
 import { SKILL_LEVELS } from '@/lib/skillLevels';
 import { LINK_CLASS } from '../../components/MarketingLayout';
 import { featurePath } from '../catalog';

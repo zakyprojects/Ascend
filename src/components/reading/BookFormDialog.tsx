@@ -4,7 +4,7 @@ import { Dialog, FieldRow, Form, Input, NumberField, Select, Textarea } from '@/
 import type { AppStore } from '@/lib/store';
 import { BOOK_CATEGORIES } from '@/lib/books';
 import type { BookCategory, UserBook, UserBookStatus } from '@/types';
-import { earliestTargetDate, isNewPastDate } from '@/lib/dates';
+import { earliestTargetDate, isNewPastDate } from '@/lib/time/dates';
 import { useUnsavedChanges } from '@/lib/unsavedChanges';
 import { unitSwitchDefaults } from '@/lib/bookUnits';
 import {

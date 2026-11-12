@@ -1,6 +1,6 @@
 import type { FocusSessionLog, Skill, SkillSessionLog } from '@/types';
-import { creditedFocusMinutes } from './focusAwards';
-import { addDays, todayKey } from './dates';
+import { creditedFocusMinutes } from './points/focusAwards';
+import { addDays, todayKey } from './time/dates';
 
 /**
  * A Deep Focus session with a skill chosen adds a normal skill practice log (Zakria 2026-11-05):

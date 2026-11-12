@@ -6,8 +6,8 @@
 //        last week. (Reflections depend on the reflection window, so
 //        they are not driven here; weeklyAwards has their unit tests.)
 import { bootHook, story, until, quiet, rows, assert, pass, server, UID } from './harness/bootHook';
-import { trustedNow } from '../clock';
-import { weekKey } from '../dates';
+import { trustedNow } from '../time/clock';
+import { weekKey } from '../time/dates';
 
 const blobAt = 'Sun 2026-11-01 5:00 AM PKT (UTC+05:00)';
 

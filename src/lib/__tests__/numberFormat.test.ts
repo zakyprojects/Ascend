@@ -1,6 +1,6 @@
 // compactNumber (lib/numberFormat.ts): numbers on the member card. Full below 10,000, short from 10,000
 // with at most one decimal, lowercase k, never "1000k", sign kept.
-const { compactNumber } = await import('../numberFormat');
+const { compactNumber } = await import('../leagues/numberFormat');
 
 function assert(condition: boolean, msg: string) {
   if (!condition) throw new Error(`Assertion failed: ${msg}`);

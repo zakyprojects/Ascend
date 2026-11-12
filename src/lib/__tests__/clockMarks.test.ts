@@ -1,6 +1,6 @@
 // isMarkOlderThan: tab-return checks (connection, timezone wait) skip a re-read only while the last
 // one is recent; no mark, an old mark, or a device clock moved back always re-reads.
-import { elapsedMark, isMarkOlderThan } from '../clock';
+import { elapsedMark, isMarkOlderThan } from '../time/clock';
 
 function assert(condition: boolean, msg: string) {
   if (!condition) {

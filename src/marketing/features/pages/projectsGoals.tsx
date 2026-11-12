@@ -1,5 +1,5 @@
-import { WEEKLY_GOALS_POINTS } from '@/lib/pointsConfig';
-import { FOCUS_DAILY_CAP, FOCUS_MINUTES_PER_POINT, FOCUS_MIN_MINUTES } from '@/lib/focusPoints';
+import { WEEKLY_GOALS_POINTS } from '@/lib/points/pointsConfig';
+import { FOCUS_DAILY_CAP, FOCUS_MINUTES_PER_POINT, FOCUS_MIN_MINUTES } from '@/lib/points/focusPoints';
 import { LINK_CLASS } from '../../components/MarketingLayout';
 import { featurePath } from '../catalog';
 import { Block, Cards, Note, Steps, type FeatureContent } from '../blocks';

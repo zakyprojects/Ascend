@@ -1,7 +1,7 @@
 import type { CSSProperties } from 'react';
 import { ArrowRight } from 'lucide-react';
 import { cx, FOCUS_RING } from '@/components/ui/primitives/shared';
-import { TIERS } from '@/lib/tiers';
+import { TIERS } from '@/lib/leagues/tiers';
 import { Breadcrumb } from '../components/Breadcrumb';
 import { LINK_CLASS, MarketingLayout } from '../components/MarketingLayout';
 import { Screenshot } from '../components/Screenshot';

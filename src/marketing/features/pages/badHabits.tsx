@@ -1,7 +1,7 @@
-import { getMissPenaltyMultiplier } from '@/lib/missPenalty';
-import { BAD_HABIT_POINTS } from '@/lib/pointsConfig';
+import { getMissPenaltyMultiplier } from '@/lib/points/missPenalty';
+import { BAD_HABIT_POINTS } from '@/lib/points/pointsConfig';
 import { PRESET_BAD_HABITS } from '@/lib/presets';
-import { TIERS } from '@/lib/tiers';
+import { TIERS } from '@/lib/leagues/tiers';
 import { LINK_CLASS } from '../../components/MarketingLayout';
 import { featurePath } from '../catalog';
 import { Block, Cards, Note, Rules, Steps, type FeatureContent } from '../blocks';

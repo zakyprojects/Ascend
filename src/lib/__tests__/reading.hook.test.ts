@@ -31,7 +31,7 @@ await story('reading.hook (reading actions)', async () => {
   await until(() => h.s().state.habits.some((x) => x.id === 'h-read'), 'T29: Reading habit loaded');
   await until(() => h.s().state.sharedChallenges.some((c) => c.id === PACT && c.status === 'active'), 'T29: running pact on screen');
   await quiet(1500);
-  const today = (await import('../dates')).todayKey();
+  const today = (await import('../time/dates')).todayKey();
   const readingHabit = () => h.s().state.habits.find((x) => x.id === 'h-read')!;
   const habitDone = () => h.s().isHabitDone(readingHabit());
   const pactDone = () => (h.s().state.sharedChallenges.find((c) => c.id === PACT)?.user1DoneDates || []).includes(today);

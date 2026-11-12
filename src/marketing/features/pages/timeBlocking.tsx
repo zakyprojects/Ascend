@@ -1,5 +1,5 @@
-import { TIME_TRACKER_POINTS } from '@/lib/pointsConfig';
-import { TIME_TRACKER_GRACE_MINUTES } from '@/lib/timeTrackerAwards';
+import { TIME_TRACKER_POINTS } from '@/lib/points/pointsConfig';
+import { TIME_TRACKER_GRACE_MINUTES } from '@/lib/points/timeTrackerAwards';
 import { ASCEND_RECOMMENDED_DAY_BLOCKS, ASCEND_RECOMMENDED_DAY_TITLE, DEFAULT_TIME_TRACKER_ACTIVITIES } from '@/types';
 import { LINK_CLASS } from '../../components/MarketingLayout';
 import { featurePath } from '../catalog';

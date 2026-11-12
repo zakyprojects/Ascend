@@ -4,9 +4,9 @@ import { Dialog, Form, Textarea } from '@/components/ui/primitives';
 import { CapMeter } from '@/components/ui/CapMeter';
 import type { AppStore } from '@/lib/store';
 import type { UserBook } from '@/types';
-import { formatDateKeyHuman, todayKey } from '@/lib/dates';
-import { trustedNow } from '@/lib/clock';
-import { READING_POINTS } from '@/lib/pointsConfig';
+import { formatDateKeyHuman, todayKey } from '@/lib/time/dates';
+import { trustedNow } from '@/lib/time/clock';
+import { READING_POINTS } from '@/lib/points/pointsConfig';
 import {
   READING_BONUS_COOLDOWN_DAYS,
   READING_BONUS_MIN_LOG_DAYS,
@@ -14,7 +14,7 @@ import {
   readingBonusAlreadyGiven,
   readingBonusCooldown,
   readingBonusProgress,
-} from '@/lib/readingAwards';
+} from '@/lib/points/readingAwards';
 import { useUnsavedChanges } from '@/lib/unsavedChanges';
 import { bookProgress } from './bookMeta';
 import { actionFeedback } from '@/lib/actionFeedback';

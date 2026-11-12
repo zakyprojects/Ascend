@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import type { AppState, TimeTrackerActivity, TimeTrackerBlock } from '@/types';
-import { trustedNow } from '@/lib/clock';
-import { calculateTimeTrackerDailyPoints, TIME_TRACKER_POINTS } from '@/lib/pointsConfig';
-import { timeTrackerAwardId } from '@/lib/timeTrackerAwards';
+import { trustedNow } from '@/lib/time/clock';
+import { calculateTimeTrackerDailyPoints, TIME_TRACKER_POINTS } from '@/lib/points/pointsConfig';
+import { timeTrackerAwardId } from '@/lib/points/timeTrackerAwards';
 import { formatTime12h } from '@/lib/timeTracker';
 
 export { blockName } from '@/lib/timeTracker';

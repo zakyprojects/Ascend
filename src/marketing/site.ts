@@ -1,5 +1,5 @@
-import { getSeasonStartByNumber } from '@/lib/leagueTime';
-import { TIERS } from '@/lib/tiers';
+import { getSeasonStartByNumber } from '@/lib/time/leagueTime';
+import { TIERS } from '@/lib/leagues/tiers';
 
 /**
  * The public site's fixed facts (landing, /features, legal pages, sitemap): one place, so the name,

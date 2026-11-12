@@ -1,6 +1,6 @@
 import type { Habit } from '@/types';
-import { periodKey } from '@/lib/dates';
-import { ptsText } from '@/lib/leagues';
+import { periodKey } from '@/lib/time/dates';
+import { ptsText } from '@/lib/leagues/leagues';
 import { isReadingLinked } from './HabitCheck';
 
 /**

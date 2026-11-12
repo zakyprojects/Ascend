@@ -1,6 +1,6 @@
 import { User } from '@supabase/supabase-js';
 import { AppState, DEFAULT_STATE, UserProfile, Partnership } from '@/types';
-import { generateNumericUID, todayKey, weekKey } from './dates';
+import { generateNumericUID, todayKey, weekKey } from './time/dates';
 import { reconcileSharedChallengeLifecycle } from './pactLifecycle';
 import { cachedSyncedCollections } from './sync/syncedCollections';
 import { cachedDeviceLocalState } from './deviceLocalState';
@@ -22,10 +22,10 @@ import {
   cleanupPendingInvitesBetweenUsersSupabase,
   fetchMyPrivateProfile,
 } from './supabase';
-import { trustedNow } from './clock';
+import { trustedNow } from './time/clock';
 import { usernameFrom } from './usernameRules';
 import { markProfileSetupDue, recordGoogleTermsConsent } from './auth';
-import { deviceTimeZone, markDeviceTimezoneSent } from './deviceTimezone';
+import { deviceTimeZone, markDeviceTimezoneSent } from './time/deviceTimezone';
 
 export type SignUpDefaults = {
   username: string;

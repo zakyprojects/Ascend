@@ -1,5 +1,5 @@
 import { Fig, Gain, pts, type HowItWorksGuide } from '@/components/ui/HowItWorks';
-import { WORKOUT_POINTS } from '@/lib/pointsConfig';
+import { WORKOUT_POINTS } from '@/lib/points/pointsConfig';
 
 /**
  * Exercise. Rules from lib/pointsConfig.ts WORKOUT_POINTS + calculateWorkoutPoints (floor per unit,

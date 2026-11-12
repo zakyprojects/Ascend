@@ -29,7 +29,7 @@ await story('habits.hook (habit actions)', async () => {
   await until(() => h.s().state.habits.some((x) => x.id === 'h-pact'), 'T27: server habit loaded');
   await until(() => h.s().state.sharedChallenges.some((c) => c.id === PACT && c.status === 'active'), 'T27: running pact on screen');
   await quiet(1500);
-  const today = (await import('../dates')).todayKey();
+  const today = (await import('../time/dates')).todayKey();
   const byName = (name: string) => h.s().state.habits.filter((x) => x.name === name);
 
   const custom = h.s().addCustomHabit('HookHabit', 'daily');

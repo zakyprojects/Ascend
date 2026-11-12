@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { trustedNow } from './clock';
-import { todayKeyInZone } from './dates';
+import { trustedNow } from './time/clock';
+import { todayKeyInZone } from './time/dates';
 import { isSupabaseConfigured, supabase } from './supabase';
 import { isDeviceOffline } from './deviceOffline';
 

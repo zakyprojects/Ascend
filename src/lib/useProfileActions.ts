@@ -3,12 +3,12 @@
 // place, and destructures the members (their places in its return object are not side by side).
 import { useCallback } from 'react';
 import type { AppState, NotificationPreferenceKey, RankCelebrated } from '@/types';
-import { mergeRankCelebrated } from './rankCelebration';
+import { mergeRankCelebrated } from './leagues/rankCelebration';
 import { mergeLastSeenRelease } from './whatsNew';
 import { dispatchToastError } from './storeShared';
 import type { ProfileSwitchKey } from './storeShared';
 import { updateProfilePrivacy, updateProfileAcceptPartnerInvites, updateProfileNotificationPreferences } from './auth';
-import { trustedNow } from './clock';
+import { trustedNow } from './time/clock';
 import { toUserMessage } from './userMessage';
 import { applyTheme, resolveTheme, setLocalThemePreference } from './theme';
 import type { ThemePreference } from './theme';

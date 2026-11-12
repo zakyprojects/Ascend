@@ -2,9 +2,9 @@ import { useState } from 'react';
 import { StaticTabPanel, Tabs } from '@/components/ui/primitives';
 import { BarChart } from '@/components/ui/charts';
 import { CountUp } from '@/components/ui/Motion';
-import { formatWeekdayDate as fullDay, formatWeekdayShort as weekday } from '@/lib/dates';
-import type { DayHabits, DayPoints } from '@/lib/weeklyActivity';
-import { ptsText } from '@/lib/leagues';
+import { formatWeekdayDate as fullDay, formatWeekdayShort as weekday } from '@/lib/time/dates';
+import type { DayHabits, DayPoints } from '@/lib/time/weeklyActivity';
+import { ptsText } from '@/lib/leagues/leagues';
 
 type Metric = 'points' | 'habits';
 

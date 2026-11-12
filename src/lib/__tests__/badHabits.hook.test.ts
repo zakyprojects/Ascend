@@ -31,7 +31,7 @@ await story('badHabits.hook (bad-habit actions)', async () => {
   await until(() => h.s().state.badHabits.some((b) => b.id === 'bh-urge'), 'T28: server bad habit loaded');
   await until(() => h.s().state.sharedChallenges.some((c) => c.id === PACT && c.status === 'active'), 'T28: running resist pact on screen');
   await quiet(1500);
-  const { todayKey, getNextDateKey } = await import('../dates');
+  const { todayKey, getNextDateKey } = await import('../time/dates');
   const today = todayKey();
   const byName = (name: string) => h.s().state.badHabits.filter((b) => b.name === name);
   const todayLog = () => h.s().state.badHabitLogs.find((l) => l.badHabitId === 'bh-urge' && l.date === today);

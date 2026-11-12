@@ -1,4 +1,4 @@
-import { getCurrentTier } from '@/lib/tiers';
+import { getCurrentTier } from '@/lib/leagues/tiers';
 import { LucideIcon } from 'lucide-react';
 import { Compass, Rocket, BookOpen, Dumbbell, Trophy, Swords, Crosshair, Flag, Crown } from 'lucide-react';
 

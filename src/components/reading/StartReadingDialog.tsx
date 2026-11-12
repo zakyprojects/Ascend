@@ -3,7 +3,7 @@ import { PlayCircle } from 'lucide-react';
 import { Dialog, FieldRow, Form, Input, NumberField, Select } from '@/components/ui/primitives';
 import type { AppStore } from '@/lib/store';
 import type { CuratedBook, UserBook } from '@/types';
-import { earliestTargetDate, isNewPastDate } from '@/lib/dates';
+import { earliestTargetDate, isNewPastDate } from '@/lib/time/dates';
 import { useUnsavedChanges } from '@/lib/unsavedChanges';
 import { unitSwitchDefaults } from '@/lib/bookUnits';
 import { bookProgress, bookUnit, lengthsByUnit, unitSwitchNote, type BookUnit } from './bookMeta';

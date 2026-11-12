@@ -1,5 +1,5 @@
 import { TierBadge } from './TierBadge';
-import { getCurrentTier, getNextTier, getProgressToNextTier } from '@/lib/tiers';
+import { getCurrentTier, getNextTier, getProgressToNextTier } from '@/lib/leagues/tiers';
 import { ProgressBar } from './primitives/ProgressBar';
 
 interface RankChipProps {

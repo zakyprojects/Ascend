@@ -5,8 +5,8 @@
 import { useCallback } from 'react';
 import type { AppState, PlanStep, ImprovementPlan, UserPlanFollow, PlanReflectionNote, PlanType } from '@/types';
 import { dispatchToastError } from './storeShared';
-import { uid, generateUUID, todayKey, isPlanJourneyDoneThisPeriod, calculateActivePlanStreak } from './dates';
-import { trustedNow, trustedNowMs } from './clock';
+import { uid, generateUUID, todayKey, isPlanJourneyDoneThisPeriod, calculateActivePlanStreak } from './time/dates';
+import { trustedNow, trustedNowMs } from './time/clock';
 import { editedPlanStructure } from './planStructure';
 import type { PlanStructureEdits } from './planStructure';
 import { supabase, syncBroadcaster, syncPlanToSupabase, syncFollowedPlanToSupabase, deletePlanFromSupabase, deleteFollowedPlanFromSupabase } from './supabase';

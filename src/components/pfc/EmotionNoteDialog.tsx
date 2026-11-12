@@ -3,7 +3,7 @@ import type { EmotionLog } from '@/types';
 import { Dialog, Form, Textarea, useFormController } from '@/components/ui/primitives';
 import { useUnsavedChanges } from '@/lib/unsavedChanges';
 import { toUserMessage } from '@/lib/userMessage';
-import { formatDateLong } from '@/lib/dates';
+import { formatDateLong } from '@/lib/time/dates';
 import { EMOTION_CONTEXT_MAX } from '@/lib/pfcLogEdits';
 import { localDayOf, timeOfDay } from './pfcLists';
 

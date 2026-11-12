@@ -6,8 +6,8 @@ import {
   TimeTrackerTemplate,
   DEFAULT_TIME_TRACKER_ACTIVITIES,
 } from '@/types';
-import { uid, todayKey, parseDate, addDays } from './dates';
-import { trustedNow } from './clock';
+import { uid, todayKey, parseDate, addDays } from './time/dates';
+import { trustedNow } from './time/clock';
 
 export const DAYS_OF_WEEK = [
   'Monday',

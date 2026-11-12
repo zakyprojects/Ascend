@@ -1,7 +1,7 @@
 // Fixtures for the Dashboard quote of the day: one quote per local day, counted from the first
 // season's start date and wrapped over the 90-quote list. CI runs them in more than one time zone.
-import { addDays, todayKey } from '../dates';
-import { getSeasonStartByNumber } from '../leagueTime';
+import { addDays, todayKey } from '../time/dates';
+import { getSeasonStartByNumber } from '../time/leagueTime';
 import { quoteForDay, quoteIndexForDay } from '../quoteOfDay';
 import { QUOTES } from '../quotes';
 

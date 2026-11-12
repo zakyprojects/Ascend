@@ -4,7 +4,7 @@ import { Skeleton } from '@/components/ui/primitives';
 import { cx, FOCUS_RING, TRANSITION } from '@/components/ui/primitives/shared';
 import { CountUp } from '@/components/ui/Motion';
 import { LeagueCountdown } from '@/components/ui/LeagueCountdown';
-import { LEAGUE_CONFIG, pointsText } from '@/lib/leagues';
+import { LEAGUE_CONFIG, pointsText } from '@/lib/leagues/leagues';
 import { pageLinkProps } from '@/lib/pageLink';
 import type { View } from '@/lib/views';
 import type { LeagueType } from '@/types';

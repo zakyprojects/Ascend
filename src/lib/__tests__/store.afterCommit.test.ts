@@ -7,7 +7,7 @@
 
 import { doc, win } from './harness/dom';
 
-const { todayKey } = await import('../dates');
+const { todayKey } = await import('../time/dates');
 const TODAY = todayKey();
 const CREATED = '2026-11-10T10:00:00.000Z';
 const partnership = { id: 'p1', user1Id: 'u1', user2Id: 'u2', user1Username: 'me', user2Username: 'pal', status: 'active', createdAt: CREATED };

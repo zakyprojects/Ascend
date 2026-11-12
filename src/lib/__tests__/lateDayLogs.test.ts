@@ -2,8 +2,8 @@
 // the app's mirror of 20261105160000_reading_skill_late_day_logs.sql. Only yesterday is raised,
 // only up, within the daily cap; a new row is stamped inside the day; today's rule is unchanged.
 import type { PointsEntry, ReadingLog, Skill, SkillSessionLog, UserBook } from '@/types';
-import { computeReadingDayAward, readingAwardId, readingLateDay } from '../readingAwards';
-import { computeSkillAwards, skillAwardId, skillLateDay } from '../skillAwards';
+import { computeReadingDayAward, readingAwardId, readingLateDay } from '../points/readingAwards';
+import { computeSkillAwards, skillAwardId, skillLateDay } from '../points/skillAwards';
 
 function assert(condition: boolean, msg: string) {
   if (!condition) throw new Error(`Assertion failed: ${msg}`);

@@ -1,5 +1,5 @@
 import { Dialog } from '@/components/ui/primitives';
-import { FOCUS_DAILY_CAP, FOCUS_MINUTES_PER_POINT, FOCUS_MIN_MINUTES } from '@/lib/focusPoints';
+import { FOCUS_DAILY_CAP, FOCUS_MINUTES_PER_POINT, FOCUS_MIN_MINUTES } from '@/lib/points/focusPoints';
 import { FOCUS_RESUME_WINDOW_MINUTES } from './focusSession';
 
 export function AboutFocusDialog({ open, onClose }: { open: boolean; onClose: () => void }) {

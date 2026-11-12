@@ -24,7 +24,7 @@ import { EditPlanDialog } from '@/components/plans/EditPlanDialog';
 import { DiscoverPanel } from '@/components/plans/DiscoverPanel';
 import { useDiscoverPlans } from '@/components/plans/useDiscoverPlans';
 import { type AnyPlan, copiesLabel, finishLineShare, isReviewDue, journeyState, ownPlans, planTypeOf, targetProgress } from '@/components/plans/planMeta';
-import { useLocalDayKey } from '@/lib/useLocalDayKey';
+import { useLocalDayKey } from '@/lib/time/useLocalDayKey';
 import { MasonryGrid } from '@/components/ui/MasonryGrid';
 
 type Owner = 'own' | 'copy';

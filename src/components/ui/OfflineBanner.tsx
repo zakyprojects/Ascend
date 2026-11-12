@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { WifiOff, Wifi } from 'lucide-react';
-import { elapsedMark, isMarkOlderThan, trustedNowMs } from '@/lib/clock';
+import { elapsedMark, isMarkOlderThan, trustedNowMs } from '@/lib/time/clock';
 
 /** A tab return re-checks only when the server last answered at least this long ago. */
 const VISIBLE_STALE_MS = 60 * 1000;

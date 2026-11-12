@@ -1,6 +1,6 @@
 import { Fig, Gain, pts, type HowItWorksGuide } from '@/components/ui/HowItWorks';
-import { PFC_POINTS } from '@/lib/pointsConfig';
-import { FOCUS_MINUTES_PER_POINT, FOCUS_MIN_MINUTES, focusPointsForMinutes } from '@/lib/focusPoints';
+import { PFC_POINTS } from '@/lib/points/pointsConfig';
+import { FOCUS_MINUTES_PER_POINT, FOCUS_MIN_MINUTES, focusPointsForMinutes } from '@/lib/points/focusPoints';
 import { FOCUS_PRESETS, FOCUS_RESUME_WINDOW_MINUTES, focusFinishedPoints } from '@/lib/focusSession';
 
 /**

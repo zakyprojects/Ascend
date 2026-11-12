@@ -1,7 +1,7 @@
 // Fixtures for opening Weekly Goals at a week (`?week=`) and the week a Sunday planning notice
 // opens, including the 2026 → 2027 year end where the app's week numbering has no 2027-W01.
-import { weekKey } from '../dates';
-import { isWeekKey, planningWeekKey, weekFromParam, weekSearch } from '../weekParam';
+import { weekKey } from '../time/dates';
+import { isWeekKey, planningWeekKey, weekFromParam, weekSearch } from '../time/weekParam';
 
 function assert(condition: boolean, msg: string) {
   if (!condition) {

@@ -2,7 +2,7 @@
 // consecutive-miss walk in ascend_process_penalties): 1x for the first miss, then 1.5x below
 // 2000 season points, or 2x / 2.5x from 2000 points (Performer) up.
 import type { Habit } from '@/types';
-import { getHabitConsecutiveMisses, getMissPenaltyMultiplier } from '../habitPenalties';
+import { getHabitConsecutiveMisses, getMissPenaltyMultiplier } from '../points/habitPenalties';
 
 function assert(condition: boolean, msg: string) {
   if (!condition) {

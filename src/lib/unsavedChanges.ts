@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useSyncExternalStore } from 'react';
-import { trustedNowMs } from './clock';
+import { trustedNowMs } from './time/clock';
 import { storedAuthSession } from './supabase';
 
 /**

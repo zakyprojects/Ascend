@@ -1,5 +1,5 @@
 import { TimeTrackerBlock, TimeTrackerState, TimeTrackerTemplate } from '@/types';
-import { uid, addDays } from './dates';
+import { uid, addDays } from './time/dates';
 import { END_OF_DAY, blockIntervalMs, getBlockTimingAt, minutesToTimeString, templateForDate, timeStringToMinutes } from './timeTracker';
 
 /**

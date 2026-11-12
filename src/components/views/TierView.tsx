@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { Check, Compass, History, Lock } from 'lucide-react';
-import { getCurrentTier, getProgressToNextTier, getNextTier, TIERS } from '@/lib/tiers';
+import { getCurrentTier, getProgressToNextTier, getNextTier, TIERS } from '@/lib/leagues/tiers';
 import { AppStore } from '@/lib/store';
 import type { PointsEntry } from '@/types';
 import { cx, EmptyState, PageColumns, ProgressBar } from '@/components/ui/primitives';
@@ -8,14 +8,14 @@ import { CountUp, Reveal } from '@/components/ui/Motion';
 import { PageHero } from '@/components/ui/PageHero';
 import { TIER_ICONS } from '@/components/ui/TierBadge';
 import { LeagueCountdown } from '@/components/ui/LeagueCountdown';
-import { getLocalResetDetail, sortPointsNewestFirst } from '@/lib/leagues';
-import { getSeasonNumber, getSeasonStart, leagueNow } from '@/lib/leagueTime';
-import { leaguePeriodKey } from '@/lib/leagueStandingsRefresh';
-import { trustedNow } from '@/lib/clock';
-import { formatDateKeyHuman, isTodayLocal, isYesterdayLocal, todayKey } from '@/lib/dates';
-import { entryDay } from '@/lib/weeklyActivity';
-import { pointsReasonText } from '@/lib/pointsReasonText';
-import { useLocalDayKey } from '@/lib/useLocalDayKey';
+import { getLocalResetDetail, sortPointsNewestFirst } from '@/lib/leagues/leagues';
+import { getSeasonNumber, getSeasonStart, leagueNow } from '@/lib/time/leagueTime';
+import { leaguePeriodKey } from '@/lib/leagues/leagueStandingsRefresh';
+import { trustedNow } from '@/lib/time/clock';
+import { formatDateKeyHuman, isTodayLocal, isYesterdayLocal, todayKey } from '@/lib/time/dates';
+import { entryDay } from '@/lib/time/weeklyActivity';
+import { pointsReasonText } from '@/lib/points/pointsReasonText';
+import { useLocalDayKey } from '@/lib/time/useLocalDayKey';
 
 /** Entries the Recent points list shows (newest first). */
 const RECENT_POINTS_SHOWN = 10;

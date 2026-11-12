@@ -74,7 +74,7 @@ const answer = (body: unknown) => new Response(JSON.stringify(body), { status: 2
 };
 
 await story('partners.hook (partner and pact actions)', async () => {
-  const { todayKey } = await import('../dates');
+  const { todayKey } = await import('../time/dates');
   const today = todayKey();
   server.blob.set(UID, { state: { username: 'hooktester', lastSeenRelease: 100 }, updated_at: blobAt });
   tbl('profiles').push(

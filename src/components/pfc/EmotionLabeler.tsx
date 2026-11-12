@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { HeartHandshake, Pencil, Plus, Trash2 } from 'lucide-react';
 import type { AppStore } from '@/lib/store';
 import type { EmotionLog } from '@/types';
-import { addDays, formatDateLong } from '@/lib/dates';
+import { addDays, formatDateLong } from '@/lib/time/dates';
 import { EmptyState } from '@/components/ui/primitives';
 import { cx, TAP_TARGET } from '@/components/ui/primitives/shared';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';

@@ -1,5 +1,5 @@
 import type { DecisionLog, EmotionLog } from '@/types';
-import { parseDate, todayKey } from '@/lib/dates';
+import { parseDate, todayKey } from '@/lib/time/dates';
 
 /** Earlier days shown per "Show older days" tap. */
 export const DAYS_PAGE = 7;

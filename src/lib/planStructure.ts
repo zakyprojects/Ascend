@@ -1,6 +1,6 @@
 import type { ImprovementPlan, PlanStep, UserPlanFollow } from '@/types';
-import { uid } from './dates';
-import { trustedNowMs } from './clock';
+import { uid } from './time/dates';
+import { trustedNowMs } from './time/clock';
 
 /** The structure fields an edit can change (type-specific ones; absent = keep). */
 export interface PlanStructureEdits {

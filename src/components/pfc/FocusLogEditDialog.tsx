@@ -3,7 +3,7 @@ import type { FocusSessionLog } from '@/types';
 import { Dialog, Form, Input, Textarea, useFormController } from '@/components/ui/primitives';
 import { useUnsavedChanges } from '@/lib/unsavedChanges';
 import { toUserMessage } from '@/lib/userMessage';
-import { formatDateLong } from '@/lib/dates';
+import { formatDateLong } from '@/lib/time/dates';
 import { FOCUS_REFLECTION_MAX, FOCUS_TASK_MAX } from '@/lib/pfcLogEdits';
 import { timeOfDay } from './pfcLists';
 

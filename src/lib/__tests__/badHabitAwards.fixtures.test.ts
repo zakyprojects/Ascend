@@ -8,7 +8,7 @@ import {
   badHabitResistId,
   badHabitResistPoints,
   computeBadHabitAwards,
-} from '../badHabitAwards';
+} from '../points/badHabitAwards';
 
 function assert(condition: boolean, msg: string) {
   if (!condition) {

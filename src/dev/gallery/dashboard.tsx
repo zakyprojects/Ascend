@@ -3,7 +3,7 @@ import { useToast } from '@/components/ui/Toast';
 import { LeagueRow, ModuleLink } from './appCopies';
 import { AscentProfile } from '@/components/views/AscentProfile';
 import { exerciseAmountText, minutesText } from '@/lib/exerciseSummary';
-import { TIERS } from '@/lib/tiers';
+import { TIERS } from '@/lib/leagues/tiers';
 import type { View } from '@/lib/views';
 import { Caption, Section } from './shared';
 

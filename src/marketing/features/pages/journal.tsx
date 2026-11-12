@@ -1,8 +1,8 @@
 import { MOODS } from '@/components/journal/moods';
 import { JOURNAL_PROMPTS } from '@/data/journalPrompts';
 import { MIN_JOURNAL_CONTENT_LENGTH } from '@/lib/journalRules';
-import { JOURNAL_POINTS } from '@/lib/pointsConfig';
-import { TIERS } from '@/lib/tiers';
+import { JOURNAL_POINTS } from '@/lib/points/pointsConfig';
+import { TIERS } from '@/lib/leagues/tiers';
 import { LINK_CLASS } from '../../components/MarketingLayout';
 import { featurePath } from '../catalog';
 import { Block, Cards, Note, Rules, Steps, type FeatureContent } from '../blocks';

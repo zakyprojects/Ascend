@@ -1,5 +1,5 @@
-import { trustedNowMs } from '@/lib/clock';
-import { FOCUS_MILESTONES, FOCUS_MIN_MINUTES, focusSessionAlonePoints } from '@/lib/focusPoints';
+import { trustedNowMs } from '@/lib/time/clock';
+import { FOCUS_MILESTONES, FOCUS_MIN_MINUTES, focusSessionAlonePoints } from '@/lib/points/focusPoints';
 
 /**
  * The running focus timer, kept in localStorage under the signed-in account's own key, so every

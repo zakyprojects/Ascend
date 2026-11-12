@@ -1,6 +1,6 @@
 import { Fig, Gain, pts, type HowItWorksGuide } from '@/components/ui/HowItWorks';
-import { TIME_TRACKER_POINTS } from '@/lib/pointsConfig';
-import { TIME_TRACKER_GRACE_MINUTES } from '@/lib/timeTrackerAwards';
+import { TIME_TRACKER_POINTS } from '@/lib/points/pointsConfig';
+import { TIME_TRACKER_GRACE_MINUTES } from '@/lib/points/timeTrackerAwards';
 
 /**
  * Time Tracker. Rules from lib/pointsConfig.ts TIME_TRACKER_POINTS + calculateTimeTrackerDailyPoints

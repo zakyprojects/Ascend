@@ -1,6 +1,6 @@
 import { LeagueCompetitor, LeagueType, SeasonHistoryEntry, NotificationPreferenceKey } from '@/types';
 import { newPasswordProblem } from './passwordRules';
-import { leagueNow, getSeasonNumber, getWeekPeriodId, getMonthPeriodId } from './leagueTime';
+import { leagueNow, getSeasonNumber, getWeekPeriodId, getMonthPeriodId } from './time/leagueTime';
 import { clearSyncStorage } from './sync/outbox';
 import {
   supabase,
@@ -10,7 +10,7 @@ import {
   verifyAccountPassword,
   authRedirectError,
 } from './supabase';
-import { trustedNow, trustedNowMs } from './clock';
+import { trustedNow, trustedNowMs } from './time/clock';
 import { ilikeExact, isUsernameTakenError, looksLikeUsername, sameUsername, USERNAME_TAKEN, usernameFormatProblem } from './usernameRules';
 import { NETWORK_MESSAGE } from './userMessage';
 import { clearDrafts } from './unsavedChanges';

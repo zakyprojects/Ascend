@@ -3,8 +3,8 @@ import { CalendarClock, Plus, X } from 'lucide-react';
 import type { TimeTrackerState } from '@/types';
 import { cx, FOCUS_RING } from '@/components/ui/primitives/shared';
 import { useToast } from '@/components/ui/Toast';
-import { clockSettled, trustedNowMs } from '@/lib/clock';
-import { useLocalDayKey } from '@/lib/useLocalDayKey';
+import { clockSettled, trustedNowMs } from '@/lib/time/clock';
+import { useLocalDayKey } from '@/lib/time/useLocalDayKey';
 import { blockName, formatTime12h, formatTimeLeft, getActivityDisplayColor } from '@/lib/timeTracker';
 import {
   blockPillState,

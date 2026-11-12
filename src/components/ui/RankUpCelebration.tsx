@@ -3,10 +3,10 @@ import { createPortal } from 'react-dom';
 import { Compass } from 'lucide-react';
 import { Button } from './primitives';
 import { TIER_ICONS } from './TierBadge';
-import { TIERS } from '@/lib/tiers';
+import { TIERS } from '@/lib/leagues/tiers';
 import { useReducedMotion } from '@/lib/motion';
 import { celebrationFeedback } from '@/lib/actionFeedback';
-import { playRankUpFanfare, rankUpVibration } from '@/lib/rankUpSound';
+import { playRankUpFanfare, rankUpVibration } from '@/lib/leagues/rankUpSound';
 
 /**
  * Full-screen rank-up moment: the app blurs, the old rank's badge gathers, (a jump rolls quickly

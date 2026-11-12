@@ -1,7 +1,7 @@
 // Fixtures for server-owned habit awards: the app's copy of the server's award rule
 // (ascend_recompute_habit_awards), and the sync rules that keep those rows server-only.
 import { DEFAULT_STATE, type AppState, type Habit } from '@/types';
-import { computeHabitAwards, isRetiredAppHabitAward } from '../habitAwards';
+import { computeHabitAwards, isRetiredAppHabitAward } from '../points/habitAwards';
 import { diffSyncedCollections, hashRow } from '../sync/outbox';
 import { applyRemoteChanges } from '../sync/pull';
 

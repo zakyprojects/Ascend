@@ -1,5 +1,5 @@
 import type { WorkoutLog } from '@/types';
-import { compactNumber } from './numberFormat';
+import { compactNumber } from './leagues/numberFormat';
 import { workoutAmountOf, workoutMeasureOf, workoutTypeKey, type WorkoutMeasure } from './workoutTypes';
 
 /**

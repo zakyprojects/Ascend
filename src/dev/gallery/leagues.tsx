@@ -7,8 +7,8 @@ import { RankChip } from '@/components/ui/RankChip';
 import { LeagueCountdown } from '@/components/ui/LeagueCountdown';
 import { CompetitorProfileModal } from '@/components/ui/CompetitorProfileModal';
 import { RankNumber, YouTag } from './appCopies';
-import { TIERS, getCurrentTier } from '@/lib/tiers';
-import type { MemberDetails } from '@/lib/useMemberDetails';
+import { TIERS, getCurrentTier } from '@/lib/leagues/tiers';
+import type { MemberDetails } from '@/lib/leagues/useMemberDetails';
 import type { LeagueCompetitor, MemberCard } from '@/types';
 import { Caption, Section } from './shared';
 

@@ -1,13 +1,13 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { Trash2, Edit3, Check, CheckCircle2, Sparkles, RotateCcw, BookOpen, PenLine } from 'lucide-react';
 import { AppStore } from '@/lib/store';
-import { useLocalDayKey } from '@/lib/useLocalDayKey';
+import { useLocalDayKey } from '@/lib/time/useLocalDayKey';
 import { Mood, JournalEntry } from '@/types';
-import { formatDateLong, calculateStreak, formatWeekdayShort, formatWeekdayDate } from '@/lib/dates';
-import { JOURNAL_POINTS } from '@/lib/pointsConfig';
-import { ptsText } from '@/lib/leagues';
-import { journalPointsInSeason } from '@/lib/journalAwards';
-import { trustedNow } from '@/lib/clock';
+import { formatDateLong, calculateStreak, formatWeekdayShort, formatWeekdayDate } from '@/lib/time/dates';
+import { JOURNAL_POINTS } from '@/lib/points/pointsConfig';
+import { ptsText } from '@/lib/leagues/leagues';
+import { journalPointsInSeason } from '@/lib/points/journalAwards';
+import { trustedNow } from '@/lib/time/clock';
 import { MIN_JOURNAL_CONTENT_LENGTH } from '@/lib/journalRules';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { useAsyncAction } from '@/lib/useAsyncAction';
@@ -20,7 +20,7 @@ import { Dialog, EmptyState, Form, FormAlert, PageColumns, Tabs, Textarea, focus
 import { TAP_TARGET, cx } from '@/components/ui/primitives/shared';
 import { CountUp, Reveal } from '@/components/ui/Motion';
 import { PageHero } from '@/components/ui/PageHero';
-import { lastDayKeys } from '@/lib/weeklyActivity';
+import { lastDayKeys } from '@/lib/time/weeklyActivity';
 import { useUnsavedChanges } from '@/lib/unsavedChanges';
 import { toUserMessage } from '@/lib/userMessage';
 import { getDailyPrompt } from '@/data/journalPrompts';

@@ -22,7 +22,7 @@ import {
   prepareScreenshot,
   submitFeedback,
 } from '@/lib/feedback';
-import { trustedNowMs } from '@/lib/clock';
+import { trustedNowMs } from '@/lib/time/clock';
 
 interface FeedbackViewProps {
   /** The choice the form opens on: none on /feedback, bug on /report-bug, idea on /suggest-idea. */

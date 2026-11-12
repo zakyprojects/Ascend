@@ -1,6 +1,6 @@
 import { Fig, Gain, pts, type HowItWorksGuide } from '@/components/ui/HowItWorks';
-import { READING_POINTS } from '@/lib/pointsConfig';
-import { PAGES_PER_CHAPTER, READING_BONUS_COOLDOWN_DAYS, READING_BONUS_MIN_LOG_DAYS, READING_BONUS_MIN_SPAN_DAYS } from '@/lib/readingAwards';
+import { READING_POINTS } from '@/lib/points/pointsConfig';
+import { PAGES_PER_CHAPTER, READING_BONUS_COOLDOWN_DAYS, READING_BONUS_MIN_LOG_DAYS, READING_BONUS_MIN_SPAN_DAYS } from '@/lib/points/readingAwards';
 
 /**
  * Reading Hub. Rules from lib/pointsConfig.ts READING_POINTS, lib/readingAwards.ts (finish bonus:

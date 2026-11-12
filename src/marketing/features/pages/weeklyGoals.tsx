@@ -1,4 +1,4 @@
-import { WEEKLY_GOALS_POINTS, WEEKLY_REFLECTION_POINTS } from '@/lib/pointsConfig';
+import { WEEKLY_GOALS_POINTS, WEEKLY_REFLECTION_POINTS } from '@/lib/points/pointsConfig';
 import { LINK_CLASS } from '../../components/MarketingLayout';
 import { featurePath } from '../catalog';
 import { Block, Cards, Note, Rules, Steps, type FeatureContent } from '../blocks';

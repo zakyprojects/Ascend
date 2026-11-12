@@ -1,9 +1,9 @@
 // Fixtures for the logging dialogs' points previews (audit 2026-11-10 EXE-L1, RDG-I1): the preview
 // is the value the row / day shows after saving, from the same mirrors the store uses.
 import type { ReadingLog, UserBook, WorkoutLog } from '@/types';
-import { readingProgressPreview, workoutEditPreview } from '../practicePreviews';
-import { computeWorkoutAwards } from '../workoutAwards';
-import { calculateWorkoutPoints } from '../pointsConfig';
+import { readingProgressPreview, workoutEditPreview } from '../points/practicePreviews';
+import { computeWorkoutAwards } from '../points/workoutAwards';
+import { calculateWorkoutPoints } from '../points/pointsConfig';
 import { editWorkoutIn, workoutFields } from '../itemEdits';
 
 function eq<T>(got: T, want: T, msg: string) {

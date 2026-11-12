@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { Calendar, Check, ChevronDown, ChevronUp, Edit3, FolderKanban, Lock, Pencil, Timer, Trash2 } from 'lucide-react';
 import type { Task, TaskPriority, TaskSubtask } from '@/types';
-import { formatDateShort } from '@/lib/dates';
+import { formatDateShort } from '@/lib/time/dates';
 import { cx, FieldErrorBubble, ProgressBar } from '@/components/ui/primitives';
 import { TAP_TARGET, TAP_TARGET_Y } from '@/components/ui/primitives/shared';
 import { useCompletionPop } from '@/lib/useCompletionPop';

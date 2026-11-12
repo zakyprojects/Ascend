@@ -1,5 +1,5 @@
 import type { HowItWorksGuide } from '@/components/ui/HowItWorks';
-import { getSeasonStartByNumber } from '@/lib/leagueTime';
+import { getSeasonStartByNumber } from '@/lib/time/leagueTime';
 
 /**
  * Leagues. From lib/leagueTime.ts (UTC boundaries, season length), ascend_league_boards (points =

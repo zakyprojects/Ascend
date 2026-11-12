@@ -2,11 +2,11 @@
 // moved out of store.ts unchanged. useAppState calls this hook once and returns the same members as before.
 import { useCallback } from 'react';
 import type { WeeklyGoal, WeeklyGoalItem, WeeklyGoalReflection } from '@/types';
-import { uid, weekKey } from './dates';
+import { uid, weekKey } from './time/dates';
 import { linkedItemExists, linkedGoalUnit } from './linkedGoalMetrics';
-import { isReflectionWindowOpen } from './weeklyAwards';
-import { reconcileWeeklyGoalsPointsForAllWeeks, reconcileLinkedWeeklyGoals, reconcileReflectionPoints, withDeletedGoalIds, recomputeWeeklyGoalsPointsForState } from './weeklyGoalPoints';
-import { trustedNow } from './clock';
+import { isReflectionWindowOpen } from './points/weeklyAwards';
+import { reconcileWeeklyGoalsPointsForAllWeeks, reconcileLinkedWeeklyGoals, reconcileReflectionPoints, withDeletedGoalIds, recomputeWeeklyGoalsPointsForState } from './points/weeklyGoalPoints';
+import { trustedNow } from './time/clock';
 import type { StoreSetState } from './storeSetState';
 
 export function useWeeklyGoalActions(setState: StoreSetState) {

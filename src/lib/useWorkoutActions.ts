@@ -2,12 +2,12 @@
 // unchanged. useAppState calls this hook once and returns the same members as before.
 import { useCallback } from 'react';
 import type { AppState, WorkoutLog } from '@/types';
-import { uid, todayKey } from './dates';
+import { uid, todayKey } from './time/dates';
 import { editWorkoutIn, workoutFields } from './itemEdits';
 import { CLEAR_WORKOUTS_MAX } from './clearLimits';
-import { reconcileLinkedWeeklyGoals } from './weeklyGoalPoints';
-import { applyWorkoutAwardsInternal } from './stateAwards';
-import { trustedNow } from './clock';
+import { reconcileLinkedWeeklyGoals } from './points/weeklyGoalPoints';
+import { applyWorkoutAwardsInternal } from './points/stateAwards';
+import { trustedNow } from './time/clock';
 import type { StoreSetState } from './storeSetState';
 
 export function useWorkoutActions(setState: StoreSetState, get: () => AppState) {

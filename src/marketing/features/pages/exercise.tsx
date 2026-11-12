@@ -1,4 +1,4 @@
-import { WORKOUT_POINTS } from '@/lib/pointsConfig';
+import { WORKOUT_POINTS } from '@/lib/points/pointsConfig';
 import { DEFAULT_WORKOUT_TYPES } from '@/lib/workoutTypes';
 import { LINK_CLASS } from '../../components/MarketingLayout';
 import { featurePath } from '../catalog';

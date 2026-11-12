@@ -7,7 +7,7 @@ import { cx, FOCUS_RING, TAP_TARGET, TAP_TARGET_Y } from '@/components/ui/primit
 import { Badge } from '@/components/ui/primitives/Badge';
 import { Skeleton } from '@/components/ui/primitives/Skeleton';
 import { EmptyState } from '@/components/ui/primitives/EmptyState';
-import { trustedNowMs } from '@/lib/clock';
+import { trustedNowMs } from '@/lib/time/clock';
 import type { View } from '@/lib/views';
 import { pathForView } from '@/lib/routes';
 import { NOTIFICATION_WINDOW } from '@/lib/supabase';

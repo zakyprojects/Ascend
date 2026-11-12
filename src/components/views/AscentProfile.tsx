@@ -1,5 +1,5 @@
 import { useRef } from 'react';
-import { TIERS, getCurrentTier, getNextTier, getProgressToNextTier, getTierIndex } from '@/lib/tiers';
+import { TIERS, getCurrentTier, getNextTier, getProgressToNextTier, getTierIndex } from '@/lib/leagues/tiers';
 import { useIntroMotion, useSeen } from '@/lib/motion';
 
 // Drawing space. The ladder is a staircase: each tier is a ledge, then a rise to the next one.

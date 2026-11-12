@@ -5,10 +5,10 @@ import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { useToast } from '@/components/ui/Toast';
 import { useAsyncActionKey } from '@/lib/useAsyncAction';
 import { CravingLog } from '@/types';
-import { recoveryCheckinBlock, recoveryDayAwardId, recoveryPointsInSeason, RecoveryMilestoneKey, RECOVERY_MILESTONES } from '@/lib/recoveryAwards';
-import { addDays, formatDateLong, todayKey, startOfWeek, parseDate } from '@/lib/dates';
-import { useLocalDayKey } from '@/lib/useLocalDayKey';
-import { RECOVERY_POINTS } from '@/lib/pointsConfig';
+import { recoveryCheckinBlock, recoveryDayAwardId, recoveryPointsInSeason, RecoveryMilestoneKey, RECOVERY_MILESTONES } from '@/lib/points/recoveryAwards';
+import { addDays, formatDateLong, todayKey, startOfWeek, parseDate } from '@/lib/time/dates';
+import { useLocalDayKey } from '@/lib/time/useLocalDayKey';
+import { RECOVERY_POINTS } from '@/lib/points/pointsConfig';
 import { pts } from '@/components/ui/HowItWorks';
 import { CapMeter } from '@/components/ui/CapMeter';
 import { HowItWorksButton, HowItWorksDialog, useHowItWorks } from '@/components/ui/HowItWorks';
@@ -19,7 +19,7 @@ import { Dialog, EmptyState, Form, Input, PageColumns, useFormController } from 
 import { toUserMessage } from '@/lib/userMessage';
 import { useUnsavedChanges } from '@/lib/unsavedChanges';
 import { FOCUS_RING, TAP_TARGET, cx } from '@/components/ui/primitives/shared';
-import { trustedNow } from '@/lib/clock';
+import { trustedNow } from '@/lib/time/clock';
 import { CRISIS_ELSEWHERE, CRISIS_LINES } from '@/lib/crisisLines';
 
 const CRAVINGS_PAGE = 10;

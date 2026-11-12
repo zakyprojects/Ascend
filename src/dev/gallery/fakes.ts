@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import type { AppStore } from '@/lib/store';
 import type { AppNotification } from '@/types';
-import { trustedNowMs } from '@/lib/clock';
+import { trustedNowMs } from '@/lib/time/clock';
 
 // In-memory stand-ins for the store parts a few shared components take as props (dev Gallery only).
 // Nothing here talks to Supabase: every method changes React state in this page and nothing else.

@@ -1,5 +1,5 @@
 import { Fig, Gain, Loss, pts, type HowItWorksGuide } from '@/components/ui/HowItWorks';
-import { BAD_HABIT_POINTS } from '@/lib/pointsConfig';
+import { BAD_HABIT_POINTS } from '@/lib/points/pointsConfig';
 import { PRESET_BAD_HABITS } from '@/lib/presets';
 import { missRule } from './penalties';
 

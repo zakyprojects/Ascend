@@ -1,5 +1,5 @@
 // League standings refresher: polls between full fetches ask only for this week's and month's points.
-import { createLeagueStandingsRefresher, type LeagueStandingsResult } from '../leagueStandingsRefresh';
+import { createLeagueStandingsRefresher, type LeagueStandingsResult } from '../leagues/leagueStandingsRefresh';
 
 function assert(condition: boolean, msg: string) {
   if (!condition) {

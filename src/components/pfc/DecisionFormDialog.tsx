@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { DecisionLog } from '@/types';
 import { Dialog, Form, Input, Textarea, useFormController } from '@/components/ui/primitives';
-import { todayKey } from '@/lib/dates';
+import { todayKey } from '@/lib/time/dates';
 import { useUnsavedChanges } from '@/lib/unsavedChanges';
 import { toUserMessage } from '@/lib/userMessage';
 

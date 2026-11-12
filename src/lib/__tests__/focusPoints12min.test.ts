@@ -4,8 +4,8 @@
 // supabase/migrations/20261109140000_focus_points_12min.sql (work/f12/pglite-test.mjs runs the same cases).
 import type { FocusSessionLog, PointsEntry } from '@/types';
 
-const P = await import('../focusPoints');
-const A = await import('../focusAwards');
+const P = await import('../points/focusPoints');
+const A = await import('../points/focusAwards');
 const S = await import('../focusSession');
 const { focusSkillLogFor } = await import('../focusSkillLog');
 

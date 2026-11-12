@@ -4,7 +4,7 @@ import { Plus, Inbox } from 'lucide-react';
 import { Button, Card, EmptyState, ProgressBar, Skeleton, type ProgressTone } from '@/components/ui/primitives';
 import { WeekActivityCard } from '@/components/views/WeekActivityCard';
 import { PageSkeleton } from '@/components/views/PageSkeleton';
-import { lastDayKeys } from '@/lib/weeklyActivity';
+import { lastDayKeys } from '@/lib/time/weeklyActivity';
 import { ProgressUpdateDialog, UpdateProgressButton } from '@/components/ui/ProgressUpdateDialog';
 import { PageHero } from '@/components/ui/PageHero';
 import { CapMeter } from '@/components/ui/CapMeter';

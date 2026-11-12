@@ -5,7 +5,7 @@ import { TimeTrackerBlock, TimeTrackerTemplate } from '@/types';
 import { AscendLoadingIndicator } from '@/components/ui/AscendLoadingIndicator';
 import { Check, RefreshCw, Plus } from 'lucide-react';
 import { formatDurationHuman, calculateBlockDurationMinutes, templateDays } from '@/lib/timeTracker';
-import { formatDateKeyHuman } from '@/lib/dates';
+import { formatDateKeyHuman } from '@/lib/time/dates';
 import { cx } from '@/components/ui/primitives/shared';
 
 interface ApplyTemplateModalProps {

@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from 'react';
 import type { TimeTrackerActivity, TimeTrackerBlock, TimeTrackerState } from '@/types';
-import { addDays } from './dates';
+import { addDays } from './time/dates';
 import { blockIntervalMs, blockName, formatTime12h, liveBlocksAt, plannedBlocksForDate, templateDays } from './timeTracker';
 
 /**

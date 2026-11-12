@@ -4,7 +4,7 @@
 // Points rules mirror ascend_recompute_reading_awards (20261109190000_reading_book_unit_switch.sql).
 import { DEFAULT_STATE, type AppState, type ReadingLog, type UserBook, type WeeklyGoalItem } from '@/types';
 import { stampLogUnits, switchBookUnit, takeBackTodaysReading, unitSwitchDefaults } from '../bookUnits';
-import { computeReadingDayAward, logUnit, PAGES_PER_CHAPTER } from '../readingAwards';
+import { computeReadingDayAward, logUnit, PAGES_PER_CHAPTER } from '../points/readingAwards';
 import { computeLinkedGoalProgress, linkedGoalUnit } from '../linkedGoalMetrics';
 
 function assert(condition: boolean, msg: string) {

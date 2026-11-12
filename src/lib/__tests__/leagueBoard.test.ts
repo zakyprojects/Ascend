@@ -1,6 +1,6 @@
 import type { LeagueCompetitor } from '@/types';
-import { boardMemberCount, compareCompetitors } from '../leagues';
-import { parseLeagueBoards } from '../leagueStandingsRefresh';
+import { boardMemberCount, compareCompetitors } from '../leagues/leagues';
+import { parseLeagueBoards } from '../leagues/leagueStandingsRefresh';
 import {
   getProfileSeasonPointsByUsername,
   getRegisteredCompetitors,
@@ -9,7 +9,7 @@ import {
   setCachedSeasonPoints,
   toCompetitorStats,
 } from '../auth';
-import { getMonthPeriodId, getSeasonNumber, getWeekPeriodId, leagueNow } from '../leagueTime';
+import { getMonthPeriodId, getSeasonNumber, getWeekPeriodId, leagueNow } from '../time/leagueTime';
 
 function assert(condition: boolean, msg: string) {
   if (!condition) {

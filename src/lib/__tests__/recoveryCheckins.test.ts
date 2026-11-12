@@ -3,13 +3,13 @@
 // The same cases run against the SQL in work/rcc/pglite-test.mjs.
 import { DEFAULT_STATE, type AddictionTracker, type AppState, type PointsEntry, type RecoveryCheckin } from '../../types';
 const { canUndoRecoveryCheckin, computeRecoveryCheckinAward, recoveryCheckinBlock, recoveryCheckinDays, recoveryDayAwardId, recoveryPointsInSeason } =
-  await import('../recoveryAwards');
-const { RECOVERY_POINTS } = await import('../pointsConfig');
-const { addDays, localDayStartMs } = await import('../dates');
-const { getSeasonStart } = await import('../leagueTime');
+  await import('../points/recoveryAwards');
+const { RECOVERY_POINTS } = await import('../points/pointsConfig');
+const { addDays, localDayStartMs } = await import('../time/dates');
+const { getSeasonStart } = await import('../time/leagueTime');
 const { SYNCED_COLLECTIONS } = await import('../sync/syncedCollections');
 const { diffSyncedCollections, hashRow, DELETED } = await import('../sync/outbox');
-const { excisePointsEntriesInternal } = await import('../stateAwards');
+const { excisePointsEntriesInternal } = await import('../points/stateAwards');
 const { mergeAppState } = await import('../stateMerger');
 
 function assert(condition: boolean, msg: string) {

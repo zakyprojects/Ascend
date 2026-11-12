@@ -11,7 +11,7 @@ import {
   getWeekPeriodId,
   getMonthPeriodId,
   getSeasonPeriodId,
-} from '../leagueTime';
+} from '../time/leagueTime';
 import {
   compareArchivesNewestFirst,
   getArchivePeriodEnd,
@@ -20,7 +20,7 @@ import {
   getLeaguePeriodEnd,
   getLeaguePeriodLabel,
   getTimeUntilReset,
-} from '../leagues';
+} from '../leagues/leagues';
 import type { LeagueArchive, LeagueType } from '@/types';
 
 function assert(condition: boolean, msg: string) {

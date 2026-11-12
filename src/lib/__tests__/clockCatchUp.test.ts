@@ -1,7 +1,7 @@
 // caughtUpAnchor (clock.ts): after a sleep that paused performance.now(), the trusted time moves
 // forward by the time the device clock says passed, before the server read lands (e3 in
 // knowledge/mode-a-sync-remaining-2026-11-05.md). A device clock moved back is never followed.
-import { caughtUpAnchor } from '../clock';
+import { caughtUpAnchor } from '../time/clock';
 
 function assert(condition: boolean, msg: string) {
   if (!condition) throw new Error(`Assertion failed: ${msg}`);

@@ -1,21 +1,21 @@
 // Normalises a state loaded from storage or the server (sanitizeLoadedState) and the retired-preset
 // migration, which authSession also runs. Pure: state in, state out (moved from store.ts).
 import { DEFAULT_STATE, DEFAULT_TIME_TRACKER_ACTIVITIES, DEFAULT_TIME_TRACKER_STATE, type AppState, type UserProfile, type PointsEntry, type LeagueArchive, type BadHabitLog, type Book, type UserBook, type UserBookStatus, type WeeklyGoalReflection, type WeeklyGoalItem } from '@/types';
-import { removeLinkedWeeklyGoals, groupWeeklyGoalEntriesByWeekKey, reconcileWeeklyGoalsPointsForAllWeeks, reconcileLinkedWeeklyGoals } from './weeklyGoalPoints';
+import { removeLinkedWeeklyGoals, groupWeeklyGoalEntriesByWeekKey, reconcileWeeklyGoalsPointsForAllWeeks, reconcileLinkedWeeklyGoals } from './points/weeklyGoalPoints';
 import { withoutRetiredKeys } from './retiredStateKeys';
-import { isRetiredAppHabitAward } from './habitAwards';
-import { isRetiredAppBadHabitAward } from './badHabitAwards';
-import { isRetiredAppWorkoutAward } from './workoutAwards';
-import { isRetiredAppSkillAward } from './skillAwards';
-import { isRetiredAppReadingAward } from './readingAwards';
-import { isRetiredAppJournalAward } from './journalAwards';
-import { isRetiredAppFocusAward } from './focusAwards';
-import { weekKey, uid, todayKey } from './dates';
-import { WEEKLY_REFLECTION_POINTS, calculateWeeklyGoalsPoints } from './pointsConfig';
-import { trustedNow, trustedNowMs } from './clock';
-import { leagueNow, getSeasonNumber, getSeasonStart } from './leagueTime';
-import { isWeekBeforeSeason, getSeasonBoundaryInWeek } from './weeklyGoalSeasons';
-import { toArchivedCompetitor, getUserRank, calculateSeasonalTotal } from './leagues';
+import { isRetiredAppHabitAward } from './points/habitAwards';
+import { isRetiredAppBadHabitAward } from './points/badHabitAwards';
+import { isRetiredAppWorkoutAward } from './points/workoutAwards';
+import { isRetiredAppSkillAward } from './points/skillAwards';
+import { isRetiredAppReadingAward } from './points/readingAwards';
+import { isRetiredAppJournalAward } from './points/journalAwards';
+import { isRetiredAppFocusAward } from './points/focusAwards';
+import { weekKey, uid, todayKey } from './time/dates';
+import { WEEKLY_REFLECTION_POINTS, calculateWeeklyGoalsPoints } from './points/pointsConfig';
+import { trustedNow, trustedNowMs } from './time/clock';
+import { leagueNow, getSeasonNumber, getSeasonStart } from './time/leagueTime';
+import { isWeekBeforeSeason, getSeasonBoundaryInWeek } from './leagues/weeklyGoalSeasons';
+import { toArchivedCompetitor, getUserRank, calculateSeasonalTotal } from './leagues/leagues';
 import { findCuratedBook } from './books';
 import { isLegitimateTombstoneId, deduplicatePresetHabits } from './stateMerger';
 import { normalizeThemePreference, deviceThemeFields } from './theme';

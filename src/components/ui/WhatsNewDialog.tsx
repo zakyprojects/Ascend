@@ -1,7 +1,7 @@
 import { useId } from 'react';
 import { Dialog } from './primitives/Dialog';
 import { DEFAULT_RELEASE_TITLE, releaseNoteGroups, type ReleaseNote } from '@/lib/releaseNote';
-import { formatDateShort } from '@/lib/dates';
+import { formatDateShort } from '@/lib/time/dates';
 
 /** The note's groups (New, Improved, Changed, Fixed, Removed); only groups with lines render. */
 export function ReleaseNoteBody({ note }: { note: ReleaseNote }) {

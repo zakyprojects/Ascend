@@ -12,10 +12,10 @@ import {
   getLeaguePeriodLabel,
   getLocalResetDetail,
   pointsText,
-} from '@/lib/leagues';
-import { leagueNow } from '@/lib/leagueTime';
-import { getCurrentTier } from '@/lib/tiers';
-import { leaguePeriodKey } from '@/lib/leagueStandingsRefresh';
+} from '@/lib/leagues/leagues';
+import { leagueNow } from '@/lib/time/leagueTime';
+import { getCurrentTier } from '@/lib/leagues/tiers';
+import { leaguePeriodKey } from '@/lib/leagues/leagueStandingsRefresh';
 import { TierBadge } from '@/components/ui/TierBadge';
 import { CompetitorProfileModal } from '@/components/ui/CompetitorProfileModal';
 import { LeagueCountdown } from '@/components/ui/LeagueCountdown';
@@ -23,9 +23,9 @@ import { GuestSaveBanner } from '@/components/ui/GuestSaveBanner';
 import { PageHero } from '@/components/ui/PageHero';
 import { HowItWorksButton, HowItWorksDialog, useHowItWorks } from '@/components/ui/HowItWorks';
 import { leaguesGuide } from '@/components/howItWorks/leagues';
-import { useLeaguePeriodRollover } from '@/lib/useLeaguePeriodRollover';
-import { useLeagueStandingsRefresh } from '@/lib/useLeagueStandingsRefresh';
-import { useMemberDetails } from '@/lib/useMemberDetails';
+import { useLeaguePeriodRollover } from '@/lib/leagues/useLeaguePeriodRollover';
+import { useLeagueStandingsRefresh } from '@/lib/leagues/useLeagueStandingsRefresh';
+import { useMemberDetails } from '@/lib/leagues/useMemberDetails';
 import { CountUp, Reveal } from '@/components/ui/Motion';
 import { isPartnershipUser1 } from '@/lib/partnershipSide';
 

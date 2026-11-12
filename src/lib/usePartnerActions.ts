@@ -7,13 +7,13 @@
 import { useCallback, useEffect } from 'react';
 import type { AppState, PartnerInvite, Partnership, SharedChallenge, SharedChallengeCategory } from '@/types';
 import { isDeviceOffline } from './deviceOffline';
-import { todayKey } from './dates';
+import { todayKey } from './time/dates';
 import { adoptServerInviteId } from './partnerInvites';
 import { applyPledgeToggle, linkedHabitFor, linkedBadHabitFor, badHabitStatusOn, habitDoneOn, planLinkedPactRepairs } from './pactLifecycle';
 import { isPartnershipUser1 } from './partnershipSide';
-import { leagueNow, getSeasonNumber } from './leagueTime';
+import { leagueNow, getSeasonNumber } from './time/leagueTime';
 import { fetchProfileByUidFromSupabase } from './auth';
-import { trustedNow } from './clock';
+import { trustedNow } from './time/clock';
 import { supabase, isSupabaseConfigured, syncBroadcaster, sendPartnerInviteSupabase, fetchProfileByUsernameFromSupabase, fetchMemberCardFromSupabase, fetchPartnerInvitesSupabase, deletePartnershipSupabase, deletePartnerInviteSupabase, declinePartnerInviteSupabase, saveSharedChallengeSupabase, deleteSharedChallengeSupabase, acceptPartnerInviteAtomicSupabase, markNotificationReadSupabase } from './supabase';
 import type { SharedChallengeSaveResult } from './supabase';
 import { ilikeExact } from './usernameRules';

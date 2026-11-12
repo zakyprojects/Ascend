@@ -1,6 +1,6 @@
 import { ArrowRight, Calendar, Target } from 'lucide-react';
 import type { Project, ProjectStatus } from '@/types';
-import { formatDateShort } from '@/lib/dates';
+import { formatDateShort } from '@/lib/time/dates';
 import { Chip, ItemCard, Nudge, StatusSelect } from './ItemCard';
 import { PROJECT_STATUS_LABEL, type LockStatus, type ProjectProgress } from './hierarchy';
 

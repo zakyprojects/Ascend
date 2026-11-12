@@ -1,6 +1,6 @@
 import { Clock } from 'lucide-react';
-import type { TimezoneWait } from '@/lib/timezoneStatus';
-import { formatTimezoneResume } from '@/lib/useTimezoneWait';
+import type { TimezoneWait } from '@/lib/time/timezoneStatus';
+import { formatTimezoneResume } from '@/lib/time/useTimezoneWait';
 
 /** Explains why today's ticks earn no points while a timezone change waits on the server. */
 export function TimezoneWaitBanner({ wait }: { wait: TimezoneWait }) {

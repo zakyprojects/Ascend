@@ -2,14 +2,14 @@
 // moved out of store.ts unchanged. useAppState calls this hook once and returns the same members as before.
 import { useCallback } from 'react';
 import type { AppState, JournalEntry } from '@/types';
-import { uid, todayKey } from './dates';
-import { journalEntryEarns } from './journalAwards';
+import { uid, todayKey } from './time/dates';
+import { journalEntryEarns } from './points/journalAwards';
 import { applyJournalEntryEdit } from './journalEdits';
-import { computeLessonAward, isLessonReadInSeason, lessonReadId } from './lessonAwards';
-import { leagueNow, getSeasonNumber } from './leagueTime';
-import { applyJournalAwardInternal } from './stateAwards';
-import { addPointsInternal } from './pointsLedger';
-import { trustedNow } from './clock';
+import { computeLessonAward, isLessonReadInSeason, lessonReadId } from './points/lessonAwards';
+import { leagueNow, getSeasonNumber } from './time/leagueTime';
+import { applyJournalAwardInternal } from './points/stateAwards';
+import { addPointsInternal } from './points/pointsLedger';
+import { trustedNow } from './time/clock';
 import type { StoreSetState } from './storeSetState';
 
 export function useJournalActions(setState: StoreSetState, state: AppState) {

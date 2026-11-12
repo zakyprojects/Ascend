@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Edit3, Pencil, Trash2 } from 'lucide-react';
 import type { DecisionLog } from '@/types';
-import { formatWeekdayDate } from '@/lib/dates';
+import { formatWeekdayDate } from '@/lib/time/dates';
 import { cx, TAP_TARGET } from '@/components/ui/primitives/shared';
 
 const WRAP = 'break-words [overflow-wrap:anywhere] whitespace-pre-wrap';

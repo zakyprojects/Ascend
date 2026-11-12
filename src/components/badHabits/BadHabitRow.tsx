@@ -1,10 +1,10 @@
 import { AlertTriangle, Check, Flame, Pencil, Trash2, Undo2, X } from 'lucide-react';
 import type { BadHabit, BadHabitLog } from '@/types';
-import { todayKey, parseDate, calculateStreak, calculateBestStreak } from '@/lib/dates';
-import { badHabitCreatedDay, getBadHabitBadDaysBefore } from '@/lib/habitPenalties';
-import { ptsText } from '@/lib/leagues';
-import { badHabitPenalty, badHabitResistPoints } from '@/lib/badHabitAwards';
-import { lastDayKeys } from '@/lib/weeklyActivity';
+import { todayKey, parseDate, calculateStreak, calculateBestStreak } from '@/lib/time/dates';
+import { badHabitCreatedDay, getBadHabitBadDaysBefore } from '@/lib/points/habitPenalties';
+import { ptsText } from '@/lib/leagues/leagues';
+import { badHabitPenalty, badHabitResistPoints } from '@/lib/points/badHabitAwards';
+import { lastDayKeys } from '@/lib/time/weeklyActivity';
 import { SwipeRow } from '@/components/ui/SwipeRow';
 import { cx, FOCUS_RING, TAP_TARGET, TRANSITION } from '@/components/ui/primitives/shared';
 

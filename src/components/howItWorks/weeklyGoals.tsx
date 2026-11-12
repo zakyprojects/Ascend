@@ -1,5 +1,5 @@
 import { Fig, Gain, pts, type HowItWorksGuide } from '@/components/ui/HowItWorks';
-import { WEEKLY_GOALS_POINTS, WEEKLY_REFLECTION_POINTS } from '@/lib/pointsConfig';
+import { WEEKLY_GOALS_POINTS, WEEKLY_REFLECTION_POINTS } from '@/lib/points/pointsConfig';
 
 /**
  * Weekly Goals. Rules from lib/pointsConfig.ts WEEKLY_GOALS_POINTS / WEEKLY_REFLECTION_POINTS

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Badge, Button, type BadgeTone } from '@/components/ui/primitives';
 import { AscendLoaderMark } from '@/components/ui/AscendLoadingIndicator';
 import { AppLockup, AppLogo } from '@/components/ui/AppLogo';
-import { compactNumber } from '@/lib/numberFormat';
+import { compactNumber } from '@/lib/leagues/numberFormat';
 import { Caption, Section } from './shared';
 
 const TONES: BadgeTone[] = [

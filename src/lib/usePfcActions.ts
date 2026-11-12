@@ -2,14 +2,14 @@
 // store.ts unchanged. useAppState calls this hook once and returns the same members as before.
 import { useCallback } from 'react';
 import type { AppState, FocusSessionLog, DecisionLog, EmotionLog } from '@/types';
-import { uid, todayKey } from './dates';
-import { skillLateDay } from './skillAwards';
-import { focusFloorDay, isFocusDayEntry } from './focusAwards';
+import { uid, todayKey } from './time/dates';
+import { skillLateDay } from './points/skillAwards';
+import { focusFloorDay, isFocusDayEntry } from './points/focusAwards';
 import { focusSkillLogFor, withReflectionNote } from './focusSkillLog';
 import { editDecisionText, editEmotionNote, editFocusLogText } from './pfcLogEdits';
-import { reconcileLinkedWeeklyGoals } from './weeklyGoalPoints';
-import { applySkillAwardsInternal, applyFocusAwardsInternal } from './stateAwards';
-import { trustedNow, trustedNowMs } from './clock';
+import { reconcileLinkedWeeklyGoals } from './points/weeklyGoalPoints';
+import { applySkillAwardsInternal, applyFocusAwardsInternal } from './points/stateAwards';
+import { trustedNow, trustedNowMs } from './time/clock';
 import type { StoreSetState } from './storeSetState';
 
 export function usePfcActions(setState: StoreSetState, get: () => AppState) {

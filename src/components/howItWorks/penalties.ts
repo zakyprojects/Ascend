@@ -1,5 +1,5 @@
-import { getMissPenaltyMultiplier } from '@/lib/missPenalty';
-import { TIERS } from '@/lib/tiers';
+import { getMissPenaltyMultiplier } from '@/lib/points/missPenalty';
+import { TIERS } from '@/lib/leagues/tiers';
 
 /** Miss / slip multipliers for the guides (lib/missPenalty.ts), with the rank where they grow. */
 const performer = TIERS.find((t) => t.name === 'Performer') ?? TIERS[0];

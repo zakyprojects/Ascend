@@ -8,7 +8,7 @@ import type { View } from '@/lib/views';
 import { isSupabaseConfigured, storedAuthSession } from '@/lib/supabase';
 import { reloadOnceForStaleChunk } from '@/lib/chunkReload';
 import { syncPushSubscription } from '@/lib/push';
-import { WEEK_PARAM } from '@/lib/weekParam';
+import { WEEK_PARAM } from '@/lib/time/weekParam';
 import { setPendingFeedbackStart } from '@/lib/feedback';
 import { isFeedbackView } from '@/components/nav/navConfig';
 import { AppShell } from '@/components/AppShell';

@@ -1,5 +1,5 @@
 import type { TimeTrackerActivity } from '@/types';
-import { trustedNow } from '@/lib/clock';
+import { trustedNow } from '@/lib/time/clock';
 import { nameKey, nameTaken } from '@/lib/uniqueNames';
 
 /** Category names follow the app's one name rule (lib/uniqueNames): " Deep  work" = "deep work". */

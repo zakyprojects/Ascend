@@ -9,7 +9,7 @@ import {
   formatDurationHuman,
   getActivityDisplayColor,
 } from '@/lib/timeTracker';
-import { addDays, formatDateKeyHuman, formatWeekdayDate } from '@/lib/dates';
+import { addDays, formatDateKeyHuman, formatWeekdayDate } from '@/lib/time/dates';
 import { appliedTheme } from '@/lib/theme';
 import { ActivityIcon } from './ActivityIcon';
 import { AscendLoadingIndicator } from '@/components/ui/AscendLoadingIndicator';

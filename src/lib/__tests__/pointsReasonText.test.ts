@@ -1,6 +1,6 @@
 // pointsReasonText (lib/pointsReasonText.ts): Ranks → Recent points shows short plain text for the
 // server's reason strings (real rows from point_entries, 2026-11-10), never week keys or emoji.
-const { pointsReasonText } = await import('../pointsReasonText');
+const { pointsReasonText } = await import('../points/pointsReasonText');
 
 function assert(condition: boolean, msg: string) {
   if (!condition) throw new Error(`Assertion failed: ${msg}`);

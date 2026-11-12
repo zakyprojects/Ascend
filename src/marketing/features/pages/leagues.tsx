@@ -1,5 +1,5 @@
-import { getSeasonStartByNumber } from '@/lib/leagueTime';
-import { TIERS } from '@/lib/tiers';
+import { getSeasonStartByNumber } from '@/lib/time/leagueTime';
+import { TIERS } from '@/lib/leagues/tiers';
 import { LINK_CLASS } from '../../components/MarketingLayout';
 import { featurePath } from '../catalog';
 import { Block, Cards, Note, Rules, Steps, type FeatureContent } from '../blocks';

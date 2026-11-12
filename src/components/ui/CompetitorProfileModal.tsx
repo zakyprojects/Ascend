@@ -3,13 +3,13 @@ import type { LeagueCompetitor, MemberCard } from '@/types';
 import { TierBadge } from './TierBadge';
 import { Dialog, Skeleton } from '@/components/ui/primitives';
 import { CalendarCheck, CheckSquare, BookOpen, Book, Target, Timer, Lock, EyeOff, WifiOff, type LucideIcon } from 'lucide-react';
-import { getProfileStreakStats } from '@/lib/streakLogic';
-import { getCurrentTier } from '@/lib/tiers';
-import { formatDateShort } from '@/lib/dates';
-import { ptUnit } from '@/lib/leagues';
-import { compactNumber } from '@/lib/numberFormat';
+import { getProfileStreakStats } from '@/lib/time/streakLogic';
+import { getCurrentTier } from '@/lib/leagues/tiers';
+import { formatDateShort } from '@/lib/time/dates';
+import { ptUnit } from '@/lib/leagues/leagues';
+import { compactNumber } from '@/lib/leagues/numberFormat';
 import { exerciseAmountText as exerciseText, minutesText } from '@/lib/exerciseSummary';
-import type { MemberDetails } from '@/lib/useMemberDetails';
+import type { MemberDetails } from '@/lib/leagues/useMemberDetails';
 
 interface CompetitorProfileModalProps {
   competitor: LeagueCompetitor | null;

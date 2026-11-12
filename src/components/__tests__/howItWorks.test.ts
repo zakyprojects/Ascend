@@ -27,15 +27,15 @@ import {
   WEEKLY_GOALS_POINTS,
   WEEKLY_REFLECTION_POINTS,
   WORKOUT_POINTS,
-} from '@/lib/pointsConfig';
-import { CUSTOM_HABIT_POINTS } from '@/lib/habitAwards';
-import { READING_BONUS_COOLDOWN_DAYS, READING_BONUS_MIN_LOG_DAYS, READING_BONUS_MIN_SPAN_DAYS } from '@/lib/readingAwards';
-import { FOCUS_MINUTES_PER_POINT, FOCUS_MIN_MINUTES } from '@/lib/focusPoints';
+} from '@/lib/points/pointsConfig';
+import { CUSTOM_HABIT_POINTS } from '@/lib/points/habitAwards';
+import { READING_BONUS_COOLDOWN_DAYS, READING_BONUS_MIN_LOG_DAYS, READING_BONUS_MIN_SPAN_DAYS } from '@/lib/points/readingAwards';
+import { FOCUS_MINUTES_PER_POINT, FOCUS_MIN_MINUTES } from '@/lib/points/focusPoints';
 import { FOCUS_RESUME_WINDOW_MINUTES } from '@/lib/focusSession';
 import { MAX_PARTNERS, CHALLENGE_LENGTH_OPTIONS } from '@/lib/partnerRules';
 import { SKILL_LEVELS } from '@/lib/skillLevels';
 import { MIN_JOURNAL_CONTENT_LENGTH } from '@/lib/journalRules';
-import { getMissPenaltyMultiplier } from '@/lib/missPenalty';
+import { getMissPenaltyMultiplier } from '@/lib/points/missPenalty';
 
 /**
  * Every page's How it works renders in plain Node, carries its rules' numbers from the constants,

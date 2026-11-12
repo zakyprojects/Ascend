@@ -4,12 +4,12 @@ import { useCallback } from 'react';
 import type { AppState, TimeTrackerActivity, TimeTrackerTemplate, TimeTrackerState, TimeTrackerBlock } from '@/types';
 import { DEFAULT_TIME_TRACKER_STATE } from '@/types';
 import { ensureDefaultActivities, autoHydrateDailyLog, checkTimeCollision, normalizeOrSplitMidnightBlock, timeStringToMinutes, minutesToTimeString, commitTimeTrackerDays, describeBlockSpan, findSplitPartner, plannedBlocksForDate, templateDays } from './timeTracker';
-import { uid, todayKey, addDays } from './dates';
-import { computeTimeTrackerAward, timeTrackerAwardId, timeTrackerGraceDay } from './timeTrackerAwards';
+import { uid, todayKey, addDays } from './time/dates';
+import { computeTimeTrackerAward, timeTrackerAwardId, timeTrackerGraceDay } from './points/timeTrackerAwards';
 import { planTemplateEditReach, templateEditReachDays, newLinkedBlockId } from './timeTrackerTemplateReach';
-import { excisePointsEntriesInternal, canToggleTimeBlock } from './stateAwards';
-import { addPointsInternal } from './pointsLedger';
-import { trustedNow } from './clock';
+import { excisePointsEntriesInternal, canToggleTimeBlock } from './points/stateAwards';
+import { addPointsInternal } from './points/pointsLedger';
+import { trustedNow } from './time/clock';
 import type { StoreSetState } from './storeSetState';
 
 export function useTimeTrackerActions(setState: StoreSetState, get: () => AppState) {

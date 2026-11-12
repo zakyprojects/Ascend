@@ -3,7 +3,7 @@ import { CalendarClock, CheckCircle2, Circle, Flame, RotateCcw } from 'lucide-re
 import { Badge, ProgressBar } from '@/components/ui/primitives';
 import { TAP_TARGET } from '@/components/ui/primitives/shared';
 import { UpdateProgressButton } from '@/components/ui/ProgressUpdateDialog';
-import { formatDateShort } from '@/lib/dates';
+import { formatDateShort } from '@/lib/time/dates';
 import { ReflectionNotes } from './ReflectionNotes';
 import {
   type AnyPlan,

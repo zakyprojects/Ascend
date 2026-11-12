@@ -6,8 +6,8 @@ import { FocusSessionContext, type FocusSessionContextValue, type FinishedFocusS
 import { BlockPill } from '@/components/nav/BlockPill';
 import { FloatingDock } from '@/components/nav/FloatingDock';
 import { setBlockPillHidden, EMPTY_HIDDEN } from '@/lib/blockPill';
-import { trustedNow, trustedNowMs } from '@/lib/clock';
-import { todayKey } from '@/lib/dates';
+import { trustedNow, trustedNowMs } from '@/lib/time/clock';
+import { todayKey } from '@/lib/time/dates';
 import type { FocusSession } from '@/lib/focusSession';
 import type { TimeTrackerState } from '@/types';
 import { Caption, Section } from './shared';

@@ -2,14 +2,14 @@
 // store.ts unchanged. useAppState calls this hook once and returns the same members as before.
 import { useCallback } from 'react';
 import type { AppState, Skill, SkillSessionLog, SkillLevel, SkillDrill, SkillDrillCount } from '@/types';
-import { uid, todayKey, weekKey } from './dates';
+import { uid, todayKey, weekKey } from './time/dates';
 import { addLogDrills, drillNameProblem, foldClearedCounts, isDrillGoal, keepValidDrillCounts, normalizeDrillName, normalizeDrillUnit } from './skillDrills';
 import type { NewLogDrill } from './skillDrills';
 import { renameSkillIn } from './itemEdits';
 import { CLEAR_SKILL_LOGS_MAX } from './clearLimits';
-import { removeLinkedWeeklyGoals, reconcileLinkedWeeklyGoals, removeWeeklyGoalsWhere } from './weeklyGoalPoints';
-import { applySkillAwardsInternal } from './stateAwards';
-import { trustedNow } from './clock';
+import { removeLinkedWeeklyGoals, reconcileLinkedWeeklyGoals, removeWeeklyGoalsWhere } from './points/weeklyGoalPoints';
+import { applySkillAwardsInternal } from './points/stateAwards';
+import { trustedNow } from './time/clock';
 import type { StoreSetState } from './storeSetState';
 
 export function useSkillActions(setState: StoreSetState, get: () => AppState) {

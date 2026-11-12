@@ -1,5 +1,5 @@
 import { Fig, Gain, pts, type HowItWorksGuide } from '@/components/ui/HowItWorks';
-import { JOURNAL_POINTS } from '@/lib/pointsConfig';
+import { JOURNAL_POINTS } from '@/lib/points/pointsConfig';
 import { MIN_JOURNAL_CONTENT_LENGTH } from '@/lib/journalRules';
 
 /**

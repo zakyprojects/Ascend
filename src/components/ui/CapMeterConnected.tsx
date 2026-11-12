@@ -1,10 +1,10 @@
 import { AppState } from '@/types';
-import { CapId, getCapStatus } from '@/lib/capStatus';
-import { capLabels, capReachedText } from '@/lib/capCopy';
+import { CapId, getCapStatus } from '@/lib/points/capStatus';
+import { capLabels, capReachedText } from '@/lib/points/capCopy';
 import { CapMeter } from '@/components/ui/CapMeter';
-import { trustedNow } from '@/lib/clock';
-import { useLocalDayKey } from '@/lib/useLocalDayKey';
-import { LATE_POINTS_TEXT, pointsResumeText, useTimezoneWait } from '@/lib/useTimezoneWait';
+import { trustedNow } from '@/lib/time/clock';
+import { useLocalDayKey } from '@/lib/time/useLocalDayKey';
+import { LATE_POINTS_TEXT, pointsResumeText, useTimezoneWait } from '@/lib/time/useTimezoneWait';
 
 /** Caps whose logs the server still credits during a timezone wait (see LATE_POINTS_TEXT). */
 const LATE_POINTS_CAPS: ReadonlySet<CapId> = new Set<CapId>(['reading', 'skills', 'pfc']);

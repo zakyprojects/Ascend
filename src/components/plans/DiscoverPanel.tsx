@@ -4,7 +4,7 @@ import { EmptyState, Skeleton, ToolbarInput, ToolbarSelect } from '@/components/
 import { AscendLoadingIndicator } from '@/components/ui/AscendLoadingIndicator';
 import { TierBadge } from '@/components/ui/TierBadge';
 import { getProfileSeasonPointsByUsername } from '@/lib/auth';
-import { leagueNow } from '@/lib/leagueTime';
+import { leagueNow } from '@/lib/time/leagueTime';
 import { PLAN_CATEGORIES, type ImprovementPlan } from '@/types';
 import { PlanCard } from './PlanCard';
 import { PLAN_TYPES, PLAN_TYPE_META, copiesLabel } from './planMeta';

@@ -1,5 +1,5 @@
 import type { BadHabit, BadHabitLog, Habit, SharedChallenge } from '@/types';
-import { addDays, todayKey } from '../dates';
+import { addDays, todayKey } from '../time/dates';
 import {
   badHabitForPactGoal,
   badHabitStatusOn,

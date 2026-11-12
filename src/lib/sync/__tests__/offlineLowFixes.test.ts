@@ -45,7 +45,7 @@ const events: Array<{ type: string; detail?: unknown }> = [];
 const { diffSyncedCollections, droppedOps, flushOutbox, hasPendingSyncOps, hashRow, lastFullPullKey, readBaseline, recordSyncedChanges, syncStorageFailed } =
   await import('../outbox');
 const { applyRemoteChanges, pullSyncedRows } = await import('../pull');
-const { trustedNowMs } = await import('../../clock');
+const { trustedNowMs } = await import('../../time/clock');
 const { SYNCED_COLLECTIONS } = await import('../syncedCollections');
 const { setTabSyncedHashes, clearTabSyncedHashes, tabSyncedHashes } = await import('../tabVersions');
 const { noteEditTimes, readEditTimes } = await import('../editTimes');

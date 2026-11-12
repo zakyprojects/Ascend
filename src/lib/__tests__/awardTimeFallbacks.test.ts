@@ -2,12 +2,12 @@
 // its own fallback for a time that does not parse: habit, reading, skill and workout sort it last
 // (Infinity), bad habits sort it first (0). Award results must stay exactly as before.
 import type { BadHabit, BadHabitLog, Habit, ReadingLog, Skill, SkillSessionLog, UserBook, WorkoutLog } from '@/types';
-import { localDayOf, timeMsOr, todayKey } from '../dates';
-import { computeHabitAwards } from '../habitAwards';
-import { computeReadingDayAward } from '../readingAwards';
-import { computeSkillAwards } from '../skillAwards';
-import { computeWorkoutAwards } from '../workoutAwards';
-import { badHabitResistId, computeBadHabitAwards } from '../badHabitAwards';
+import { localDayOf, timeMsOr, todayKey } from '../time/dates';
+import { computeHabitAwards } from '../points/habitAwards';
+import { computeReadingDayAward } from '../points/readingAwards';
+import { computeSkillAwards } from '../points/skillAwards';
+import { computeWorkoutAwards } from '../points/workoutAwards';
+import { badHabitResistId, computeBadHabitAwards } from '../points/badHabitAwards';
 
 function assert(condition: boolean, msg: string) {
   if (!condition) throw new Error(`Assertion failed: ${msg}`);

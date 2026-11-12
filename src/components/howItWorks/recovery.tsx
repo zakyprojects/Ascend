@@ -1,5 +1,5 @@
 import { Fig, Gain, pts, type HowItWorksGuide } from '@/components/ui/HowItWorks';
-import { RECOVERY_POINTS } from '@/lib/pointsConfig';
+import { RECOVERY_POINTS } from '@/lib/points/pointsConfig';
 
 /**
  * Recovery. Check-in points from pointsConfig RECOVERY_POINTS (perCheckin, seasonCap) and the rules

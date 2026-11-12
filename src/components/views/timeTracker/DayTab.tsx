@@ -14,9 +14,9 @@ import {
   minutesToTimeString,
   timeStringToMinutes,
 } from '@/lib/timeTracker';
-import { calculateTimeTrackerDailyPoints, TIME_TRACKER_POINTS } from '@/lib/pointsConfig';
-import { TIME_TRACKER_GRACE_MINUTES, timeTrackerGraceDay } from '@/lib/timeTrackerAwards';
-import { formatDateKeyHuman, formatWeekdayDate } from '@/lib/dates';
+import { calculateTimeTrackerDailyPoints, TIME_TRACKER_POINTS } from '@/lib/points/pointsConfig';
+import { TIME_TRACKER_GRACE_MINUTES, timeTrackerGraceDay } from '@/lib/points/timeTrackerAwards';
+import { formatDateKeyHuman, formatWeekdayDate } from '@/lib/time/dates';
 import { PageHero } from '@/components/ui/PageHero';
 import { CapMeter } from '@/components/ui/CapMeter';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';

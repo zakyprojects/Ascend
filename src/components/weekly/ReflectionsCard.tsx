@@ -2,18 +2,18 @@ import { useState } from 'react';
 import { Check, Edit3, PenLine, Plus, Trash2 } from 'lucide-react';
 import type { WeeklyGoalReflection } from '@/types';
 import { AppStore } from '@/lib/store';
-import { getWeeklyReflectionNetPoints, isWeeklyReflectionAwarded, weeklyReflectionAwardedToday } from '@/lib/weeklyGoalPoints';
-import { WEEKLY_REFLECTION_POINTS } from '@/lib/pointsConfig';
-import { reflectionWindow } from '@/lib/weeklyAwards';
-import { trustedNow } from '@/lib/clock';
-import { parseDate } from '@/lib/dates';
+import { getWeeklyReflectionNetPoints, isWeeklyReflectionAwarded, weeklyReflectionAwardedToday } from '@/lib/points/weeklyGoalPoints';
+import { WEEKLY_REFLECTION_POINTS } from '@/lib/points/pointsConfig';
+import { reflectionWindow } from '@/lib/points/weeklyAwards';
+import { trustedNow } from '@/lib/time/clock';
+import { parseDate } from '@/lib/time/dates';
 import { EmptyState, Form, Textarea, useFocusOnRender, useFormController } from '@/components/ui/primitives';
 import { TAP_TARGET_Y } from '@/components/ui/primitives/shared';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { useToast } from '@/components/ui/Toast';
 import { useAsyncActionKey } from '@/lib/useAsyncAction';
 import { useUnsavedChanges } from '@/lib/unsavedChanges';
-import { useMinuteTick } from '@/lib/useMinuteTick';
+import { useMinuteTick } from '@/lib/time/useMinuteTick';
 import { toUserMessage } from '@/lib/userMessage';
 
 /** Where the week's Reflection Window stands, with the time left while it is open. */

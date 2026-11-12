@@ -24,13 +24,13 @@ import {
 } from '@/types';
 import { mergeSharedChallenge } from './pactLifecycle';
 import { ensureDefaultActivities, mergeTimeTrackerDays, type TimeTrackerDayDoc } from './timeTracker';
-import { parseDate } from './dates';
-import { calculateSeasonalTotal } from './leagues';
-import { leagueNow, getSeasonNumber, getSeasonStart } from './leagueTime';
-import { isWeeklyGoalSeasonSplitEntryId } from './weeklyGoalSeasons';
+import { parseDate } from './time/dates';
+import { calculateSeasonalTotal } from './leagues/leagues';
+import { leagueNow, getSeasonNumber, getSeasonStart } from './time/leagueTime';
+import { isWeeklyGoalSeasonSplitEntryId } from './leagues/weeklyGoalSeasons';
 import { computeStateDataWeight, type UserDataWeight } from './dataWeight';
-import { trustedNow, trustedNowMs } from './clock';
-import { mergeRankCelebrated } from './rankCelebration';
+import { trustedNow, trustedNowMs } from './time/clock';
+import { mergeRankCelebrated } from './leagues/rankCelebration';
 import { normalizeThemePreference } from './theme';
 import { mergeLastSeenRelease } from './whatsNew';
 

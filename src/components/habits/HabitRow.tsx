@@ -1,8 +1,8 @@
 import { AlertTriangle, Check, Flame, Pencil, Trash2, Undo2 } from 'lucide-react';
 import type { Habit } from '@/types';
-import { calculateBestStreak, calculateStreak, periodKey, previousPeriodKey } from '@/lib/dates';
-import { getHabitConsecutiveMisses, getMissPenaltyMultiplier } from '@/lib/habitPenalties';
-import { ptsText } from '@/lib/leagues';
+import { calculateBestStreak, calculateStreak, periodKey, previousPeriodKey } from '@/lib/time/dates';
+import { getHabitConsecutiveMisses, getMissPenaltyMultiplier } from '@/lib/points/habitPenalties';
+import { ptsText } from '@/lib/leagues/leagues';
 import { SwipeRow } from '@/components/ui/SwipeRow';
 import { cx, FOCUS_RING, TAP_TARGET, TRANSITION } from '@/components/ui/primitives/shared';
 import { HabitCheck, isReadingLinked } from './HabitCheck';

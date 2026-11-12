@@ -1,7 +1,7 @@
 import { AppState, BadHabit, BadHabitLog, Habit, SharedChallenge } from '@/types';
 import { isPartnershipUser1 } from './partnershipSide';
-import { trustedNow } from './clock';
-import { todayKey, previousPeriodKey, addDays, parseDate, localDayStartMs } from './dates';
+import { trustedNow } from './time/clock';
+import { todayKey, previousPeriodKey, addDays, parseDate, localDayStartMs } from './time/dates';
 import { sameName } from './uniqueNames';
 import { PRESET_BAD_HABITS, PRESET_CATEGORIES, type PresetBadHabit, type PresetHabit } from './presets';
 

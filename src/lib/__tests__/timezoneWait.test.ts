@@ -1,4 +1,4 @@
-import { waitHoldsDayPreview } from '../timezoneStatus';
+import { waitHoldsDayPreview } from '../time/timezoneStatus';
 
 function assert(condition: boolean, msg: string) {
   if (!condition) {

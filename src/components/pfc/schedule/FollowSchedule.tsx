@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { AppStore } from '@/lib/store';
 import type { View } from '@/lib/views';
-import { todayKey } from '@/lib/dates';
-import { trustedNow } from '@/lib/clock';
+import { todayKey } from '@/lib/time/dates';
+import { trustedNow } from '@/lib/time/clock';
 import { ensureDefaultActivities, timeStringToMinutes } from '@/lib/timeTracker';
 import { currentScheduleBlock } from '../scheduleBlocks';
 import { ScheduleStart, ScheduleStopConfirm } from './ScheduleIdle';

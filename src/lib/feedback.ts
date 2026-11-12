@@ -1,4 +1,4 @@
-import { trustedNowMs } from './clock';
+import { trustedNowMs } from './time/clock';
 import { supabase } from './supabase';
 import {
   FEEDBACK_ERROR_MESSAGES,

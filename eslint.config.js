@@ -27,16 +27,16 @@ export default tseslint.config(
       '@typescript-eslint/no-unused-vars': 'off',
       'prefer-const': 'off',
       'no-empty': 'off',
-      // The device clock can be moved by the user: read the time from src/lib/clock.ts.
+      // The device clock can be moved by the user: read the time from src/lib/time/clock.ts.
       'no-restricted-syntax': [
         'error',
         {
           selector: "NewExpression[callee.name='Date'][arguments.length=0]",
-          message: 'Use trustedNow() from src/lib/clock.ts: the device clock can be changed by the user.',
+          message: 'Use trustedNow() from src/lib/time/clock.ts: the device clock can be changed by the user.',
         },
         {
           selector: "CallExpression[callee.object.name='Date'][callee.property.name='now']",
-          message: 'Use trustedNowMs() from src/lib/clock.ts: the device clock can be changed by the user.',
+          message: 'Use trustedNowMs() from src/lib/time/clock.ts: the device clock can be changed by the user.',
         },
       ],
     },

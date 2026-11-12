@@ -1,7 +1,7 @@
 import { Check, ChevronLeft, ChevronRight } from 'lucide-react';
 import type { TimeTrackerState } from '@/types';
-import { addDays, parseDate, startOfWeek, todayKey } from '@/lib/dates';
-import { calculateTimeTrackerDailyPoints, TIME_TRACKER_POINTS } from '@/lib/pointsConfig';
+import { addDays, parseDate, startOfWeek, todayKey } from '@/lib/time/dates';
+import { calculateTimeTrackerDailyPoints, TIME_TRACKER_POINTS } from '@/lib/points/pointsConfig';
 import { plannedBlocksForDate } from '@/lib/timeTracker';
 import { cx, TAP_TARGET } from '@/components/ui/primitives/shared';
 

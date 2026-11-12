@@ -3,14 +3,14 @@
 // 1 chapter = 10 pts, 10 pts a day shared by all books, Finish pages earn nothing,
 // finish bonus gates (5 reading days over 7+ days) and the 13-day cooldown.
 import type { PointsEntry, ReadingLog, UserBook } from '@/types';
-import { READING_POINTS } from '../pointsConfig';
+import { READING_POINTS } from '../points/pointsConfig';
 import {
   computeReadingDayAward,
   readingBonusCooldown,
   readingBonusProgress,
   readingBonusId,
   READING_BONUS_COOLDOWN_DAYS,
-} from '../readingAwards';
+} from '../points/readingAwards';
 
 function assert(condition: boolean, msg: string) {
   if (!condition) {

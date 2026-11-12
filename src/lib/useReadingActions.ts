@@ -3,16 +3,16 @@
 // destructures the members (their places in its return object are not side by side).
 import { useCallback } from 'react';
 import type { AppState, ReadingLog, UserBook, UserBookStatus, CuratedBook, BookCategory } from '@/types';
-import { periodKey, todayKey, weekKey } from './dates';
+import { periodKey, todayKey, weekKey } from './time/dates';
 import type { LinkedPactTick } from './pactLifecycle';
 import { tickPactsLinkedTo } from './pactLifecycle';
 import { stampLogUnits, switchBookUnit, takeBackTodaysReading, unitSwitchDefaults } from './bookUnits';
-import { isChapterBook, meetsReadingBonusGates, readingBonusCooldown, readingBonusAlreadyGiven, readingBonusId } from './readingAwards';
-import { removeLinkedWeeklyGoals, reconcileLinkedWeeklyGoals } from './weeklyGoalPoints';
-import { excisePointsEntriesInternal, applyReadingAwardsInternal } from './stateAwards';
-import { addPointsInternal } from './pointsLedger';
-import { trustedNow, trustedNowMs } from './clock';
-import { READING_POINTS } from './pointsConfig';
+import { isChapterBook, meetsReadingBonusGates, readingBonusCooldown, readingBonusAlreadyGiven, readingBonusId } from './points/readingAwards';
+import { removeLinkedWeeklyGoals, reconcileLinkedWeeklyGoals } from './points/weeklyGoalPoints';
+import { excisePointsEntriesInternal, applyReadingAwardsInternal } from './points/stateAwards';
+import { addPointsInternal } from './points/pointsLedger';
+import { trustedNow, trustedNowMs } from './time/clock';
+import { READING_POINTS } from './points/pointsConfig';
 import type { StoreSetState } from './storeSetState';
 
 export function useReadingActions(setState: StoreSetState, afterCommit: (fn: () => void) => void, sendLinkedPactTicks: (ticks: readonly LinkedPactTick[], saved: string) => void) {

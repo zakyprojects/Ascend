@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { trustedNowMs } from '@/lib/clock';
+import { trustedNowMs } from '@/lib/time/clock';
 import { formatTimeLeft } from '@/lib/timeTracker';
 
 interface LiveCountdownProps {

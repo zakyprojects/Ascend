@@ -2,8 +2,8 @@ import { CheckSquare, Compass, Flame, Target, type LucideIcon } from 'lucide-rea
 import type { BadgeTone } from '@/components/ui/primitives';
 import type { ProgressTone } from '@/components/ui/primitives';
 import type { ImprovementPlan, PlanType, UserPlanFollow } from '@/types';
-import { calculateActivePlanStreak, calculateElapsedDays, isPlanJourneyDoneThisPeriod, parseDate, startOfWeek, todayKey } from '@/lib/dates';
-import { trustedNowMs } from '@/lib/clock';
+import { calculateActivePlanStreak, calculateElapsedDays, isPlanJourneyDoneThisPeriod, parseDate, startOfWeek, todayKey } from '@/lib/time/dates';
+import { trustedNowMs } from '@/lib/time/clock';
 
 /** A plan the user made, or their own copy of someone else's: both render with the same card. */
 export type AnyPlan = ImprovementPlan | UserPlanFollow;

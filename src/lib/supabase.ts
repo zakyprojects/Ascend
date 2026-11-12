@@ -1,28 +1,28 @@
 import { createClient } from '@supabase/supabase-js';
 import { ImprovementPlan, PartnerInvite, Partnership, AppState, SharedChallenge, UserPlanFollow, AppNotification, PlanReflectionNote, type MemberCard } from '@/types';
-import { buildMemberStats, toSeasonCard } from './memberStats';
-import { getSeasonStart, leagueNow } from './leagueTime';
+import { buildMemberStats, toSeasonCard } from './leagues/memberStats';
+import { getSeasonStart, leagueNow } from './time/leagueTime';
 import { mergeAppState } from './stateMerger';
 import { reconcileSharedChallengeLifecycle } from './pactLifecycle';
-import { todayKey } from './dates';
+import { todayKey } from './time/dates';
 import { GuardBlockedError, PreFetchSyncError, SessionLostError } from './errors';
 import {
   DEVICE_TIMEZONE_SENT_EVENT,
   deviceTimeZone,
   deviceTimezoneSent,
   markDeviceTimezoneSent,
-} from './deviceTimezone';
+} from './time/deviceTimezone';
 import { computeStateDataWeight, savedItemCount, type UserDataWeight } from './dataWeight';
 import { withoutSyncedCollections } from './sync/syncedCollections';
 import { storeTabSyncedHashes } from './sync/tabVersions';
 import { withoutRetiredKeys, withoutUnsavedBlobKeys } from './retiredStateKeys';
 import { withoutDeviceLocalKeys } from './deviceLocalState';
-import { trustedNow, trustedNowMs } from './clock';
+import { trustedNow, trustedNowMs } from './time/clock';
 import { CaptchaRejectedError, isCaptchaRejection, withCaptcha } from './captcha';
 import { SentSnapshots, snapshotOf } from './sentSnapshots';
 import { canonical } from './stateEquality';
 import { ilikeExactOrValue } from './usernameRules';
-import { parseLeagueBoards, type LeagueStandingsResult } from './leagueStandingsRefresh';
+import { parseLeagueBoards, type LeagueStandingsResult } from './leagues/leagueStandingsRefresh';
 
 function getValidSupabaseUrl(url: unknown): string | null {
   if (typeof url !== 'string') return null;

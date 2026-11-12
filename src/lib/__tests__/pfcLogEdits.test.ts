@@ -4,7 +4,7 @@
 import type { DecisionLog, EmotionLog, FocusSessionLog, SkillSessionLog } from '@/types';
 import { editDecisionText, editEmotionNote, editFocusLogText, FOCUS_TASK_MAX } from '../pfcLogEdits';
 import { focusSkillLogId } from '../focusSkillLog';
-import { computeFocusAwards } from '../focusAwards';
+import { computeFocusAwards } from '../points/focusAwards';
 
 function assert(condition: boolean, msg: string) {
   if (!condition) throw new Error(`Assertion failed: ${msg}`);

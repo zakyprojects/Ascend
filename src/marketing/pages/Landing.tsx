@@ -15,10 +15,10 @@ import {
   WEEKLY_GOALS_POINTS,
   WEEKLY_REFLECTION_POINTS,
   WORKOUT_POINTS,
-} from '@/lib/pointsConfig';
+} from '@/lib/points/pointsConfig';
 import { PRESET_BAD_HABITS, PRESET_CATEGORIES } from '@/lib/presets';
-import { TIERS } from '@/lib/tiers';
-import { FOCUS_MINUTES_PER_POINT, FOCUS_MIN_MINUTES } from '@/lib/focusPoints';
+import { TIERS } from '@/lib/leagues/tiers';
+import { FOCUS_MINUTES_PER_POINT, FOCUS_MIN_MINUTES } from '@/lib/points/focusPoints';
 import { LINK_CLASS, MarketingLayout } from '../components/MarketingLayout';
 import { HeroShot, Screenshot } from '../components/Screenshot';
 import { CtaBand, FaqList, Section, SectionHeading } from '../components/Sections';

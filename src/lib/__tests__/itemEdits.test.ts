@@ -19,7 +19,7 @@ import {
   subtaskTitleProblem,
   workoutFields,
 } from '../itemEdits';
-import { computeWorkoutAwards } from '../workoutAwards';
+import { computeWorkoutAwards } from '../points/workoutAwards';
 import { runningPactsLinkedTo, runningPactsLinkedToBadHabit } from '../pactLifecycle';
 
 function assert(condition: boolean, msg: string) {

@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useReducer, useRef, useState, type ReactNode } from 'react';
 import type { AppStore } from '@/lib/store';
-import { clockSettled, trustedNowMs } from '@/lib/clock';
+import { clockSettled, trustedNowMs } from '@/lib/time/clock';
 import { isDeviceOffline } from '@/lib/deviceOffline';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import {

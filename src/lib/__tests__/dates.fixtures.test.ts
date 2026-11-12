@@ -1,6 +1,6 @@
 // Fixtures for the shared local-midnight-safe date utilities: day keys, Monday weeks,
 // week stepping across year ends, and streaks. CI runs them in more than one time zone.
-import { addDays, addWeeks, calculateBestStreak, calculateStreak, todayKey, uid, weekKey } from '../dates';
+import { addDays, addWeeks, calculateBestStreak, calculateStreak, todayKey, uid, weekKey } from '../time/dates';
 
 function assert(condition: boolean, msg: string) {
   if (!condition) {

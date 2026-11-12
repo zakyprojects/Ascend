@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { LeagueType } from '@/types';
-import { formatCountdown, getTimeUntilReset } from '@/lib/leagues';
-import { leagueNow } from '@/lib/leagueTime';
+import { formatCountdown, getTimeUntilReset } from '@/lib/leagues/leagues';
+import { leagueNow } from '@/lib/time/leagueTime';
 
 /** Live time-to-reset; owns its 1s tick so only this text re-renders, never the page around it. */
 export function LeagueCountdown({ type, className }: { type: LeagueType; className?: string }) {

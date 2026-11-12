@@ -61,7 +61,7 @@ await story('saves.hook (signed-in saves)', async () => {
 
   // T5: tick a habit; the habit row goes out, no point_entries write, no point totals in the blob.
   fake.resetCounts();
-  const today = (await import('../dates')).todayKey();
+  const today = (await import('../time/dates')).todayKey();
   h.s().toggleHabit('srv-a');
   await until(() => rows('habits').find((r) => r.id === 'srv-a')?.data?.completions?.[today], 'T5: tick reached the habits table', 5000);
   await until(() => (h.s().state.pointsHistory || []).some((e) => JSON.stringify(e).includes('srv-a')), 'T5 precondition: the tick made a local points entry');

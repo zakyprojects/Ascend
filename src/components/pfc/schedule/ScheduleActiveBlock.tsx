@@ -4,7 +4,7 @@ import type { AppStore } from '@/lib/store';
 import type { View } from '@/lib/views';
 import type { TimeTrackerActivity, TimeTrackerBlock } from '@/types';
 import { blockIntervalMs, formatTime12h, getAscendViewForModule } from '@/lib/timeTracker';
-import { todayKey } from '@/lib/dates';
+import { todayKey } from '@/lib/time/dates';
 import { ProgressBar } from '@/components/ui/primitives';
 import { cx } from '@/components/ui/primitives/shared';
 import { useToast } from '@/components/ui/Toast';

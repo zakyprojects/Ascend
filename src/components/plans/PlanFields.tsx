@@ -2,7 +2,7 @@ import { ChevronDown, ChevronUp, Plus, Trash2 } from 'lucide-react';
 import { FieldRow, Input, NumberField, Select, Textarea } from '@/components/ui/primitives';
 import { TAP_TARGET } from '@/components/ui/primitives/shared';
 import { PLAN_CATEGORIES, type PlanType } from '@/types';
-import { earliestTargetDate } from '@/lib/dates';
+import { earliestTargetDate } from '@/lib/time/dates';
 
 export interface PlanFormValues {
   title: string;

@@ -8,7 +8,7 @@ import { AscendLoadingIndicator } from '@/components/ui/AscendLoadingIndicator';
 import { useAsyncAction } from '@/lib/useAsyncAction';
 import { useUnsavedChanges } from '@/lib/unsavedChanges';
 import { toUserMessage } from '@/lib/userMessage';
-import { trustedNowMs } from '@/lib/clock';
+import { trustedNowMs } from '@/lib/time/clock';
 import { useToast } from '@/components/ui/Toast';
 import { SettingsCard } from './SettingRow';
 import { USERNAME_TAKEN, usernameFormatProblem } from '@/lib/usernameRules';

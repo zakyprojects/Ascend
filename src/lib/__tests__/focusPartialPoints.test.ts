@@ -20,10 +20,10 @@ const store = new Map<string, string>();
   clear: () => store.clear(),
 } as Storage;
 
-const { focusR1Points, FOCUS_DAILY_CAP } = await import('../focusPoints');
-const { computeFocusAwards, creditedFocusMinutes, focusFloorDay } = await import('../focusAwards');
+const { focusR1Points, FOCUS_DAILY_CAP } = await import('../points/focusPoints');
+const { computeFocusAwards, creditedFocusMinutes, focusFloorDay } = await import('../points/focusAwards');
 const S = await import('../focusSession');
-const { PFC_POINTS } = await import('../pointsConfig');
+const { PFC_POINTS } = await import('../points/pointsConfig');
 
 function assert(condition: boolean, msg: string) {
   if (!condition) throw new Error(`Assertion failed: ${msg}`);

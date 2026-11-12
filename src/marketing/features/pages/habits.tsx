@@ -1,8 +1,8 @@
-import { CUSTOM_HABIT_POINTS } from '@/lib/habitAwards';
-import { getMissPenaltyMultiplier } from '@/lib/missPenalty';
-import { PRESET_HABIT_POINTS } from '@/lib/pointsConfig';
+import { CUSTOM_HABIT_POINTS } from '@/lib/points/habitAwards';
+import { getMissPenaltyMultiplier } from '@/lib/points/missPenalty';
+import { PRESET_HABIT_POINTS } from '@/lib/points/pointsConfig';
 import { PRESET_CATEGORIES } from '@/lib/presets';
-import { TIERS } from '@/lib/tiers';
+import { TIERS } from '@/lib/leagues/tiers';
 import { LINK_CLASS } from '../../components/MarketingLayout';
 import { featurePath } from '../catalog';
 import { Block, Cards, Note, Rules, Steps, type FeatureContent } from '../blocks';

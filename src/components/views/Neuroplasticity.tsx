@@ -22,8 +22,8 @@ import type { AppStore } from '@/lib/store';
 import { cx, PageColumns } from '@/components/ui/primitives';
 import { Reveal } from '@/components/ui/Motion';
 import { LESSONS } from '@/lib/lessons';
-import { getSeasonNumber, leagueNow } from '@/lib/leagueTime';
-import { isLessonReadInSeason } from '@/lib/lessonAwards';
+import { getSeasonNumber, leagueNow } from '@/lib/time/leagueTime';
+import { isLessonReadInSeason } from '@/lib/points/lessonAwards';
 import { LessonReader, pointsLabel } from '@/components/lessons/LessonReader';
 
 type Tone = 'emerald' | 'cyan' | 'purple' | 'rose';

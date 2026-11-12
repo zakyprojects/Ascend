@@ -3,7 +3,7 @@ import { ArrowLeft, ChevronRight } from 'lucide-react';
 import { Badge, Dialog, Form } from '@/components/ui/primitives';
 import type { AppStore } from '@/lib/store';
 import type { PlanType } from '@/types';
-import { addDays, isNewPastDate, todayKey } from '@/lib/dates';
+import { addDays, isNewPastDate, todayKey } from '@/lib/time/dates';
 import { useUnsavedChanges } from '@/lib/unsavedChanges';
 import { STARTER_TEMPLATES, type PlanTemplate } from '@/data/planTemplates';
 import { PLAN_NAME_TAKEN, PLAN_TYPES, PLAN_TYPE_META, ownPlans } from './planMeta';

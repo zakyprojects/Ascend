@@ -16,7 +16,7 @@ await story('workouts.hook (workout actions)', async () => {
   await until(() => h.s().state.workouts.some((w) => w.id === 'w-old'), 'T19: earlier workout loaded');
   await quiet(1500);
 
-  const today = (await import('../dates')).todayKey();
+  const today = (await import('../time/dates')).todayKey();
   const pointsBefore = h.s().state.pointsHistory.length;
   h.s().logWorkout('HookRun', 30);
   const mine = () => h.s().state.workouts.find((w) => w.date === today && (w.type === 'HookRun' || w.type === 'HookRide'));

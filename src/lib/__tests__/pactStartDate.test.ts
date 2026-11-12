@@ -15,8 +15,8 @@ import {
   reconcileSharedChallengeLifecycle,
   tickLinkedPacts,
 } from '../pactLifecycle';
-import { trustedNow } from '../clock';
-import { addDays, todayKey } from '../dates';
+import { trustedNow } from '../time/clock';
+import { addDays, todayKey } from '../time/dates';
 
 function assert(condition: boolean, msg: string) {
   if (!condition) throw new Error(`Assertion failed: ${msg}`);

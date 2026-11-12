@@ -14,7 +14,7 @@ await story('timeTracker.hook (Time Tracker actions)', async () => {
   await quiet(1500);
 
   // T18
-  const today = (await import('../dates')).todayKey();
+  const today = (await import('../time/dates')).todayKey();
   const activity = h.s().addTimeTrackerActivity({ name: 'HookCategory', color: '#123456', icon: 'Star', isSystemDefault: false });
   await until(() => h.s().state.timeTracker?.activities?.some((a) => a.id === activity.id), 'T18: new category in state');
   await until(() => rows('time_tracker_activities').some((r) => r.id === activity.id || JSON.stringify(r).includes(activity.id)), 'T18: category row reached time_tracker_activities', 5000);

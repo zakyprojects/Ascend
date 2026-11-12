@@ -1,5 +1,5 @@
-import { getSeasonStartByNumber } from '@/lib/leagueTime';
-import { getMissPenaltyMultiplier } from '@/lib/missPenalty';
+import { getSeasonStartByNumber } from '@/lib/time/leagueTime';
+import { getMissPenaltyMultiplier } from '@/lib/points/missPenalty';
 import {
   BAD_HABIT_POINTS,
   JOURNAL_POINTS,
@@ -12,8 +12,8 @@ import {
   WEEKLY_GOALS_POINTS,
   WEEKLY_REFLECTION_POINTS,
   WORKOUT_POINTS,
-} from '@/lib/pointsConfig';
-import { TIERS } from '@/lib/tiers';
+} from '@/lib/points/pointsConfig';
+import { TIERS } from '@/lib/leagues/tiers';
 import { LINK_CLASS } from '../../components/MarketingLayout';
 import { featurePath } from '../catalog';
 import { Block, Cards, Note, Rules, type FeatureContent } from '../blocks';

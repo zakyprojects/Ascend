@@ -4,8 +4,8 @@
 //        current state and save; a log delete removes the row; deleting the skill removes it and the
 //        weekly goal linked to it.
 import { bootHook, story, until, quiet, rows, assert, pass, server, UID } from './harness/bootHook';
-import { trustedNow } from '../clock';
-import { weekKey } from '../dates';
+import { trustedNow } from '../time/clock';
+import { weekKey } from '../time/dates';
 
 const blobAt = 'Sun 2026-11-01 5:00 AM PKT (UTC+05:00)';
 
@@ -14,7 +14,7 @@ await story('skills.hook (skill actions)', async () => {
   const h = await bootHook({ as: 'signedIn' });
   await until(h.loaded, 'signed-in boot loaded');
   await quiet(1500);
-  const today = (await import('../dates')).todayKey();
+  const today = (await import('../time/dates')).todayKey();
   const week = weekKey(trustedNow());
 
   const skill = h.s().addSkill('HookSkill');

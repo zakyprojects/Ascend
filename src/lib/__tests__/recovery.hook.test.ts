@@ -13,7 +13,7 @@ await story('recovery.hook (tracker, check-in, craving actions)', async () => {
   const h = await bootHook({ as: 'signedIn' });
   await until(h.loaded, 'signed-in boot loaded');
   await quiet(1500);
-  const today = (await import('../dates')).todayKey();
+  const today = (await import('../time/dates')).todayKey();
 
   h.s().setAddictionTracker('HookQuit', '2026-10-01T00:00:00.000Z');
   await until(() => h.s().state.addictionTracker?.title === 'HookQuit', 'T21: tracker in state');

@@ -21,10 +21,10 @@ import {
   prepareLogDrills,
 } from '../skillDrills';
 import { LINKED_GOAL_METRICS, computeLinkedGoalProgress, linkedGoalCrossing, linkedGoalUnit, linkedItemExists } from '../linkedGoalMetrics';
-import { computeSkillAwards } from '../skillAwards';
+import { computeSkillAwards } from '../points/skillAwards';
 import { mergeAppState } from '../stateMerger';
-import { getWeekDates, weekKey } from '../dates';
-import { reconcileLinkedWeeklyGoals } from '../weeklyGoalPoints';
+import { getWeekDates, weekKey } from '../time/dates';
+import { reconcileLinkedWeeklyGoals } from '../points/weeklyGoalPoints';
 
 function assert(condition: boolean, msg: string) {
   if (!condition) {

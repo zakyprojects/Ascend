@@ -1,6 +1,6 @@
 import { Fig, Gain, Loss, pts, type HowItWorksGuide } from '@/components/ui/HowItWorks';
-import { PRESET_HABIT_POINTS } from '@/lib/pointsConfig';
-import { CUSTOM_HABIT_POINTS } from '@/lib/habitAwards';
+import { PRESET_HABIT_POINTS } from '@/lib/points/pointsConfig';
+import { CUSTOM_HABIT_POINTS } from '@/lib/points/habitAwards';
 import { missRule } from './penalties';
 
 /**
