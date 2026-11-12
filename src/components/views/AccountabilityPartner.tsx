@@ -21,6 +21,7 @@ import { CHALLENGE_LENGTH_OPTIONS, MAX_PARTNERS, partnerLimitText } from '@/lib/
 import { addDays, todayKey } from '@/lib/time/dates';
 import { useLocalDayKey } from '@/lib/time/useLocalDayKey';
 import { usePartnerDayKeys } from '@/lib/partners/usePartnerDayKeys';
+import { APP_REFRESH_EVENT } from '@/lib/store/appRefresh';
 import { ptUnit, ptsText } from '@/lib/leagues/leagues';
 import { createNotificationSupabase } from '@/lib/auth/supabase';
 import { calculateUnifiedStreak } from '@/lib/time/streakLogic';
@@ -171,6 +172,7 @@ export function AccountabilityPartner({ store, onNavigate }: { store: AppStore; 
 
   // The partner's season points, streak and avatar from the server, kept with the partner they are
   // for: a tab switch never shows the previous partner's numbers, and a failed fetch is never zeros.
+  // A pull-to-refresh fetches them again with the numbers kept on screen; a failed refetch keeps them.
   const [partnerStats, setPartnerStats] = useState<{
     name: string;
     status: 'ready' | 'failed';
@@ -181,26 +183,34 @@ export function AccountabilityPartner({ store, onNavigate }: { store: AppStore; 
   const [statsAttempt, setStatsAttempt] = useState(0);
   const { getPartnerProfileStats } = store;
   useEffect(() => {
+    const onRefresh = () => setStatsAttempt((n) => n + 1);
+    window.addEventListener(APP_REFRESH_EVENT, onRefresh);
+    return () => window.removeEventListener(APP_REFRESH_EVENT, onRefresh);
+  }, []);
+  useEffect(() => {
     if (!partnerName) return;
     let mounted = true;
+    // This partner's numbers already on screen stay when the fetch fails.
+    const failed = () =>
+      setPartnerStats((prev) => (prev?.name === partnerName && prev.status === 'ready' ? prev : { name: partnerName, status: 'failed' }));
     getPartnerProfileStats(partnerName)
       .then((res) => {
         if (!mounted) return;
-        setPartnerStats(
-          res
-            ? {
-                name: partnerName,
-                status: 'ready',
-                seasonPoints: res.seasonPoints,
-                streak: res.stats?.currentStreakDays ?? res.stats?.streakDays ?? 0,
-                avatar: res.avatar,
-              }
-            : { name: partnerName, status: 'failed' }
-        );
+        if (!res) {
+          failed();
+          return;
+        }
+        setPartnerStats({
+          name: partnerName,
+          status: 'ready',
+          seasonPoints: res.seasonPoints,
+          streak: res.stats?.currentStreakDays ?? res.stats?.streakDays ?? 0,
+          avatar: res.avatar,
+        });
       })
       .catch((err) => {
         console.error('[Partners] partner stats fetch failed:', err);
-        if (mounted) setPartnerStats({ name: partnerName, status: 'failed' });
+        if (mounted) failed();
       });
     return () => {
       mounted = false;

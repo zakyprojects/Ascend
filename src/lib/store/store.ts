@@ -2305,8 +2305,9 @@ export function useAppState() {
 
   /**
    * Pull-to-refresh: sends pending changes, pulls what other devices changed and the settings doc
-   * (the reconnect sync, without its 3-minute throttle), notifications and league standings, and
-   * tells the focus session to pull (APP_REFRESH_EVENT). No page reload, no version check. Signed
+   * (the reconnect sync, without its 3-minute throttle), notifications, league standings and partner
+   * data (invites, partnerships, pacts; what is on screen stays when a read fails), and tells the
+   * focus session and the Partners page to pull (APP_REFRESH_EVENT). No page reload, no version check. Signed
    * out or offline it does nothing (the offline banner already says why). Never rejects.
    */
   const refreshNow = useCallback(async (): Promise<void> => {
@@ -2316,6 +2317,7 @@ export function useAppState() {
       reconnectSyncRef.current?.(true),
       refreshNotifications(),
       refreshLeagueStandings({ full: true }),
+      partnersRefreshRef.current?.(),
     ]);
     for (const result of results) {
       if (result.status === 'rejected') console.error('[SYNC] Refresh failed:', result.reason);

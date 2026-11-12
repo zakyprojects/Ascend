@@ -3,6 +3,7 @@ import { trustedNow } from '../time/clock';
 import { todayKeyInZone } from '../time/dates';
 import { isSupabaseConfigured, supabase } from '../auth/supabase';
 import { isDeviceOffline } from '../store/deviceOffline';
+import { APP_REFRESH_EVENT } from '../store/appRefresh';
 
 const CHECK_INTERVAL_MS = 30000;
 
@@ -23,10 +24,10 @@ const sameKeys = (a: DayKeys, b: DayKeys) =>
 
 /**
  * Each partner's own "today" (YYYY-MM-DD in their server timezone, the day their challenge ticks are
- * stored under), by partner user id. Re-read when the partner list changes and when the tab is
- * shown; re-checked every 30 s so it rolls over at each partner's own midnight. A partner missing
- * from the result (guest, failed read, the server function not deployed yet) has no entry: callers
- * fall back to the viewer's day.
+ * stored under), by partner user id. Re-read when the partner list changes, when the tab is shown
+ * and on pull-to-refresh (a failed read keeps the zones it had); re-checked every 30 s so it rolls
+ * over at each partner's own midnight. A partner missing from the result (guest, failed read, the
+ * server function not deployed yet) has no entry: callers fall back to the viewer's day.
  */
 export function usePartnerDayKeys(partnerIds: readonly string[]): DayKeys {
   const idsKey = [...new Set(partnerIds.filter(Boolean))].sort().join(',');
@@ -56,10 +57,12 @@ export function usePartnerDayKeys(partnerIds: readonly string[]): DayKeys {
     void read().catch(() => undefined);
     document.addEventListener('visibilitychange', onVisible);
     window.addEventListener('online', onOnline);
+    window.addEventListener(APP_REFRESH_EVENT, onOnline);
     return () => {
       active = false;
       document.removeEventListener('visibilitychange', onVisible);
       window.removeEventListener('online', onOnline);
+      window.removeEventListener(APP_REFRESH_EVENT, onOnline);
     };
   }, [idsKey]);
 
