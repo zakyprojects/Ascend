@@ -54,6 +54,8 @@ export const fake = {
   log: [] as Req[],
   holds: [] as Hold[],
   fails: new Map<string, { status: number; methods: string[] }>(),
+  /** What rpc/ascend_league_boards answers (null by default: no standings in most hook tests). */
+  leagueBoards: null as unknown,
   inFlight: new Map<string, number>(),
   peak: new Map<string, number>(),
   /** Holds every request that matches until release(); the request counts as in flight meanwhile. */
@@ -136,6 +138,7 @@ async function route(req: Request, url: URL, r: Req): Promise<Response> {
     // eslint-disable-next-line no-restricted-syntax -- the fake server's clock
     if (fn === 'server_now') return json(200, new Date(Date.now()).toISOString());
     if (fn === 'ascend_my_profile') return json(200, { email: EMAIL, device_timezone: ACCOUNT_TZ, timezone: ACCOUNT_TZ });
+    if (fn === 'ascend_league_boards') return json(200, fake.leagueBoards);
     return json(200, null);
   }
   const body = r.body;

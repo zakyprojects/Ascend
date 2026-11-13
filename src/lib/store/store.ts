@@ -418,6 +418,14 @@ export function useAppState() {
     return offline || leagueRefresher.lastAttemptFailed() ? 'failed' : 'loading';
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [leagueRefresher, currentUserId, leagueDataVersion]);
+  /**
+   * The standings are on screen ('ready') but the last refresh failed (or was tried offline), so
+   * they may be out of date. Stays true while a new attempt runs, until one succeeds.
+   */
+  const isLeagueStandingsStale = useCallback(
+    (): boolean => getLeagueStandingsStatus() === 'ready' && leagueRefresher.lastAttemptFailed(),
+    [getLeagueStandingsStatus, leagueRefresher]
+  );
   /** Sign-out: the next account must not see this viewer's standings. */
   const clearLeagueStandings = useCallback(() => {
     leagueRefresher.reset();
@@ -2422,6 +2430,7 @@ export function useAppState() {
     toggleNotificationPreference,
     getLeagueData,
     refreshLeagueStandings,
+    isLeagueStandingsStale,
     getLeagueStandingsStatus,
     // New Module Actions
     ...workoutActions,

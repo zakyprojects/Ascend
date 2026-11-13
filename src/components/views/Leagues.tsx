@@ -140,6 +140,8 @@ export function Leagues({ store, onOpenAuth }: LeaguesProps) {
   const status = store.getLeagueStandingsStatus();
   const loaded = status === 'ready';
   const failed = status === 'failed' && !retrying;
+  // Rows on screen, but the last refresh failed: they may be out of date.
+  const stale = loaded && store.isLeagueStandingsStale();
   const hasPlace = loaded && board.userPoints > 0;
   const memberCount = boardMemberCount(board.competitors);
   // The table lists the members the place counts (points this period), then you and members
@@ -268,6 +270,18 @@ export function Leagues({ store, onOpenAuth }: LeaguesProps) {
                     <p className="text-xs text-content-muted">{getLeaguePeriodLabel(activeLeague, now)}</p>
                   </div>
                 </div>
+
+                {stale && (
+                  <div role="status" className="flex flex-wrap items-center justify-between gap-2 border-b border-overlay-subtle px-4 py-2 text-xs text-content-secondary sm:px-5">
+                    <span className="flex items-center gap-2">
+                      <WifiOff size={14} aria-hidden="true" className="shrink-0 text-content-muted" />
+                      Couldn't refresh. Showing what was loaded last.
+                    </span>
+                    <Button variant="ghost" size="sm" type="button" onClick={retry} loading={retrying}>
+                      Retry
+                    </Button>
+                  </div>
+                )}
 
                 {failed && !loaded ? (
                   <EmptyState

@@ -7,8 +7,9 @@ import { bootHook, story, until, quiet, eq, assert, pass, server, UID } from './
 
 const blobAt = 'Sun 2026-11-01 5:00 AM PKT (UTC+05:00)';
 
-// Object.keys(useAppState()) at ef21c97 (the 175 members, in order), plus refreshNow (pull-to-refresh)
-// and firstLoadFailed / retryFirstLoad (the failed-first-load gate).
+// Object.keys(useAppState()) at ef21c97 (the 175 members, in order), plus refreshNow (pull-to-refresh),
+// firstLoadFailed / retryFirstLoad (the failed-first-load gate) and isLeagueStandingsStale (Leagues'
+// "couldn't refresh" line).
 const MEMBERS = [
   'state', 'isAuthChecking', 'isSessionLoading', 'isServerDataApplied', 'firstLoadFailed', 'retryFirstLoad', 'setRankCelebrated',
   'setLastSeenRelease', 'storedSessionWait', 'logout', 'deleteAccount', 'logoutGuest', 'addPresetHabit',
@@ -16,7 +17,7 @@ const MEMBERS = [
   'saveJournalEntry', 'deleteJournalEntry', 'editJournalEntry', 'getTodayJournalEntry', 'markLessonRead',
   'setUsername', 'updateProfileUsername', 'updateProfileAvatar', 'resolvedTheme', 'setThemePreference',
   'toggleThemePreference', 'toggleProfilePrivacy', 'toggleAcceptPartnerInvites',
-  'toggleNotificationPreference', 'getLeagueData', 'refreshLeagueStandings', 'getLeagueStandingsStatus',
+  'toggleNotificationPreference', 'getLeagueData', 'refreshLeagueStandings', 'isLeagueStandingsStale', 'getLeagueStandingsStatus',
   'logWorkout', 'deleteWorkout', 'updateWorkout', 'clearWorkoutsBefore', 'updateReadingProgress',
   'finishBook', 'deleteBook', 'addSkill', 'logSkillPractice', 'updateSkill', 'deleteSkill', 'deleteSkillLog',
   'updateSkillLog', 'clearSkillLogsBefore', 'updateSkillDrill', 'deleteSkillDrill', 'addBadHabit',
