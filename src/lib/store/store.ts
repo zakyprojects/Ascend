@@ -307,6 +307,11 @@ export function useAppState() {
   // the device comes back online) instead of an empty account. The ref runs that same load again.
   const [firstLoadFailed, setFirstLoadFailed] = useState(false);
   const retryFirstLoadRef = useRef<(() => void) | null>(null);
+  // The account's load failed but it opened from this device's copy: nothing is synced until a load
+  // succeeds. This runs that load again in the background (pull-to-refresh, back online, back in
+  // view); recoveringRef is the run in flight, so triggers that meet share it.
+  const recoverLoadRef = useRef<(() => Promise<void>) | null>(null);
+  const recoveringRef = useRef<Promise<void> | null>(null);
   const canPersistLocally = useRef(false);
   const authGenerationRef = useRef(0);
   const currentUserRef = useRef<UserProfile | null>(state.currentUser);
@@ -360,6 +365,18 @@ export function useAppState() {
   // Set while the account is being deleted on the server: no new autosave starts, and a save that
   // fails in that window stays silent (the account is going away).
   const isClosingAccountRef = useRef(false);
+  /** Runs `load` (default: the account's pending background load) unless one is running; never rejects. */
+  const runRecovery = useCallback((load: (() => Promise<void>) | null = recoverLoadRef.current): Promise<void> => {
+    if (recoveringRef.current) return recoveringRef.current;
+    if (!load || isLoggingOutRef.current) return Promise.resolve();
+    const run = load()
+      .catch((e) => console.error('[SYNC] Background load failed:', e))
+      .finally(() => {
+        if (recoveringRef.current === run) recoveringRef.current = null;
+      });
+    recoveringRef.current = run;
+    return run;
+  }, []);
   const lastPersistedStateRef = useRef<AppState>(state);
   /** The state the edit-time scan last saw (noteEditTimes compares item objects with it). */
   const editScanStateRef = useRef<AppState | null>(null);
@@ -769,6 +786,12 @@ export function useAppState() {
       }
 
       const userId = currentUserRef.current?.id;
+      // Opened from this device's copy after a failed load: load the account again instead (that
+      // load reads every table and the settings doc, as a reload would).
+      if (userId && !isHydrated.current && (recoverLoadRef.current || recoveringRef.current)) {
+        await runRecovery();
+        return;
+      }
       if (!userId || !isHydrated.current || !isSupabaseConfigured) return;
       const tables = syncTables(userId, false);
 
@@ -1115,6 +1138,7 @@ export function useAppState() {
       isHydrated.current = false;
       setIsServerDataApplied(false);
       retryFirstLoadRef.current = null;
+      recoverLoadRef.current = null;
       setFirstLoadFailed(false);
       canPersistLocally.current = false;
       currentUserRef.current = null;
@@ -1212,20 +1236,25 @@ export function useAppState() {
             // sessionStorage unavailable — ignore
           }
 
-          // One load of the account: the first, and each Retry after a first load that failed.
-          const loadAccount = async (myGeneration: number) => {
+          // One load of the account: the first, each Retry after a first load that failed, and
+          // `background` loads of an account already on screen from this device's copy (recoverLoadRef;
+          // `hydration` adopts a load that is still running, so a slow answer is not thrown away).
+          const loadAccount = async (
+            myGeneration: number,
+            background?: { hydration?: ReturnType<typeof hydrateUserSession> }
+          ): Promise<void> => {
             retryFirstLoadRef.current = null;
+            recoverLoadRef.current = null;
             setFirstLoadFailed(false);
-            // 15-second hard timeout: if hydration hangs, abort gracefully
-            const timeoutPromise = new Promise<never>((_, reject) =>
-              setTimeout(() => reject(new Error('Auth hydration timed out after 15s')), 15000)
-            );
+            // Hard timeout: if hydration hangs, abort gracefully. 15 s while the loader waits on it;
+            // a background load blocks nothing, so it gets longer.
+            const timeoutMs = background ? 60000 : 15000;
+            const timeoutError = new Error(`Auth hydration timed out after ${timeoutMs / 1000}s`);
+            const timeoutPromise = new Promise<never>((_, reject) => setTimeout(() => reject(timeoutError), timeoutMs));
+            const hydration = background?.hydration ?? hydrateUserSession(userId, email, session.user, signupDefaults);
 
             try {
-              const { user, state: hydratedState, tablesRead } = await Promise.race([
-                hydrateUserSession(userId, email, session.user, signupDefaults),
-                timeoutPromise,
-              ]);
+              const { user, state: hydratedState, tablesRead } = await Promise.race([hydration, timeoutPromise]);
               // Penalties, streaks and season rollovers below decide days by the clock: wait for
               // the server time and the season master values (at most a few seconds each) so a
               // moved device clock cannot steer them.
@@ -1243,14 +1272,18 @@ export function useAppState() {
                   applyTheme(resolveTheme(sanitizedState.themePreference));
                 }
 
-                let baseCurrentState = signInMergeBase(stateRef.current, sanitizedState, userId);
+                // A background load starts from the server's state, as a reload would (the device copy
+                // on screen comes in below only when it holds unsaved changes).
+                let baseCurrentState = background ? sanitizedState : signInMergeBase(stateRef.current, sanitizedState, userId);
                 if (typeof window !== 'undefined' && userId) {
                   try {
                     const isDirty = Boolean(localStorage.getItem(`ascend_dirty_${userId}`));
                     if (isDirty) {
                       const cachedRaw = localStorage.getItem(`ascend_user_cache_${userId}`);
                       if (cachedRaw) {
-                        const parsed = JSON.parse(cachedRaw);
+                        // In a background load the copy on screen is the device copy, newest (the cache
+                        // is written from it after each change).
+                        const parsed = background ? stateRef.current : JSON.parse(cachedRaw);
                         if (parsed && typeof parsed === 'object') {
                           // Settings and device-local keys from the cache; synced lists as hydration
                           // already merged them (offline edits included), so an older cached copy
@@ -1339,6 +1372,18 @@ export function useAppState() {
                 setIsServerDataApplied(false);
 
                 if (cachedState) {
+                  // Load it again later (pull, back online, back in view); a timed-out load is kept
+                  // and applied if it still answers.
+                  const recover = () =>
+                    currentUserRef.current?.id === userId && !isHydrated.current
+                      ? loadAccount(authGenerationRef.current, {})
+                      : Promise.resolve();
+                  if (background) {
+                    // The account is on screen already (from the copy, with any changes since).
+                    canPersistLocally.current = true;
+                    recoverLoadRef.current = recover;
+                    return;
+                  }
                   const sanitizedCached = sanitizeLoadedState(cachedState, fallbackUser);
                   setState((current) =>
                     reconcileWeeklyGoalsPointsForAllWeeks(
@@ -1350,6 +1395,13 @@ export function useAppState() {
                     )
                   );
                   canPersistLocally.current = true;
+                  recoverLoadRef.current = recover;
+                  if (e === timeoutError) {
+                    afterCommit(() => {
+                      if (myGeneration !== authGenerationRef.current || isHydrated.current) return;
+                      void runRecovery(() => loadAccount(myGeneration, { hydration }));
+                    });
+                  }
                 } else if (stateRef.current.currentUser?.id !== userId) {
                   // Nothing of this account is on the device: an empty account would read as the real
                   // one (and edits made on it come back as duplicates once it loads). The loader stays
