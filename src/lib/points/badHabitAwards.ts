@@ -29,16 +29,11 @@ export function badHabitResistPoints(habit: Pick<BadHabit, 'isPreset' | 'name'>)
 }
 
 /**
- * Base of a slip and of a day not logged (before the miss multiplier): the habit's resist points
- * + BAD_HABIT_POINTS.penaltyExtra, so library 2 to 4 and custom 2.
+ * What a slip (or a day not logged) costs at the nth bad day in a row: the habit's resist points
+ * (library 1 to 3, custom 1) x the miss multiplier, rounded, then negated by the caller.
  */
-export function badHabitPenaltyBase(habit: Pick<BadHabit, 'isPreset' | 'name'>): number {
-  return badHabitResistPoints(habit) + BAD_HABIT_POINTS.penaltyExtra;
-}
-
-/** What a slip (or a day not logged) costs at the nth bad day in a row: rounded, then negated by the caller. */
 export function badHabitPenalty(habit: Pick<BadHabit, 'isPreset' | 'name'>, badDayInARow: number, seasonPoints: number): number {
-  return Math.round(badHabitPenaltyBase(habit) * getMissPenaltyMultiplier(badDayInARow, seasonPoints));
+  return Math.round(badHabitResistPoints(habit) * getMissPenaltyMultiplier(badDayInARow, seasonPoints));
 }
 
 const APP_WRITTEN_DAY_SOURCES = new Set(['bad_habit_resisted', 'bad_habit_occurred', 'bad_habit_undo']);

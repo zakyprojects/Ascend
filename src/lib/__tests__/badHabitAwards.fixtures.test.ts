@@ -4,7 +4,6 @@ import type { BadHabit, BadHabitLog, PointsEntry } from '@/types';
 import {
   badHabitOccurredId,
   badHabitPenalty,
-  badHabitPenaltyBase,
   badHabitResistId,
   badHabitResistPoints,
   computeBadHabitAwards,
@@ -87,41 +86,41 @@ const before = (days: number) => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 };
 
-// 4. Every active bad habit can lose points (no 2-oldest slots): a slip = resist points + 1 at 1x.
+// 4. Every active bad habit can lose points (no 2-oldest slots): a first slip = its resist points at 1x.
 {
   // Added today, so no bad days before: 1x.
   const habits = [bh('e1', 'Porn', 30, true), bh('e2', 'Junk food', 30, true), bh('e3', 'Staying up late', 30, true)];
   const logs = [log('o1', 'e1', 1, 'occurred'), log('o3', 'e3', 2, 'occurred')];
   const { entries, logPoints } = computeBadHabitAwards(habits, logs, [], DAY, START, NOW, 0);
   const s = slipsOf(entries);
-  assert(s.e1 === -4 && s.e3 === -2 && !('e2' in s), 'third habit is charged too: Porn -4, Staying up late -2');
-  assert(logPoints.get('o1') === -4 && logPoints.get('o3') === -2, 'logs carry their penalty');
+  assert(s.e1 === -3 && s.e3 === -1 && !('e2' in s), 'third habit is charged too: Porn -3, Staying up late -1');
+  assert(logPoints.get('o1') === -3 && logPoints.get('o3') === -1, 'logs carry their penalty');
 }
 
-// 5. Slip base = resist points + 1; custom bad habit (resist 1) is penalised: base 2.
+// 5. A first slip costs exactly the resist points (no extra); custom bad habit (resist 1) is penalised: -1.
 {
-  assert(badHabitPenaltyBase({ name: 'Porn', isPreset: true }) === 4, 'Porn base 4');
-  assert(badHabitPenaltyBase({ name: 'Doomscrolling', isPreset: true }) === 3, 'Doomscrolling base 3');
-  assert(badHabitPenaltyBase({ name: 'Junk food', isPreset: true }) === 2, 'Junk food base 2');
-  assert(badHabitPenaltyBase({ name: 'Nail biting' }) === 2, 'custom base 2');
+  assert(badHabitPenalty({ name: 'Porn', isPreset: true }, 1, 0) === 3, 'Porn first slip 3');
+  assert(badHabitPenalty({ name: 'Doomscrolling', isPreset: true }, 1, 0) === 2, 'Doomscrolling first slip 2');
+  assert(badHabitPenalty({ name: 'Junk food', isPreset: true }, 1, 0) === 1, 'Junk food first slip 1');
+  assert(badHabitPenalty({ name: 'Nail biting' }, 1, 0) === 1, 'custom first slip 1');
   const { entries } = computeBadHabitAwards([bh('c', 'Nail biting', 30)], [log('oc', 'c', 1, 'occurred')], [], DAY, START, NOW, 0);
-  assert(slipsOf(entries).c === -2, 'custom slip -2');
+  assert(slipsOf(entries).c === -1, 'custom slip -1');
 }
 
 // 6. Miss multiplier: 1x, 1.5x (round half up); Performer+ 2x, 2.5x. Positive product rounded, then negated.
 {
   const porn = { name: 'Porn', isPreset: true };
   const junk = { name: 'Junk food', isPreset: true };
-  assert(badHabitPenalty(porn, 1, 0) === 4 && badHabitPenalty(porn, 2, 0) === 6 && badHabitPenalty(porn, 3, 0) === 6, 'Porn 4, 6, 6');
-  assert(badHabitPenalty(junk, 2, 0) === 3, 'Junk food 2 x 1.5 = 3');
-  assert(badHabitPenalty({ name: 'Doomscrolling', isPreset: true }, 2, 0) === 5, 'Doomscrolling 3 x 1.5 = 4.5 -> 5');
-  assert(badHabitPenalty(porn, 2, 2000) === 8 && badHabitPenalty(porn, 3, 2000) === 10, 'Performer Porn 8, 10');
-  assert(badHabitPenalty({ name: 'Doomscrolling', isPreset: true }, 3, 2000) === 8, 'Performer 3 x 2.5 = 7.5 -> 8');
+  assert(badHabitPenalty(porn, 1, 0) === 3 && badHabitPenalty(porn, 2, 0) === 5 && badHabitPenalty(porn, 3, 0) === 5, 'Porn 3, 5 (4.5), 5');
+  assert(badHabitPenalty(junk, 2, 0) === 2, 'Junk food 1 x 1.5 = 1.5 -> 2');
+  assert(badHabitPenalty({ name: 'Doomscrolling', isPreset: true }, 2, 0) === 3, 'Doomscrolling 2 x 1.5 = 3');
+  assert(badHabitPenalty(porn, 2, 2000) === 6 && badHabitPenalty(porn, 3, 2000) === 8, 'Performer Porn 6, 8 (7.5)');
+  assert(badHabitPenalty(junk, 3, 2000) === 3, 'Performer Junk food 1 x 2.5 = 2.5 -> 3');
   // Added 29 days ago, never resisted: today is far past the 3rd bad day in a row.
   const habits = [bh('d', 'Doomscrolling', 1, true)];
   const logs = [dayLog('y2', 'd', before(2), 'occurred'), log('o', 'd', 3, 'occurred')];
-  assert(slipsOf(computeBadHabitAwards(habits, logs, [], DAY, START, NOW, 0).entries).d === -5, 'bad days in a row, 1.5x: -5');
-  assert(slipsOf(computeBadHabitAwards(habits, logs, [], DAY, START, NOW, 2500).entries).d === -8, 'bad days in a row, Performer 2.5x: -8');
+  assert(slipsOf(computeBadHabitAwards(habits, logs, [], DAY, START, NOW, 0).entries).d === -3, 'bad days in a row, 1.5x: -3');
+  assert(slipsOf(computeBadHabitAwards(habits, logs, [], DAY, START, NOW, 2500).entries).d === -5, 'bad days in a row, Performer 2.5x: -5');
 }
 
 // 7. Five slips in one day: only the 4 largest penalties count, whatever the log order; the rest 0.
@@ -133,16 +132,16 @@ const before = (days: number) => {
     bh('k', 'Smoking / vaping', 30, true),
     bh('g', 'Gaming too long', 30, true),
   ];
-  // Cheap slips logged first (j, s at 2), then the expensive ones.
+  // Cheap slips logged first (j, s at 1), then the expensive ones.
   const logs = [log('oj', 'j', 1, 'occurred'), log('os', 's', 2, 'occurred'), log('op', 'p', 3, 'occurred'), log('ok', 'k', 4, 'occurred'), log('og', 'g', 5, 'occurred')];
   const { entries, logPoints } = computeBadHabitAwards(habits, logs, [], DAY, START, NOW, 0);
   const s = slipsOf(entries);
-  assert(s.p === -4 && s.k === -4 && s.g === -3 && s.j === -2 && !('s' in s), 'top 4 by amount; tie -2/-2 goes to the earlier log');
+  assert(s.p === -3 && s.k === -3 && s.g === -2 && s.j === -1 && !('s' in s), 'top 4 by amount; tie -1/-1 goes to the earlier log');
   assert(logPoints.get('os') === 0, 'the 5th slip shows 0');
   // Undo the Porn slip: the Sugary drinks slip comes back.
   const undone = computeBadHabitAwards(habits, logs.filter((l) => l.id !== 'op'), entries, DAY, START, NOW, 0);
   const u = slipsOf(undone.entries);
-  assert(u.s === -2 && u.j === -2 && u.k === -4 && u.g === -3 && !('p' in u), 'a freed slot goes to the next largest');
+  assert(u.s === -1 && u.j === -1 && u.k === -3 && u.g === -2 && !('p' in u), 'a freed slot goes to the next largest');
 }
 
 // 8. A penalty already written today keeps its amount and its rank uses it; other days' rows are never returned.
@@ -158,7 +157,7 @@ const before = (days: number) => {
   const { entries } = computeBadHabitAwards(habits, logs, [kept, yesterday], DAY, START, NOW, 0);
   const s = slipsOf(entries);
   assert(s.a === -5, 'old -5 row kept');
-  assert(s.b === -6, 'new slip: Porn 4 x 1.5 = -6');
+  assert(s.b === -5, 'new slip: Porn 3 x 1.5 = 4.5 -> -5');
   assert(entries.every((e) => e.metadata?.date === DAY), 'only today is recomputed; yesterday stays frozen');
 }
 

@@ -112,9 +112,8 @@ export const BAD_HABIT_POINTS = {
   // A resist earns its bad habit's points (PRESET_BAD_HABITS; custom = customResist) up to dailyCap.
   customResist: 1,
   dailyCap: 6,
-  // Slipped (badHabitPenaltyBase) and a day not logged (ascend_process_penalties): the habit's
-  // resist points + penaltyExtra, multiplied by the miss multiplier. Every active bad habit.
-  penaltyExtra: 1,
+  // Slipped (badHabitPenalty) and a day not logged (ascend_process_penalties): the habit's
+  // resist points, multiplied by the miss multiplier. Every active bad habit.
   // At most this many bad habits lose points a day (slips and not-logged days together): the
   // largest penalties of the day count, the rest cost 0 (computeBadHabitAwards and both SQL functions).
   dailyPenaltyLimit: 4,

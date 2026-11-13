@@ -4,13 +4,13 @@ import { PRESET_BAD_HABITS } from '@/lib/content/presets';
 import { missRule } from './penalties';
 
 /**
- * Bad habits. Rules from lib/pointsConfig.ts BAD_HABIT_POINTS (resist cap, slip = points + penaltyExtra,
+ * Bad habits. Rules from lib/pointsConfig.ts BAD_HABIT_POINTS (resist cap, slip = the habit's points,
  * at most dailyPenaltyLimit a day), lib/presets.ts PRESET_BAD_HABITS, lib/missPenalty.ts, BadHabitRow
  * (Resisted / Slipped, Undo), Partners resist card (linked: logs through store.logBadHabitDay).
  */
 const P = BAD_HABIT_POINTS;
-const penaltyBases = PRESET_BAD_HABITS.map((h) => h.points + P.penaltyExtra);
-const penaltyRange = `−${Math.min(...penaltyBases)} to ${pts(-Math.max(...penaltyBases))}`;
+const presetPoints = PRESET_BAD_HABITS.map((h) => h.points);
+const penaltyRange = `−${Math.min(...presetPoints)} to ${pts(-Math.max(...presetPoints))}`;
 
 export const badHabitsGuide: HowItWorksGuide = {
   title: 'How bad habits work',
@@ -37,8 +37,8 @@ export const badHabitsGuide: HowItWorksGuide = {
       first count first.
     </>,
     <>
-      Slipped, or a day not logged: the habit’s points + {P.penaltyExtra} (library <Loss>{penaltyRange}</Loss>, custom{' '}
-      <Loss>{pts(-(P.customResist + P.penaltyExtra))}</Loss>), counting from the day you added it.
+      Slipped, or a day not logged: the same as the habit’s resist points (library <Loss>{penaltyRange}</Loss>, custom{' '}
+      <Loss>{pts(-P.customResist)}</Loss>), counting from the day you added it.
     </>,
     <>
       At most <Fig>{P.dailyPenaltyLimit}</Fig> bad habits lose points a day: the {P.dailyPenaltyLimit} largest penalties count, the rest

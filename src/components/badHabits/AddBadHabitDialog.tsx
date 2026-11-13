@@ -28,7 +28,7 @@ interface AddBadHabitDialogProps {
 /**
  * Add a bad habit, built like AddHabitDialog: the library (stays open for several adds) or a
  * custom name, as two tabs of one dialog. A library bad habit earns its points per resist, a
- * custom one BAD_HABIT_POINTS.customResist; a slip costs that + penaltyExtra (badHabitPenaltyBase).
+ * custom one BAD_HABIT_POINTS.customResist; a first slip costs the same (badHabitPenalty).
  * The server decides the award.
  */
 export function AddBadHabitDialog({ open, onClose, habits, onAddPreset, onAddCustom }: AddBadHabitDialogProps) {
@@ -99,9 +99,7 @@ export function AddBadHabitDialog({ open, onClose, habits, onAddPreset, onAddCus
                         <div className="text-sm text-content-primary">{preset.name}</div>
                         <div className="text-xs text-content-muted">
                           Resisted <span className="figure text-brand-text">{ptsText(preset.points, true)}</span> · Slipped{' '}
-                          <span className="figure text-rose-theme">
-                            {ptsText(-(preset.points + BAD_HABIT_POINTS.penaltyExtra), true)}
-                          </span>
+                          <span className="figure text-rose-theme">{ptsText(-preset.points, true)}</span>
                         </div>
                       </div>
                       {/* One button that turns into "Added", so keyboard focus stays put after an add. */}
@@ -154,7 +152,7 @@ export function AddBadHabitDialog({ open, onClose, habits, onAddPreset, onAddCus
               <p className="text-xs text-content-muted">
                 A custom bad habit earns <span className="figure">{ptsText(BAD_HABIT_POINTS.customResist, true)}</span> each day
                 you resist it. A slip, or a day you don&apos;t log, costs{' '}
-                <span className="figure">{ptsText(-(BAD_HABIT_POINTS.customResist + BAD_HABIT_POINTS.penaltyExtra))}</span>.
+                <span className="figure">{ptsText(-BAD_HABIT_POINTS.customResist)}</span>.
               </p>
             </Form>
           )}

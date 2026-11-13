@@ -36,6 +36,7 @@ import { MAX_PARTNERS, CHALLENGE_LENGTH_OPTIONS } from '@/lib/partners/partnerRu
 import { SKILL_LEVELS } from '@/lib/content/skillLevels';
 import { MIN_JOURNAL_CONTENT_LENGTH } from '@/lib/items/journalRules';
 import { getMissPenaltyMultiplier } from '@/lib/points/missPenalty';
+import { PRESET_BAD_HABITS } from '@/lib/content/presets';
 
 /**
  * Every page's How it works renders in plain Node, carries its rules' numbers from the constants,
@@ -131,7 +132,9 @@ const guides: [string, HowItWorksGuide, (string | number)[]][] = [
       `+${BAD_HABIT_POINTS.customResist} pt`,
       `${BAD_HABIT_POINTS.dailyCap} pts`,
       `At most ${BAD_HABIT_POINTS.dailyPenaltyLimit} bad habits`,
-      `−${BAD_HABIT_POINTS.customResist + BAD_HABIT_POINTS.penaltyExtra} pts`,
+      // A slip costs the same as a resist: library −1 to −3, custom −1 (singular unit).
+      `library −${Math.min(...PRESET_BAD_HABITS.map((h) => h.points))} to −${Math.max(...PRESET_BAD_HABITS.map((h) => h.points))} pts`,
+      `−${BAD_HABIT_POINTS.customResist} pt`,
     ],
   ],
   ['partners', partnersGuide, [`Up to ${MAX_PARTNERS} partners`, ...CHALLENGE_LENGTH_OPTIONS.map(String), 'Challenges don’t give points', 'Slipped']],
