@@ -35,7 +35,8 @@ export function getNavStatuses(state: AppState, isHabitDone: (habit: Habit) => b
   if (habits.length > 0) {
     const open = habits.filter((h) => !isHabitDone(h));
     if (open.length === 0) {
-      statuses.habits = { tone: 'done', meta: `${habits.length}/${habits.length}`, label: 'all habits done' };
+      // Done shows the tick (no meta), like Journal/Exercise/Reading.
+      statuses.habits = { tone: 'done', label: 'all habits done' };
     } else {
       const dailyOpen = open.some((h) => h.frequency === 'daily');
       statuses.habits = {
@@ -70,11 +71,10 @@ export function getNavStatuses(state: AppState, isHabitDone: (habit: Habit) => b
   const blocks = state.timeTracker?.dailyLogs?.[today] ?? [];
   if (blocks.length > 0) {
     const day = dayProgress(blocks);
-    statuses['time-tracker'] = {
-      tone: day.open === 0 ? 'done' : 'pending',
-      meta: `${day.done}/${day.total}`,
-      label: `${day.done} done${day.skipped > 0 ? `, ${day.skipped} skipped` : ''} of ${day.total} blocks today`,
-    };
+    const label = `${day.done} done${day.skipped > 0 ? `, ${day.skipped} skipped` : ''} of ${day.total} blocks today`;
+    // All blocks resolved -> the tick (no meta); while any is open -> the "3/5" count.
+    statuses['time-tracker'] =
+      day.open === 0 ? { tone: 'done', label } : { tone: 'pending', meta: `${day.done}/${day.total}`, label };
   }
 
   // Exercise: a workout logged today; open once any workout is in state. Never risk: rest days

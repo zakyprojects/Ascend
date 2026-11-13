@@ -2,8 +2,11 @@
 // day key, todayKey). No tracker -> no status; checked in -> done; open -> pending, risk from 20:00.
 // 2026-11-13: Exercise gets an open state. No workouts -> no status; one today -> done; any other
 // workout in state -> pending 'no workout today', never risk (rest days are normal).
-import type { AddictionTracker, AppState, RecoveryCheckin, WorkoutLog } from '@/types';
-import { DEFAULT_STATE } from '@/types';
+// 2026-11-13: all done shows the tick, not a count. Habits all done and Time tracker with every
+// block done/skipped carry no meta (Nav/ZoneSheet render meta text instead of the tick); while
+// open they keep "N left" / "done/total".
+import type { AddictionTracker, AppState, Habit, RecoveryCheckin, TimeTrackerBlock, WorkoutLog } from '@/types';
+import { DEFAULT_STATE, DEFAULT_TIME_TRACKER_STATE } from '@/types';
 import { addDays, todayKey } from '../../time/dates';
 import { getNavStatuses } from '../navStatus';
 
@@ -110,4 +113,84 @@ eq(exercise(stateWith({ workouts: undefined as unknown as WorkoutLog[] }), MORNI
 // 10. A workout dated tomorrow alone is not today's -> pending.
 eq(exercise(stateWith({ workouts: [workout('w-next', addDays(TODAY, 1))] }), MORNING)?.tone, 'pending', "tomorrow's workout: pending");
 
-console.log('navStatus recovery + exercise: all assertions passed');
+// --- Habits ---
+const habit = (id: string, frequency: Habit['frequency'] = 'daily'): Habit => ({
+  id,
+  name: id,
+  frequency,
+  points: 1,
+  isPreset: false,
+  createdAt: 'Thu 2026-11-12 9:00 AM PKT (UTC+05:00)',
+  completions: {},
+  createdAtPeriod: TODAY,
+});
+const habitsStatus = (habits: Habit[], doneIds: string[], now: Date) =>
+  getNavStatuses(stateWith({ habits }), (h) => doneIds.includes(h.id), now).habits;
+
+// 11. All habits done -> done with no meta (the tick), morning and late.
+{
+  const hs = [habit('h1'), habit('h2'), habit('h3', 'weekly')];
+  const done = habitsStatus(hs, ['h1', 'h2', 'h3'], MORNING);
+  eq(done?.tone, 'done', 'habits all done: done');
+  eq(done?.meta, undefined, 'habits all done: no meta (tick, not 3/3)');
+  eq(done?.label, 'all habits done', 'habits all done: label');
+  eq(habitsStatus(hs, ['h1', 'h2', 'h3'], AT_RISK)?.meta, undefined, 'habits all done after 20:00: no meta');
+}
+
+// 12. Habits still open -> the count stays.
+{
+  const hs = [habit('h1'), habit('h2'), habit('h3')];
+  const open = habitsStatus(hs, ['h1'], MORNING);
+  eq(open?.tone, 'pending', 'habits open: pending');
+  eq(open?.meta, '2 left', 'habits open: meta "2 left"');
+  eq(open?.label, '2 habits left', 'habits open: label');
+  eq(habitsStatus(hs, ['h1'], AT_RISK)?.tone, 'risk', 'daily habit open after 20:00: risk');
+  eq(habitsStatus(hs, ['h1', 'h2'], MORNING)?.meta, '1 left', 'one habit open: meta "1 left"');
+}
+eq(habitsStatus([], [], MORNING), undefined, 'no habits: no status');
+
+// --- Time tracker ---
+const block = (id: string, patch: Partial<TimeTrackerBlock> = {}): TimeTrackerBlock => ({
+  id,
+  startTime: '09:00',
+  endTime: '10:00',
+  activityId: 'act-1',
+  ...patch,
+});
+const tt = (blocks: TimeTrackerBlock[], now: Date = MORNING) =>
+  getNavStatuses(
+    stateWith({ timeTracker: { ...DEFAULT_TIME_TRACKER_STATE, dailyLogs: { [TODAY]: blocks } } }),
+    () => false,
+    now
+  )['time-tracker'];
+
+// 13. Every block done -> done with no meta (the tick).
+{
+  const s = tt([block('b1', { completed: true }), block('b2', { completed: true })]);
+  eq(s?.tone, 'done', 'all blocks done: done');
+  eq(s?.meta, undefined, 'all blocks done: no meta (tick, not 2/2)');
+  eq(s?.label, '2 done of 2 blocks today', 'all blocks done: label');
+}
+
+// 14. Done + skipped, none open -> done, no meta; label keeps the skipped count.
+{
+  const s = tt([block('b1', { completed: true }), block('b2', { skipped: true }), block('b3', { completed: true })], AT_RISK);
+  eq(s?.tone, 'done', 'done + skipped: done');
+  eq(s?.meta, undefined, 'done + skipped: no meta');
+  eq(s?.label, '2 done, 1 skipped of 3 blocks today', 'done + skipped: label');
+  const allSkipped = tt([block('b1', { skipped: true })]);
+  eq(allSkipped?.tone, 'done', 'all skipped: done');
+  eq(allSkipped?.meta, undefined, 'all skipped: no meta');
+}
+
+// 15. A block still open -> pending with the done/total count.
+{
+  const s = tt([block('b1', { completed: true }), block('b2', { skipped: true }), block('b3'), block('b4'), block('b5', { completed: true })]);
+  eq(s?.tone, 'pending', 'blocks open: pending');
+  eq(s?.meta, '2/5', 'blocks open: meta "2/5"');
+  eq(s?.label, '2 done, 1 skipped of 5 blocks today', 'blocks open: label');
+  eq(tt([block('b1')])?.meta, '0/1', 'nothing done: meta "0/1"');
+}
+eq(tt([]), undefined, 'no blocks today: no status');
+
+console.log('navStatus recovery + exercise + habits + time tracker: all assertions passed');
