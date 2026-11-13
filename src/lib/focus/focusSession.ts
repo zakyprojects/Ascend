@@ -9,9 +9,12 @@ import { FOCUS_MILESTONES, FOCUS_MIN_MINUTES, focusSessionAlonePoints } from '@/
  * A running session runs on wall time, like a normal timer app (Zakria 2026-11-04): it keeps
  * running while the app is in the background, the screen is locked, the tab is closed or the
  * device sleeps. When it is opened again after the planned end, it ends at the planned end.
- * Only a pause stops the time: a manual pause or logout. A paused session can be resumed within
- * FOCUS_RESUME_WINDOW_MS of its pause; after that it is closed at the pause moment: saved with its
- * points from 25 active minutes, dropped below that.
+ * Only a break or logout stops the time. A break (2026-11-13) is a pause with an end: 5, 10 or 15
+ * minutes, only on sessions over 25 minutes, at most 2 per session, not with under 5 minutes of
+ * focus left; at its end the session runs again on its own (the server does the same, so a closed
+ * app loses nothing). Logout makes a plain pause (also during a break), which can be resumed within
+ * FOCUS_RESUME_WINDOW_MS; after that it is closed at the pause moment: saved with its points from
+ * 25 active minutes, dropped below that.
  */
 /** Before 2026-11-04 the one key for every account (logout removed it). Read once to adopt it. */
 export const FOCUS_STORAGE_KEY = 'ascend_active_focus_session';
@@ -24,6 +27,18 @@ export const PFC_PATH = '/prefrontal-cortex';
 /** How long a paused session can still be resumed (Zakria 2026-11-04: 30 minutes). */
 export const FOCUS_RESUME_WINDOW_MINUTES = 30;
 export const FOCUS_RESUME_WINDOW_MS = FOCUS_RESUME_WINDOW_MINUTES * 60 * 1000;
+
+/** Break lengths (Zakria 2026-11-13; ascend_focus_session_break takes only these). */
+export const FOCUS_BREAK_MINUTES = [5, 10, 15] as const;
+export type FocusBreakMinutes = (typeof FOCUS_BREAK_MINUTES)[number];
+/** "5, 10 or 15" for copy. */
+export const FOCUS_BREAK_MINUTES_TEXT = `${FOCUS_BREAK_MINUTES.slice(0, -1).join(', ')} or ${FOCUS_BREAK_MINUTES[FOCUS_BREAK_MINUTES.length - 1]}`;
+/** Breaks per session, on every device together. */
+export const FOCUS_BREAKS_PER_SESSION = 2;
+/** Only sessions planned longer than this get breaks. */
+export const FOCUS_BREAK_OVER_MINUTES = 25;
+/** No break with less focus than this left. */
+export const FOCUS_BREAK_MIN_LEFT_SECONDS = 5 * 60;
 
 export type FocusMode = 'focus' | 'break';
 
@@ -58,6 +73,14 @@ export interface FocusSession {
   revision?: number;
   /** The server refused to take this session (older than 24 h): it stays on this device only. */
   localOnly?: boolean;
+  /**
+   * Paused: when the break ends (none = a plain pause, from logout). Running: equal to startTime when
+   * this stretch started on its own at a break end (the "I wasn't back" offer). Mirrors
+   * focus_active_sessions.pause_ends_at.
+   */
+  pauseEndsAt?: number;
+  /** Breaks taken in this session (absent = 0). */
+  breakCount?: number;
 }
 
 export interface FocusPreset {
@@ -143,6 +166,8 @@ export function parseSession(raw: string | null, nowMs: number = trustedNowMs())
       marksAt: Array.isArray(p.marksAt) ? p.marksAt.filter(isNum) : [],
       ...(isNum(p.revision) ? { revision: p.revision } : {}),
       ...(p.localOnly ? { localOnly: true } : {}),
+      ...(isNum(p.pauseEndsAt) ? { pauseEndsAt: p.pauseEndsAt } : {}),
+      ...(isNum(p.breakCount) && p.breakCount > 0 ? { breakCount: p.breakCount } : {}),
     };
   } catch {
     return null;
@@ -187,7 +212,8 @@ export function writeStoredSession(userId: string | null, session: FocusSession 
 /** An action taken on this device that the server has not taken yet (offline, or in flight). */
 export type FocusOp =
   | { kind: 'start'; sessionId: string; session: FocusSession }
-  | { kind: 'pause' | 'resume'; sessionId: string; atMs: number; baseRevision?: number }
+  | { kind: 'pause' | 'resume' | 'back'; sessionId: string; atMs: number; baseRevision?: number }
+  | { kind: 'break'; sessionId: string; atMs: number; minutes: FocusBreakMinutes; baseRevision?: number }
   | { kind: 'end'; sessionId: string; reason: 'completed' | 'discarded' | 'break_skipped'; atMs: number; baseRevision?: number };
 
 const FOCUS_OPS_KEY = 'ascend_focus_ops';
@@ -249,23 +275,67 @@ export function milestoneTimes(session: FocusSession, untilMs: number): number[]
   return marks;
 }
 
-/** The session paused at `atMs` (never before its current stretch began). */
+/** The session paused at `atMs` (never before its current stretch began): a plain pause. */
 export function pauseAt(session: FocusSession, atMs: number): FocusSession {
   if (session.isPaused) return session;
   const at = Math.max(atMs, session.startTime);
   const left = Math.max(0, session.plannedDurationSeconds - (at - session.startTime) / 1000);
-  return { ...session, marksAt: milestoneTimes(session, at), isPaused: true, pausedRemainingSeconds: left, pausedAt: at };
+  return { ...session, marksAt: milestoneTimes(session, at), isPaused: true, pausedRemainingSeconds: left, pausedAt: at, pauseEndsAt: undefined };
 }
 
-/** The session running again from `atMs` with the time it had left. */
+/** The session running again from `atMs` with the time it had left (also "End break"). */
 export function resumeAt(session: FocusSession, atMs: number): FocusSession {
   if (!session.isPaused) return session;
-  return { ...session, startTime: atMs, plannedDurationSeconds: session.pausedRemainingSeconds, isPaused: false, pausedAt: null };
+  return { ...session, startTime: atMs, plannedDurationSeconds: session.pausedRemainingSeconds, isPaused: false, pausedAt: null, pauseEndsAt: undefined };
 }
 
-/** When a paused session stops being resumable (trusted ms); null while running. */
+/** Paused on a break (not a plain pause). */
+export const onBreak = (session: FocusSession | null): boolean =>
+  Boolean(session && session.mode === 'focus' && session.isPaused && session.pauseEndsAt !== undefined);
+
+/** Running in a stretch that started on its own at a break end. */
+export const autoResumed = (session: FocusSession | null): boolean =>
+  Boolean(session && session.mode === 'focus' && !session.isPaused && session.pauseEndsAt !== undefined && session.pauseEndsAt === session.startTime);
+
+/** Seconds of the break left (0 when not on a break). */
+export function breakSecondsLeft(session: FocusSession, nowMs: number = trustedNowMs()): number {
+  if (!onBreak(session)) return 0;
+  return Math.max(0, Math.ceil((session.pauseEndsAt! - nowMs) / 1000));
+}
+
+/** Why a break cannot be taken now, or null when it can. 'short': planned 25 min or less (no Break at all). */
+export type FocusBreakBlock = 'short' | 'used' | 'ending' | 'not-running';
+export function breakBlock(session: FocusSession, nowMs: number): FocusBreakBlock | null {
+  if (session.mode !== 'focus' || session.focusMinutes <= FOCUS_BREAK_OVER_MINUTES) return 'short';
+  if (session.isPaused) return 'not-running';
+  if ((session.breakCount ?? 0) >= FOCUS_BREAKS_PER_SESSION) return 'used';
+  const left = session.plannedDurationSeconds - (Math.max(nowMs, session.startTime) - session.startTime) / 1000;
+  return left < FOCUS_BREAK_MIN_LEFT_SECONDS ? 'ending' : null;
+}
+
+/** The session on a break from `atMs` for `minutes` (unchanged when a break is not allowed). */
+export function breakAt(session: FocusSession, atMs: number, minutes: FocusBreakMinutes): FocusSession {
+  if (breakBlock(session, atMs) !== null || !FOCUS_BREAK_MINUTES.includes(minutes)) return session;
+  const paused = pauseAt(session, atMs);
+  return { ...paused, pauseEndsAt: paused.pausedAt! + minutes * 60 * 1000, breakCount: (session.breakCount ?? 0) + 1 };
+}
+
+/** The session with its break over by `atMs`: running again from the break end, same time left (ascend_focus_break_due). */
+export function breakDue(session: FocusSession, atMs: number): FocusSession {
+  if (!onBreak(session) || session.pauseEndsAt! > atMs) return session;
+  const end = session.pauseEndsAt!;
+  return { ...session, startTime: end, plannedDurationSeconds: session.pausedRemainingSeconds, isPaused: false, pausedAt: null, pauseEndsAt: end };
+}
+
+/** "I wasn't back": an auto-resumed stretch restarts at `atMs` with the same time left (unchanged otherwise). */
+export function backAt(session: FocusSession, atMs: number): FocusSession {
+  if (!autoResumed(session) || remainingSeconds(session, atMs) <= 0) return session;
+  return { ...session, startTime: Math.max(atMs, session.startTime), pauseEndsAt: undefined };
+}
+
+/** When a plain pause stops being resumable (trusted ms); null while running or on a break. */
 export const resumeDeadlineMs = (session: FocusSession): number | null =>
-  session.isPaused && session.pausedAt !== null ? session.pausedAt + FOCUS_RESUME_WINDOW_MS : null;
+  session.isPaused && session.pausedAt !== null && session.pauseEndsAt === undefined ? session.pausedAt + FOCUS_RESUME_WINDOW_MS : null;
 
 /** True while the pause is within the resume window (30:00 still resumes, 30:01 does not). */
 export function canResume(session: FocusSession, nowMs: number): boolean {
@@ -320,14 +390,18 @@ export interface FocusSettle {
 }
 
 /**
- * Applies the resume-window rule to a stored focus session at `nowMs`: paused for longer than
- * the window, it is closed at its pause moment. A running session is left alone: it runs on wall
- * time, and the provider ends it at its planned end (also when that passed while the app was
- * closed or asleep). Breaks are left alone.
+ * Applies the break and resume-window rules to a stored focus session at `nowMs`: a break that ran
+ * out is running again from its end; a plain pause older than the window is closed at its pause
+ * moment. A running session is left alone: it runs on wall time, and the provider ends it at its
+ * planned end (also when that passed while the app was closed or asleep). After-session breaks are
+ * left alone.
  */
 export function settleSession(session: FocusSession | null, nowMs: number): FocusSettle {
   const same: FocusSettle = { session, close: null, notice: null, changed: false };
-  if (!session || session.mode !== 'focus' || canResume(session, nowMs)) return same;
+  if (!session || session.mode !== 'focus') return same;
+  const due = breakDue(session, nowMs);
+  if (due !== session) return { session: due, close: null, notice: null, changed: true };
+  if (canResume(session, nowMs)) return same;
   const close = closeAt(session, session.pausedAt ?? nowMs);
   return {
     session: null,
@@ -339,12 +413,15 @@ export function settleSession(session: FocusSession | null, nowMs: number): Focu
 
 /**
  * Logout on this device: a running focus session is paused at the sign-out and kept for this
- * account; a break is dropped. A session whose time ran out before is left running, so the next
- * sign-in ends and logs it at its planned end as usual.
+ * account; a session on a break becomes a plain pause from the sign-out (Zakria 2026-11-13: the
+ * normal 30-minute pause); an after-session break is dropped. A session whose time ran out before
+ * is left running, so the next sign-in ends and logs it at its planned end as usual.
  */
-export function pauseForSignOut(session: FocusSession | null, nowMs: number): FocusSession | null {
-  if (!session) return null;
-  if (session.mode === 'break') return null;
+export function pauseForSignOut(input: FocusSession | null, nowMs: number): FocusSession | null {
+  if (!input) return null;
+  if (input.mode === 'break') return null;
+  const session = breakDue(input, nowMs);
+  if (onBreak(session)) return { ...session, pausedAt: Math.max(nowMs, session.pausedAt ?? nowMs), pauseEndsAt: undefined };
   if (session.isPaused) return session;
   const endMs = session.startTime + session.plannedDurationSeconds * 1000;
   if (endMs <= nowMs) return session;
@@ -369,7 +446,7 @@ export function pauseStoredSessionsForSignOut(nowMs: number = trustedNowMs()): v
       else localStorage.removeItem(key);
       // Paused on every device of the account (the server takes it now, or at the next sign-in
       // when this device is offline and no other device changed the session meanwhile).
-      if (before && next && !before.isPaused && next.isPaused) {
+      if (before && next && next.isPaused && (!before.isPaused || onBreak(before))) {
         enqueueFocusOp(userId, { kind: 'pause', sessionId: next.id, atMs: next.pausedAt ?? nowMs });
       }
     }

@@ -51,6 +51,9 @@ export interface FocusServerRow {
   end_reason: FocusEndReason | null;
   log_claimed: boolean;
   revision: number;
+  /** Break end while paused; equal to stretch_started_at while running = auto-resumed (20261113120000). */
+  pause_ends_at?: string | null;
+  break_count?: number;
 }
 
 export interface FocusServerReply {
@@ -119,16 +122,23 @@ export function rowToSession(row: FocusServerRow | null, userId?: string): Focus
     };
   }
   const paused = row.status === 'paused';
+  const startTime = ms(row.stretch_started_at);
+  const endsAt = ms(row.pause_ends_at);
+  // Running: kept only as the "started on its own at the break end" mark.
+  const pauseEndsAt = endsAt > 0 && (paused || endsAt === startTime) ? endsAt : undefined;
+  const breakCount = num(row.break_count);
   return {
     ...base,
     id: row.session_id,
     mode: 'focus',
-    startTime: ms(row.stretch_started_at),
+    startTime,
     plannedDurationSeconds: num(row.stretch_planned_seconds),
     isPaused: paused,
     pausedRemainingSeconds: paused ? num(row.paused_remaining_seconds) : num(row.stretch_planned_seconds),
     pausedAt: paused ? ms(row.paused_at) : null,
     marksAt: (row.marks_at || []).map(ms).filter((t) => t > 0),
+    ...(pauseEndsAt !== undefined ? { pauseEndsAt } : {}),
+    ...(breakCount > 0 ? { breakCount } : {}),
   };
 }
 
@@ -212,7 +222,7 @@ export function reconcile(local: FocusSession | null, row: FocusServerRow | null
 
 export type FocusRpcResult = { ok: true; reply: FocusServerReply } | { ok: false; missing: boolean };
 
-/** The six RPCs (injectable for tests). */
+/** The session RPCs (injectable for tests). */
 export interface FocusTransport {
   call: (fn: string, args: Record<string, unknown>) => Promise<FocusRpcResult>;
 }
@@ -263,8 +273,16 @@ export function sendOp(transport: FocusTransport, op: FocusOp, revision: number 
     }
     case 'pause':
     case 'resume':
-      return transport.call(op.kind === 'pause' ? 'ascend_focus_session_pause' : 'ascend_focus_session_resume', {
+    case 'back':
+      return transport.call(`ascend_focus_session_${op.kind}`, {
         p_session_id: op.sessionId,
+        p_revision: revision ?? null,
+        p_at: iso(op.atMs),
+      });
+    case 'break':
+      return transport.call('ascend_focus_session_break', {
+        p_session_id: op.sessionId,
+        p_minutes: op.minutes,
         p_revision: revision ?? null,
         p_at: iso(op.atMs),
       });
