@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
-import { HeartPulse, AlertTriangle, RefreshCw, Activity, PhoneCall, Play, Pause, RotateCcw, Trash2, Medal, Trophy, Crown, Check, Plus, Pencil, CalendarCheck } from 'lucide-react';
+import { HeartPulse, AlertTriangle, RefreshCw, Activity, PhoneCall, Play, Pause, RotateCcw, Trash2, Medal, Trophy, Crown, Check, Plus, Pencil, CalendarCheck, X } from 'lucide-react';
 import { AppStore, CLEAR_CRAVING_LOGS_MAX } from '@/lib/store/store';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { useToast } from '@/components/ui/Toast';
 import { useAsyncActionKey } from '@/lib/actions/useAsyncAction';
 import { CravingLog } from '@/types';
-import { recoveryCheckinBlock, recoveryDayAwardId, recoveryPointsInSeason, RecoveryMilestoneKey, RECOVERY_MILESTONES } from '@/lib/points/recoveryAwards';
+import { recoveryCheckinBlock, recoveryDayActions, recoveryDayAwardId, recoveryPointsInSeason, RecoveryMilestoneKey, RECOVERY_MILESTONES } from '@/lib/points/recoveryAwards';
 import { addDays, formatDateLong, todayKey, startOfWeek, parseDate } from '@/lib/time/dates';
 import { useLocalDayKey } from '@/lib/time/useLocalDayKey';
 import { RECOVERY_POINTS } from '@/lib/points/pointsConfig';
@@ -153,6 +153,8 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
   // The tick on the done card undoes today's check-in (only today's), after a small inline confirm.
   const [undoDay, setUndoDay] = useState<string | null>(null);
   const confirmingUndo = checkedToday && undoDay === today;
+  // Slipped sits beside Clean today (only while Clean today shows) and opens the same Reset streak confirm.
+  const { showClean, showSlipped } = recoveryDayActions({ checkedToday, todayBlock });
   const undoCheckIn = () => {
     store.undoRecoveryCheckin();
     setUndoDay(null);
@@ -383,10 +385,24 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
                     </button>
                   </div>
                 )}
-                {!checkedToday && !todayBlock && (
-                  <button type="button" onClick={() => checkIn(today)} className="btn-primary max-sm:w-full">
-                    <Check size={16} /> Clean today
-                  </button>
+                {(showClean || showSlipped) && (
+                  <div className="flex gap-2 max-sm:w-full">
+                    {showClean && (
+                      <button type="button" onClick={() => checkIn(today)} className="btn-primary max-sm:flex-1">
+                        <Check size={16} /> Clean today
+                      </button>
+                    )}
+                    {showSlipped && (
+                      <button
+                        type="button"
+                        onClick={() => setResetConfirmOpen(true)}
+                        aria-label="I slipped today, reset my streak"
+                        className="btn border border-rose-500/40 bg-rose-500/10 text-rose-theme hover:bg-rose-500/20 max-sm:flex-1"
+                      >
+                        <X size={16} aria-hidden="true" /> Slipped
+                      </button>
+                    )}
+                  </div>
                 )}
               </div>
               {yesterdayOpen && (
@@ -679,9 +695,9 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
         open={resetConfirmOpen}
         onClose={() => setResetConfirmOpen(false)}
         title="Reset your streak?"
-        description={`Your clock starts again from now. ${pointsLine} A slip is a setback, not the end.${
-          checkedToday ? ' Checked in today by mistake? Undo it first.' : ''
-        }`}
+        description={`Your clock starts again from now. ${
+          checkedToday ? "Today's check-in and its point go too. Points from earlier days stay." : pointsLine
+        } A slip is a setback, not the end.`}
         footer={
           <>
             <button type="button" onClick={() => setResetConfirmOpen(false)} className="btn-secondary">

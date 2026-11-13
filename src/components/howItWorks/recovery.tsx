@@ -4,7 +4,7 @@ import { RECOVERY_POINTS } from '@/lib/points/pointsConfig';
 /**
  * Recovery. Check-in points from pointsConfig RECOVERY_POINTS (perCheckin, seasonCap) and the rules
  * in lib/recoveryAwards.ts (server: 20261109130000_recovery_daily_checkins.sql);
- * AddictionRecovery.tsx (Start tracker, Clean today, Log craving, Emergency support, Reset / Delete).
+ * AddictionRecovery.tsx (Start tracker, Clean today, Slipped, Log craving, Emergency support, Reset / Delete).
  */
 export const recoveryGuide: HowItWorksGuide = {
   title: 'How recovery works',
@@ -17,6 +17,7 @@ export const recoveryGuide: HowItWorksGuide = {
   ],
   notes: [
     'A missed check-in never breaks your streak. The streak counts from your start or your last reset.',
+    'Slipped? Tap Slipped next to Clean today. It resets your streak, the same as Reset streak.',
     'Tapped Clean today by mistake? Tap the tick to undo today’s check-in. Only today’s can be undone.',
     'This is a self-help tool, not medical treatment. In a crisis, contact a professional or a helpline.',
   ],
@@ -29,6 +30,7 @@ export const recoveryGuide: HowItWorksGuide = {
       Up to <Fig>{pts(RECOVERY_POINTS.seasonCap)}</Fig> a season. Your streak carries into the next season.
     </>,
     'Undo today’s check-in and today’s point goes too. Check in again and it comes back, still once a day.',
-    'Reset or delete: points you already earned stay. Cravings never change points.',
+    'Reset or Slipped: today’s check-in and its point go. Points from earlier days stay.',
+    'Delete the tracker: points you already earned stay. Cravings never change points.',
   ],
 };

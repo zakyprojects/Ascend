@@ -94,7 +94,7 @@ export const recovery: FeatureContent = {
             </p>
             <p>
               Recovery can earn at most {pts(cap)} in a season. Your streak keeps counting into the next season, and each
-              new season can earn {pts(cap)} again. There are no bonuses, and points you earned are never taken back. Tapped by mistake? You can undo today’s check-in the same day, and its point goes with it.
+              new season can earn {pts(cap)} again. There are no bonuses, and points from earlier days are never taken back. Tapped by mistake? You can undo today’s check-in the same day, and its point goes with it.
             </p>
           </>
         }
@@ -106,12 +106,13 @@ export const recovery: FeatureContent = {
             { what: 'A day without a check-in', amount: 'no points', tone: 'none', note: 'Your streak keeps going.' },
             { what: 'The day you start the tracker or reset the streak', amount: 'no points', tone: 'none' },
             { what: 'Logging or deleting a craving', amount: 'no points', tone: 'none' },
-            { what: 'Resetting the streak or deleting the tracker', amount: 'points stay', tone: 'none', note: 'Only the streak starts again.' },
+            { what: 'Resetting the streak (Reset streak or Slipped)', amount: 'earlier days stay', tone: 'none', note: 'Today’s check-in and its point go.' },
+            { what: 'Deleting the tracker', amount: 'points stay', tone: 'none' },
           ]}
         />
         <Note title="A reset is not the end.">
-          If you slip, Reset streak starts the clock again from now. The points you earned stay, and your next check-in
-          counts from tomorrow. As the reset screen puts it, a slip is a setback, not the end.
+          If you slip, tap Slipped (or Reset streak) to start the clock again from now. Points from earlier days stay,
+          today’s check-in and its point go, and your next check-in counts from tomorrow. As the reset screen puts it, a slip is a setback, not the end.
         </Note>
       </Block>
 
@@ -246,7 +247,7 @@ export const recovery: FeatureContent = {
     },
     {
       q: 'What happens to my points if I relapse?',
-      a: 'Reset streak starts the clock again. Every point you already earned stays. The reset day earns nothing, and your check-ins earn again from the next day.',
+      a: 'Slipped or Reset streak starts the clock again. Points from earlier days stay. The reset day earns nothing, so a check-in from that day goes with its point, and your check-ins earn again from the next day.',
     },
     {
       q: 'Do cravings cost points?',
