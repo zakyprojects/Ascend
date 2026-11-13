@@ -104,7 +104,8 @@ export const READING_POINTS = {
   pagesPerPoint: 2,
   pointsPerChapter: 10,
   dailyCap: 10,
-  completionBonus: 15,
+  // Finish bonus (ascend_recompute_reading_bonus). 15 before 2026-11-13: bonuses given then keep 15.
+  completionBonus: 20,
 } as const;
 
 export const BAD_HABIT_POINTS = {

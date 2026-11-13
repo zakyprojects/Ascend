@@ -9,8 +9,10 @@ import {
   readingBonusCooldown,
   readingBonusProgress,
   readingBonusId,
+  bookRemovalPoints,
   READING_BONUS_COOLDOWN_DAYS,
 } from '../points/readingAwards';
+import { bookBonus } from '@/components/reading/bookMeta';
 
 function assert(condition: boolean, msg: string) {
   if (!condition) {
@@ -39,6 +41,7 @@ assert(READING_POINTS.pagesPerPoint === 2, 'config: 2 pages per point');
 assert(READING_POINTS.pointsPerChapter === 10, 'config: 10 points per chapter');
 assert(READING_POINTS.dailyCap === 10, 'config: daily cap 10');
 assert(READING_BONUS_COOLDOWN_DAYS === 13, 'config: bonus cooldown 13 days');
+assert(READING_POINTS.completionBonus === 20, 'config: finish bonus 20 (15 before 2026-11-13)');
 
 // 1. Pages: floor(pages / 2), odd pages carry over inside the day.
 {
@@ -110,6 +113,20 @@ assert(READING_BONUS_COOLDOWN_DAYS === 13, 'config: bonus cooldown 13 days');
     readingBonusCooldown('new', [...history, bonus('mid', '2026-10-08')], '2026-10-20').nextDay === '2026-10-21',
     'latest bonus decides',
   );
+}
+
+// 8. A bonus keeps the amount of its own row: one given before 2026-11-13 stays 15, a new one is 20
+//    (the server never rewrites a written row; ascend_recompute_reading_bonus).
+{
+  const done = (id: string) => ({ id, status: 'completed', pointsAwarded: 0 }) as unknown as UserBook;
+  const row = (bookId: string, amount: number): PointsEntry => ({
+    id: readingBonusId(bookId), amount, reason: 'Book finished', source: 'reading_bonus', timestamp: '2026-10-01T12:00:00.000Z',
+  });
+  const history = [row('old', 15), row('new', READING_POINTS.completionBonus)];
+  assert(bookBonus(done('old'), history) === 15, 'old bonus row shows 15');
+  assert(bookBonus(done('new'), history) === 20, 'new bonus row shows 20');
+  assert(bookRemovalPoints(done('old'), [done('old'), done('new')], [], history, DAY).bonus === 15, 'removing the old book takes back 15');
+  assert(bookRemovalPoints(done('new'), [done('old'), done('new')], [], history, DAY).bonus === 20, 'removing the new book takes back 20');
 }
 
 console.log('readingAwards fixtures: all passed');
