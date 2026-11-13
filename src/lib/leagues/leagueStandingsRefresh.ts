@@ -84,6 +84,10 @@ export interface LeagueStandingsDeps {
  */
 export function createLeagueStandingsRefresher(deps: LeagueStandingsDeps) {
   let inflight: Promise<void> | null = null;
+  /** Whether the run in flight reads (or was asked to read) the full set. */
+  let inflightRun: { full: boolean } | null = null;
+  /** A full refresh asked for while a points-only poll ran: it runs once that poll settles. */
+  let queuedFull: Promise<void> | null = null;
   let lastSuccessMs = -Infinity;
   let epoch = 0;
   let fetchedPeriodKey: string | null = null;
@@ -96,7 +100,21 @@ export function createLeagueStandingsRefresher(deps: LeagueStandingsDeps) {
   let knownMemberIds = new Set<string>();
 
   function refresh({ full = false }: { full?: boolean } = {}): Promise<void> {
-    if (inflight) return inflight;
+    if (inflight) {
+      if (!full || inflightRun?.full) return inflight;
+      // A pull (or sign-in) during a points-only poll still gets a fresh member list: one full run
+      // follows the poll, unless the poll itself took the full set.
+      if (!queuedFull) {
+        const run = inflightRun;
+        const myEpoch = epoch;
+        queuedFull = inflight.then(() => {
+          queuedFull = null;
+          if (myEpoch !== epoch || (run?.full && !lastAttemptFailed)) return;
+          return refresh({ full: true });
+        });
+      }
+      return queuedFull;
+    }
     if (!deps.isOnline()) {
       if (!lastAttemptFailed) {
         lastAttemptFailed = true;
@@ -108,6 +126,7 @@ export function createLeagueStandingsRefresher(deps: LeagueStandingsDeps) {
 
     const myEpoch = epoch;
     let succeeded = false;
+    const thisRun = { full };
     const run = (async () => {
       const userId = await deps.sessionUserId();
       // The server returns no members without a session.
@@ -120,7 +139,8 @@ export function createLeagueStandingsRefresher(deps: LeagueStandingsDeps) {
         fetchedPeriodKey !== leaguePeriodKey(now) ||
         now.getTime() - fullSetMs >= FULL_SET_MAX_AGE_MS;
 
-      if (!needFullSet) {
+      if (needFullSet) thisRun.full = true;
+      else {
         const live = await deps.fetchBoards(true);
         if (myEpoch !== epoch || (await deps.sessionUserId()) !== userId) return;
         if (!live?.points) return;
@@ -129,6 +149,7 @@ export function createLeagueStandingsRefresher(deps: LeagueStandingsDeps) {
         const hasNewMember = [...Object.values(live.points), live.seasonPoints ?? {}].some((byUser) =>
           Object.keys(byUser).some((id) => !knownMemberIds.has(id))
         );
+        thisRun.full = hasNewMember;
         if (!hasNewMember) {
           knownPoints = merged;
           deps.apply(
@@ -156,7 +177,10 @@ export function createLeagueStandingsRefresher(deps: LeagueStandingsDeps) {
     })()
       .catch((e) => console.error('Error refreshing league standings:', e))
       .finally(() => {
-        if (inflight === run) inflight = null;
+        if (inflight === run) {
+          inflight = null;
+          inflightRun = null;
+        }
         // A run from before a sign-out says nothing about the new session.
         if (myEpoch === epoch) {
           lastAttemptFailed = !succeeded;
@@ -164,6 +188,7 @@ export function createLeagueStandingsRefresher(deps: LeagueStandingsDeps) {
         }
       });
     inflight = run;
+    inflightRun = thisRun;
     deps.onStatusChange?.();
     return run;
   }
@@ -172,6 +197,8 @@ export function createLeagueStandingsRefresher(deps: LeagueStandingsDeps) {
   function reset() {
     epoch++;
     inflight = null;
+    inflightRun = null;
+    queuedFull = null;
     lastSuccessMs = -Infinity;
     fetchedPeriodKey = null;
     fetchedUserId = null;

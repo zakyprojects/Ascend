@@ -141,6 +141,66 @@ const last = <T,>(xs: T[]) => xs[xs.length - 1];
     assert(refresher.fetchedUserId() === 'me', 'the earlier full set still counts for this member');
   }
 
+  // A full refresh (pull-to-refresh) asked while a points-only poll runs: one full run follows the
+  // poll, and both callers wait for it. A full refresh asked during a full run shares that run.
+  {
+    let nowMs = Date.UTC(2026, 9, 21, 9, 0, 0);
+    const calls: string[] = [];
+    let gate: Promise<void> | null = null;
+    let open = () => {};
+    const hold = () => (gate = new Promise<void>((resolve) => (open = resolve)));
+    const refresher = createLeagueStandingsRefresher({
+      sessionUserId: async () => 'me',
+      fetchBoards: async (slim) => {
+        calls.push(slim ? 'slim' : 'full');
+        if (gate) await gate;
+        return { profiles: slim ? null : [{ id: 'me' }], points: { W: { me: 1 }, M: {} } };
+      },
+      now: () => new Date(nowMs),
+      isOnline: () => true,
+      apply: () => {},
+    });
+    await refresher.refresh();
+    nowMs += MIN;
+    hold();
+    const poll = refresher.refresh();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    const pull = refresher.refresh({ full: true });
+    let pullDone = false;
+    void pull.then(() => (pullDone = true));
+    const again = refresher.refresh({ full: true });
+    assert(again === pull, 'a second full ask during the poll shares the queued full run');
+    gate = null;
+    open();
+    await poll;
+    await pull;
+    assert(pullDone, 'the pull waited for its full run');
+    assert(calls.slice(1).join() === 'slim,full', 'poll then exactly one full run');
+    // During a full run: a full ask shares it (no extra call).
+    nowMs += MIN;
+    hold();
+    const fullRun = refresher.refresh({ full: true });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    const shared = refresher.refresh({ full: true });
+    gate = null;
+    open();
+    await fullRun;
+    await shared;
+    assert(calls.slice(3).join() === 'full', 'a full ask during a full run adds no call');
+    // A poll that takes the full set by itself (the set is 10 minutes old): a full ask adds no call,
+    // also when it comes before the poll has decided (it is queued, then sees the full set).
+    nowMs += 11 * MIN;
+    hold();
+    const stalePoll = refresher.refresh();
+    const ask = refresher.refresh({ full: true });
+    assert(ask !== stalePoll, 'asked before the poll decided: queued');
+    gate = null;
+    open();
+    await stalePoll;
+    await ask;
+    assert(calls.slice(4).join() === 'full', 'a full ask during a poll that took the full set adds no call');
+  }
+
   console.log('leagueStandingsRefresh: all assertions passed');
   // An assertion that throws rejects this promise; Node then exits non-zero (unhandled rejection).
 })();
