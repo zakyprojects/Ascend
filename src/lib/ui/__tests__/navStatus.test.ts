@@ -1,6 +1,8 @@
 // I7 (2026-11-12): the Recovery page gets a nav status from today's check-in (its id is the local
 // day key, todayKey). No tracker -> no status; checked in -> done; open -> pending, risk from 20:00.
-import type { AddictionTracker, AppState, RecoveryCheckin } from '@/types';
+// 2026-11-13: Exercise gets an open state. No workouts -> no status; one today -> done; any other
+// workout in state -> pending 'no workout today', never risk (rest days are normal).
+import type { AddictionTracker, AppState, RecoveryCheckin, WorkoutLog } from '@/types';
 import { DEFAULT_STATE } from '@/types';
 import { addDays, todayKey } from '../../time/dates';
 import { getNavStatuses } from '../navStatus';
@@ -67,4 +69,45 @@ eq(recovery(stateWith({ addictionTracker: tracker, recoveryCheckins: [] }), AT_R
 assert(/^\d{4}-\d{2}-\d{2}$/.test(TODAY), 'today key is YYYY-MM-DD');
 eq(TODAY, '2026-11-12', 'today key is the local calendar day');
 
-console.log('navStatus recovery: all assertions passed');
+// --- Exercise ---
+const workout = (id: string, date: string): WorkoutLog => ({
+  id,
+  date,
+  type: 'Running',
+  durationMinutes: 30,
+  pointsAwarded: 0,
+  createdAt: 'Thu 2026-11-12 9:00 AM PKT (UTC+05:00)',
+});
+const exercise = (state: AppState, now: Date) => getNavStatuses(state, () => false, now).exercise;
+
+// 7. No workouts ever (empty or missing array) -> no status, morning and late.
+eq(exercise(stateWith({ workouts: [] }), MORNING), undefined, 'no workouts: no status');
+eq(exercise(stateWith({ workouts: [] }), AT_RISK), undefined, 'no workouts after 20:00: no status');
+eq(exercise(stateWith({ workouts: undefined as unknown as WorkoutLog[] }), MORNING), undefined, 'missing workouts: no status');
+
+// 8. A workout today -> done, before and after 20:00 (also beside older ones).
+{
+  const s = stateWith({ workouts: [workout('w-old', YESTERDAY), workout('w-today', TODAY)] });
+  const done = exercise(s, MORNING);
+  eq(done?.tone, 'done', 'workout today: done');
+  eq(done?.label, 'workout logged today', 'workout today: label');
+  eq(done?.meta, undefined, 'workout today: no meta');
+  eq(exercise(s, AT_RISK)?.tone, 'done', 'workout today: still done after 20:00');
+}
+
+// 9. Only earlier workouts -> pending all day, never risk (no orange after 20:00).
+{
+  const s = stateWith({ workouts: [workout('w-old', YESTERDAY)] });
+  const open = exercise(s, MORNING);
+  eq(open?.tone, 'pending', 'earlier workout only: pending');
+  eq(open?.label, 'no workout today', 'earlier workout only: label');
+  eq(open?.meta, undefined, 'earlier workout only: no meta');
+  eq(exercise(s, BEFORE_RISK)?.tone, 'pending', '19:59:59: pending');
+  eq(exercise(s, AT_RISK)?.tone, 'pending', '20:00: still pending, not risk');
+  eq(exercise(s, new Date(2026, 10, 12, 23, 59, 59))?.tone, 'pending', '23:59:59: still pending, not risk');
+}
+
+// 10. A workout dated tomorrow alone is not today's -> pending.
+eq(exercise(stateWith({ workouts: [workout('w-next', addDays(TODAY, 1))] }), MORNING)?.tone, 'pending', "tomorrow's workout: pending");
+
+console.log('navStatus recovery + exercise: all assertions passed');

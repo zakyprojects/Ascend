@@ -77,9 +77,14 @@ export function getNavStatuses(state: AppState, isHabitDone: (habit: Habit) => b
     };
   }
 
-  // Exercise: a workout logged today (there is no daily target, so no open state).
-  if ((state.workouts ?? []).some((w) => w.date === today)) {
+  // Exercise: a workout logged today; open once any workout is in state. Never risk: rest days
+  // are normal. Only state.workouts tells (no lasting "has exercised" flag), so a user who
+  // deleted or cleared every workout gets no status again.
+  const workouts = state.workouts ?? [];
+  if (workouts.some((w) => w.date === today)) {
     statuses.exercise = { tone: 'done', label: 'workout logged today' };
+  } else if (workouts.length > 0) {
+    statuses.exercise = { tone: 'pending', label: 'no workout today' };
   }
 
   // Reading: pages logged today; open only while a book is being read.
