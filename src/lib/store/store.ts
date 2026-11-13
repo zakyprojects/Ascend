@@ -302,6 +302,11 @@ export function useAppState() {
   // synced table was read (at boot, or by a later pull if a boot read failed). A device cache alone
   // never sets it, so moments that compare against saved memory (the rank-up) wait for it.
   const [isServerDataApplied, setIsServerDataApplied] = useState(false);
+  // The account's first load failed (an error or the 15 s timeout) and this device holds no copy of
+  // it: nothing true can be shown, so the loader stays up with Retry (retryFirstLoad, also run when
+  // the device comes back online) instead of an empty account. The ref runs that same load again.
+  const [firstLoadFailed, setFirstLoadFailed] = useState(false);
+  const retryFirstLoadRef = useRef<(() => void) | null>(null);
   const canPersistLocally = useRef(false);
   const authGenerationRef = useRef(0);
   const currentUserRef = useRef<UserProfile | null>(state.currentUser);
@@ -1109,6 +1114,8 @@ export function useAppState() {
       pactRetry.current.clear();
       isHydrated.current = false;
       setIsServerDataApplied(false);
+      retryFirstLoadRef.current = null;
+      setFirstLoadFailed(false);
       canPersistLocally.current = false;
       currentUserRef.current = null;
 
@@ -1205,167 +1212,164 @@ export function useAppState() {
             // sessionStorage unavailable — ignore
           }
 
-          // 15-second hard timeout: if hydration hangs, abort gracefully
-          const timeoutPromise = new Promise<never>((_, reject) =>
-            setTimeout(() => reject(new Error('Auth hydration timed out after 15s')), 15000)
-          );
+          // One load of the account: the first, and each Retry after a first load that failed.
+          const loadAccount = async (myGeneration: number) => {
+            retryFirstLoadRef.current = null;
+            setFirstLoadFailed(false);
+            // 15-second hard timeout: if hydration hangs, abort gracefully
+            const timeoutPromise = new Promise<never>((_, reject) =>
+              setTimeout(() => reject(new Error('Auth hydration timed out after 15s')), 15000)
+            );
 
-          try {
-            const { user, state: hydratedState, tablesRead } = await Promise.race([
-              hydrateUserSession(userId, email, session.user, signupDefaults),
-              timeoutPromise,
-            ]);
-            // Penalties, streaks and season rollovers below decide days by the clock: wait for
-            // the server time and the season master values (at most a few seconds each) so a
-            // moved device clock cannot steer them.
-            await Promise.all([clockReady(), syncSeasonConfig()]);
+            try {
+              const { user, state: hydratedState, tablesRead } = await Promise.race([
+                hydrateUserSession(userId, email, session.user, signupDefaults),
+                timeoutPromise,
+              ]);
+              // Penalties, streaks and season rollovers below decide days by the clock: wait for
+              // the server time and the season master values (at most a few seconds each) so a
+              // moved device clock cannot steer them.
+              await Promise.all([clockReady(), syncSeasonConfig()]);
 
-            if (mounted) {
-              if (myGeneration !== authGenerationRef.current) return;
-              isHydrated.current = true;
-              canPersistLocally.current = true;
-              const sanitizedState = sanitizeLoadedState(hydratedState, user);
-              // Send relational ops left over from an earlier session; hydration already read every row.
-              void syncTables(userId, false);
-              if (sanitizedState.themePreference) {
-                setLocalThemePreference(sanitizedState.themePreference);
-                applyTheme(resolveTheme(sanitizedState.themePreference));
-              }
+              if (mounted) {
+                if (myGeneration !== authGenerationRef.current) return;
+                isHydrated.current = true;
+                canPersistLocally.current = true;
+                const sanitizedState = sanitizeLoadedState(hydratedState, user);
+                // Send relational ops left over from an earlier session; hydration already read every row.
+                void syncTables(userId, false);
+                if (sanitizedState.themePreference) {
+                  setLocalThemePreference(sanitizedState.themePreference);
+                  applyTheme(resolveTheme(sanitizedState.themePreference));
+                }
 
-              let baseCurrentState = signInMergeBase(stateRef.current, sanitizedState, userId);
-              if (typeof window !== 'undefined' && userId) {
-                try {
-                  const isDirty = Boolean(localStorage.getItem(`ascend_dirty_${userId}`));
-                  if (isDirty) {
-                    const cachedRaw = localStorage.getItem(`ascend_user_cache_${userId}`);
-                    if (cachedRaw) {
-                      const parsed = JSON.parse(cachedRaw);
-                      if (parsed && typeof parsed === 'object') {
-                        // Settings and device-local keys from the cache; synced lists as hydration
-                        // already merged them (offline edits included), so an older cached copy
-                        // never goes back over another device's newer row or a delete.
-                        baseCurrentState = cacheWithHydratedCollections(
-                          sanitizeLoadedState(parsed, user),
-                          sanitizedState,
-                          readBaseline(userId)
-                        );
-                        // A signed-out state on screen belongs to no account, so it is merged in too
-                        // (as signInMergeBase does on the clean path); else its items would be dropped.
-                        if (!stateRef.current.currentUser) {
-                          baseCurrentState = mergeAppState(stateRef.current, baseCurrentState, 'hydration');
+                let baseCurrentState = signInMergeBase(stateRef.current, sanitizedState, userId);
+                if (typeof window !== 'undefined' && userId) {
+                  try {
+                    const isDirty = Boolean(localStorage.getItem(`ascend_dirty_${userId}`));
+                    if (isDirty) {
+                      const cachedRaw = localStorage.getItem(`ascend_user_cache_${userId}`);
+                      if (cachedRaw) {
+                        const parsed = JSON.parse(cachedRaw);
+                        if (parsed && typeof parsed === 'object') {
+                          // Settings and device-local keys from the cache; synced lists as hydration
+                          // already merged them (offline edits included), so an older cached copy
+                          // never goes back over another device's newer row or a delete.
+                          baseCurrentState = cacheWithHydratedCollections(
+                            sanitizeLoadedState(parsed, user),
+                            sanitizedState,
+                            readBaseline(userId)
+                          );
+                          // A signed-out state on screen belongs to no account, so it is merged in too
+                          // (as signInMergeBase does on the clean path); else its items would be dropped.
+                          if (!stateRef.current.currentUser) {
+                            baseCurrentState = mergeAppState(stateRef.current, baseCurrentState, 'hydration');
+                          }
+                        } else {
+                          localStorage.removeItem(`ascend_dirty_${userId}`);
                         }
                       } else {
                         localStorage.removeItem(`ascend_dirty_${userId}`);
                       }
-                    } else {
-                      localStorage.removeItem(`ascend_dirty_${userId}`);
                     }
+                  } catch {
+                    localStorage.removeItem(`ascend_dirty_${userId}`);
                   }
-                } catch {
-                  localStorage.removeItem(`ascend_dirty_${userId}`);
                 }
-              }
 
-              const watermark = userId ? getUserDataWatermark(userId) : undefined;
-              const guardResult = mergeAppStateWithGuardResult(sanitizedState, baseCurrentState, watermark);
+                const watermark = userId ? getUserDataWatermark(userId) : undefined;
+                const guardResult = mergeAppStateWithGuardResult(sanitizedState, baseCurrentState, watermark);
 
-              const rawMergedState = guardResult.hasSuspiciousDrop
-                ? guardResult.retainedState
-                : withHydratedPoints(guardResult.mergedState, sanitizedState);
-              const reconciledMergedState = reconcileWeeklyGoalsPointsForAllWeeks(
-                reconcileLinkedWeeklyGoals(rawMergedState, trustedNow()),
-                trustedNow()
-              );
-
-              lastKnownGoodStateRef.current = reconciledMergedState;
-
-              setState(reconciledMergedState);
-              // Same batch as the state: the first render that sees the flag sees the server data.
-              setIsServerDataApplied(tablesRead && !guardResult.hasSuspiciousDrop);
-
-              if (guardResult.hasSuspiciousDrop) {
-                const isZeroOut = guardResult.mergedCount === 0;
-                setDestructiveWipeModal({
-                  open: true,
-                  title: isZeroOut ? 'Clear all tracked data?' : 'Remove most of your data?',
-                  description: isZeroOut
-                    ? 'This removes all remaining tracked items from your account. Save this change?'
-                    : `${guardResult.droppedCount} items are missing compared to your last save. Save these removals, or keep your existing data?`,
-                  stateToRetry: guardResult.mergedState,
-                  stateBeforeAction: guardResult.retainedState,
-                });
-              }
-            }
-          } catch (e) {
-            console.error('Error hydrating auth session:', e);
-            // If hydration fails or times out, attempt to restore from local cache first
-            if (mounted) {
-              if (myGeneration !== authGenerationRef.current) return;
-              let cachedState: AppState | null = null;
-              if (typeof window !== 'undefined') {
-                try {
-                  const cachedRaw = localStorage.getItem(`ascend_user_cache_${userId}`);
-                  if (cachedRaw) {
-                    cachedState = JSON.parse(cachedRaw);
-                  }
-                } catch {
-                  /* ignore */
-                }
-              }
-
-              const fallbackUser: UserProfile = {
-                id: userId,
-                uid: cachedState?.currentUser?.uid || generateNumericUID(),
-                email,
-                username: session.user.user_metadata?.username || email.split('@')[0],
-                avatar: session.user.user_metadata?.avatar || '🧑',
-                createdAt: session.user.created_at || trustedNow().toISOString(),
-                isProfilePublic: true,
-              };
-
-              // CRITICAL: isHydrated MUST remain false so no empty/fallback state is auto-saved over Supabase
-              isHydrated.current = false;
-              setIsServerDataApplied(false);
-
-              if (cachedState) {
-                const sanitizedCached = sanitizeLoadedState(cachedState, fallbackUser);
-                setState((current) =>
-                  reconcileWeeklyGoalsPointsForAllWeeks(
-                    reconcileLinkedWeeklyGoals(
-                      mergeAppState(sanitizedCached, signInMergeBase(current, sanitizedCached, userId), 'hydration'),
-                      trustedNow()
-                    ),
-                    trustedNow()
-                  )
+                const rawMergedState = guardResult.hasSuspiciousDrop
+                  ? guardResult.retainedState
+                  : withHydratedPoints(guardResult.mergedState, sanitizedState);
+                const reconciledMergedState = reconcileWeeklyGoalsPointsForAllWeeks(
+                  reconcileLinkedWeeklyGoals(rawMergedState, trustedNow()),
+                  trustedNow()
                 );
-                canPersistLocally.current = true;
-              } else {
-                let resultingState: AppState = stateRef.current;
-                setState((prev) => {
-                  if (prev.currentUser?.id === userId) {
-                    resultingState = prev;
-                    return prev;
-                  }
-                  const emptyState: AppState = { ...DEFAULT_STATE, ...deviceThemeFields() };
-                  resultingState = {
-                    ...signInMergeBase(prev, emptyState, userId),
-                    currentUser: fallbackUser,
-                    username: fallbackUser.username,
-                  };
-                  return resultingState;
-                });
-                afterCommit(() => {
-                  if (myGeneration !== authGenerationRef.current) return;
-                  if (!hasStateData(resultingState)) {
-                    canPersistLocally.current = true;
-                  }
-                });
+
+                lastKnownGoodStateRef.current = reconciledMergedState;
+
+                setState(reconciledMergedState);
+                // Same batch as the state: the first render that sees the flag sees the server data.
+                setIsServerDataApplied(tablesRead && !guardResult.hasSuspiciousDrop);
+
+                if (guardResult.hasSuspiciousDrop) {
+                  const isZeroOut = guardResult.mergedCount === 0;
+                  setDestructiveWipeModal({
+                    open: true,
+                    title: isZeroOut ? 'Clear all tracked data?' : 'Remove most of your data?',
+                    description: isZeroOut
+                      ? 'This removes all remaining tracked items from your account. Save this change?'
+                      : `${guardResult.droppedCount} items are missing compared to your last save. Save these removals, or keep your existing data?`,
+                    stateToRetry: guardResult.mergedState,
+                    stateBeforeAction: guardResult.retainedState,
+                  });
+                }
               }
+            } catch (e) {
+              console.error('Error hydrating auth session:', e);
+              // If hydration fails or times out, attempt to restore from local cache first
+              if (mounted) {
+                if (myGeneration !== authGenerationRef.current) return;
+                let cachedState: AppState | null = null;
+                if (typeof window !== 'undefined') {
+                  try {
+                    const cachedRaw = localStorage.getItem(`ascend_user_cache_${userId}`);
+                    if (cachedRaw) {
+                      cachedState = JSON.parse(cachedRaw);
+                    }
+                  } catch {
+                    /* ignore */
+                  }
+                }
+
+                const fallbackUser: UserProfile = {
+                  id: userId,
+                  uid: cachedState?.currentUser?.uid || generateNumericUID(),
+                  email,
+                  username: session.user.user_metadata?.username || email.split('@')[0],
+                  avatar: session.user.user_metadata?.avatar || '🧑',
+                  createdAt: session.user.created_at || trustedNow().toISOString(),
+                  isProfilePublic: true,
+                };
+
+                // CRITICAL: isHydrated MUST remain false so no empty/fallback state is auto-saved over Supabase
+                isHydrated.current = false;
+                setIsServerDataApplied(false);
+
+                if (cachedState) {
+                  const sanitizedCached = sanitizeLoadedState(cachedState, fallbackUser);
+                  setState((current) =>
+                    reconcileWeeklyGoalsPointsForAllWeeks(
+                      reconcileLinkedWeeklyGoals(
+                        mergeAppState(sanitizedCached, signInMergeBase(current, sanitizedCached, userId), 'hydration'),
+                        trustedNow()
+                      ),
+                      trustedNow()
+                    )
+                  );
+                  canPersistLocally.current = true;
+                } else if (stateRef.current.currentUser?.id !== userId) {
+                  // Nothing of this account is on the device: an empty account would read as the real
+                  // one (and edits made on it come back as duplicates once it loads). The loader stays
+                  // up with Retry; nothing is shown or saved for the account until a load succeeds.
+                  retryFirstLoadRef.current = () => {
+                    setIsSessionLoading(true);
+                    void loadAccount(++authGenerationRef.current);
+                  };
+                  setFirstLoadFailed(true);
+                } else if (!hasStateData(stateRef.current)) {
+                  // The account is already on screen (a later load of it failed): it stays as it is.
+                  canPersistLocally.current = true;
+                }
+              }
+            } finally {
+              if (mounted && myGeneration === authGenerationRef.current) setIsSessionLoading(false);
+              if (mounted) setIsAuthChecking(false);
             }
-          } finally {
-            if (mounted && myGeneration === authGenerationRef.current) setIsSessionLoading(false);
-            if (mounted) setIsAuthChecking(false);
-          }
+          };
+          await loadAccount(myGeneration);
         } else if (!session?.user) {
           // No session yet, but a saved sign-in: keep the boot loader (see storedSessionWait).
           if (!holdForStoredSession() && mounted) setIsAuthChecking(false);
@@ -2324,6 +2328,19 @@ export function useAppState() {
     }
   }, [refreshNotifications, refreshLeagueStandings]);
 
+  /** Runs the account's failed first load again (the loader's Retry). A no-op unless one failed. */
+  const retryFirstLoad = useCallback(() => {
+    const retry = retryFirstLoadRef.current;
+    retryFirstLoadRef.current = null;
+    retry?.();
+  }, []);
+  // Back online after a failed first load: try it again without waiting for Retry.
+  useEffect(() => {
+    if (!firstLoadFailed) return;
+    window.addEventListener('online', retryFirstLoad);
+    return () => window.removeEventListener('online', retryFirstLoad);
+  }, [firstLoadFailed, retryFirstLoad]);
+
   // Time Tracker actions (useTimeTrackerActions.ts), spread into the return object below.
   const timeTrackerActions = useTimeTrackerActions(setState, get);
 
@@ -2332,6 +2349,8 @@ export function useAppState() {
     isAuthChecking,
     isSessionLoading,
     isServerDataApplied,
+    firstLoadFailed,
+    retryFirstLoad,
     setRankCelebrated,
     setLastSeenRelease,
     storedSessionWait,

@@ -1,13 +1,14 @@
 // Hook test (real useAppState + in-process fake Supabase, see harness/): sign-in and log-out.
-// Story, one device: the first load of the account fails (server error), the user keeps working
-// locally and signs out; a later sign-in is abandoned while it loads; then two good sessions end
-// with a log-out, the second one while the server refuses writes.
-//   T9  failed load = local only: the edit is cached on the device, nothing is written to the account.
+// Story, one device: the first load of the account fails (server error) and the user signs out from
+// the loader; a later sign-in is abandoned while it loads; then two good sessions end with a
+// log-out, the second one while the server refuses writes.
+//   T9  failed load without a device copy: no account on screen, nothing written to the account
+//       (the Retry gate itself: firstLoadGate.hook).
 //   T6  sign-in generation guard: a load that finishes after a sign-out leaves the app signed out.
 //   T7  log-out sends the pending edit once (one blob save, one sign-out, nothing after it) even
 //       when pressed twice.
 //   T8  log-out with unsent changes keeps this account's device data and says so.
-import { bootHook, story, until, quiet, rows, eq, assert, pass, fake, server, habit, seedServerHabits, accountWrites, UID } from './harness/bootHook';
+import { bootHook, story, until, quiet, eq, assert, pass, fake, server, habit, seedServerHabits, accountWrites, UID } from './harness/bootHook';
 
 await story('auth.hook (sign-in / log-out)', async () => {
   seedServerHabits(habit('srv-a', 'ServerHabit'));
@@ -16,19 +17,19 @@ await story('auth.hook (sign-in / log-out)', async () => {
 
   // T9: the account's blob read fails at boot (no device cache yet).
   const h = await bootHook({ as: 'signedIn', beforeRender: () => fake.fail('user_data', 500, ['GET']) });
-  await until(() => h.s().state.currentUser?.id === UID && !h.s().isAuthChecking && !h.s().isSessionLoading, 'fallback after the failed load');
+  await until(() => h.s().firstLoadFailed && !h.s().isAuthChecking && !h.s().isSessionLoading, 'gate after the failed load');
   assert(!h.s().isServerDataApplied, 'T9: server data not applied after a failed load');
-  fake.unfail('user_data'); // the server is back: a save now would write the fallback state over it
+  eq(h.s().state.currentUser, null, 'T9: no account on screen after a failed load');
+  fake.unfail('user_data'); // the server is back: a save now would write a placeholder state over it
   fake.resetCounts();
-  h.s().addCustomHabit('LocalOnly', 'daily');
-  await until(() => (h.storage.getItem(cacheKey) || '').includes('LocalOnly'), 'T9: edit cached on the device');
   await quiet(1500);
   eq(fake.requests({ table: 'user_data' }).length, 0, 'T9: no user_data request after a failed load');
   eq(accountWrites().length, 0, 'T9: no write to the account after a failed load');
-  pass('T9 failed load: the edit stays on the device, nothing is written to the account');
+  assert(!h.storage.getItem(cacheKey), 'T9: no device copy of the account written');
+  pass('T9 failed load: no account on screen, nothing is written to the account');
 
   await h.supabase.auth.signOut();
-  await until(() => h.s().state.currentUser === null, 'signed out after the failed session');
+  await until(() => h.s().state.currentUser === null && !h.s().firstLoadFailed, 'signed out after the failed session');
 
   // T6: sign in, then sign out while the account is still loading.
   const habitsRead = fake.hold((r) => r.method === 'GET' && r.table === 'habits');
@@ -48,7 +49,6 @@ await story('auth.hook (sign-in / log-out)', async () => {
   // T7: a good session; an edit waits on the 500 ms save debounce when log-out is pressed twice.
   await h.signIn();
   await until(h.loaded, 'third sign-in loaded');
-  await until(() => rows('habits').some((r) => r.data?.name === 'LocalOnly'), 'the edit kept from the failed session reaches the server now', 5000);
   await until(() => (fake.inFlight.get('user_data') ?? 0) === 0, 'boot saves settled');
   await quiet(1500);
   fake.resetCounts();

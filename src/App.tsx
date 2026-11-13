@@ -75,6 +75,9 @@ function App() {
   const isGuest = Boolean(currentUser?.isAnonymous);
   const authReady = !store.isAuthChecking;
   const authGate = isSupabaseConfigured;
+  // A sign-in whose account is not on screen yet: still loading, or its first load failed (the
+  // loader then offers Retry). Neither shows the sign-in page nor the app.
+  const sessionPending = store.isSessionLoading || store.firstLoadFailed;
 
   // The success screen holds the page it started on (the user changes under it) until it is done.
   const [authHold, setAuthHold] = useState<AuthScreen | null>(null);
@@ -90,7 +93,7 @@ function App() {
     if (onResetPassword || legal) routeScreen = null;
     else if (auth) routeScreen = !currentUser ? auth : isGuest && !leavingAuth ? 'upgrade' : null;
     // A sign-in still loading its data shows the session loader, not the sign-in page.
-    else if (!currentUser && !store.isSessionLoading) routeScreen = 'login';
+    else if (!currentUser && !sessionPending) routeScreen = 'login';
   }
   const authScreen = authHold ?? routeScreen;
 
@@ -113,14 +116,14 @@ function App() {
     } else if (auth) {
       if (currentUser && (!isGuest || leavingAuth)) target = nextFromSearch(search);
       else if (isGuest && auth === 'login') target = pathForAuthRoute('signup') + search + authHash;
-    } else if (!currentUser && !store.isSessionLoading) {
+    } else if (!currentUser && !sessionPending) {
       // Logging out lands on a plain /login; a signed-out visit or an expired session returns to
       // its page after signing in.
       const plain = wasSignedIn && consumeSignOutByUser();
       target = plain ? pathForAuthRoute('login') : authPathWithNext('login', pathForView(view) + search) + authHash;
     }
     if (target) goToPath(target, { replace: true });
-  }, [authReady, authGate, authHold, leavingAuth, auth, legal, onResetPassword, currentUser, isGuest, search, view, store.isSessionLoading, goToPath]);
+  }, [authReady, authGate, authHold, leavingAuth, auth, legal, onResetPassword, currentUser, isGuest, search, view, sessionPending, goToPath]);
 
   // The sign-in page's code (preloaded behind the splash by main.tsx).
   const [AuthPageView, setAuthPageView] = useState<ComponentType<AuthPageProps> | null>(() => loadedAuthPage());
@@ -146,13 +149,13 @@ function App() {
 
   // Blocking loader: the initial session check (and the sign-in page's code if it is somehow not
   // here yet), then any later sign-in that is still loading the user's data once the success
-  // screen is done (never an empty guest view). It stays mounted for its exit animation,
-  // revealing the app beneath; state is derived during render so the app never shows a frame
-  // without it.
+  // screen is done (never an empty guest view), or that failed its first load (Retry). It stays
+  // mounted for its exit animation, revealing the app beneath; state is derived during render so
+  // the app never shows a frame without it.
   const showLoader =
     store.isAuthChecking ||
     (needsAuthPage && !AuthPageView) ||
-    (store.isSessionLoading && !authHold);
+    (sessionPending && !authHold);
   const [loaderShown, setLoaderShown] = useState(showLoader);
   const [loaderExiting, setLoaderExiting] = useState(false);
   const [loaderKind, setLoaderKind] = useState<'boot' | 'session'>('boot');
@@ -172,7 +175,19 @@ function App() {
   // A guest is never offered that: dropping its sign-in would lose the guest account.
   const bootOffline = store.storedSessionWait === 'failed';
   const authPageOffline = !bootOffline && authPageFailed && needsAuthPage && !AuthPageView;
-  const offlineActions = authPageOffline ? (
+  // The account's first load failed and this device has no copy of it: Retry runs the load again;
+  // a real account can sign out (a guest never: that would lose the guest account).
+  const firstLoadFailed = store.firstLoadFailed && !bootOffline && !authPageOffline;
+  const offlineActions = firstLoadFailed ? (
+    <>
+      <Button onClick={store.retryFirstLoad}>Retry</Button>
+      {!storedAuthSession()?.isAnonymous && (
+        <Button variant="ghost" size="sm" onClick={() => logoutUser({ scope: 'local' }).catch(() => undefined)}>
+          Sign out
+        </Button>
+      )}
+    </>
+  ) : authPageOffline ? (
     <Button onClick={() => window.location.reload()}>Retry</Button>
   ) : bootOffline && (
     <>
@@ -189,16 +204,24 @@ function App() {
   const loaderOverlay = (showLoader || loaderExiting) && (
     <AscendLoadingOverlay
       message={
-        bootOffline || authPageOffline ? "Can't reach AscendDay" : loaderKind === 'boot' ? 'Starting up…' : 'Loading your workspace…'
+        firstLoadFailed
+          ? "Couldn't load your data"
+          : bootOffline || authPageOffline
+            ? "Can't reach AscendDay"
+            : loaderKind === 'boot'
+              ? 'Starting up…'
+              : 'Loading your workspace…'
       }
       submessage={
-        bootOffline
-          ? "Check your connection. You're still signed in."
-          : authPageOffline
-            ? 'Check your connection and try again.'
-            : loaderKind === 'boot'
-              ? 'Checking your account'
-              : 'Loading your data'
+        firstLoadFailed
+          ? 'Check your connection and try again.'
+          : bootOffline
+            ? "Check your connection. You're still signed in."
+            : authPageOffline
+              ? 'Check your connection and try again.'
+              : loaderKind === 'boot'
+                ? 'Checking your account'
+                : 'Loading your data'
       }
       entrance={loaderKind === 'boot' ? 'boot' : 'fade'}
       exiting={!showLoader}
@@ -216,7 +239,7 @@ function App() {
   // Push on this device: once per signed-in start (and account), save the browser's subscription to
   // the account again, or subscribe afresh if the browser dropped it while push is on here. The
   // service worker asks again when the browser replaces the subscription (pushsubscriptionchange).
-  const pushUserId = authReady && !store.isSessionLoading ? currentUser?.id : undefined;
+  const pushUserId = authReady && !sessionPending ? currentUser?.id : undefined;
   useEffect(() => {
     if (!pushUserId) return;
     void syncPushSubscription(pushUserId);
@@ -239,14 +262,16 @@ function App() {
     : undefined;
 
   // The app itself: not while a sign-in page is up, nor for the one frame a redirect away from
-  // a sign-in page takes (signed in, or local-only mode).
-  const showApp = authReady && !authScreen && !auth && !legal;
+  // a sign-in page takes (signed in, or local-only mode), nor under the loader for an account that
+  // never loaded (its first load failed, or its Retry is still loading).
+  const showApp =
+    authReady && !authScreen && !auth && !legal && !store.firstLoadFailed && !(store.isSessionLoading && !currentUser);
 
   // The home-screen shortcut "Quick log" (public/manifest.json) opens `/dashboard?quick-log`. Once the app
   // and the account's data are on screen (a signed-out launch first signs in: `next` keeps the
   // query), the shell opens Quick log and the flag leaves the address, so a refresh, back, or a
   // later sign-in redirect never opens it again.
-  const quickLogLaunch = showApp && !store.isSessionLoading && new URLSearchParams(search).has(QUICK_LOG_PARAM);
+  const quickLogLaunch = showApp && !sessionPending && new URLSearchParams(search).has(QUICK_LOG_PARAM);
   useEffect(() => {
     if (!quickLogLaunch) return;
     const params = new URLSearchParams(search);
