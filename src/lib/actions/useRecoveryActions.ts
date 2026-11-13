@@ -3,13 +3,24 @@
 import { useCallback } from 'react';
 import type { AppState, AddictionTracker, CravingLog, RecoveryCheckin } from '@/types';
 import { uid, todayKey } from '../time/dates';
-import { canUndoRecoveryCheckin, computeRecoveryCheckinAward, RECOVERY_CHECKIN_SOURCE, RECOVERY_MILESTONES, recoveryCheckinDays, recoveryDayAwardId, trackerStartMs } from '../points/recoveryAwards';
+import { canUndoRecoveryCheckin, computeRecoveryCheckinAward, RECOVERY_CHECKIN_SOURCE, RECOVERY_MILESTONES, recoveryCheckinDays, recoveryDayAwardId, recoveryResetTakesBackDay, trackerStartMs } from '../points/recoveryAwards';
 import { renameTracker } from '../items/itemEdits';
 import { CLEAR_CRAVING_LOGS_MAX } from '../store/clearLimits';
 import { excisePointsEntriesInternal } from '../points/stateAwards';
 import { addPointsInternal } from '../points/pointsLedger';
 import { trustedNow } from '../time/clock';
 import type { StoreSetState } from '../store/storeSetState';
+
+/** State without the check-in of `day` and its preview point (today's undo and a reset today share it). */
+function withoutCheckinDay(prev: AppState, day: string): AppState {
+  const next = { ...prev, recoveryCheckins: (prev.recoveryCheckins || []).filter((c) => c.id !== day) };
+  const awardId = recoveryDayAwardId(day);
+  const { excisedEntryIds: _gone, ...points } = excisePointsEntriesInternal(
+    next,
+    (e) => e.id === awardId && e.source === RECOVERY_CHECKIN_SOURCE
+  );
+  return { ...next, ...points };
+}
 
 export function useRecoveryActions(setState: StoreSetState, get: () => AppState) {
   // --- MODULE 5: ADDICTION RECOVERY ACTIONS ---
@@ -50,15 +61,22 @@ export function useRecoveryActions(setState: StoreSetState, get: () => AppState)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  /**
+   * Reset streak and Slipped (one path): a relapse starts a new streak from now. Today's check-in and
+   * its preview point go too (the server does the same, addiction_trackers_reset_checkin); points of
+   * earlier days stay.
+   */
   const resetAddictionStreak = useCallback(() => {
     void setState(
       (prev) => {
         if (!prev.addictionTracker) return prev;
-        // A relapse starts a new streak; points already earned stay.
-        return {
+        const nowMs = trustedNow().getTime();
+        const reset: AppState = {
           ...prev,
-          addictionTracker: { ...prev.addictionTracker, startDate: trustedNow().toISOString(), milestonesUnlocked: [] },
+          addictionTracker: { ...prev.addictionTracker, startDate: new Date(nowMs).toISOString(), milestonesUnlocked: [] },
         };
+        const day = recoveryResetTakesBackDay(prev.recoveryCheckins, nowMs);
+        return day ? withoutCheckinDay(reset, day) : reset;
       },
       {
         immediate: true,
@@ -126,13 +144,7 @@ export function useRecoveryActions(setState: StoreSetState, get: () => AppState)
         const nowMs = trustedNow().getTime();
         const { today } = recoveryCheckinDays(nowMs);
         if (!canUndoRecoveryCheckin(prev.recoveryCheckins, today, nowMs)) return prev;
-        const next = { ...prev, recoveryCheckins: (prev.recoveryCheckins || []).filter((c) => c.id !== today) };
-        const awardId = recoveryDayAwardId(today);
-        const { excisedEntryIds: _gone, ...points } = excisePointsEntriesInternal(
-          next,
-          (e) => e.id === awardId && e.source === RECOVERY_CHECKIN_SOURCE
-        );
-        return { ...next, ...points };
+        return withoutCheckinDay(prev, today);
       },
       { immediate: true }
     );

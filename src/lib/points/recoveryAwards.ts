@@ -11,10 +11,13 @@ import { getSeasonEnd, getSeasonStart } from '../time/leagueTime';
  *   * Today's check-in, or yesterday's when it was missed (late tap); older or future days are not stored.
  *   * The tracker's first local day (its creation day) and a day the streak (re)started in earn nothing.
  *   * At most RECOVERY_POINTS.seasonCap recovery points a season, old milestone rows included.
- *   * No bonuses, nothing is ever taken back, except the user's own undo of TODAY's check-in
- *     (ascend_revoke_recovery_checkin): it removes today's check-in and today's point while that day
- *     is still today. Yesterday's late tap and earlier days can't be undone. A re-tap after the undo
- *     brings back the same single point (same id), never a second one.
+ *   * No bonuses, nothing is ever taken back, except TODAY's check-in and its point:
+ *       - the user's own undo of today's check-in (ascend_revoke_recovery_checkin), while that day is
+ *         still today. A re-tap after the undo brings back the same single point (same id), never a second one;
+ *       - a reset of the streak today (Reset streak or Slipped; 20261113230000, trigger
+ *         addiction_trackers_reset_checkin): a start moved into today removes today's check-in, and the
+ *         revoke removes its point. A check-in after the reset earns nothing (the restart day).
+ *     Yesterday's late tap and earlier days never change.
  *   * The award is dated at the tap, a late tap at yesterday's last millisecond.
  * The server stamps the tracker's creation time itself; the app uses the tracker's createdAt, which
  * is the same moment unless the tracker was made offline. The app computes the award only to show
@@ -56,6 +59,29 @@ export const recoveryCheckinDays = (nowMs: number) => {
 /** Only today's check-in can be undone (the tick on the done card); yesterday's late tap and older days never. */
 export function canUndoRecoveryCheckin(checkins: { id: string }[] | undefined, day: string, nowMs: number): boolean {
   return day === recoveryCheckinDays(nowMs).today && (checkins || []).some((c) => c?.id === day);
+}
+
+/**
+ * Mirror of addiction_trackers_reset_checkin: the check-in day a reset at `nowMs` takes back (today,
+ * when there is a check-in for it), or null. Earlier days never.
+ */
+export function recoveryResetTakesBackDay(checkins: { id: string }[] | undefined, nowMs: number): string | null {
+  const { today } = recoveryCheckinDays(nowMs);
+  return (checkins || []).some((c) => c?.id === today) ? today : null;
+}
+
+/**
+ * Which buttons the Daily check-in row shows for today. Clean today: not checked in and the day can
+ * earn. Slipped (opens the Reset streak confirm) sits beside it only while Clean today shows
+ * (Zakria 2026-11-13): after Clean today, on the first day and after a reset today the top Reset
+ * streak is the way (same confirm, same reset).
+ */
+export function recoveryDayActions(opts: {
+  checkedToday: boolean;
+  todayBlock: 'first-day' | 'restarted' | null;
+}): { showClean: boolean; showSlipped: boolean } {
+  const open = !opts.checkedToday && !opts.todayBlock;
+  return { showClean: open, showSlipped: open };
 }
 
 /** Recovery points held in the season that contains `atMs` (all recovery sources). */

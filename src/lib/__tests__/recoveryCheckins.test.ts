@@ -2,7 +2,7 @@
 // (computeRecoveryCheckinAward), the recovery_checkins sync collection and the merge branch.
 // The same cases run against the SQL in work/rcc/pglite-test.mjs.
 import { DEFAULT_STATE, type AddictionTracker, type AppState, type PointsEntry, type RecoveryCheckin } from '../../types';
-const { canUndoRecoveryCheckin, computeRecoveryCheckinAward, recoveryCheckinBlock, recoveryCheckinDays, recoveryDayAwardId, recoveryPointsInSeason } =
+const { canUndoRecoveryCheckin, computeRecoveryCheckinAward, recoveryCheckinBlock, recoveryCheckinDays, recoveryDayActions, recoveryDayAwardId, recoveryPointsInSeason, recoveryResetTakesBackDay } =
   await import('../points/recoveryAwards');
 const { RECOVERY_POINTS } = await import('../points/pointsConfig');
 const { addDays, localDayStartMs } = await import('../time/dates');
@@ -119,5 +119,22 @@ const retapItem: RecoveryCheckin = { id: today, trackerId: 'trk1', createdAt: is
 const retapped = diffSyncedCollections({ ...DEFAULT_STATE, recoveryCheckins: [retapItem, yCheckin] }, undone.baseline, undone.outbox, iso(NOW + 2000));
 const retapOps = Object.values(retapped.outbox) as { kind: string; id: string }[];
 assert(retapOps.length === 1 && retapOps[0].kind === 'upsert' && retapOps[0].id === today, `re-tap replaces the pending delete with an upsert (${JSON.stringify(retapOps)})`);
+
+// A reset (Reset streak / Slipped) takes back today's check-in only (addiction_trackers_reset_checkin).
+assert(recoveryResetTakesBackDay([checkin, yCheckin], NOW) === today, 'reset takes back today');
+assert(recoveryResetTakesBackDay([yCheckin], NOW) === null, "reset without today's check-in takes back nothing (never yesterday)");
+assert(recoveryResetTakesBackDay(undefined, NOW) === null, 'no check-ins: nothing');
+assert(recoveryResetTakesBackDay([checkin], localDayStartMs(addDays(today, 1)) + HOUR) === null, 'after midnight: the day checked in is yesterday, it stays');
+
+// Daily check-in buttons: Slipped sits beside Clean today only while Clean today shows; after Clean
+// today, on the first day and after a reset today neither shows (the top Reset streak is the way).
+const actions = (checkedToday: boolean, todayBlock: 'first-day' | 'restarted' | null) =>
+  JSON.stringify(recoveryDayActions({ checkedToday, todayBlock }));
+const both = (showClean: boolean, showSlipped: boolean) => JSON.stringify({ showClean, showSlipped });
+assert(actions(false, null) === both(true, true), 'open day: Clean today + Slipped');
+assert(actions(true, null) === both(false, false), 'checked in: no Slipped (top Reset streak instead)');
+assert(actions(false, 'first-day') === both(false, false), 'first day: neither');
+assert(actions(false, 'restarted') === both(false, false), 'restarted today: neither');
+assert(actions(true, 'restarted') === both(false, false), 'restarted today while a check-in shows: neither');
 
 console.log('recoveryCheckins fixtures: all passed');
