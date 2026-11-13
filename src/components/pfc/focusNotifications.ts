@@ -1,4 +1,6 @@
 import { focusAlertsEnabled, PFC_PATH } from './focusSession';
+import { celebrationFeedback } from '@/lib/ui/actionFeedback';
+import { playActionSound, type ActionSound } from '@/lib/ui/actionSounds';
 
 /**
  * Focus timer alerts are shown by the page itself when it sees the session end, so they arrive
@@ -68,4 +70,23 @@ export async function showFocusNotification(title: string, body: string, onOpen:
   } catch {
     /* Android Chrome has no Notification constructor; nothing more to try */
   }
+}
+
+/** Break over: two soft rising bell tones (Web Audio, like the tick sounds; no audio file). */
+const BREAK_OVER_CHIME: ActionSound = {
+  id: 'focus-break-over',
+  name: 'Break over',
+  hint: 'Two soft rising bell tones',
+  layers: [
+    { kind: 'tone', wave: 'sine', from: 784, length: 0.5, level: 0.9 },
+    { kind: 'tone', wave: 'sine', from: 1046.5, length: 0.7, level: 0.9, delay: 0.22 },
+  ],
+};
+
+/**
+ * The cue when a break ends while the app is open: the chime, a buzz, or nothing, following the
+ * user's tick choice in Settings > Sound & vibration (like the rank-up).
+ */
+export function breakOverFeedback(): void {
+  celebrationFeedback((ctx, peak) => playActionSound(ctx, BREAK_OVER_CHIME, peak), [60, 80, 60]);
 }
