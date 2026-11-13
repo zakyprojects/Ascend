@@ -142,6 +142,8 @@ function writeUserDeviceCache(userId: string, cached: AppState): void {
   localStorage.setItem(`ascend_user_cache_${userId}`, JSON.stringify(cached));
   storeTabSyncedHashes(userId);
 }
+/** Waits between re-reads of the synced tables after a table read failed (the last one repeats). */
+const TABLE_REREAD_DELAYS_MS = [5_000, 15_000, 30_000, 60_000];
 /** How long the boot loader waits on a saved sign-in before offering Retry (offline). */
 const STORED_SESSION_WAIT_MS = 8000;
 // The "Clear older logs" caps live in clearLimits.ts; re-exported here for the views.
@@ -630,6 +632,35 @@ export function useAppState() {
     },
     [setState]
   );
+
+  // The account loaded but a table read failed (isServerDataApplied stays false): that module shows
+  // this device's copy, or nothing on a new device ("No habits yet"), until a pull reads every table.
+  // Pull again soon, backing off, instead of waiting for a return to the tab (3-minute throttle).
+  const signedInUserId = state.currentUser?.id;
+  useEffect(() => {
+    if (!signedInUserId || isServerDataApplied || !isSupabaseConfigured) return;
+    let attempt = 0;
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const pullAgain = async () => {
+      if (
+        isHydrated.current &&
+        currentUserRef.current?.id === signedInUserId &&
+        !isDeviceOffline() &&
+        document.visibilityState !== 'hidden'
+      ) {
+        await syncTables(signedInUserId, false).catch((e) => console.error('[SYNC] Table re-read failed:', e));
+      }
+      if (cancelled) return;
+      attempt++;
+      timer = setTimeout(pullAgain, TABLE_REREAD_DELAYS_MS[Math.min(attempt, TABLE_REREAD_DELAYS_MS.length - 1)]);
+    };
+    timer = setTimeout(pullAgain, TABLE_REREAD_DELAYS_MS[0]);
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+    };
+  }, [signedInUserId, isServerDataApplied, syncTables]);
 
   // A save held back old copies (another tab of this browser synced newer rows first): pull, so
   // this tab shows the newer rows. At most once per 15 s, so a copy that cannot be replaced never loops.
