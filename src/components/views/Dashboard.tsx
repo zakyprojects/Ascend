@@ -266,11 +266,11 @@ export function Dashboard({ store, onViewChange, onOpenAuth }: DashboardProps) {
         <h1 className="page-title">{greeting()}</h1>
         <p className="page-subtitle">{formatDateLong(today)}</p>
         {/* Quote of the day: follows the same local day key as the date line, so it changes at local midnight. */}
-        <figure className="mt-3 max-w-prose" aria-label="Quote of the day">
-          <blockquote className="text-sm text-content-secondary [text-wrap:pretty]">
+        <figure className="mt-3 max-w-prose border-l-2 border-brand-mark pl-3" aria-label="Quote of the day">
+          <blockquote className="text-base italic text-content-primary [text-wrap:pretty]">
             <p>“{quote.text}”</p>
           </blockquote>
-          <figcaption className="mt-1 text-xs text-content-muted">{quote.author}</figcaption>
+          <figcaption className="mt-1 text-xs text-content-muted">— {quote.author}</figcaption>
         </figure>
       </div>
 
