@@ -1,11 +1,19 @@
 import { Fig, Gain, pts, type HowItWorksGuide } from '@/components/ui/HowItWorks';
 import { PFC_POINTS } from '@/lib/points/pointsConfig';
 import { FOCUS_MINUTES_PER_POINT, FOCUS_MIN_MINUTES, focusPointsForMinutes } from '@/lib/points/focusPoints';
-import { FOCUS_PRESETS, FOCUS_RESUME_WINDOW_MINUTES, focusFinishedPoints } from '@/lib/focus/focusSession';
+import {
+  FOCUS_BREAK_MINUTES_TEXT,
+  FOCUS_BREAK_MIN_LEFT_SECONDS,
+  FOCUS_BREAK_OVER_MINUTES,
+  FOCUS_BREAKS_PER_SESSION,
+  FOCUS_PRESETS,
+  FOCUS_RESUME_WINDOW_MINUTES,
+  focusFinishedPoints,
+} from '@/lib/focus/focusSession';
 
 /**
  * Prefrontal Cortex. Points from lib/focusPoints.ts (rule 2: 1 pt per 12 active min, a day's
- * sessions added up, from 25 min a session) and lib/focusSession.ts (presets, 30-min resume
+ * sessions added up, from 25 min a session) and lib/focusSession.ts (presets, breaks, 30-min resume
  * window), the late-day rule (a session that ended yesterday while the app was closed). R1 and
  * PFC_POINTS.focus.tiers are legacy (old logs only): never quoted.
  * Tabs: Focus, Schedule (follows Time Tracker blocks), Decisions (Revisit on), Emotions.
@@ -18,7 +26,7 @@ export const prefrontalCortexGuide: HowItWorksGuide = {
   steps: [
     {
       title: 'Focus',
-      text: 'Run a timed focus session. It shows on all your devices: start on one, pause, resume or complete on another. Closing the app or locking your phone keeps it running; logging out pauses it everywhere. Tag a skill and its minutes are logged as practice too.',
+      text: 'Run a timed focus session. It shows on all your devices: start on one, take a break or complete it on another. Closing the app or locking your phone keeps it running; logging out pauses it everywhere. Tag a skill and its minutes are logged as practice too.',
     },
     {
       title: 'Schedule',
@@ -29,8 +37,13 @@ export const prefrontalCortexGuide: HowItWorksGuide = {
   ],
   notes: [
     <>
-      Resume a paused session within <Fig>{FOCUS_RESUME_WINDOW_MINUTES}</Fig> min. After that it ends at the pause: saved from{' '}
-      <Fig>{FOCUS_MIN_MINUTES}</Fig> min, dropped below.
+      Sessions over <Fig>{FOCUS_BREAK_OVER_MINUTES}</Fig> min can take a <Fig>{FOCUS_BREAK_MINUTES_TEXT}</Fig> min
+      break, up to <Fig>{FOCUS_BREAKS_PER_SESSION}</Fig> per session, not in the last <Fig>{FOCUS_BREAK_MIN_LEFT_SECONDS / 60}</Fig> min. Focus starts again on its own when the
+      break ends.
+    </>,
+    <>
+      Logging out pauses a session. Resume within <Fig>{FOCUS_RESUME_WINDOW_MINUTES}</Fig> min; after that it ends at the pause: saved
+      from <Fig>{FOCUS_MIN_MINUTES}</Fig> min, dropped below.
     </>,
     <>
       From <Fig>{FOCUS_MIN_MINUTES}</Fig> min you can Complete early and keep your points. Before that, Discard saves nothing.
@@ -40,7 +53,7 @@ export const prefrontalCortexGuide: HowItWorksGuide = {
   points: [
     <>
       <Gain>{pts(1, true)}</Gain> for every <Fig>{FOCUS_MINUTES_PER_POINT}</Fig> min of focus. A session counts from <Fig>{FOCUS_MIN_MINUTES}</Fig> min.
-      Paused time doesn’t count.
+      Break and paused time don’t count.
     </>,
     <>
       The minutes of all of today’s sessions add up, so two 30-min sessions give <Fig>{pts(focusPointsForMinutes(60))}</Fig>. Any length

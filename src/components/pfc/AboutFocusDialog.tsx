@@ -36,8 +36,9 @@ export function AboutFocusDialog({ open, onClose }: { open: boolean; onClose: ()
           </div>
           <div className="py-2.5">
             <span className="item-name !text-content-secondary block mb-0.5">3. Stay with it</span>
-            The session keeps running if you close the app or lock your phone, and it shows on all your devices. Paused time
-            does not count, and logging out pauses it everywhere. Resume within {FOCUS_RESUME_WINDOW_MINUTES} min to carry on; after that it ends where you paused.
+            The session keeps running if you close the app or lock your phone, and it shows on all your devices. A break
+            stops the clock and focus starts again on its own when it ends. Logging out pauses it everywhere: resume within{' '}
+            {FOCUS_RESUME_WINDOW_MINUTES} min to carry on; after that it ends where you paused.
           </div>
           <div className="py-2.5">
             <span className="item-name !text-content-secondary block mb-0.5">4. Real breaks</span>
