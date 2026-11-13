@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { AppStore } from '@/lib/store/store';
 import type { ImprovementPlan } from '@/types';
 import { fetchPublicPlansFromSupabase, supabase, syncBroadcaster } from '@/lib/auth/supabase';
+import { APP_REFRESH_EVENT } from '@/lib/store/appRefresh';
 
 export type DiscoverSort = 'recent' | 'followed' | 'creator_rank';
 
@@ -27,6 +28,7 @@ const POLL_MS = 30_000;
  *   current filters, so a change never shows a plan that doesn't match them.
  * - While Discover is open it also refetches every 30s: a plan turned private never reaches
  *   realtime (RLS hides the new row), so polling is what removes it.
+ * - Pull-to-refresh (APP_REFRESH_EVENT; phones have no Refresh button) refetches quietly too.
  */
 export function useDiscoverPlans(store: AppStore, active: boolean) {
   const [filters, setFilters] = useState<DiscoverFilters>(DEFAULT_DISCOVER_FILTERS);
@@ -95,10 +97,15 @@ export function useDiscoverPlans(store: AppStore, active: boolean) {
       if (event === 'PLAN_CREATED' || event === 'PLAN_UPDATED' || event === 'PLAN_DELETED') scheduleQuietLoad();
     });
 
+    // Pull-to-refresh: at once, with the current filters (the list stays while it loads).
+    const onAppRefresh = () => void load(true);
+    window.addEventListener(APP_REFRESH_EVENT, onAppRefresh);
+
     return () => {
       if (timer) window.clearTimeout(timer);
       supabase.removeChannel(channel);
       unsubscribe();
+      window.removeEventListener(APP_REFRESH_EVENT, onAppRefresh);
     };
   }, [load]);
 
