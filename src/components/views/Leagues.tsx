@@ -301,11 +301,21 @@ export function Leagues({ store, onOpenAuth }: LeaguesProps) {
                   <div aria-busy="true" className="divide-y divide-overlay-subtle">
                     <span className="sr-only" role="status">Loading the table</span>
                     {Array.from({ length: SKELETON_ROWS }, (_, i) => (
-                      <div key={i} className="flex items-center gap-3 px-4 py-3 sm:gap-4 sm:px-5">
-                        <Skeleton className="h-3 w-5" />
-                        <Skeleton className="h-9 w-9 rounded-lg" />
-                        <Skeleton className="h-3.5 flex-1 max-w-[10rem]" />
-                        <Skeleton className="ml-auto h-3.5 w-12" />
+                      // Same boxes as a standings row below (rank, avatar, name, tier badge, points,
+                      // chevron), so the table does not shift when it arrives.
+                      <div key={i} className="flex items-center gap-2.5 px-3 py-3 sm:gap-4 sm:px-5">
+                        <span className="flex w-6 shrink-0 justify-center">
+                          <Skeleton className="h-3 w-4" />
+                        </span>
+                        <Skeleton className="h-9 w-9 shrink-0 sm:h-10 sm:w-10" />
+                        <span className="flex min-w-0 flex-1">
+                          <Skeleton className="h-3.5 w-full max-w-[10rem]" />
+                        </span>
+                        <Skeleton className="h-7 w-7 shrink-0 rounded-xl" />
+                        <span className="flex min-w-[3.5rem] shrink-0 justify-end sm:min-w-[4.5rem]">
+                          <Skeleton className="h-3.5 w-12" />
+                        </span>
+                        <span aria-hidden="true" className="w-[15px] shrink-0" />
                       </div>
                     ))}
                   </div>

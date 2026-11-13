@@ -780,6 +780,8 @@ export function AccountabilityPartner({ store, onNavigate }: { store: AppStore; 
           <p className="page-subtitle">Do a daily challenge with a friend and keep each other going.</p>
           <HowItWorksButton onClick={guide.show} />
         </div>
+        {/* While loading, the Add partner button's place is kept (phones show it full width). */}
+        {firstLoad && <Skeleton className="h-10 w-full rounded-xl sm:w-36 sm:shrink-0" />}
         {!firstLoad && !loadFailed && (
           <button
             type="button"
@@ -796,18 +798,43 @@ export function AccountabilityPartner({ store, onNavigate }: { store: AppStore; 
       {firstLoad ? (
         <div aria-busy="true" className="space-y-6">
           <span className="sr-only" role="status">Loading your partners</span>
-          <div className="card p-5 sm:p-6 flex items-center gap-5">
-            <Skeleton className="h-[104px] w-[104px] rounded-full" />
-            <div className="flex-1 space-y-3">
-              <Skeleton className="h-3 w-24" />
-              <Skeleton className="h-9 w-20" />
-              <Skeleton className="h-3 w-40" />
+          {/* The page this turns into is shown only to someone with no partner data yet, so the
+              shapes follow it: the hero without a ring (lead + 3 stats), then the "No partners yet" card. */}
+          <div className="card p-5 sm:p-6">
+            <div className="flex flex-col gap-5 sm:gap-6 md:flex-row md:items-center md:gap-8">
+              <div className="space-y-2.5 pb-0.5">
+                <Skeleton className="h-3 w-16" />
+                <Skeleton className="h-9 w-10 sm:h-12" />
+                <Skeleton className="h-3.5 w-24" />
+              </div>
+              <div className="grid flex-1 grid-cols-3 gap-x-4 border-t border-overlay-subtle pt-4 sm:flex sm:gap-0 sm:border-t-0 sm:pt-0 md:border-l">
+                {[0, 1, 2].map((i) => (
+                  <div key={i} className="space-y-2 sm:px-6 sm:first:pl-0 md:first:pl-8 sm:[&:not(:first-child)]:border-l sm:[&:not(:first-child)]:border-overlay-subtle">
+                    <Skeleton className="h-3.5 w-14" />
+                    <Skeleton className="h-6 w-8 sm:h-[1.875rem]" />
+                    {/* Phones: the middle hint ("days done together") wraps to a second line. */}
+                    <div className="space-y-[3px]">
+                      <Skeleton className="h-3 w-16" />
+                      {i === 1 && <Skeleton className="h-3 w-10 sm:hidden" />}
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
-          <div className="card p-5 space-y-3">
-            <Skeleton className="h-5 w-32" />
-            <Skeleton className="h-16 w-full" />
-            <Skeleton className="h-16 w-full" />
+          <div className="card p-8 space-y-3">
+            <Skeleton className="mx-auto h-12 w-12 rounded-2xl" />
+            <div className="flex h-6 items-center">
+              <Skeleton className="mx-auto h-4 w-32" />
+            </div>
+            <div className="mx-auto max-w-sm space-y-2.5 pb-0.5 pt-1">
+              <Skeleton className="h-3.5 w-full" />
+              <Skeleton className="h-3.5 w-full" />
+              <Skeleton className="mx-auto h-3.5 w-2/3" />
+            </div>
+            <div className="pt-1">
+              <Skeleton className="mx-auto h-10 w-36 rounded-xl" />
+            </div>
           </div>
         </div>
       ) : loadFailed ? (
