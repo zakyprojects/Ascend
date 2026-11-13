@@ -1,6 +1,6 @@
 import { Dialog } from '@/components/ui/primitives';
 import { FOCUS_DAILY_CAP, FOCUS_MINUTES_PER_POINT, FOCUS_MIN_MINUTES } from '@/lib/points/focusPoints';
-import { FOCUS_RESUME_WINDOW_MINUTES } from './focusSession';
+import { FOCUS_BREAK_GRACE_MINUTES, FOCUS_RESUME_WINDOW_MINUTES } from './focusSession';
 
 export function AboutFocusDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   return (
@@ -37,7 +37,8 @@ export function AboutFocusDialog({ open, onClose }: { open: boolean; onClose: ()
           <div className="py-2.5">
             <span className="item-name !text-content-secondary block mb-0.5">3. Stay with it</span>
             The session keeps running if you close the app or lock your phone, and it shows on all your devices. A break
-            stops the clock and focus starts again on its own when it ends. Logging out pauses it everywhere: resume within{' '}
+            stops the clock until you press Continue; not continued within {FOCUS_BREAK_GRACE_MINUTES} min after it ends, the
+            session ends at the break start. Logging out pauses it everywhere: resume within{' '}
             {FOCUS_RESUME_WINDOW_MINUTES} min to carry on; after that it ends where you paused.
           </div>
           <div className="py-2.5">

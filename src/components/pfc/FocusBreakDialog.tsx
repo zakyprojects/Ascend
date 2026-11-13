@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Coffee } from 'lucide-react';
 import { Dialog } from '@/components/ui/primitives';
 import { cx } from '@/components/ui/primitives/shared';
-import { FOCUS_BREAK_MINUTES, type FocusBreakMinutes } from './focusSession';
+import { FOCUS_BREAK_GRACE_MINUTES, FOCUS_BREAK_MINUTES, type FocusBreakMinutes } from './focusSession';
 
 /** Picks a 5, 10 or 15 minute break in a focus session (the Follow schedule break dialog's look). */
 export function FocusBreakDialog({
@@ -28,7 +28,7 @@ export function FocusBreakDialog({
       open={open}
       onClose={onClose}
       title="Take a break"
-      description={`Focus starts again on its own when the break ends. Break time earns no points. ${
+      description={`The timer stops until you press Continue (up to ${FOCUS_BREAK_GRACE_MINUTES} min after the break ends). Not continued: the session ends at the break start, your focus time saved. Break time earns no points. ${
         breaksLeft === 1 ? 'This is your last break in this session.' : `${breaksLeft} breaks left in this session.`
       }`}
       footer={
