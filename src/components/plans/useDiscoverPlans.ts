@@ -36,6 +36,9 @@ export function useDiscoverPlans(store: AppStore, active: boolean) {
   const [plans, setPlans] = useState<ImprovementPlan[]>([]);
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
   const [refreshing, setRefreshing] = useState(false);
+  // A list is on screen but the last load of it failed: it stays, with a "Couldn't refresh" line.
+  const [refreshFailed, setRefreshFailed] = useState(false);
+  const hasListRef = useRef(false);
 
   const storeRef = useRef(store);
   const queryRef = useRef({ ...filters, search });
@@ -58,12 +61,16 @@ export function useDiscoverPlans(store: AppStore, active: boolean) {
     setRefreshing(false);
 
     if (!result) {
-      // A quiet refetch that fails keeps the list on screen; a requested one says it failed.
-      if (!quiet) setStatus('error');
+      // A list on screen stays (marked as not refreshed). With none, a requested load says it
+      // failed; a quiet one leaves the screen as it is.
+      if (hasListRef.current) setRefreshFailed(true);
+      else if (!quiet) setStatus('error');
       return;
     }
+    hasListRef.current = result.length > 0;
     setPlans(result);
     setStatus('ready');
+    setRefreshFailed(false);
 
     // The server's copy counts for the user's own public plans.
     const own = new Map(storeRef.current.state.improvementPlans.map((p) => [p.id, p.copyCount]));
@@ -135,5 +142,5 @@ export function useDiscoverPlans(store: AppStore, active: boolean) {
     void load(false);
   }, [load]);
 
-  return { plans, status, refreshing, filters, updateFilters, resetFilters, retry, refresh: () => void load(false) };
+  return { plans, status, refreshing, refreshFailed, filters, updateFilters, resetFilters, retry, refresh: () => void load(false) };
 }

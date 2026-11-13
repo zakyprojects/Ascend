@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
-import { Check, Compass, Copy, RefreshCw, Search } from 'lucide-react';
-import { EmptyState, Skeleton, ToolbarInput, ToolbarSelect } from '@/components/ui/primitives';
+import { Check, Compass, Copy, RefreshCw, Search, WifiOff } from 'lucide-react';
+import { Button, EmptyState, Skeleton, ToolbarInput, ToolbarSelect } from '@/components/ui/primitives';
 import { AscendLoadingIndicator } from '@/components/ui/AscendLoadingIndicator';
 import { TierBadge } from '@/components/ui/TierBadge';
 import { getProfileSeasonPointsByUsername } from '@/lib/auth/auth';
@@ -31,7 +31,7 @@ export function DiscoverPanel({
   onCopy: (plan: ImprovementPlan) => void;
   ownControls: (plan: ImprovementPlan) => ReactNode;
 }) {
-  const { plans, status, refreshing, filters, updateFilters, resetFilters, retry, refresh } = discover;
+  const { plans, status, refreshing, refreshFailed, filters, updateFilters, resetFilters, retry, refresh } = discover;
   const ownById = new Map(ownPlans.map((p) => [p.id, p]));
   const now = leagueNow();
   const seasonPoints = (username: string) => getProfileSeasonPointsByUsername(username, 'ninetyDay', now) || 0;
@@ -97,6 +97,18 @@ export function DiscoverPanel({
           <RefreshCw size={14} className={refreshing ? 'animate-spin' : ''} /> Refresh
         </button>
       </div>
+
+      {refreshFailed && status === 'ready' && (
+        <div role="status" className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-overlay-default px-4 py-2 text-xs text-content-secondary">
+          <span className="flex items-center gap-2">
+            <WifiOff size={14} aria-hidden="true" className="shrink-0 text-content-muted" />
+            Couldn't refresh. Showing what was loaded last.
+          </span>
+          <Button variant="ghost" size="sm" type="button" onClick={refresh} loading={refreshing}>
+            Retry
+          </Button>
+        </div>
+      )}
 
       {status === 'loading' && plans.length === 0 ? (
         <div role="status" aria-label="Loading public plans" className="grid-cards-lg gap-4">
