@@ -55,7 +55,6 @@ function focusValue(id: FocusDemoId): FocusSessionContextValue {
     start: noop,
     takeBreak: noop,
     resume: noop,
-    notBack: noop,
     complete: noop,
     stop: noop,
     clearFinished: noop,

@@ -51,7 +51,7 @@ export interface FocusServerRow {
   end_reason: FocusEndReason | null;
   log_claimed: boolean;
   revision: number;
-  /** Break end while paused; equal to stretch_started_at while running = auto-resumed (20261113120000). */
+  /** Break end while paused (20261113120000); on an 'expired' row: it ended after a break (20261113140000). */
   pause_ends_at?: string | null;
   break_count?: number;
 }
@@ -122,16 +122,14 @@ export function rowToSession(row: FocusServerRow | null, userId?: string): Focus
     };
   }
   const paused = row.status === 'paused';
-  const startTime = ms(row.stretch_started_at);
   const endsAt = ms(row.pause_ends_at);
-  // Running: kept only as the "started on its own at the break end" mark.
-  const pauseEndsAt = endsAt > 0 && (paused || endsAt === startTime) ? endsAt : undefined;
+  const pauseEndsAt = paused && endsAt > 0 ? endsAt : undefined;
   const breakCount = num(row.break_count);
   return {
     ...base,
     id: row.session_id,
     mode: 'focus',
-    startTime,
+    startTime: ms(row.stretch_started_at),
     plannedDurationSeconds: num(row.stretch_planned_seconds),
     isPaused: paused,
     pausedRemainingSeconds: paused ? num(row.paused_remaining_seconds) : num(row.stretch_planned_seconds),
@@ -273,7 +271,6 @@ export function sendOp(transport: FocusTransport, op: FocusOp, revision: number 
     }
     case 'pause':
     case 'resume':
-    case 'back':
       return transport.call(`ascend_focus_session_${op.kind}`, {
         p_session_id: op.sessionId,
         p_revision: revision ?? null,

@@ -7,6 +7,9 @@ import { playActionSound, type ActionSound } from '@/lib/ui/actionSounds';
  * only while the app is running (a minimised mobile app is usually paused by the system).
  * A click opens the PFC page: the service worker posts `ascend:navigate` to an open window
  * (public/sw.js; App opens the page), the plain Notification fallback calls `onOpen` directly.
+ * "Break over" carries a Continue button where the browser shows notification buttons (service
+ * worker notifications only): sw.js posts `ascend:focus-continue` with the session id, and
+ * FocusSessionProvider continues that session.
  */
 
 const SW_READY_TIMEOUT_MS = 2000;
@@ -39,7 +42,11 @@ async function serviceWorkerRegistration(): Promise<ServiceWorkerRegistration | 
   }
 }
 
-export async function showFocusNotification(title: string, body: string, onOpen: () => void): Promise<void> {
+/** The Continue button's action id (public/sw.js matches it). */
+const CONTINUE_ACTION = 'focus-continue';
+
+/** `continueSessionId`: adds a Continue button that continues this session (break over). */
+export async function showFocusNotification(title: string, body: string, onOpen: () => void, continueSessionId?: string): Promise<void> {
   if (!notificationsSupported() || Notification.permission !== 'granted' || !focusAlertsEnabled()) return;
   const options: NotificationOptions & { renotify?: boolean } = {
     body,
@@ -47,13 +54,15 @@ export async function showFocusNotification(title: string, body: string, onOpen:
     badge: '/notification-badge.png',
     tag: 'ascend-focus',
     renotify: true,
-    data: { url: PFC_PATH },
+    data: continueSessionId ? { url: PFC_PATH, continueSessionId } : { url: PFC_PATH },
   };
 
   const reg = await serviceWorkerRegistration();
   if (reg && typeof reg.showNotification === 'function') {
     try {
-      await reg.showNotification(title, options);
+      // Buttons exist only on service worker notifications (the page constructor throws on them).
+      const actions = continueSessionId ? { actions: [{ action: CONTINUE_ACTION, title: 'Continue' }] } : {};
+      await reg.showNotification(title, { ...options, ...actions } as NotificationOptions);
       return;
     } catch {
       /* fall back to the page notification below */

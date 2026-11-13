@@ -2,9 +2,10 @@ import { Fig, Gain, pts, type HowItWorksGuide } from '@/components/ui/HowItWorks
 import { PFC_POINTS } from '@/lib/points/pointsConfig';
 import { FOCUS_MINUTES_PER_POINT, FOCUS_MIN_MINUTES, focusPointsForMinutes } from '@/lib/points/focusPoints';
 import {
+  FOCUS_BREAK_AFTER_MINUTES,
+  FOCUS_BREAK_GRACE_MINUTES,
   FOCUS_BREAK_MINUTES_TEXT,
   FOCUS_BREAK_MIN_LEFT_SECONDS,
-  FOCUS_BREAK_OVER_MINUTES,
   FOCUS_BREAKS_PER_SESSION,
   FOCUS_PRESETS,
   FOCUS_RESUME_WINDOW_MINUTES,
@@ -37,9 +38,10 @@ export const prefrontalCortexGuide: HowItWorksGuide = {
   ],
   notes: [
     <>
-      Sessions over <Fig>{FOCUS_BREAK_OVER_MINUTES}</Fig> min can take a <Fig>{FOCUS_BREAK_MINUTES_TEXT}</Fig> min
-      break, up to <Fig>{FOCUS_BREAKS_PER_SESSION}</Fig> per session, not in the last <Fig>{FOCUS_BREAK_MIN_LEFT_SECONDS / 60}</Fig> min. Focus starts again on its own when the
-      break ends.
+      After <Fig>{FOCUS_BREAK_AFTER_MINUTES}</Fig> min of focus you can take a <Fig>{FOCUS_BREAK_MINUTES_TEXT}</Fig> min break, up to{' '}
+      <Fig>{FOCUS_BREAKS_PER_SESSION}</Fig> per session, not in the last <Fig>{FOCUS_BREAK_MIN_LEFT_SECONDS / 60}</Fig> min. The timer
+      waits: press Continue when you are back. Not continued within <Fig>{FOCUS_BREAK_GRACE_MINUTES}</Fig> min after the break ends,
+      the session ends at the break start and keeps your focus time.
     </>,
     <>
       Logging out pauses a session. Resume within <Fig>{FOCUS_RESUME_WINDOW_MINUTES}</Fig> min; after that it ends at the pause: saved

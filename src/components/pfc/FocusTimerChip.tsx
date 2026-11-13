@@ -1,6 +1,6 @@
 import { Coffee, Hourglass, Pause, Timer } from 'lucide-react';
 import { cx, FOCUS_RING } from '@/components/ui/primitives/shared';
-import { formatClock, onBreak } from './focusSession';
+import { breakSecondsLeft, formatClock, onBreak } from './focusSession';
 import { useFocusCountdown, useFocusSession } from './FocusSessionProvider';
 
 /**
@@ -14,9 +14,11 @@ export function FocusTimerChip({ hidden, onOpen }: { hidden: boolean; onOpen: ()
 
   const isBreak = session?.mode === 'break';
   const resting = onBreak(session);
+  // Re-rendered by the countdown at the break end: then it waits for Continue.
+  const breakOver = resting && breakSecondsLeft(session!) === 0;
   const paused = Boolean(session?.isPaused);
   const Icon = isBreak ? Coffee : resting ? Hourglass : paused ? Pause : Timer;
-  const label = session ? (isBreak ? 'Break' : resting ? 'On break' : paused ? 'Paused' : 'Focus') : 'Focus done';
+  const label = session ? (isBreak ? 'Break' : breakOver ? 'Break over' : resting ? 'On break' : paused ? 'Paused' : 'Focus') : 'Focus done';
 
   return (
     <button

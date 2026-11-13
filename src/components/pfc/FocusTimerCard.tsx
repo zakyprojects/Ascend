@@ -8,16 +8,17 @@ import { FOCUS_DAILY_CAP, FOCUS_RULE_SHORT, focusDayGain, focusDayPoints, nextFo
 import { focusDayTally } from '@/lib/points/focusAwards';
 import { todayKey } from '@/lib/time/dates';
 import {
+  FOCUS_BREAK_AFTER_MINUTES,
+  FOCUS_BREAK_GRACE_MINUTES,
   FOCUS_BREAK_MINUTES_TEXT,
   FOCUS_BREAK_MIN_LEFT_SECONDS,
-  FOCUS_BREAK_OVER_MINUTES,
   FOCUS_BREAKS_PER_SESSION,
   FOCUS_MIN_MINUTES_TO_SAVE,
   FOCUS_PRESETS,
   FOCUS_RESUME_WINDOW_MINUTES,
   activeMinutesAt,
-  autoResumed,
   breakBlock,
+  breakSecondsLeft,
   focusAlertsEnabled,
   focusFinishedPoints,
   formatClock,
@@ -74,8 +75,8 @@ const clockTime = (ms: number): string => new Date(ms).toLocaleTimeString([], { 
 
 /**
  * Points so far and the next one on a focus session, counted on top of today's saved sessions
- * (their minutes add up with this one's); on a break, when focus starts again; while paused after
- * a logout, the time left to resume.
+ * (their minutes add up with this one's); on a break, when it ends; once it is over, the time left
+ * to Continue; while paused after a logout, the time left to resume.
  */
 function FocusProgressLine({ session, today }: { session: FocusSession; today: FocusDayTally }) {
   const nowMs = useSecondTick(true);
@@ -84,17 +85,19 @@ function FocusProgressLine({ session, today }: { session: FocusSession; today: F
   const capFull = focusDayPoints(today) >= FOCUS_DAILY_CAP;
   const next = nextFocusReward(active, session.focusMinutes, today);
   const deadline = resumeDeadlineMs(session);
+  const breakRunning = onBreak(session) && breakSecondsLeft(session, nowMs) > 0;
   return (
     <p className="text-center text-xs text-content-muted" aria-live="off">
-      {onBreak(session) && (
+      {breakRunning && (
         <>
-          Focus resumes at <span className="figure text-content-primary">{clockTime(session.pauseEndsAt!)}</span>
+          Break ends at <span className="figure text-content-primary">{clockTime(session.pauseEndsAt!)}</span>
           {' · '}
         </>
       )}
-      {session.isPaused && deadline !== null && (
+      {session.isPaused && deadline !== null && !breakRunning && (
         <>
-          Resume within <span className="font-mono tabular-nums text-content-primary">{formatClock(Math.max(0, (deadline - nowMs) / 1000))}</span>
+          {onBreak(session) ? 'Break over. Continue within' : 'Resume within'}{' '}
+          <span className="font-mono tabular-nums text-content-primary">{formatClock(Math.max(0, (deadline - nowMs) / 1000))}</span>
           {' · '}
         </>
       )}
@@ -125,9 +128,11 @@ function FocusNoticeLine({ notice, onClose }: { notice: FocusNotice; onClose: ()
         : 'Your session was discarded on another device.'
       : notice.kind === 'replaced'
         ? 'A session from another device was already running, so this one was not saved.'
-        : notice.saved
-          ? `Your session ended after a ${FOCUS_RESUME_WINDOW_MINUTES}-minute pause. Saved ${notice.minutes} min.`
-          : `Your session ended after a ${FOCUS_RESUME_WINDOW_MINUTES}-minute pause. Not enough time to save (under ${FOCUS_MIN_MINUTES_TO_SAVE} min).`;
+        : notice.afterBreak
+          ? `Your session ended at the start of your break: Continue was not pressed within ${FOCUS_BREAK_GRACE_MINUTES} min after it. Saved ${notice.minutes} min.`
+          : notice.saved
+            ? `Your session ended after a ${FOCUS_RESUME_WINDOW_MINUTES}-minute pause. Saved ${notice.minutes} min.`
+            : `Your session ended after a ${FOCUS_RESUME_WINDOW_MINUTES}-minute pause. Not enough time to save (under ${FOCUS_MIN_MINUTES_TO_SAVE} min).`;
   return (
     <div className="flex items-start justify-between gap-2 rounded-xl bg-overlay-subtle px-3 py-2 text-xs text-content-secondary" role="status">
       <span>{text}</span>
@@ -135,79 +140,6 @@ function FocusNoticeLine({ notice, onClose }: { notice: FocusNotice; onClose: ()
         <X size={14} aria-hidden="true" />
       </button>
     </div>
-  );
-}
-
-/** sessionStorage: the auto-resumed stretch whose line was dismissed in this tab (`<id>:<startTime>`). */
-const RESUME_SEEN_KEY = 'ascend_focus_resume_seen';
-const resumeKey = (session: FocusSession) => `${session.id}:${session.startTime}`;
-function resumeSeen(session: FocusSession): boolean {
-  try {
-    return sessionStorage.getItem(RESUME_SEEN_KEY) === resumeKey(session);
-  } catch {
-    return false;
-  }
-}
-
-/**
- * After a break that ended on its own: when focus started again, and "I wasn't back", which counts
- * focus from now instead (the minutes since then are removed, after a confirm).
- */
-function BreakReturnLine({ session, onNotBack }: { session: FocusSession; onNotBack: () => void }) {
-  const [hidden, setHidden] = useState(() => resumeSeen(session));
-  const [confirm, setConfirm] = useState(false);
-  const nowMs = useSecondTick(confirm);
-  if (hidden) return null;
-  const since = Math.max(0, Math.floor((nowMs - session.startTime) / 60000));
-  const dismiss = () => {
-    try {
-      sessionStorage.setItem(RESUME_SEEN_KEY, resumeKey(session));
-    } catch {
-      /* storage blocked: hidden until the page reloads */
-    }
-    setHidden(true);
-  };
-  return (
-    <>
-      <div className="flex items-center justify-between gap-2 rounded-xl bg-overlay-subtle px-3 py-2 text-xs text-content-secondary" role="status">
-        <span>
-          Focus resumed at <span className="figure">{clockTime(session.startTime)}</span> after your break.
-        </span>
-        <span className="flex shrink-0 items-center">
-          <button type="button" onClick={() => setConfirm(true)} className="btn-ghost min-h-10 text-xs text-cyan-hierarchy">
-            I wasn't back
-          </button>
-          <button type="button" onClick={dismiss} className="btn-ghost min-h-10 min-w-10 -mr-2 text-content-muted" aria-label="Dismiss">
-            <X size={14} aria-hidden="true" />
-          </button>
-        </span>
-      </div>
-      <Dialog
-        open={confirm}
-        onClose={() => setConfirm(false)}
-        title="Count focus from now?"
-        description={`The ${since} min since ${clockTime(session.startTime)} will not count. The ${formatClock(session.plannedDurationSeconds)} of focus left starts again now.`}
-        footer={
-          <>
-            <button type="button" onClick={() => setConfirm(false)} className="btn-secondary">
-              Cancel
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                onNotBack();
-                setConfirm(false);
-              }}
-              className="btn-primary"
-            >
-              Count from now
-            </button>
-          </>
-        }
-      >
-        {null}
-      </Dialog>
-    </>
   );
 }
 
@@ -254,11 +186,13 @@ export function RunningTimerStrip({ session, onShow }: { session: FocusSession; 
 function TimerDisplay({ session, readySeconds }: { session: FocusSession | null; readySeconds: number }) {
   const left = useFocusCountdown(session);
   const shown = session ? left : readySeconds;
-  const resting = Boolean(session && (session.mode === 'break' || onBreak(session)));
+  // On a break the clock shows the break; once it is over, the focus left (frozen until Continue).
+  const breakRunning = Boolean(session && onBreak(session) && breakSecondsLeft(session) > 0);
+  const resting = Boolean(session && (session.mode === 'break' || breakRunning));
   const total = session
     ? session.mode === 'break'
       ? session.breakMinutes * 60
-      : onBreak(session)
+      : breakRunning
         ? (session.pauseEndsAt! - (session.pausedAt ?? session.pauseEndsAt!)) / 1000
         : session.focusMinutes * 60
     : readySeconds;
@@ -282,7 +216,7 @@ function TimerDisplay({ session, readySeconds }: { session: FocusSession | null;
 }
 
 function ManualTimer({ store }: { store: AppStore }) {
-  const { session, notice, start, takeBreak, resume, notBack, complete, stop, clearNotice } = useFocusSession();
+  const { session, notice, start, takeBreak, resume, complete, stop, clearNotice } = useFocusSession();
   const skills = store.state.skills;
 
   // The last chosen length; a session already running sets it on first render.
@@ -336,12 +270,19 @@ function ManualTimer({ store }: { store: AppStore }) {
 
   const skillName = (id?: string) => skills.find((s) => s.id === id)?.name;
   const isBreak = session?.mode === 'break';
-  // Breaks: only sessions over 25 min; the button stays (disabled) when none can be taken now.
-  const hasBreaks = Boolean(session && session.mode === 'focus' && session.focusMinutes > FOCUS_BREAK_OVER_MINUTES);
-  const breakNow = session && hasBreaks ? breakBlock(session, nowMs) : 'short';
+  // Breaks: only sessions that can reach 25 focused min with 5 left; the button stays (disabled) when
+  // none can be taken now.
+  const breakNow = session ? breakBlock(session, nowMs) : 'short';
+  const hasBreaks = breakNow !== 'short';
   const breaksLeft = Math.max(0, FOCUS_BREAKS_PER_SESSION - (session?.breakCount ?? 0));
   const breakHint =
-    breakNow === 'used' ? 'No breaks left in this session.' : breakNow === 'ending' ? `No break in the last ${FOCUS_BREAK_MIN_LEFT_SECONDS / 60} min.` : null;
+    breakNow === 'early'
+      ? `Break after ${FOCUS_BREAK_AFTER_MINUTES} min of focus.`
+      : breakNow === 'used'
+        ? 'No breaks left in this session.'
+        : breakNow === 'ending'
+          ? `No break in the last ${FOCUS_BREAK_MIN_LEFT_SECONDS / 60} min.`
+          : null;
 
   return (
     <div className="space-y-5">
@@ -434,8 +375,6 @@ function ManualTimer({ store }: { store: AppStore }) {
 
       {notice && <FocusNoticeLine notice={notice} onClose={clearNotice} />}
 
-      {session && autoResumed(session) && <BreakReturnLine key={`${session.id}:${session.startTime}`} session={session} onNotBack={notBack} />}
-
       <TimerDisplay session={session} readySeconds={Math.max(0, focusMinutes) * 60} />
 
       {session && !isBreak && <FocusProgressLine session={session} today={today} />}
@@ -489,7 +428,7 @@ function ManualTimer({ store }: { store: AppStore }) {
             {session.isPaused ? (
               <button type="button" onClick={resume} className="btn-primary w-full min-[420px]:w-auto min-h-11 px-6">
                 <Play size={18} aria-hidden="true" />
-                <span>{onBreak(session) ? 'End break' : 'Resume'}</span>
+                <span>{onBreak(session) ? 'Continue' : 'Resume'}</span>
               </button>
             ) : (
               hasBreaks && (
@@ -526,12 +465,17 @@ function ManualTimer({ store }: { store: AppStore }) {
 
       <div className="space-y-1 text-center text-2xs text-content-muted">
         {session && !isBreak && breakHint && !session.isPaused && <p id="pfc-break-hint">{breakHint}</p>}
-        {session && onBreak(session) && <p>Focus starts again on its own when the break ends. Break time earns no points.</p>}
+        {session && onBreak(session) && (
+          <p>
+            Press Continue when you are back. Not continued within {FOCUS_BREAK_GRACE_MINUTES} min after the break ends: the session
+            ends at the break start and keeps your focus time. Break time never counts.
+          </p>
+        )}
         {session && !isBreak && !onBreak(session) && (
           <p>
             Keeps running if you switch pages, close the app or lock your phone.
             {hasBreaks &&
-              ` Breaks: ${FOCUS_BREAK_MINUTES_TEXT} min, ${FOCUS_BREAKS_PER_SESSION} per session.`}{' '}
+              ` Breaks: ${FOCUS_BREAK_MINUTES_TEXT} min after ${FOCUS_BREAK_AFTER_MINUTES} min of focus, ${FOCUS_BREAKS_PER_SESSION} per session.`}{' '}
             Logging out pauses it: resume within {FOCUS_RESUME_WINDOW_MINUTES} min, or it is saved from {FOCUS_MIN_MINUTES_TO_SAVE} min.
           </p>
         )}

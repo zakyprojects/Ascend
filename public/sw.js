@@ -208,11 +208,25 @@ self.addEventListener('pushsubscriptionchange', (event) => {
 
 // Notification click event - open the notification's page in a window of ours (see
 // openFromNotification); a push's url is its notification's page (send-push), the focus timer's is PFC.
+// The focus "Break over" Continue button (focusNotifications.ts) also tells an open app window to
+// continue that session (FocusSessionProvider); with no app window the page opens and Continue is there.
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-  const url = (event.notification.data && event.notification.data.url) || '/dashboard';
+  const data = event.notification.data || {};
+  const url = data.url || '/dashboard';
+  if (event.action === 'focus-continue' && data.continueSessionId) {
+    event.waitUntil(continueFocusFromNotification(data.continueSessionId).then(() => openFromNotification(url)));
+    return;
+  }
   event.waitUntil(openFromNotification(url));
 });
+
+async function continueFocusFromNotification(sessionId) {
+  const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+  for (const client of windows) {
+    if (APP_VIEW_PAGE.test(new URL(client.url).pathname)) client.postMessage({ type: 'ascend:focus-continue', sessionId });
+  }
+}
 
 // A tapped notification's page. A window showing an app page runs the app, which opens the page
 // itself on 'ascend:navigate' (App.tsx). Any other window of ours (a public page, /login,

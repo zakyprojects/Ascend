@@ -17,11 +17,8 @@ import {
 import {
   FOCUS_MIN_MINUTES_TO_SAVE,
   activeMinutesAt,
-  autoResumed,
-  backAt,
   breakAt,
   breakBlock,
-  breakDue,
   breakIdFor,
   canResume,
   closeAt,
@@ -61,9 +58,11 @@ import { breakOverFeedback, showFocusNotification } from './focusNotifications';
  * A running focus session runs on wall time: in the background, with the screen locked, the tab
  * closed or the device asleep, the time still counts. Opened after its planned end, it ends at
  * the planned end (all its planned minutes, milestones at start + their minutes). Only a break or
- * logout stops it. A break runs again on its own at its end (with a chime when the app is open); a
- * logout pause can be resumed within 30 minutes, later it is closed at the pause (saved from 25
- * active minutes, dropped below). Logs go through the store's outbox, which keeps them until they upload.
+ * logout stops it. A break waits for Continue (a chime and a "Break over" notification with a
+ * Continue button at its end when the app is open); not continued within 10 minutes after its end,
+ * it is closed at the break start. A logout pause can be resumed within 30 minutes, later it is
+ * closed at the pause. Both save from 25 active minutes and drop below. Logs go through the store's
+ * outbox, which keeps them until they upload.
  *
  * Every device of the account shares the session (focusServerSession.ts, 2026-11-05): actions run
  * here at once and are queued for the server; the server row is pulled on start-up, when the page
@@ -95,10 +94,8 @@ export interface FocusSessionContextValue {
   start: (input: FocusStartInput) => void;
   /** A 5, 10 or 15 minute break (ignored when breakBlock refuses it). */
   takeBreak: (minutes: FocusBreakMinutes) => void;
-  /** Resumes a logout pause, or ends a break early. */
+  /** Resumes a logout pause, or Continue after (or during) a break. */
   resume: () => void;
-  /** "I wasn't back": an auto-resumed stretch counts from now. */
-  notBack: () => void;
   /** Ends a focus session of 25+ active minutes now and logs it (keeps its points). */
   complete: () => void;
   /** Discards a focus session under 25 active minutes (nothing logged), or ends a break early. */
@@ -120,6 +117,8 @@ const LOCK_NAME = 'ascend-focus-session';
 const SYNC_LOCK_NAME = 'ascend-focus-sync';
 /** Pull the server row this often while a session is shown and the page is visible. */
 const PULL_EVERY_MS = 60 * 1000;
+/** The break whose end cue already played (`<uid>` → `<sessionId>:<pauseEndsAt>`), so open tabs cue once. */
+const breakCueKey = (userId: string): string => `ascend_focus_break_cue:${userId}`;
 
 type LockManagerLike = { request: (name: string, callback: () => Promise<void> | void) => Promise<unknown> };
 
@@ -261,15 +260,6 @@ export function FocusSessionProvider({
     []
   );
 
-  /** The stored session as it is at `nowMs`: a break that ran out is running again (as on the server). */
-  const readLive = useCallback(
-    (nowMs: number): FocusSession | null => {
-      const current = readCurrent(userRef.current ?? '');
-      return current ? breakDue(current, nowMs) : null;
-    },
-    [readCurrent]
-  );
-
   /** Queues an action for the server, based on the revision this copy shows when nothing waits before it. */
   const queueOp = useCallback((op: FocusOp, current: FocusSession | null) => {
     const uid = userRef.current;
@@ -285,12 +275,13 @@ export function FocusSessionProvider({
       const close = rowClose(row, uid);
       // Already logged on this device (it ended here while the server could not be reached).
       if (close && focusLogsRef.current.some((l) => l.id === focusLogIdFor(close.sessionId))) return;
+      const afterBreak = row.end_reason === 'expired' && Boolean(row.pause_ends_at) ? { afterBreak: true } : {};
       if (!close || !closeIsLogged(row, close)) {
-        if (close && row.end_reason === 'expired') setNotice({ kind: 'expired', saved: false, minutes: close.activeMinutes });
+        if (close && row.end_reason === 'expired') setNotice({ kind: 'expired', saved: false, minutes: close.activeMinutes, ...afterBreak });
         return;
       }
       const logId = logClose(close);
-      if (row.end_reason === 'expired') setNotice({ kind: 'expired', saved: true, minutes: close.activeMinutes });
+      if (row.end_reason === 'expired') setNotice({ kind: 'expired', saved: true, minutes: close.activeMinutes, ...afterBreak });
       else if (live) setFinished({ logId, taskName: close.taskName, minutes: close.activeMinutes });
     },
     [logClose]
@@ -434,7 +425,7 @@ export function FocusSessionProvider({
     };
   }, [ready, session, settle]);
 
-  // Paused: close it when the resume window runs out while the app is open.
+  // Paused (also on a break): close it when its resume deadline runs out while the app is open.
   useEffect(() => {
     if (!ready || !session || !session.isPaused) return;
     const deadline = resumeDeadlineMs(session);
@@ -459,8 +450,9 @@ export function FocusSessionProvider({
     };
   }, [ready, session, settle]);
 
-  // On a break: run again at its end. The tab that makes the change (under the lock) plays the cue
-  // when the app is open at that moment; then the server is asked (it resumed on its own too).
+  // On a break: at its end, the chime and a "Break over" notification with Continue, when the app is
+  // open at that moment. The session stays paused until Continue (or its deadline). One tab cues
+  // (under the lock, marked in storage).
   const breakEnd = session && onBreak(session) ? session.pauseEndsAt! : null;
   useEffect(() => {
     if (!ready || breakEnd === null) return;
@@ -468,14 +460,20 @@ export function FocusSessionProvider({
     const endBreak = () => {
       void withFocusLock(() => {
         const nowMs = trustedNowMs();
-        const current = readCurrent(userRef.current ?? '');
+        const uid = userRef.current ?? '';
+        const current = readCurrent(uid);
         if (!current || !onBreak(current) || current.pauseEndsAt !== breakEnd || breakEnd > nowMs) return;
-        persist(breakDue(current, nowMs));
-        if (nowMs - breakEnd < LIVE_ALERT_WINDOW_MS) {
-          breakOverFeedback();
-          void showFocusNotification('Break over', `Focus resumed on ${current.taskName}.`, () => openRef.current());
+        if (nowMs - breakEnd >= LIVE_ALERT_WINDOW_MS) return;
+        const mark = `${current.id}:${breakEnd}`;
+        try {
+          if (localStorage.getItem(breakCueKey(uid)) === mark) return;
+          localStorage.setItem(breakCueKey(uid), mark);
+        } catch {
+          /* storage blocked: this tab cues */
         }
-      }).then(settle);
+        breakOverFeedback();
+        void showFocusNotification('Break over', `Tap Continue to go on with ${current.taskName}.`, () => openRef.current(), current.id);
+      });
     };
     const check = () => {
       window.clearTimeout(timer);
@@ -492,7 +490,7 @@ export function FocusSessionProvider({
       window.clearTimeout(timer);
       document.removeEventListener('visibilitychange', onVisible);
     };
-  }, [ready, breakEnd, persist, readCurrent, settle]);
+  }, [ready, breakEnd, readCurrent]);
 
   // The account's other devices: pull when the page comes back into view or online or on a
   // pull-to-refresh, and listen for changes to the session row (a phone drops the socket in the
@@ -590,7 +588,7 @@ export function FocusSessionProvider({
   const takeBreak = useCallback((minutes: FocusBreakMinutes) => {
     void withFocusLock(() => {
       const nowMs = trustedNowMs();
-      const current = readLive(nowMs);
+      const current = readCurrent(userRef.current ?? '');
       if (!current || current.mode !== 'focus') return;
       if (remainingSeconds(current, nowMs) <= 0) {
         settle(); // its time is up: it ends instead
@@ -601,46 +599,38 @@ export function FocusSessionProvider({
       queueOp({ kind: 'break', sessionId: current.id, atMs: nowMs, minutes }, current);
       void syncNow();
     });
-  }, [persist, queueOp, readLive, settle, syncNow]);
+  }, [persist, queueOp, readCurrent, settle, syncNow]);
 
   const resume = useCallback(() => {
     void withFocusLock(() => {
       const nowMs = trustedNowMs();
-      const current = readLive(nowMs);
-      if (!current || !current.isPaused) {
-        if (current) settle(); // the break was already over: it runs since its end
-        return;
-      }
+      const current = readCurrent(userRef.current ?? '');
+      if (!current || !current.isPaused) return;
       if (!canResume(current, nowMs)) {
-        settle(); // the resume window has passed: it closes at the pause
+        settle(); // past its deadline: it closes at the pause (a break: at the break start)
         return;
       }
       persist(resumeAt(current, nowMs));
       queueOp({ kind: 'resume', sessionId: current.id, atMs: nowMs }, current);
       void syncNow();
     });
-  }, [persist, queueOp, readLive, settle, syncNow]);
+  }, [persist, queueOp, readCurrent, settle, syncNow]);
 
-  const notBack = useCallback(() => {
-    void withFocusLock(() => {
-      const nowMs = trustedNowMs();
-      const current = readLive(nowMs);
-      if (!current || !autoResumed(current)) return;
-      const next = backAt(current, nowMs);
-      if (next === current) {
-        settle(); // the plan finished meanwhile: it ends as usual
-        return;
-      }
-      persist(next);
-      queueOp({ kind: 'back', sessionId: current.id, atMs: nowMs }, current);
-      void syncNow();
-    });
-  }, [persist, queueOp, readLive, settle, syncNow]);
+  // "Continue" on the break-over notification (public/sw.js posts it to this window).
+  useEffect(() => {
+    if (!ready || typeof navigator === 'undefined' || !('serviceWorker' in navigator)) return;
+    const onMessage = (event: MessageEvent) => {
+      const data = event.data as { type?: unknown; sessionId?: unknown } | null;
+      if (data?.type === 'ascend:focus-continue' && data.sessionId === sessionRef.current?.id) resume();
+    };
+    navigator.serviceWorker.addEventListener('message', onMessage);
+    return () => navigator.serviceWorker.removeEventListener('message', onMessage);
+  }, [ready, resume]);
 
   const complete = useCallback(() => {
     void withFocusLock(() => {
       const nowMs = trustedNowMs();
-      const current = readLive(nowMs);
+      const current = readCurrent(userRef.current ?? '');
       if (!current || current.mode !== 'focus') return;
       if (!canResume(current, nowMs) || (!current.isPaused && remainingSeconds(current, nowMs) <= 0)) {
         settle(); // expired or finished: closed by the usual rule
@@ -654,12 +644,12 @@ export function FocusSessionProvider({
       queueOp({ kind: 'end', sessionId: current.id, reason: 'completed', atMs: nowMs }, current);
       void syncNow();
     });
-  }, [logClose, persist, queueOp, readLive, settle, syncNow]);
+  }, [logClose, persist, queueOp, readCurrent, settle, syncNow]);
 
   const stop = useCallback(() => {
     void withFocusLock(() => {
       const nowMs = trustedNowMs();
-      const current = readLive(nowMs);
+      const current = readCurrent(userRef.current ?? '');
       if (!current) {
         setSession(null);
         return;
@@ -671,14 +661,14 @@ export function FocusSessionProvider({
       queueOp({ kind: 'end', sessionId, reason: current.mode === 'break' ? 'break_skipped' : 'discarded', atMs: nowMs }, current);
       void syncNow();
     });
-  }, [persist, queueOp, readLive, syncNow]);
+  }, [persist, queueOp, readCurrent, syncNow]);
 
   const clearFinished = useCallback(() => setFinished(null), []);
   const clearNotice = useCallback(() => setNotice(null), []);
 
   const value = useMemo(
-    () => ({ session, finished, notice, start, takeBreak, resume, notBack, complete, stop, clearFinished, clearNotice }),
-    [session, finished, notice, start, takeBreak, resume, notBack, complete, stop, clearFinished, clearNotice]
+    () => ({ session, finished, notice, start, takeBreak, resume, complete, stop, clearFinished, clearNotice }),
+    [session, finished, notice, start, takeBreak, resume, complete, stop, clearFinished, clearNotice]
   );
 
   return <FocusSessionContext.Provider value={value}>{children}</FocusSessionContext.Provider>;
@@ -691,8 +681,8 @@ export function useFocusSession(): FocusSessionContextValue {
 }
 
 /**
- * Seconds left in the session (on a break: of the break), re-rendering only the calling component
- * once a second while it runs (the rest of the page does not tick).
+ * Seconds left in the session (on a break: of the break; once it is over: the focus left, frozen),
+ * re-rendering only the calling component once a second while it runs (the rest of the page does not tick).
  */
 export function useFocusCountdown(session: FocusSession | null): number {
   const [, tick] = useReducer((n: number) => n + 1, 0);
@@ -721,5 +711,6 @@ export function useFocusCountdown(session: FocusSession | null): number {
     };
   }, [session]);
   if (!session) return 0;
-  return onBreak(session) ? breakSecondsLeft(session) : remainingSeconds(session);
+  const breakLeft = breakSecondsLeft(session);
+  return breakLeft > 0 ? breakLeft : remainingSeconds(session);
 }
