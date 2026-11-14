@@ -1,0 +1,683 @@
+import type {
+  AddictionTracker,
+  AppState,
+  CravingLog,
+  DecisionLog,
+  EmotionLog,
+  FocusSessionLog,
+  Goal,
+  JournalEntry,
+  Project,
+  Task,
+  TimeTrackerActivity,
+  TimeTrackerBlock,
+  TimeTrackerState,
+  TimeTrackerTemplate,
+} from '../../types';
+import { DEFAULT_TIME_TRACKER_STATE } from '../../types';
+import { isServerOwnedBadHabitLogId } from '../points/badHabitAwards';
+import { mergeTimeTrackerDays, type TimeTrackerDayDoc } from '../timeTracker/timeTracker';
+import { canonical } from '../store/stateEquality';
+import type { Baseline } from './tabVersions';
+
+/**
+ * Blob collections that also live in a relational table (DB normalization,
+ * knowledge/db-normalization-plan.md). Adding a module = one entry here plus its
+ * table migration. `toRow` must not include user_id, updated_at or deleted_at:
+ * the outbox owns those columns.
+ */
+export interface SyncedCollection<K extends keyof AppState = keyof AppState> {
+  stateKey: K;
+  table: string;
+  toRow: (item: SyncedItem<K>) => Record<string, unknown>;
+  /** Server row back to the state item; toRow(fromRow(row)) must hash like the original item. */
+  fromRow: (row: Record<string, unknown>) => SyncedItem<K>;
+  /** Timestamp used as updated_at when an item is uploaded without a local edit. */
+  ownTimestamp: (item: SyncedItem<K>) => string;
+  /** Row id for an item when it is not item.id (weekly goals are one row per week). */
+  rowId?: (item: SyncedItem<K>) => string;
+  /**
+   * An item removed from the state is deleted on the server even without a
+   * tombstone. Only for collections that local reducers alone rewrite (the points
+   * ledger, which consolidates and excises entries); the outbox still refuses a
+   * mass removal.
+   */
+  mirrorRemovals?: boolean;
+  /**
+   * The table lets a newer write bring a deleted row back (point_entries and
+   * the time tracker's activities and templates, whose ids are reused by
+   * re-awards and default restores), so re-adding a deleted id is an upload.
+   */
+  revivable?: boolean;
+  /**
+   * Rows only the server writes (habit awards, bad-habit points, penalties): the device shows them but never uploads or
+   * deletes them, and the server's copy always replaces the local one.
+   */
+  serverOwnedId?: (id: string) => boolean;
+  /** Baseline and change key when several collections share one state key (the time tracker). */
+  key?: string;
+  /** Items of a collection nested inside a state key (default: state[stateKey]). */
+  read?: (state: AppState) => SyncedItem<K>[];
+  /** The state with this collection's items replaced (default: state[stateKey] = items). */
+  write?: (state: AppState, items: SyncedItem<K>[]) => AppState;
+  /**
+   * The time the item was really edited on its device, sent as updated_at for a changed row
+   * instead of the upload time (time tracker days only), so an offline edit uploaded later never
+   * beats a newer edit from another device just by arriving last.
+   */
+  editTimestamp?: (item: SyncedItem<K>) => string | undefined;
+  /**
+   * Merges a server row into a local copy that has its own unsent or pending change (time tracker
+   * days only), instead of keeping one side whole. `nowIso` stamps a merge result that must be
+   * uploaded, so it beats the row it was merged with.
+   */
+  mergeConflict?: (local: SyncedItem<K>, remote: SyncedItem<K>, nowIso: string, mustUpload: boolean) => SyncedItem<K>;
+}
+
+/** The table row id of a state item. */
+export const rowIdOf = (collection: SyncedCollection, item: { id?: string }): string =>
+  collection.rowId ? collection.rowId(item as never) : item.id || '';
+
+/** Baseline and change key of a collection. */
+export const syncKeyOf = (collection: SyncedCollection): string => collection.key ?? collection.stateKey;
+
+/** The collection's items in a state. */
+export const itemsOf = (collection: SyncedCollection, state: AppState): Array<{ id?: string }> =>
+  ((collection.read ? collection.read(state) : state[collection.stateKey]) as Array<{ id?: string }> | undefined) ||
+  [];
+
+/** The state with the collection's items replaced. */
+export const withItems = (collection: SyncedCollection, state: AppState, items: unknown[]): AppState =>
+  collection.write ? collection.write(state, items as never) : { ...state, [collection.stateKey]: items };
+
+/** Postgres timestamptz text back to the client's ISO form (2026-10-14T08:51:38.705Z). */
+const isoTime = (value: unknown): string => new Date(String(value)).toISOString();
+
+type SyncedItem<K extends keyof AppState> = NonNullable<AppState[K]> extends Array<infer T> ? T : never;
+
+/**
+ * A collection stored as one jsonb document per item (batch C): modules with
+ * nested or legacy-heavy items, kept whole so nothing is lost in a mapping.
+ */
+function documentCollection<K extends keyof AppState>(
+  stateKey: K,
+  table: string,
+  createdAt: (item: SyncedItem<K>) => string,
+  rowId?: (item: SyncedItem<K>) => string,
+  mirrorRemovals = false
+): SyncedCollection<K> {
+  return {
+    stateKey,
+    table,
+    toRow: (item) => ({
+      id: rowId ? rowId(item) : (item as { id: string }).id,
+      data: canonical(item),
+      created_at: createdAt(item),
+    }),
+    fromRow: (row) => canonical(row.data) as SyncedItem<K>,
+    ownTimestamp: (item) => (item as { updatedAt?: string }).updatedAt || createdAt(item),
+    ...(rowId ? { rowId } : {}),
+    ...(mirrorRemovals ? { mirrorRemovals } : {}),
+  };
+}
+
+type Created = { createdAt: string };
+const byCreatedAt = (item: Created) => item.createdAt;
+
+const weeklyGoalsBase = documentCollection('weeklyGoals', 'weekly_goals', byCreatedAt, (w) => w.weekKey);
+const weeklyGoalsCollection: SyncedCollection<'weeklyGoals'> = {
+  ...weeklyGoalsBase,
+  toRow: (w) => weeklyGoalsBase.toRow({ ...w, deletedGoalIds: w.deletedGoalIds ?? [] }),
+};
+
+const decisionLogs: SyncedCollection<'decisionLogs'> = {
+  stateKey: 'decisionLogs',
+  table: 'decision_logs',
+  toRow: (d: DecisionLog) => ({
+    id: d.id,
+    title: d.title,
+    rationale: d.rationale ?? '',
+    expected_outcome: d.expectedOutcome ?? '',
+    revisit_date: d.revisitDate,
+    reflection: d.reflection ?? null,
+    is_reflected: d.isReflected ?? false,
+    created_at: d.createdAt,
+  }),
+  fromRow: (r) => ({
+    id: String(r.id),
+    title: String(r.title),
+    rationale: String(r.rationale ?? ''),
+    expectedOutcome: String(r.expected_outcome ?? ''),
+    revisitDate: String(r.revisit_date),
+    ...(r.reflection != null ? { reflection: String(r.reflection) } : {}),
+    isReflected: Boolean(r.is_reflected),
+    createdAt: isoTime(r.created_at),
+  }),
+  ownTimestamp: (d) => d.createdAt,
+};
+
+const emotionLogs: SyncedCollection<'emotionLogs'> = {
+  stateKey: 'emotionLogs',
+  table: 'emotion_logs',
+  toRow: (e: EmotionLog) => ({
+    id: e.id,
+    logged_at: e.date || e.createdAt,
+    emotion: e.emotion,
+    intensity: e.intensity,
+    context: e.context ?? '',
+    points_awarded: e.pointsAwarded ?? 0,
+    created_at: e.createdAt || e.date,
+  }),
+  fromRow: (r) => ({
+    id: String(r.id),
+    date: isoTime(r.logged_at),
+    emotion: String(r.emotion),
+    intensity: Number(r.intensity),
+    context: String(r.context ?? ''),
+    pointsAwarded: Number(r.points_awarded ?? 0),
+    createdAt: isoTime(r.created_at),
+  }),
+  ownTimestamp: (e) => e.createdAt || e.date,
+};
+
+/** Nullable column back to an optional field: absent when null, so the row hashes like the original item. */
+const optional = <K extends string, V>(key: K, value: unknown, cast: (v: unknown) => V): { [P in K]?: V } =>
+  (value == null ? {} : { [key]: cast(value) }) as { [P in K]?: V };
+
+const cravingLogs: SyncedCollection<'cravingLogs'> = {
+  stateKey: 'cravingLogs',
+  table: 'craving_logs',
+  toRow: (c: CravingLog) => ({
+    id: c.id,
+    logged_at: c.date || c.createdAt,
+    intensity: c.intensity,
+    trigger_text: c.trigger ?? '',
+    coping_strategy: c.copingStrategy ?? '',
+    created_at: c.createdAt || c.date,
+  }),
+  fromRow: (r) => ({
+    id: String(r.id),
+    date: isoTime(r.logged_at),
+    intensity: Number(r.intensity),
+    trigger: String(r.trigger_text ?? ''),
+    copingStrategy: String(r.coping_strategy ?? ''),
+    createdAt: isoTime(r.created_at),
+  }),
+  ownTimestamp: (c) => c.createdAt || c.date,
+};
+
+const journalEntries: SyncedCollection<'journalEntries'> = {
+  stateKey: 'journalEntries',
+  table: 'journal_entries',
+  toRow: (j: JournalEntry) => ({
+    id: j.id,
+    entry_date: j.date,
+    mood: j.mood,
+    content: j.content ?? '',
+    points_awarded: j.pointsAwarded ?? false,
+    created_at: j.createdAt,
+  }),
+  fromRow: (r) => ({
+    id: String(r.id),
+    date: String(r.entry_date),
+    mood: String(r.mood) as JournalEntry['mood'],
+    content: String(r.content ?? ''),
+    pointsAwarded: Boolean(r.points_awarded),
+    createdAt: isoTime(r.created_at),
+  }),
+  ownTimestamp: (j) => j.createdAt,
+};
+
+const focusLogs: SyncedCollection<'focusLogs'> = {
+  stateKey: 'focusLogs',
+  table: 'focus_logs',
+  toRow: (f: FocusSessionLog) => ({
+    id: f.id,
+    log_date: f.date,
+    task_name: f.taskName ?? '',
+    skill_id: f.skillId || null,
+    duration_minutes: f.durationMinutes ?? 0,
+    points_awarded: f.pointsAwarded ?? 0,
+    reflection: f.reflection ?? null,
+    created_at: f.createdAt,
+    // Partial-points timer (20261104140000_focus_partial_points.sql). Sent only by rows that have
+    // them, so older rows upload unchanged (and an upload never clears what the server has).
+    ...(f.plannedMinutes != null
+      ? { planned_minutes: f.plannedMinutes, started_at: f.startedAt ?? null, milestones_at: f.milestonesAt ?? [] }
+      : {}),
+  }),
+  fromRow: (r) => ({
+    id: String(r.id),
+    date: String(r.log_date),
+    taskName: String(r.task_name ?? ''),
+    ...optional('skillId', r.skill_id, String),
+    durationMinutes: Number(r.duration_minutes ?? 0),
+    pointsAwarded: Number(r.points_awarded ?? 0),
+    ...optional('reflection', r.reflection, String),
+    createdAt: isoTime(r.created_at),
+    ...optional('plannedMinutes', r.planned_minutes, Number),
+    ...optional('startedAt', r.started_at, isoTime),
+    ...(Array.isArray(r.milestones_at) ? { milestonesAt: (r.milestones_at as unknown[]).map(isoTime) } : {}),
+    // Server-stamped points rule (20261109140000_focus_points_12min.sql): read only, never sent.
+    ...(Number(r.points_rule) === 2 ? { pointsRule: 2 as const } : {}),
+  }),
+  ownTimestamp: (f) => f.createdAt,
+};
+
+const goals: SyncedCollection<'goals'> = {
+  stateKey: 'goals',
+  table: 'goals',
+  toRow: (g: Goal) => ({
+    id: g.id,
+    title: g.title ?? '',
+    description: g.description ?? null,
+    category: g.category ?? null,
+    target_date: g.targetDate || null,
+    status: g.status,
+    manual_progress: g.manualProgress ?? null,
+    sequential_mode: g.sequentialMode ?? null,
+    created_at: g.createdAt,
+  }),
+  fromRow: (r) => ({
+    id: String(r.id),
+    title: String(r.title ?? ''),
+    ...optional('description', r.description, String),
+    ...optional('category', r.category, String),
+    ...optional('targetDate', r.target_date, String),
+    status: String(r.status) as Goal['status'],
+    ...optional('manualProgress', r.manual_progress, Number),
+    ...optional('sequentialMode', r.sequential_mode, Boolean),
+    createdAt: isoTime(r.created_at),
+  }),
+  ownTimestamp: (g) => g.createdAt,
+};
+
+const projects: SyncedCollection<'projects'> = {
+  stateKey: 'projects',
+  table: 'projects',
+  toRow: (p: Project) => ({
+    id: p.id,
+    title: p.title ?? '',
+    description: p.description ?? null,
+    goal_id: p.goalId || null,
+    start_date: p.startDate || null,
+    due_date: p.dueDate || null,
+    status: p.status,
+    completed_at: p.completedAt || null,
+    manual_progress: p.manualProgress ?? null,
+    sort_order: p.order ?? null,
+    created_at: p.createdAt,
+  }),
+  fromRow: (r) => ({
+    id: String(r.id),
+    title: String(r.title ?? ''),
+    ...optional('description', r.description, String),
+    ...optional('goalId', r.goal_id, String),
+    ...optional('startDate', r.start_date, String),
+    ...optional('dueDate', r.due_date, String),
+    status: String(r.status) as Project['status'],
+    ...optional('completedAt', r.completed_at, isoTime),
+    ...optional('manualProgress', r.manual_progress, Number),
+    ...optional('order', r.sort_order, Number),
+    createdAt: isoTime(r.created_at),
+  }),
+  ownTimestamp: (p) => p.createdAt,
+};
+
+const tasks: SyncedCollection<'tasks'> = {
+  stateKey: 'tasks',
+  table: 'tasks',
+  toRow: (t: Task) => ({
+    id: t.id,
+    title: t.title ?? '',
+    description: t.description ?? null,
+    project_id: t.projectId || null,
+    due_date: t.dueDate || null,
+    priority: t.priority,
+    completed: t.completed ?? false,
+    subtasks: (t.subtasks ?? []).map((st) => ({ id: st.id, title: st.title, completed: st.completed })),
+    created_at: t.createdAt,
+  }),
+  fromRow: (r) => ({
+    id: String(r.id),
+    title: String(r.title ?? ''),
+    ...optional('description', r.description, String),
+    ...optional('projectId', r.project_id, String),
+    ...optional('dueDate', r.due_date, String),
+    priority: String(r.priority) as Task['priority'],
+    completed: Boolean(r.completed),
+    subtasks: (Array.isArray(r.subtasks) ? r.subtasks : []).map((st: Record<string, unknown>) => ({
+      id: String(st.id),
+      title: String(st.title ?? ''),
+      completed: Boolean(st.completed),
+    })),
+    createdAt: isoTime(r.created_at),
+    ...optional('updatedAt', r.updated_at, isoTime),
+  }),
+  ownTimestamp: (t) => t.createdAt,
+};
+
+/** A valid ISO time from a field that may be missing or malformed. */
+const validIso = (value: unknown): string | undefined => {
+  if (typeof value !== 'string' && typeof value !== 'number') return undefined;
+  const time = new Date(value).getTime();
+  return Number.isNaN(time) ? undefined : new Date(time).toISOString();
+};
+
+/** Created/updated time of an item without one: older than any real edit, so it never wins a conflict. */
+const EPOCH = '1970-01-01T00:00:00.000Z';
+
+/** One day of the time tracker: its blocks (absent = never set up), whether it was cleared, and its meta. */
+export type TimeTrackerDay = TimeTrackerDayDoc;
+
+const timeTrackerOf = (state: AppState): TimeTrackerState => state.timeTracker || DEFAULT_TIME_TRACKER_STATE;
+
+/** A jsonb document collection for a list inside the time tracker object. */
+function timeTrackerCollection<T extends object>(
+  part: string,
+  table: string,
+  read: (tt: TimeTrackerState) => T[],
+  write: (tt: TimeTrackerState, items: T[]) => TimeTrackerState,
+  rowId: (item: T) => string,
+  createdAt: (item: T) => string,
+  ownTimestamp: (item: T) => string,
+  revivable: boolean
+): SyncedCollection<'timeTracker'> {
+  return {
+    stateKey: 'timeTracker',
+    key: `timeTracker.${part}`,
+    table,
+    toRow: (item) => ({ id: rowId(item as T), data: canonical(item), created_at: createdAt(item as T) }),
+    fromRow: (row) => canonical(row.data) as never,
+    ownTimestamp: (item) => ownTimestamp(item as T),
+    rowId: (item) => rowId(item as T),
+    read: (state) => read(timeTrackerOf(state)) as never,
+    write: (state, items) => ({ ...state, timeTracker: write(timeTrackerOf(state), items as unknown as T[]) }),
+    ...(revivable ? { revivable } : {}),
+  };
+}
+
+type Dated = { createdAt?: string; updatedAt?: string };
+const datedCreatedAt = (item: Dated) => validIso(item.createdAt) ?? EPOCH;
+const datedOwnTimestamp = (item: Dated) => validIso(item.updatedAt) ?? datedCreatedAt(item);
+
+const timeTrackerActivities = timeTrackerCollection<TimeTrackerActivity>(
+  'activities',
+  'time_tracker_activities',
+  (tt) => tt.activities || [],
+  (tt, activities) => ({ ...tt, activities }),
+  (a) => a.id,
+  datedCreatedAt,
+  datedOwnTimestamp,
+  true
+);
+
+const timeTrackerTemplates = timeTrackerCollection<TimeTrackerTemplate>(
+  'templates',
+  'time_tracker_templates',
+  (tt) => tt.templates || [],
+  (tt, templates) => ({ ...tt, templates }),
+  (t) => t.id,
+  datedCreatedAt,
+  datedOwnTimestamp,
+  true
+);
+
+const dayStart = (day: TimeTrackerDay) => `${day.date}T00:00:00.000Z`;
+
+/**
+ * Latest time a day's blocks were created or resolved; EPOCH when none. Not the day's start: for a
+ * planned future day that is a future time, which would beat a real edit from another device
+ * (newer updated_at wins) until that day came.
+ */
+function dayOwnTimestamp(day: TimeTrackerDay): string {
+  let latest = '';
+  for (const block of day.blocks || []) {
+    for (const value of [block.updatedAt, block.completedAt, block.skippedAt, block.breakStartedAt, block.breakEndedAt, block.createdAt]) {
+      const iso = validIso(value);
+      if (iso && iso > latest) latest = iso;
+    }
+  }
+  return latest || EPOCH;
+}
+
+// A day is one document (one row per date). dailyLogs keeps "absent" (auto-apply a template)
+// apart from [] (deliberately empty). Since 2026-10-18 a day carries its real edit time and the
+// ids of blocks removed from it, and two copies of a day are merged block by block
+// (mergeTimeTrackerDays) instead of the last upload winning whole.
+const timeTrackerDays: SyncedCollection<'timeTracker'> = {
+  ...timeTrackerCollection<TimeTrackerDay>(
+    'days',
+    'time_tracker_days',
+    (tt) => {
+      const cleared = new Set(tt.clearedDates || []);
+      const dates = new Set([...Object.keys(tt.dailyLogs || {}), ...cleared]);
+      return Array.from(dates, (date) => {
+        const meta = tt.dayMeta?.[date];
+        return {
+          date,
+          ...(tt.dailyLogs?.[date] !== undefined ? { blocks: tt.dailyLogs[date] } : {}),
+          ...(cleared.has(date) ? { cleared: true } : {}),
+          ...(meta?.updatedAt ? { updatedAt: meta.updatedAt } : {}),
+          ...(meta?.deletedBlockIds?.length ? { deletedBlockIds: meta.deletedBlockIds } : {}),
+        };
+      });
+    },
+    (tt, days) => {
+      const dayMeta: NonNullable<TimeTrackerState['dayMeta']> = {};
+      for (const d of days) {
+        if (d.updatedAt || d.deletedBlockIds?.length) {
+          dayMeta[d.date] = {
+            ...(d.updatedAt ? { updatedAt: d.updatedAt } : {}),
+            ...(d.deletedBlockIds?.length ? { deletedBlockIds: d.deletedBlockIds } : {}),
+          };
+        }
+      }
+      return {
+        ...tt,
+        dailyLogs: Object.fromEntries(days.filter((d) => d.blocks !== undefined).map((d) => [d.date, d.blocks!])),
+        clearedDates: days.filter((d) => d.cleared).map((d) => d.date),
+        dayMeta,
+      };
+    },
+    (d) => d.date,
+    dayStart,
+    (d) => validIso(d.updatedAt) ?? dayOwnTimestamp(d),
+    false
+  ),
+  editTimestamp: (item) => validIso((item as unknown as TimeTrackerDay).updatedAt),
+  mergeConflict: (local, remote, nowIso, mustUpload) => {
+    const mine = local as unknown as TimeTrackerDay;
+    const theirs = remote as unknown as TimeTrackerDay;
+    const merged = mergeTimeTrackerDays(theirs, mine);
+    // Equal to the server's copy and nothing pending: take it as is, nothing to upload.
+    if (merged === theirs && !mustUpload) return remote;
+    // Never older than either copy, so the server (newer updated_at wins) keeps the merge.
+    const after = (iso?: string) => {
+      const ms = Date.parse(iso || '');
+      return Number.isNaN(ms) ? '' : new Date(ms + 1).toISOString();
+    };
+    const stamp = [nowIso, after(theirs.updatedAt), after(mine.updatedAt)].sort().pop() || nowIso;
+    return { ...merged, updatedAt: stamp } as never;
+  },
+};
+
+/**
+ * The sobriety tracker (batch H): one object in the state, one row per tracker id.
+ * A device holds at most one tracker; should two live rows meet (one created on each
+ * device before either synced), the newest is shown and the other row stays put.
+ */
+const addictionTracker: SyncedCollection<'addictionTracker'> = {
+  stateKey: 'addictionTracker',
+  table: 'addiction_trackers',
+  toRow: (item) => {
+    const tracker = item as unknown as AddictionTracker;
+    return { id: tracker.id, data: canonical(tracker), created_at: trackerCreatedAt(tracker) };
+  },
+  fromRow: (row) => canonical(row.data) as never,
+  ownTimestamp: (item) => trackerCreatedAt(item as unknown as AddictionTracker),
+  read: (state) => (state.addictionTracker?.id ? [state.addictionTracker] : []) as never,
+  write: (state, items) => {
+    const trackers = items as unknown as AddictionTracker[];
+    const newest = trackers.reduce<AddictionTracker | null>(
+      (best, t) => (!best || trackerCreatedAt(t) > trackerCreatedAt(best) ? t : best),
+      null
+    );
+    return { ...state, addictionTracker: newest };
+  },
+};
+
+function trackerCreatedAt(tracker: AddictionTracker): string {
+  return validIso(tracker.createdAt) ?? validIso(tracker.startDate) ?? EPOCH;
+}
+
+/**
+ * Lessons read (module 8, server-side lesson points): one row per `<lessonId>_s<season>` id
+ * of readLessonIds (season 1 also kept bare lesson ids). A read is never undone, and the
+ * server awards its points when the row arrives. The ids carry no time of their own.
+ */
+const lessonReads: SyncedCollection<'readLessonIds'> = {
+  stateKey: 'readLessonIds',
+  table: 'lesson_reads',
+  toRow: (item) => ({ id: (item as unknown as { id: string }).id, created_at: EPOCH }),
+  fromRow: (row) => ({ id: String(row.id) }) as never,
+  ownTimestamp: () => EPOCH,
+  read: (state) => (state.readLessonIds || []).filter((id) => typeof id === 'string' && id).map((id) => ({ id })) as never,
+  write: (state, items) => ({
+    ...state,
+    readLessonIds: Array.from(new Set((items as unknown as { id: string }[]).map((item) => item.id))),
+  }),
+};
+
+export const SYNCED_COLLECTIONS = [
+  decisionLogs as unknown as SyncedCollection,
+  emotionLogs as unknown as SyncedCollection,
+  cravingLogs as unknown as SyncedCollection,
+  journalEntries as unknown as SyncedCollection,
+  focusLogs as unknown as SyncedCollection,
+  goals as unknown as SyncedCollection,
+  projects as unknown as SyncedCollection,
+  tasks as unknown as SyncedCollection,
+  documentCollection('habits', 'habits', byCreatedAt),
+  documentCollection('workouts', 'workouts', byCreatedAt),
+  documentCollection('libraryBooks', 'reading_books', (b) => b.addedAt),
+  documentCollection('readingLogs', 'reading_logs', byCreatedAt),
+  documentCollection('skills', 'skills', byCreatedAt),
+  documentCollection('skillLogs', 'skill_logs', byCreatedAt),
+  documentCollection('badHabits', 'bad_habits', byCreatedAt),
+  { ...documentCollection('badHabitLogs', 'bad_habit_logs', byCreatedAt), serverOwnedId: isServerOwnedBadHabitLogId },
+  // Weekly goals merge by week, not by document id, so the week is the row id. Every upload carries
+  // deletedGoalIds so the server always merges goal by goal (weekly_goals_merge_row): without it a
+  // stale copy of the week (another tab or device, load normalisation) replaced the whole row and
+  // undid goal edits such as a carry-over dismiss.
+  weeklyGoalsCollection,
+  // Points ledger (batch D): complete history; deterministic ids can be excised and re-awarded.
+  // Every row is the server's (20261015250000): the app shows its own preview rows but never
+  // uploads one, and the database drops any app write.
+  {
+    ...documentCollection('pointsHistory', 'point_entries', (e) => e.timestamp, undefined, true),
+    revivable: true,
+    serverOwnedId: () => true,
+  },
+  // Time tracker (batch E): one state object, three tables.
+  timeTrackerActivities,
+  timeTrackerTemplates,
+  timeTrackerDays,
+  // League archives (batch F): one row per period id. Every row is the server's
+  // (20261017060000, ascend_run_league_archives): the app never uploads or deletes one.
+  {
+    ...documentCollection('leagueArchives', 'league_archives', (a) => a.archivedAt),
+    revivable: true,
+    serverOwnedId: () => true,
+  },
+  addictionTracker as unknown as SyncedCollection,
+  lessonReads as unknown as SyncedCollection,
+  // The user's order of each list (one row per list key): a reorder writes only this row.
+  documentCollection('listOrders', 'list_orders', byCreatedAt),
+  // Recovery check-ins (one row per local day, id = the day): the server awards the point and keeps
+  // each row as first written (recovery_checkins_guard), so a second device's tap changes nothing.
+  // Undo of today's check-in removes the item (mirrored as a soft delete, no tombstone id: a day id
+  // would collide with other tables' day rows); a re-tap brings the same day back (revivable). The
+  // server accepts the delete for today only and the revival for today or yesterday.
+  {
+    ...documentCollection('recoveryCheckins', 'recovery_checkins', byCreatedAt, undefined, true),
+    revivable: true,
+  },
+] as unknown as SyncedCollection[];
+
+/**
+ * Keys that boot hydration always reloads from their own tables (authSession:
+ * invites, partnerships, challenges, notifications, plans). The blob copy was
+ * only a mirror, so it is no longer stored (batches B1, B2).
+ */
+const TABLE_OWNED_KEYS = [
+  'partnerInvites',
+  'partnership',
+  'partnerships',
+  'sharedChallenges',
+  'notifications',
+  // Plans keep their own direct table writes; hydration merges this device's
+  // copies (pending/failed plans, higher streaks) into the rows (batch B2).
+  'improvementPlans',
+  'followedPlans',
+] as const satisfies readonly (keyof AppState)[];
+
+/** Every state key whose source of truth is a table rather than the blob. */
+const TABLE_BACKED_KEYS: (keyof AppState)[] = Array.from(
+  new Set([...SYNCED_COLLECTIONS.map((c) => c.stateKey), ...TABLE_OWNED_KEYS])
+);
+
+/**
+ * The state as stored in the user_data blob (DB normalization S4): keys
+ * backed by tables are left out of it. Local caches keep the full state for
+ * offline cold boot.
+ */
+export function withoutSyncedCollections(state: AppState): AppState {
+  const blob: Partial<AppState> = { ...state };
+  for (const key of TABLE_BACKED_KEYS) delete blob[key];
+  return blob as AppState;
+}
+
+/**
+ * Table-backed keys from this device's last saved state. The blob no longer
+ * carries them, so a boot starts from these instead of empty values until the
+ * table reads land; those reads then reconcile them.
+ */
+export function cachedSyncedCollections(userId: string): Partial<AppState> {
+  try {
+    const raw = localStorage.getItem(`ascend_user_cache_${userId}`);
+    const cached = raw ? (JSON.parse(raw) as Partial<AppState>) : null;
+    if (!cached || typeof cached !== 'object') return {};
+    const picked: Partial<AppState> = {};
+    for (const key of TABLE_BACKED_KEYS) {
+      if (key in cached) Object.assign(picked, { [key]: cached[key] });
+    }
+    return picked;
+  } catch {
+    return {};
+  }
+}
+
+/**
+ * The device cache a boot merges over the hydrated state when the last save never finished (dirty
+ * flag), with each synced collection taken from the hydrated state. Hydration already merged the
+ * cached rows with the server's (an unsent edit is kept by its tab version, a server edit or delete
+ * replaces an unchanged copy), so the raw cache adds nothing there but older copies: merged again
+ * they undid newer rows from other devices and brought deleted rows back, and the next save sent
+ * them as edits. Only cached items the server never had (no baseline entry) are added back. The
+ * rest of the cache (settings, tombstones, table-owned keys) is used as before.
+ */
+export function cacheWithHydratedCollections(cache: AppState, hydrated: AppState, baseline: Baseline): AppState {
+  let base = cache;
+  for (const collection of SYNCED_COLLECTIONS) {
+    const known = baseline[syncKeyOf(collection)] || {};
+    const held = itemsOf(collection, hydrated);
+    const heldIds = new Set(held.map((item) => rowIdOf(collection, item)));
+    const unsynced = itemsOf(collection, cache).filter((item) => {
+      const id = item ? rowIdOf(collection, item) : '';
+      return Boolean(id) && !heldIds.has(id) && known[id] === undefined;
+    });
+    base = withItems(collection, base, [...unsynced, ...held]);
+  }
+  return base;
+}
