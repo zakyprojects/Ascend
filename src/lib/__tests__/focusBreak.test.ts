@@ -1,8 +1,9 @@
 // Focus Break v2 (2026-11-13): the pure break rules in focusSession.ts, the row mapping and the
 // queued break action in focusServerSession.ts. They mirror
 // supabase/migrations/20261113140000_focus_break_v2.sql (PGlite-tested in work/v2/pglite-test.mjs):
-// 5/10/15 min after 25 focused min, max 2, not under 5 min left; no auto-resume: Continue during the
-// break or within 10 min after it, else the session closes at the break start; logout in a break =
+// 5/10/15 min after 25 focused min, only in sessions planned for 35+ min (Zakria 2026-11-13; the SQL
+// guard for 35 is a separate migration), max 2, not under 5 min left; no auto-resume: Continue during
+// the break or within 10 min after it, else the session closes at the break start; logout in a break =
 // plain pause.
 
 // Node has no localStorage: a small in-memory one.
@@ -51,16 +52,24 @@ const running = (focusMinutes = 50, extra: Partial<Session> = {}): Session => ({
 });
 
 // 1. Who may take a break.
-eq(S.breakBlock(running(29), T0 + 26 * MIN), 'short', '29-min session: never a break (25 focused + 5 left)');
-eq(S.breakBlock(running(30), T0 + 25 * MIN - 1000), 'early', '30-min session at 24:59 focused: not yet');
+eq(S.FOCUS_BREAK_MIN_PLANNED_MINUTES, 35, 'breaks only from 35 planned min (Zakria 2026-11-13)');
+eq(S.breakBlock(running(29), T0 + 26 * MIN), 'short', '29-min session: never a break');
+eq(S.breakBlock(running(30), T0), 'short', '30-min session: no Break at all, even at the start');
+eq(S.breakBlock(running(30), T0 + 25 * MIN), 'short', '30-min session at exactly 25:00 focused: no break (was the dead button)');
+eq(S.breakBlock(running(34), T0 + 26 * MIN), 'short', '34-min session at 26:00 (8 min left): no break');
+eq(S.breakBlock(running(35), T0), 'early', '35-min session at the start: Break shown, not yet');
+eq(S.breakBlock(running(35), T0 + 25 * MIN - 1000), 'early', '35-min session at 24:59 focused: not yet');
+eq(S.breakBlock(running(35), T0 + 25 * MIN), null, '35-min session at 25:00 focused: break allowed');
+eq(S.breakBlock(S.pauseAt(running(30), T0 + 26 * MIN), T0 + 26 * MIN), 'short', '30-min paused: still no Break');
+eq(S.breakAt(running(34), T0 + 26 * MIN, 5).isPaused, false, '34-min breakAt refused');
 eq(S.breakBlock(running(50), T0 + 24 * MIN), 'early', '24 focused min: not yet');
 eq(S.breakBlock(running(50), T0 + 25 * MIN), null, '25 focused min: break allowed');
 const resumedAfterPause = S.resumeAt(S.pauseAt(running(50), T0 + 10 * MIN), T0 + 30 * MIN);
 eq(S.breakBlock(resumedAfterPause, T0 + 44 * MIN), 'early', '44 wall min but 24 focused (a 20-min pause): not yet');
 eq(S.breakBlock(resumedAfterPause, T0 + 45 * MIN), null, '25 focused after a pause: allowed');
 eq(S.breakBlock(running(50, { breakCount: 2 }), T0 + 30 * MIN), 'used', 'two breaks used');
-eq(S.breakBlock(running(31), T0 + 26 * MIN + 1000), 'ending', '4:59 left: no break');
-eq(S.breakBlock(running(31), T0 + 26 * MIN - 1000), null, '5:01 left, 25:59 focused: break allowed');
+eq(S.breakBlock(running(35), T0 + 30 * MIN + 1000), 'ending', '35 min, 4:59 left: no break');
+eq(S.breakBlock(running(35), T0 + 30 * MIN - 1000), null, '35 min, 5:01 left, 29:59 focused: break allowed');
 eq(S.breakBlock(S.pauseAt(running(), T0 + 30 * MIN), T0 + 30 * MIN), 'not-running', 'paused: no break');
 eq(S.FOCUS_BREAK_MINUTES_TEXT, '5, 10 or 15', 'copy of the lengths');
 

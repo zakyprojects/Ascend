@@ -270,8 +270,7 @@ function ManualTimer({ store }: { store: AppStore }) {
 
   const skillName = (id?: string) => skills.find((s) => s.id === id)?.name;
   const isBreak = session?.mode === 'break';
-  // Breaks: only sessions that can reach 25 focused min with 5 left; the button stays (disabled) when
-  // none can be taken now.
+  // Breaks: only sessions planned for 35+ min; the button stays (disabled) when none can be taken now.
   const breakNow = session ? breakBlock(session, nowMs) : 'short';
   const hasBreaks = breakNow !== 'short';
   const breaksLeft = Math.max(0, FOCUS_BREAKS_PER_SESSION - (session?.breakCount ?? 0));

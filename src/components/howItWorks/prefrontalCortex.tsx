@@ -6,6 +6,7 @@ import {
   FOCUS_BREAK_GRACE_MINUTES,
   FOCUS_BREAK_MINUTES_TEXT,
   FOCUS_BREAK_MIN_LEFT_SECONDS,
+  FOCUS_BREAK_MIN_PLANNED_MINUTES,
   FOCUS_BREAKS_PER_SESSION,
   FOCUS_PRESETS,
   FOCUS_RESUME_WINDOW_MINUTES,
@@ -38,7 +39,7 @@ export const prefrontalCortexGuide: HowItWorksGuide = {
   ],
   notes: [
     <>
-      After <Fig>{FOCUS_BREAK_AFTER_MINUTES}</Fig> min of focus you can take a <Fig>{FOCUS_BREAK_MINUTES_TEXT}</Fig> min break, up to{' '}
+      In a session of <Fig>{FOCUS_BREAK_MIN_PLANNED_MINUTES}</Fig> min or more, after <Fig>{FOCUS_BREAK_AFTER_MINUTES}</Fig> min of focus you can take a <Fig>{FOCUS_BREAK_MINUTES_TEXT}</Fig> min break, up to{' '}
       <Fig>{FOCUS_BREAKS_PER_SESSION}</Fig> per session, not in the last <Fig>{FOCUS_BREAK_MIN_LEFT_SECONDS / 60}</Fig> min. The timer
       waits: press Continue when you are back. Not continued within <Fig>{FOCUS_BREAK_GRACE_MINUTES}</Fig> min after the break ends,
       the session ends at the break start and keeps your focus time.

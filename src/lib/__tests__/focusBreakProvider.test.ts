@@ -2,7 +2,7 @@
 // env = device-only mode, so every action stays in the queue for the server): Break after 25 focused
 // min, no auto-resume at the break end (cue once, only when the app is open at that moment), Continue
 // (button and notification), the 10-min grace deadline closing the session at the break start, the
-// limits (max 2, not in the last 5 min, no break on short sessions).
+// limits (max 2, not in the last 5 min, no break in sessions planned under 35 min).
 import { win } from './harness/dom';
 import type { AppStore } from '@/lib/store/store';
 
@@ -185,7 +185,7 @@ eq(s(), null, 'Continue after the deadline: closed, not resumed');
 eq(ops().filter((o) => o.kind === 'resume' && o.sessionId === lateId).length, 0, 'no resume queued');
 eq(logs.length, 2, 'it was logged by the close (30 focused min)');
 
-// 10. A 25-min session (and up to 29) has no break.
+// 10. A session planned under 35 min has no break (29, 34); 35 has one.
 c().start({ taskName: 'Short', focusMinutes: 29, breakMinutes: 5, isCustom: false });
 await wait(50);
 external({ ...s()!, startTime: trustedNowMs() - 25 * MIN - 30_000, plannedDurationSeconds: 29 * 60 });
@@ -193,6 +193,20 @@ await wait(50);
 c().takeBreak(5);
 await wait(50);
 assert(Boolean(s() && !s()!.isPaused), '29-min session: break refused');
+// 34 min at 25:30 focused, 8:30 left: allowed by the 25-focused and 5-left rules, refused by the 35 rule.
+external({ ...s()!, focusMinutes: 34, startTime: trustedNowMs() - 25 * MIN - 30_000, plannedDurationSeconds: 34 * 60 });
+await wait(50);
+const breaksBefore = ops().filter((o) => o.kind === 'break').length;
+c().takeBreak(5);
+await wait(50);
+assert(Boolean(s() && !s()!.isPaused), '34-min session: break refused');
+eq(ops().filter((o) => o.kind === 'break').length, breaksBefore, '34-min session: no break queued');
+external({ ...s()!, focusMinutes: 35, startTime: trustedNowMs() - 25 * MIN - 30_000, plannedDurationSeconds: 35 * 60 });
+await wait(50);
+c().takeBreak(5);
+await wait(50);
+assert(S.onBreak(s()), '35-min session at 25:30 focused: on a break');
+eq(ops().filter((o) => o.kind === 'break').length, breaksBefore + 1, '35-min session: break queued');
 
 console.log('focusBreakProvider.test.ts: all checks passed');
 (globalThis as unknown as { process: { exit: (code: number) => never } }).process.exit(0);

@@ -10,7 +10,8 @@ import { FOCUS_MILESTONES, FOCUS_MIN_MINUTES, focusSessionAlonePoints } from '@/
  * running while the app is in the background, the screen is locked, the tab is closed or the
  * device sleeps. When it is opened again after the planned end, it ends at the planned end.
  * Only a break or logout stops the time. A break (v2, 2026-11-13) is a pause of 5, 10 or 15 minutes,
- * after 25 focused minutes, at most 2 per session, not with under 5 minutes of focus left. It never
+ * in a session planned for 35+ minutes, after 25 focused minutes, at most 2 per session, not with under
+ * 5 minutes of focus left. It never
  * ends on its own: Continue runs the session again, during the break or within
  * FOCUS_BREAK_GRACE_MINUTES after its end; after that the session is closed at the break start
  * (the server does the same, so it holds with the app closed). Logout makes a plain pause (also
@@ -40,6 +41,8 @@ export const FOCUS_BREAKS_PER_SESSION = 2;
 export const FOCUS_BREAK_AFTER_MINUTES = 25;
 /** No break with less focus than this left. */
 export const FOCUS_BREAK_MIN_LEFT_SECONDS = 5 * 60;
+/** Only sessions planned for this long or longer have breaks (Zakria 2026-11-13: "Break only at 35+ min"). */
+export const FOCUS_BREAK_MIN_PLANNED_MINUTES = 35;
 /** After a break ends, Continue still works this long; then the session ends at the break start. */
 export const FOCUS_BREAK_GRACE_MINUTES = 10;
 export const FOCUS_BREAK_GRACE_MS = FOCUS_BREAK_GRACE_MINUTES * 60 * 1000;
@@ -302,12 +305,12 @@ export function breakSecondsLeft(session: FocusSession, nowMs: number = trustedN
 }
 
 /**
- * Why a break cannot be taken now, or null when it can. 'short': planned under 25 + 5 min, so it can
- * never have one (no Break at all). 'early': under 25 focused minutes so far.
+ * Why a break cannot be taken now, or null when it can. 'short': planned under
+ * FOCUS_BREAK_MIN_PLANNED_MINUTES, so it never has one (no Break at all). 'early': under 25 focused minutes so far.
  */
 export type FocusBreakBlock = 'short' | 'early' | 'used' | 'ending' | 'not-running';
 export function breakBlock(session: FocusSession, nowMs: number): FocusBreakBlock | null {
-  if (session.mode !== 'focus' || session.focusMinutes * 60 < FOCUS_BREAK_AFTER_MINUTES * 60 + FOCUS_BREAK_MIN_LEFT_SECONDS) return 'short';
+  if (session.mode !== 'focus' || session.focusMinutes < FOCUS_BREAK_MIN_PLANNED_MINUTES) return 'short';
   if (session.isPaused) return 'not-running';
   if ((session.breakCount ?? 0) >= FOCUS_BREAKS_PER_SESSION) return 'used';
   const left = session.plannedDurationSeconds - (Math.max(nowMs, session.startTime) - session.startTime) / 1000;
