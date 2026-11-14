@@ -1,6 +1,7 @@
 import { Suspense, lazy, useCallback, useEffect, useLayoutEffect, useRef, useState, type ComponentType } from 'react';
 import { useAppState } from '@/lib/store/store';
 import { useViewRoute } from '@/lib/app/useViewRoute';
+import { useAuthPageKey } from '@/lib/app/useAuthPageKey';
 import { confirmLeave } from '@/lib/ui/unsavedChanges';
 import { authPathWithNext, DASHBOARD_PATH, nextFromSearch, pathForAuthRoute, pathForView, viewFromPath } from '@/lib/app/routes';
 import { consumeSignOutByUser, logoutUser } from '@/lib/auth/auth';
@@ -78,6 +79,7 @@ function App() {
   // A sign-in whose account is not on screen yet: still loading, or its first load failed (the
   // loader then offers Retry). Neither shows the sign-in page nor the app.
   const sessionPending = store.isSessionLoading || store.firstLoadFailed;
+  const authPageKey = useAuthPageKey(sessionPending, Boolean(currentUser));
 
   // The success screen holds the page it started on (the user changes under it) until it is done.
   const [authHold, setAuthHold] = useState<AuthScreen | null>(null);
@@ -325,6 +327,7 @@ function App() {
           <BannerStack />
           {authScreen && AuthPageView && (
             <AuthPageView
+              key={authPageKey}
               screen={authScreen}
               search={search}
               guestState={store.state}

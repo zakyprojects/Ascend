@@ -15,6 +15,9 @@ export type BootOptions = {
   /** Called after the seeds, before render (e.g. to hold the hydration reads). */
   beforeRender?: () => void | Promise<void>;
   strict?: boolean;
+  /** Another hook to run in the same component after the store (e.g. App's own hooks); its latest
+   *  return value is `h.used()`. */
+  use?: (store: any) => unknown;
 };
 
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -66,8 +69,10 @@ export async function bootHook(opts: BootOptions) {
   // Every account id the screen showed, in render order (null = guest), so a test can tell that a
   // state never appeared even if something later replaced it.
   const shownUsers: (string | null)[] = [];
+  let used: unknown;
   function App() {
     store = useAppState();
+    used = opts.use?.(store);
     const id = store.state.currentUser?.id ?? null;
     if (shownUsers[shownUsers.length - 1] !== id) shownUsers.push(id);
     return null;
@@ -81,6 +86,7 @@ export async function bootHook(opts: BootOptions) {
   return {
     s,
     shownUsers,
+    used: () => used,
     toasts,
     intervals,
     supabase: supabaseModule.supabase,
