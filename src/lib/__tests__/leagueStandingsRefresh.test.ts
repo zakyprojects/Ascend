@@ -1,0 +1,206 @@
+// League standings refresher: polls between full fetches ask only for this week's and month's points.
+import { createLeagueStandingsRefresher, type LeagueStandingsResult } from '../leagues/leagueStandingsRefresh';
+
+function assert(condition: boolean, msg: string) {
+  if (!condition) {
+    throw new Error(`Assertion failed: ${msg}`);
+  }
+}
+
+const MIN = 60_000;
+
+function setup() {
+  let nowMs = Date.UTC(2026, 9, 21, 9, 0, 0); // a Wednesday, mid-week and mid-month
+  const calls: string[] = [];
+  const applied: LeagueStandingsResult[] = [];
+  let members = [{ id: 'me' }, { id: 'a' }];
+  let livePoints: Record<string, Record<string, number>> = { W: { me: 5, a: 3 }, M: { me: 9 } };
+  let liveSeason: Record<string, number> | undefined;
+  const refresher = createLeagueStandingsRefresher({
+    sessionUserId: async () => 'me',
+    fetchBoards: async (slim) => {
+      calls.push(slim ? 'slim' : 'full');
+      if (!slim) return { profiles: members, points: { ...livePoints } };
+      return liveSeason ? { profiles: null, points: { ...livePoints }, seasonPoints: { ...liveSeason } } : { profiles: null, points: { ...livePoints } };
+    },
+    now: () => new Date(nowMs),
+    isOnline: () => true,
+    apply: (r) => applied.push(r),
+  });
+  return {
+    refresher,
+    calls,
+    applied,
+    advance: (ms: number) => (nowMs += ms),
+    setMembers: (m: { id: string }[]) => (members = m),
+    setLive: (p: Record<string, Record<string, number>>) => (livePoints = p),
+    setSeason: (p: Record<string, number> | undefined) => (liveSeason = p),
+  };
+}
+
+const last = <T,>(xs: T[]) => xs[xs.length - 1];
+
+(async () => {
+  // First refresh is the full set (one call); a poll a minute later is one slim call.
+  {
+    const t = setup();
+    await t.refresher.refresh();
+    assert(t.calls.join() === 'full', 'first refresh is one full call');
+    t.advance(MIN);
+    t.setLive({ W: { me: 6, a: 3 }, M: { me: 10 } });
+    await t.refresher.refresh();
+    assert(t.calls.slice(1).join() === 'slim', 'poll is one slim call');
+    const r = last(t.applied);
+    assert(r.profiles === null, 'poll keeps the cached member list');
+    assert(r.points?.W.me === 6 && r.points?.M.me === 10, 'live periods are updated');
+    assert(t.refresher.fetchedUserId() === 'me' && !t.refresher.lastAttemptFailed(), 'poll counts as success');
+  }
+
+  // full: true always takes the full set; so does a poll once the full set is 10 minutes old.
+  {
+    const t = setup();
+    await t.refresher.refresh();
+    t.advance(MIN);
+    await t.refresher.refresh({ full: true });
+    assert(t.calls.slice(1).join() === 'full', 'full refresh is one full call');
+    t.advance(10 * MIN);
+    await t.refresher.refresh();
+    assert(t.calls.slice(2).join() === 'full', 'stale full set is fetched again');
+  }
+
+  // A member missing from the list scores: that poll takes the full set so their profile arrives.
+  {
+    const t = setup();
+    await t.refresher.refresh();
+    t.advance(MIN);
+    t.setLive({ W: { me: 5, a: 3, newbie: 2 }, M: { me: 9 } });
+    t.setMembers([{ id: 'me' }, { id: 'a' }, { id: 'newbie' }]);
+    await t.refresher.refresh();
+    assert(t.calls.slice(1).join() === 'slim,full', 'unknown member triggers the full set');
+    assert(last(t.applied).profiles?.length === 3, 'new member list applied');
+  }
+
+  // A slim poll carries the season points through to apply; without them (older SQL) apply gets none.
+  {
+    const t = setup();
+    await t.refresher.refresh();
+    t.advance(MIN);
+    t.setSeason({ me: 10, a: 4 });
+    await t.refresher.refresh();
+    assert(t.calls.slice(1).join() === 'slim', 'season poll is still one slim call');
+    assert(last(t.applied).profiles === null && last(t.applied).seasonPoints?.a === 4, 'slim season points applied');
+    t.advance(MIN);
+    t.setSeason(undefined);
+    await t.refresher.refresh();
+    assert(t.calls.slice(2).join() === 'slim', 'poll without season is one slim call');
+    assert(last(t.applied).seasonPoints === undefined, 'no season points: the cached ones are kept');
+    assert(last(t.applied).points?.W.me === 5, 'week/month still applied without season');
+  }
+
+  // A member missing from the list shows up only on the season board: the full set is taken.
+  {
+    const t = setup();
+    await t.refresher.refresh();
+    t.advance(MIN);
+    t.setSeason({ me: 10, latecomer: 1 });
+    t.setMembers([{ id: 'me' }, { id: 'a' }, { id: 'latecomer' }]);
+    await t.refresher.refresh();
+    assert(t.calls.slice(1).join() === 'slim,full', 'unknown member on the season board triggers the full set');
+  }
+
+  // Sign-out forgets the full set: the next refresh is a full one.
+  {
+    const t = setup();
+    await t.refresher.refresh();
+    t.refresher.reset();
+    t.advance(MIN);
+    await t.refresher.refresh();
+    assert(t.calls.slice(1).join() === 'full', 'after reset the full set is fetched');
+  }
+
+  // A failed call (null) applies nothing and reports the failure; the caches keep what they had.
+  {
+    let fail = false;
+    const applied: LeagueStandingsResult[] = [];
+    let nowMs = Date.UTC(2026, 9, 21, 9, 0, 0);
+    const refresher = createLeagueStandingsRefresher({
+      sessionUserId: async () => 'me',
+      fetchBoards: async (slim) =>
+        fail ? null : { profiles: slim ? null : [{ id: 'me' }], points: { W: { me: 1 }, M: {} } },
+      now: () => new Date(nowMs),
+      isOnline: () => true,
+      apply: (r) => applied.push(r),
+    });
+    await refresher.refresh();
+    fail = true;
+    nowMs += MIN;
+    await refresher.refresh();
+    assert(applied.length === 1 && refresher.lastAttemptFailed(), 'failed slim poll applies nothing');
+    await refresher.refresh({ full: true });
+    assert(applied.length === 1 && refresher.lastAttemptFailed(), 'failed full refresh applies nothing');
+    assert(refresher.fetchedUserId() === 'me', 'the earlier full set still counts for this member');
+  }
+
+  // A full refresh (pull-to-refresh) asked while a points-only poll runs: one full run follows the
+  // poll, and both callers wait for it. A full refresh asked during a full run shares that run.
+  {
+    let nowMs = Date.UTC(2026, 9, 21, 9, 0, 0);
+    const calls: string[] = [];
+    let gate: Promise<void> | null = null;
+    let open = () => {};
+    const hold = () => (gate = new Promise<void>((resolve) => (open = resolve)));
+    const refresher = createLeagueStandingsRefresher({
+      sessionUserId: async () => 'me',
+      fetchBoards: async (slim) => {
+        calls.push(slim ? 'slim' : 'full');
+        if (gate) await gate;
+        return { profiles: slim ? null : [{ id: 'me' }], points: { W: { me: 1 }, M: {} } };
+      },
+      now: () => new Date(nowMs),
+      isOnline: () => true,
+      apply: () => {},
+    });
+    await refresher.refresh();
+    nowMs += MIN;
+    hold();
+    const poll = refresher.refresh();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    const pull = refresher.refresh({ full: true });
+    let pullDone = false;
+    void pull.then(() => (pullDone = true));
+    const again = refresher.refresh({ full: true });
+    assert(again === pull, 'a second full ask during the poll shares the queued full run');
+    gate = null;
+    open();
+    await poll;
+    await pull;
+    assert(pullDone, 'the pull waited for its full run');
+    assert(calls.slice(1).join() === 'slim,full', 'poll then exactly one full run');
+    // During a full run: a full ask shares it (no extra call).
+    nowMs += MIN;
+    hold();
+    const fullRun = refresher.refresh({ full: true });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    const shared = refresher.refresh({ full: true });
+    gate = null;
+    open();
+    await fullRun;
+    await shared;
+    assert(calls.slice(3).join() === 'full', 'a full ask during a full run adds no call');
+    // A poll that takes the full set by itself (the set is 10 minutes old): a full ask adds no call,
+    // also when it comes before the poll has decided (it is queued, then sees the full set).
+    nowMs += 11 * MIN;
+    hold();
+    const stalePoll = refresher.refresh();
+    const ask = refresher.refresh({ full: true });
+    assert(ask !== stalePoll, 'asked before the poll decided: queued');
+    gate = null;
+    open();
+    await stalePoll;
+    await ask;
+    assert(calls.slice(4).join() === 'full', 'a full ask during a poll that took the full set adds no call');
+  }
+
+  console.log('leagueStandingsRefresh: all assertions passed');
+  // An assertion that throws rejects this promise; Node then exits non-zero (unhandled rejection).
+})();
