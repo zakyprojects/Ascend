@@ -1,0 +1,63 @@
+name: CI
+
+# Every push and pull request to main: the app must build, lint clean, type-check the
+# API functions and pass the fixture tests. Production only gets commits that are green here.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Build, lint, type-check, test
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Build (app type-check + Vite build)
+        run: npm run build
+
+      # The enforced CSP has no 'unsafe-eval': any eval / new Function in the shipped JS would
+      # break in the browser. Sentry's stack parser mentions "eval" only inside regex text
+      # (no call parenthesis), so it does not match.
+      - name: No eval in built JS
+        run: |
+          if grep -rnoE --include='*.js' '.{0,40}(\beval\(|new Function\(|[^.[:alnum:]_$]Function\([[:space:]]*["'"'"'`]).{0,40}' dist; then
+            echo "::error::Built JS contains eval / new Function (blocked by the CSP)."
+            exit 1
+          fi
+
+      - name: Lint
+        run: npx eslint src --quiet
+
+      - name: Type-check API functions
+        run: npm run typecheck:api
+
+      # Users' time zone (no daylight saving) and one with daylight saving, so day/week
+      # logic is checked across both kinds of midnight.
+      - name: Tests (Asia/Karachi)
+        run: npm test
+        env:
+          TZ: Asia/Karachi
+
+      - name: Tests (America/New_York, daylight saving)
+        run: npm test
+        env:
+          TZ: America/New_York

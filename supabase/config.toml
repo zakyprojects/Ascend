@@ -1,0 +1,13 @@
+# Supabase CLI settings, versioned so the Edge Function auth mode is not only in deploy flags.
+# Only the functions' settings are kept here; database, auth and storage settings live in the
+# dashboard. project_id names the local CLI project only (deploys target --project-ref).
+project_id = "ascend"
+
+# Both functions are deployed with "Verify JWT" OFF (same as --no-verify-jwt):
+# send-push is called by pg_net with the shared secret header and no Authorization header;
+# sign-in-username is called before the user has a session.
+[functions.send-push]
+verify_jwt = false
+
+[functions.sign-in-username]
+verify_jwt = false
