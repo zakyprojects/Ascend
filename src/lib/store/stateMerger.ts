@@ -1,0 +1,1492 @@
+import {
+  AppState,
+  Habit,
+  PointsEntry,
+  LeagueArchive,
+  BadHabitLog,
+  getAwardKey,
+  WeeklyGoal,
+  WeeklyGoalItem,
+  WeeklyGoalReflection,
+  Task,
+  TaskSubtask,
+  UserBook,
+  UserBookStatus,
+  ImprovementPlan,
+  UserPlanFollow,
+  Partnership,
+  SharedChallenge,
+  AppNotification,
+  TimeTrackerState,
+  TimeTrackerBlock,
+  DEFAULT_TIME_TRACKER_STATE,
+  DEFAULT_STATE,
+} from '@/types';
+import { mergeSharedChallenge } from '../partners/pactLifecycle';
+import { ensureDefaultActivities, mergeTimeTrackerDays, type TimeTrackerDayDoc } from '../timeTracker/timeTracker';
+import { parseDate } from '../time/dates';
+import { calculateSeasonalTotal } from '../leagues/leagues';
+import { leagueNow, getSeasonNumber, getSeasonStart } from '../time/leagueTime';
+import { isWeeklyGoalSeasonSplitEntryId } from '../leagues/weeklyGoalSeasons';
+import { computeStateDataWeight, type UserDataWeight } from './dataWeight';
+import { trustedNow, trustedNowMs } from '../time/clock';
+import { mergeRankCelebrated } from '../leagues/rankCelebration';
+import { normalizeThemePreference } from '../ui/theme';
+import { mergeLastSeenRelease } from '../content/whatsNew';
+
+/**
+ * A stored time as epoch ms, for comparing: an ISO string in any offset (`…Z`, `…+00:00` from
+ * PostgREST) or epoch ms. Missing or unreadable sorts as the oldest. Text comparison would put a
+ * numeric `createdAt` before every ISO string and depends on both sides using the same offset.
+ */
+const timeMs = (value: string | number | undefined | null): number => {
+  const ms = typeof value === 'number' ? value : typeof value === 'string' ? Date.parse(value) : NaN;
+  return Number.isFinite(ms) ? ms : -Infinity;
+};
+
+function mergeEntityArrays<T extends { id?: string; createdAt?: string | number; updatedAt?: string; timestamp?: string }>(
+  baseArr: T[] = [],
+  incomingArr: T[] = [],
+  tombstoneSet: Set<string>,
+  customMerge?: (baseItem: T, incomingItem: T) => T
+): T[] {
+  const map = new Map<string, T>();
+
+  for (const item of baseArr) {
+    if (item && item.id && !tombstoneSet.has(item.id)) {
+      map.set(item.id, item);
+    }
+  }
+
+  for (const item of incomingArr) {
+    if (!item || !item.id || tombstoneSet.has(item.id)) continue;
+
+    const existing = map.get(item.id);
+    if (!existing) {
+      map.set(item.id, item);
+    } else {
+      if (customMerge) {
+        map.set(item.id, customMerge(existing, item));
+      } else {
+        const existingTime = timeMs(existing.updatedAt || existing.createdAt || existing.timestamp);
+        const incomingTime = timeMs(item.updatedAt || item.createdAt || item.timestamp);
+        if (incomingTime >= existingTime) {
+          map.set(item.id, { ...existing, ...item });
+        } else {
+          map.set(item.id, { ...item, ...existing });
+        }
+      }
+    }
+  }
+
+  return Array.from(map.values());
+}
+
+/**
+ * Two copies of one task: the newer copy (updatedAt, else createdAt; the incoming copy on a tie)
+ * gives the task's fields, its subtasks and their order, so a reorder, rename or tick made on the
+ * newer copy wins. Subtasks only the older copy has (added there, never deleted) join the end in
+ * their own order; deleted ones stay out.
+ */
+export function mergeTaskCopies(baseT: Task, incT: Task, tombstoneSet: ReadonlySet<string>): Task {
+  const incNewer = timeMs(incT.updatedAt || incT.createdAt) >= timeMs(baseT.updatedAt || baseT.createdAt);
+  const [newer, older] = incNewer ? [incT, baseT] : [baseT, incT];
+  const subtaskMap = new Map<string, TaskSubtask>();
+  for (const st of newer.subtasks || []) {
+    if (st.id && !tombstoneSet.has(st.id) && !subtaskMap.has(st.id)) subtaskMap.set(st.id, st);
+  }
+  for (const st of older.subtasks || []) {
+    if (st.id && !tombstoneSet.has(st.id) && !subtaskMap.has(st.id)) subtaskMap.set(st.id, st);
+  }
+  return {
+    ...newer,
+    subtasks: Array.from(subtaskMap.values()),
+  };
+}
+
+function normalizeHabitCompletions(
+  completions: Habit['completions'] | string[] | undefined,
+  fallbackTime: string
+): Record<string, { done: boolean; updatedAt: string; pointsAwarded?: number }> {
+  if (!completions) return {};
+  if (Array.isArray(completions)) {
+    const res: Record<string, { done: boolean; updatedAt: string; pointsAwarded?: number }> = {};
+    for (const d of completions) {
+      if (typeof d === 'string' && d) {
+        res[d] = { done: true, updatedAt: fallbackTime };
+      }
+    }
+    return res;
+  }
+  const res: Record<string, { done: boolean; updatedAt: string; pointsAwarded?: number }> = {};
+  for (const [key, val] of Object.entries(completions)) {
+    if (val && typeof val === 'object') {
+      res[key] = {
+        done: Boolean((val as { done?: boolean }).done ?? true),
+        updatedAt: (val as { updatedAt?: string }).updatedAt || fallbackTime,
+        ...(typeof (val as { pointsAwarded?: number }).pointsAwarded === 'number'
+          ? { pointsAwarded: (val as { pointsAwarded?: number }).pointsAwarded }
+          : {}),
+      };
+    } else if (typeof val === 'boolean') {
+      res[key] = { done: val, updatedAt: fallbackTime };
+    }
+  }
+  return res;
+}
+
+function mergeHabitCompletions(
+  baseCompletions: Record<string, { done: boolean; updatedAt: string; pointsAwarded?: number }>,
+  incomingCompletions: Record<string, { done: boolean; updatedAt: string; pointsAwarded?: number }>
+): Record<string, { done: boolean; updatedAt: string; pointsAwarded?: number }> {
+  const merged: Record<string, { done: boolean; updatedAt: string; pointsAwarded?: number }> = { ...baseCompletions };
+  for (const [dateKey, incEntry] of Object.entries(incomingCompletions || {})) {
+    const baseEntry = merged[dateKey];
+    if (!baseEntry) {
+      merged[dateKey] = incEntry;
+    } else {
+      const baseTime = baseEntry.updatedAt || '';
+      const incTime = incEntry.updatedAt || '';
+      if (incTime >= baseTime) {
+        merged[dateKey] = incEntry;
+      }
+    }
+  }
+  return merged;
+}
+
+/**
+ * Deduplicate preset habits by normalized name while strictly leaving custom habits untouched.
+ * For duplicate preset habits with the same normalized name:
+ * - The habit with the earliest createdAt is kept as winner.
+ * - Completions across all duplicate members are merged into the winner.
+ * - Non-winner habit IDs are added to deletedEntityIds.
+ */
+export function deduplicatePresetHabits(
+  habits: Habit[] = [],
+  deletedEntityIds: string[] = []
+): { habits: Habit[]; deletedEntityIds: string[] } {
+  const customHabits: Habit[] = [];
+  const presetGroups = new Map<string, Habit[]>();
+
+  for (const h of habits) {
+    if (!h) continue;
+    if (!h.isPreset) {
+      customHabits.push(h);
+    } else {
+      const normName = (h.name || '').trim().toLowerCase();
+      const existingGroup = presetGroups.get(normName) || [];
+      existingGroup.push(h);
+      presetGroups.set(normName, existingGroup);
+    }
+  }
+
+  const newDeletedIds = new Set(deletedEntityIds || []);
+  const processedPresetWinners = new Map<string, Habit>();
+
+  for (const [normName, group] of presetGroups.entries()) {
+    if (group.length === 1) {
+      processedPresetWinners.set(normName, {
+        ...group[0],
+        completions: normalizeHabitCompletions(
+          group[0].completions,
+          group[0].updatedAt || group[0].createdAt || trustedNow().toISOString()
+        ),
+      });
+      continue;
+    }
+
+    // Multiple preset habits with same name: find winner with earliest createdAt
+    const sorted = [...group].sort((a, b) => {
+      const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return (timeA || 0) - (timeB || 0);
+    });
+
+    const winner = sorted[0];
+    let mergedComps = normalizeHabitCompletions(
+      winner.completions,
+      winner.updatedAt || winner.createdAt || trustedNow().toISOString()
+    );
+    const mergedMissedPeriods = new Set<string>(winner.missedPeriods || []);
+
+    for (const member of group) {
+      for (const mp of member.missedPeriods || []) {
+        mergedMissedPeriods.add(mp);
+      }
+      if (member.id && member.id !== winner.id) {
+        newDeletedIds.add(member.id);
+        const memberComps = normalizeHabitCompletions(
+          member.completions,
+          member.updatedAt || member.createdAt || trustedNow().toISOString()
+        );
+        mergedComps = mergeHabitCompletions(mergedComps, memberComps);
+      }
+    }
+
+    processedPresetWinners.set(normName, {
+      ...winner,
+      missedPeriods: Array.from(mergedMissedPeriods),
+      completions: mergedComps,
+    });
+  }
+
+  // Build final array preserving original relative array ordering
+  const finalHabits: Habit[] = [];
+  const emittedPresetNames = new Set<string>();
+
+  for (const h of habits) {
+    if (!h) continue;
+    if (!h.isPreset) {
+      finalHabits.push(h);
+    } else {
+      const normName = (h.name || '').trim().toLowerCase();
+      if (!emittedPresetNames.has(normName)) {
+        emittedPresetNames.add(normName);
+        const winnerHabit = processedPresetWinners.get(normName);
+        if (winnerHabit) {
+          finalHabits.push(winnerHabit);
+        }
+      }
+    }
+  }
+
+  const finalDeletedIds = Array.from(newDeletedIds).slice(-500);
+
+  return {
+    habits: finalHabits,
+    deletedEntityIds: finalDeletedIds,
+  };
+}
+
+/** When a goal last changed: updatedAt, or createdAt for goals saved before updatedAt existed. */
+const goalTime = (g: WeeklyGoalItem): string => g.updatedAt || g.createdAt || '';
+
+/**
+ * Week docs merge by week, and the goals inside merge goal by goal: the copy changed last wins
+ * (on a tie, incoming fields over the base's), a goal only one side has is kept, and a goal either side deleted
+ * (tombstones or the docs' deletedGoalIds) stays deleted. The server merges the same way
+ * (weekly_goals_merge_row, 20261019200000).
+ */
+function mergeWeeklyGoals(
+  baseList: WeeklyGoal[] = [],
+  incomingList: WeeklyGoal[] = [],
+  tombstoneSet: Set<string>
+): WeeklyGoal[] {
+  const map = new Map<string, WeeklyGoal>();
+  const keepGoal = (deleted: Set<string>) => (g: WeeklyGoalItem) => !g.id || (!tombstoneSet.has(g.id) && !deleted.has(g.id));
+
+  for (const wg of baseList) {
+    if (!wg || !wg.weekKey) continue;
+    const filteredGoals = (wg.goals || []).filter(keepGoal(new Set(wg.deletedGoalIds || [])));
+    const filteredReflections = (wg.reflections || []).filter((r) => !r.id || !tombstoneSet.has(r.id));
+    map.set(wg.weekKey, {
+      ...wg,
+      goals: filteredGoals,
+      reflections: filteredReflections,
+    });
+  }
+
+  for (const wg of incomingList) {
+    if (!wg || !wg.weekKey) continue;
+    const existing = map.get(wg.weekKey);
+    const deletedGoalIds =
+      existing?.deletedGoalIds || wg.deletedGoalIds
+        ? Array.from(new Set([...(existing?.deletedGoalIds || []), ...(wg.deletedGoalIds || [])]))
+        : undefined;
+    const keep = keepGoal(new Set(deletedGoalIds || []));
+    const filteredGoals = (wg.goals || []).filter(keep);
+    const filteredReflections = (wg.reflections || []).filter((r) => !r.id || !tombstoneSet.has(r.id));
+
+    if (!existing) {
+      map.set(wg.weekKey, {
+        ...wg,
+        goals: filteredGoals,
+        reflections: filteredReflections,
+      });
+    } else {
+      // Merge goals within week
+      const goalsMap = new Map<string, WeeklyGoalItem>();
+      for (const g of (existing.goals || []).filter(keep)) {
+        if (g.id) goalsMap.set(g.id, g);
+      }
+      for (const g of filteredGoals) {
+        if (g.id) {
+          const exG = goalsMap.get(g.id);
+          if (!exG || goalTime(g) > goalTime(exG)) {
+            goalsMap.set(g.id, g);
+          } else if (goalTime(g) === goalTime(exG)) {
+            goalsMap.set(g.id, { ...exG, ...g });
+          }
+        }
+      }
+
+      // Merge reflections within week
+      const refMap = new Map<string, WeeklyGoalReflection>();
+      for (const r of existing.reflections || []) {
+        if (r.id && !tombstoneSet.has(r.id)) refMap.set(r.id, r);
+      }
+      for (const r of filteredReflections) {
+        if (r.id && !tombstoneSet.has(r.id)) {
+          const exR = refMap.get(r.id);
+          if (!exR) {
+            refMap.set(r.id, r);
+          } else {
+            const exTime = exR.updatedAt || exR.createdAt || '';
+            const inTime = r.updatedAt || r.createdAt || '';
+            if (inTime >= exTime) {
+              refMap.set(r.id, { ...exR, ...r });
+            } else {
+              refMap.set(r.id, { ...r, ...exR });
+            }
+          }
+        }
+      }
+
+      map.set(wg.weekKey, {
+        ...existing,
+        ...wg,
+        goals: Array.from(goalsMap.values()),
+        reflections: Array.from(refMap.values()),
+        ...(deletedGoalIds ? { deletedGoalIds } : {}),
+      });
+    }
+  }
+
+  return Array.from(map.values());
+}
+
+function mergeBadHabitLogs(
+  baseList: BadHabitLog[] = [],
+  incomingList: BadHabitLog[] = [],
+  tombstoneSet: Set<string>
+): BadHabitLog[] {
+  const map = new Map<string, BadHabitLog>();
+
+  const processLog = (log: BadHabitLog) => {
+    if (!log) return;
+    if (log.id && tombstoneSet.has(log.id)) return;
+    if (log.badHabitId && tombstoneSet.has(log.badHabitId)) return;
+
+    // Use compositeKey in map to prevent duplicate logs for the same bad habit on the same date via LWW
+    const key = `${log.badHabitId}_${log.date}`;
+    const existing = map.get(key);
+    if (!existing) {
+      map.set(key, log);
+    } else {
+      const existingParsed = parseDate(existing.updatedAt) || parseDate(existing.createdAt);
+      const existingTime = existingParsed ? existingParsed.getTime() : 0;
+      const incomingParsed = parseDate(log.updatedAt) || parseDate(log.createdAt);
+      const incomingTime = incomingParsed ? incomingParsed.getTime() : 0;
+      if (incomingTime >= existingTime) {
+        map.set(key, log);
+      }
+    }
+  };
+
+  baseList.forEach(processLog);
+  incomingList.forEach(processLog);
+
+  return Array.from(map.values()).sort((a, b) => {
+    // BadHabitLog.date is always 'YYYY-MM-DD', createdAt is ISO timestamp.
+    // Try parseDate on date first, then fallback to createdAt.
+    const timeB = (parseDate(b.date) || parseDate(b.createdAt))?.getTime() ?? 0;
+    const timeA = (parseDate(a.date) || parseDate(a.createdAt))?.getTime() ?? 0;
+    if (timeB !== timeA) {
+      return timeB - timeA;
+    }
+    // Safe deterministic fallback
+    return (b.id || '').localeCompare(a.id || '');
+  });
+}
+
+function mergeLeagueArchives(
+  baseList: LeagueArchive[] = [],
+  incomingList: LeagueArchive[] = []
+): LeagueArchive[] {
+  const map = new Map<string, LeagueArchive>();
+
+  for (const item of baseList) {
+    if (!item || !item.id) continue;
+    map.set(item.id, item);
+  }
+
+  for (const item of incomingList) {
+    if (!item || !item.id) continue;
+    // First come wins (archives are the server's; both sides hold the same rows).
+    if (!map.has(item.id)) map.set(item.id, item);
+  }
+
+  return Array.from(map.values()).sort(
+    (a, b) => new Date(b.archivedAt || 0).getTime() - new Date(a.archivedAt || 0).getTime()
+  );
+}
+
+/**
+ * Pattern matching invalid/poisoned domain-slot composite tombstones.
+ * Rejects composite patterns such as:
+ * - `<entityId>_<YYYY-MM-DD>` (e.g. `badHabitId_2026-09-01`)
+ * - `<entityId>_<periodKey>` or other domain-slot formats.
+ * Preserves clean entity UUIDs, points entry IDs (e.g., `p_...`), and standalone IDs.
+ */
+const POISONED_COMPOSITE_KEY_REGEX = /^[A-Za-z0-9_-]+_\d{4}-\d{2}-\d{2}$/;
+
+/**
+ * A week's reflection award (`weekly_review_<weekKey>`) is derived from its reflections: a
+ * deleted reflection is undone by `weekly_review_rev_<weekKey>`, never by a tombstone. A
+ * tombstone on it only ever came from a lost duplicate tie-break, and it blocked the award
+ * from loading or syncing for good.
+ */
+const WEEKLY_REFLECTION_AWARD_ID_REGEX = /^weekly_review_\d{4}-W\d{2}$/;
+
+export function isLegitimateTombstoneId(id: unknown): id is string {
+  if (typeof id !== 'string' || !id.trim()) return false;
+  const trimmed = id.trim();
+  // Reject composite date-slot keys
+  if (POISONED_COMPOSITE_KEY_REGEX.test(trimmed)) {
+    return false;
+  }
+  if (WEEKLY_REFLECTION_AWARD_ID_REGEX.test(trimmed)) {
+    return false;
+  }
+  return true;
+}
+
+export type MergeContext = 'hydration' | 'writeSync';
+
+interface MergeInternalOptions {
+  tombstoneSetOverride?: Set<string>;
+}
+
+function mergeAppStateInternal(
+  baseState: AppState,
+  incomingState: AppState,
+  mergeContext: MergeContext = 'hydration',
+  options?: MergeInternalOptions
+): AppState {
+  if (!baseState) return incomingState || DEFAULT_STATE;
+  if (!incomingState) return baseState || DEFAULT_STATE;
+
+  // 1. Tombstones union and cap with Global Ingestion Sanitizer
+  const rawTombstones = [
+    ...(baseState.deletedEntityIds || []),
+    ...(incomingState.deletedEntityIds || []),
+  ];
+
+  const sanitizedTombstones = rawTombstones.filter(isLegitimateTombstoneId);
+  const historicalTombstoneSet = new Set<string>(sanitizedTombstones);
+
+  // Un-tombstone IDs that were explicitly restored in incomingState
+  for (const restoredId of incomingState.restoredEntityIds || []) {
+    historicalTombstoneSet.delete(restoredId);
+  }
+
+  const mergedDeletedEntityIds = Array.from(historicalTombstoneSet).slice(-500);
+  const tombstoneSet = options?.tombstoneSetOverride ?? historicalTombstoneSet;
+
+  // Union restoredEntityIds so restoration signals persist across syncs
+  const mergedRestoredEntityIds = Array.from(
+    new Set([
+      ...(baseState.restoredEntityIds || []),
+      ...(incomingState.restoredEntityIds || []),
+    ])
+  ).slice(-500);
+
+  // 2. Habits (last-write-wins by updatedAt/createdAt, with per-date completions merge)
+  const mergedHabitsRaw = mergeEntityArrays(
+    baseState.habits || [],
+    incomingState.habits || [],
+    tombstoneSet,
+    (baseH: Habit, incH: Habit) => {
+      const baseTime = baseH.updatedAt || baseH.createdAt || '';
+      const incTime = incH.updatedAt || incH.createdAt || '';
+      const winner = incTime >= baseTime ? incH : baseH;
+      const baseComps = normalizeHabitCompletions(baseH.completions, baseTime || trustedNow().toISOString());
+      const incComps = normalizeHabitCompletions(incH.completions, incTime || trustedNow().toISOString());
+      const mergedComps = mergeHabitCompletions(baseComps, incComps);
+      const mergedMissed = Array.from(
+        new Set([...(baseH.missedPeriods || []), ...(incH.missedPeriods || [])])
+      );
+      return {
+        ...winner,
+        missedPeriods: mergedMissed,
+        completions: mergedComps,
+      };
+    }
+  );
+  const normalizedHabits = mergedHabitsRaw.map((h) => ({
+    ...h,
+    completions: normalizeHabitCompletions(h.completions, h.updatedAt || h.createdAt || trustedNow().toISOString()),
+  }));
+
+  const { habits: deduplicatedHabits, deletedEntityIds: postHabitDeletedEntityIds } = deduplicatePresetHabits(
+    normalizedHabits,
+    mergedDeletedEntityIds
+  );
+
+  const habits = deduplicatedHabits;
+
+  // 3. Journal entries
+  const journalEntries = mergeEntityArrays(
+    baseState.journalEntries || [],
+    incomingState.journalEntries || [],
+    tombstoneSet
+  );
+
+  // 4. Points history & Total points (Epoch-Gated Seasonal Resolution)
+  const currentSeason = getSeasonNumber(leagueNow());
+  const baseSeason = baseState.seasonId || 1;
+  const incSeason = incomingState.seasonId || 1;
+  // Clamped to currentSeason — a corrupted/future seasonId from any device must never advance the account beyond the real season. Fixes the wrong-clock vulnerability identified in Phase 4 Mode A (2026-09-20).
+  const maxSeason = Math.min(Math.max(baseSeason, incSeason, currentSeason), currentSeason);
+
+  const mergedHistoryFull = mergeEntityArrays(
+    baseState.pointsHistory || [],
+    incomingState.pointsHistory || [],
+    tombstoneSet
+  ).sort((a: PointsEntry, b: PointsEntry) => {
+    const timeA = a.timestamp ? new Date(a.timestamp).getTime() : 0;
+    const timeB = b.timestamp ? new Date(b.timestamp).getTime() : 0;
+    return timeB - timeA;
+  });
+
+  // Deduplicate habit_completed entries by (habitId, periodKey), keeping earliest timestamp (with deterministic id tie-breaker)
+  const habitCompletionBest = new Map<string, PointsEntry>();
+  const duplicateHabitEntryIds = new Set<string>();
+
+  for (const entry of mergedHistoryFull) {
+    if (
+      entry &&
+      entry.source === 'habit_completed' &&
+      entry.metadata &&
+      typeof entry.metadata.habitId === 'string' &&
+      entry.metadata.habitId &&
+      typeof entry.metadata.periodKey === 'string' &&
+      entry.metadata.periodKey
+    ) {
+      const dedupKey = `${entry.metadata.habitId}_${entry.metadata.periodKey}`;
+      const existing = habitCompletionBest.get(dedupKey);
+      if (!existing) {
+        habitCompletionBest.set(dedupKey, entry);
+      } else {
+        const timeCand = entry.timestamp ? new Date(entry.timestamp).getTime() : 0;
+        const timeExist = existing.timestamp ? new Date(existing.timestamp).getTime() : 0;
+        let replace = false;
+        if (timeCand !== timeExist) {
+          replace = timeCand < timeExist; // earliest timestamp wins
+        } else {
+          replace = (entry.id || '') < (existing.id || ''); // deterministic tie-breaker
+        }
+        if (replace) {
+          if (existing.id) duplicateHabitEntryIds.add(existing.id);
+          habitCompletionBest.set(dedupKey, entry);
+        } else {
+          if (entry.id) duplicateHabitEntryIds.add(entry.id);
+        }
+      }
+    }
+  }
+
+  // Deduplicate weekly_review +20 award entries by weekKey, keeping earliest timestamp (with deterministic id tie-breaker)
+  const weeklyReviewBest = new Map<string, PointsEntry>();
+  const duplicateWeeklyReviewEntryIds = new Set<string>();
+
+  for (const entry of mergedHistoryFull) {
+    if (entry && entry.source === 'weekly_review' && (entry.amount || 0) > 0) {
+      let weekKey: string | null = null;
+      if (entry.metadata && typeof entry.metadata.weekKey === 'string' && entry.metadata.weekKey) {
+        weekKey = entry.metadata.weekKey;
+      } else if (entry.reason) {
+        const match = entry.reason.match(/\b\d{4}-W\d{2}\b/);
+        if (match) {
+          weekKey = match[0];
+        }
+      }
+
+      if (weekKey) {
+        const isCanonicalId = entry.id === `weekly_review_${weekKey}`;
+        const existing = weeklyReviewBest.get(weekKey);
+        if (!existing) {
+          weeklyReviewBest.set(weekKey, entry);
+        } else {
+          const existingIsCanonical = existing.id === `weekly_review_${weekKey}`;
+          const timeCand = entry.timestamp ? new Date(entry.timestamp).getTime() : 0;
+          const timeExist = existing.timestamp ? new Date(existing.timestamp).getTime() : 0;
+          let replace = false;
+          // Prefer the canonical id: load consolidation gives it the legacy entry's timestamp,
+          // so a timestamp/id tie-break would otherwise drop it in favour of the legacy id.
+          if (isCanonicalId !== existingIsCanonical) {
+            replace = isCanonicalId;
+          } else if (timeCand !== timeExist) {
+            replace = timeCand < timeExist; // earliest timestamp wins
+          } else {
+            replace = (entry.id || '') < (existing.id || ''); // deterministic tie-breaker
+          }
+          if (replace) {
+            if (existing.id) duplicateWeeklyReviewEntryIds.add(existing.id);
+            weeklyReviewBest.set(weekKey, entry);
+          } else {
+            if (entry.id) duplicateWeeklyReviewEntryIds.add(entry.id);
+          }
+        }
+      }
+    }
+  }
+
+  // Deduplicate weekly_goal_achieved entries by weekKey, keeping latest timestamp (with deterministic id tie-breaker).
+  // A week a season started in also holds one per-season entry; it is its own snapshot, keyed by its id.
+  const weeklyGoalsBest = new Map<string, PointsEntry>();
+  const duplicateWeeklyGoalEntryIds = new Set<string>();
+
+  for (const entry of mergedHistoryFull) {
+    if (
+      entry &&
+      (entry.source === 'weekly_goal_achieved' ||
+        (typeof entry.id === 'string' && entry.id.startsWith('weekly_goal_')))
+    ) {
+      let weekKey: string | null = null;
+      if (entry.metadata && typeof entry.metadata.weekKey === 'string' && entry.metadata.weekKey) {
+        weekKey = entry.metadata.weekKey;
+      } else if (typeof entry.id === 'string') {
+        const match = entry.id.match(/\b\d{4}-W\d{2}\b/);
+        if (match) weekKey = match[0];
+      } else if (entry.reason) {
+        const match = entry.reason.match(/\b\d{4}-W\d{2}\b/);
+        if (match) weekKey = match[0];
+      }
+
+      if (weekKey) {
+        const dedupKey = isWeeklyGoalSeasonSplitEntryId(entry.id) ? entry.id : weekKey;
+        const isCanonicalId = entry.id === `weekly_goal_${weekKey}`;
+        const existing = weeklyGoalsBest.get(dedupKey);
+        if (!existing) {
+          weeklyGoalsBest.set(dedupKey, entry);
+        } else {
+          const existingIsCanonical = existing.id === `weekly_goal_${weekKey}`;
+          const timeCand = entry.timestamp ? new Date(entry.timestamp).getTime() : 0;
+          const timeExist = existing.timestamp ? new Date(existing.timestamp).getTime() : 0;
+          let replace = false;
+          // Prefer canonical static ID over legacy transition-based IDs
+          if (isCanonicalId && !existingIsCanonical) {
+            replace = true;
+          } else if (!isCanonicalId && existingIsCanonical) {
+            replace = false;
+          } else if (timeCand !== timeExist) {
+            replace = timeCand > timeExist; // latest timestamp wins for snapshot entries
+          } else {
+            replace = (entry.id || '') > (existing.id || '');
+          }
+
+          if (replace) {
+            if (existing.id) duplicateWeeklyGoalEntryIds.add(existing.id);
+            weeklyGoalsBest.set(dedupKey, entry);
+          } else {
+            if (entry.id) duplicateWeeklyGoalEntryIds.add(entry.id);
+          }
+        }
+      }
+    }
+  }
+
+  const allDuplicatePointIds = new Set<string>([
+    ...duplicateHabitEntryIds,
+    ...duplicateWeeklyReviewEntryIds,
+    ...duplicateWeeklyGoalEntryIds,
+  ]);
+
+  const dedupedHistoryFull = allDuplicatePointIds.size > 0
+    ? mergedHistoryFull.filter((e) => e && e.id && !allDuplicatePointIds.has(e.id))
+    : mergedHistoryFull;
+
+  const postPointsDeletedEntityIds = allDuplicatePointIds.size > 0
+    ? Array.from(new Set([...postHabitDeletedEntityIds, ...allDuplicatePointIds])).slice(-500)
+    : postHabitDeletedEntityIds;
+
+  const finalHistory = dedupedHistoryFull;
+
+  const computedSeasonPoints = calculateSeasonalTotal(finalHistory, getSeasonStart(leagueNow()));
+
+  // Clamped to currentSeason — a corrupted/future seasonId from any device must never advance the account beyond the real season. Fixes the wrong-clock vulnerability identified in Phase 4 Mode A (2026-09-20).
+  const seasonId = Math.min(maxSeason, currentSeason);
+  const seasonPoints = computedSeasonPoints;
+  const totalPoints = computedSeasonPoints;
+  const pointsHistory = finalHistory;
+
+  // 5. Workouts
+  const workouts = mergeEntityArrays(
+    baseState.workouts || [],
+    incomingState.workouts || [],
+    tombstoneSet
+  );
+
+  // 6. Books & Reading Logs
+  const readingLogs = mergeEntityArrays(
+    baseState.readingLogs || [],
+    incomingState.readingLogs || [],
+    tombstoneSet
+  );
+
+  // 7. Skills & Skill Logs
+  const skills = mergeEntityArrays(
+    baseState.skills || [],
+    incomingState.skills || [],
+    tombstoneSet
+  );
+
+  const skillLogs = mergeEntityArrays(
+    baseState.skillLogs || [],
+    incomingState.skillLogs || [],
+    tombstoneSet
+  );
+
+  // 8. Bad Habits & Bad Habit Logs
+  const badHabits = mergeEntityArrays(
+    baseState.badHabits || [],
+    incomingState.badHabits || [],
+    tombstoneSet
+  );
+
+  const badHabitLogs = mergeBadHabitLogs(
+    baseState.badHabitLogs || [],
+    incomingState.badHabitLogs || [],
+    tombstoneSet
+  );
+
+  // 9. Cravings, Focus, Decision, Emotion
+  const cravingLogs = mergeEntityArrays(
+    baseState.cravingLogs || [],
+    incomingState.cravingLogs || [],
+    tombstoneSet
+  );
+
+  const focusLogs = mergeEntityArrays(
+    baseState.focusLogs || [],
+    incomingState.focusLogs || [],
+    tombstoneSet
+  );
+
+  const decisionLogs = mergeEntityArrays(
+    baseState.decisionLogs || [],
+    incomingState.decisionLogs || [],
+    tombstoneSet
+  );
+
+  const emotionLogs = mergeEntityArrays(
+    baseState.emotionLogs || [],
+    incomingState.emotionLogs || [],
+    tombstoneSet
+  );
+
+  // 10. Weekly Goals
+  const weeklyGoals = mergeWeeklyGoals(
+    baseState.weeklyGoals || [],
+    incomingState.weeklyGoals || [],
+    tombstoneSet
+  );
+
+  // 11. Goals, Projects, Tasks
+  const goals = mergeEntityArrays(
+    baseState.goals || [],
+    incomingState.goals || [],
+    tombstoneSet
+  );
+
+  const projects = mergeEntityArrays(
+    baseState.projects || [],
+    incomingState.projects || [],
+    tombstoneSet
+  );
+
+  const tasks = mergeEntityArrays(
+    baseState.tasks || [],
+    incomingState.tasks || [],
+    tombstoneSet,
+    (baseT: Task, incT: Task) => mergeTaskCopies(baseT, incT, tombstoneSet)
+  );
+
+  // 12. Library Books
+  const baseLib = [...(baseState.libraryBooks || [])];
+  const incomingLib = [...(incomingState.libraryBooks || [])];
+
+  // Convert any legacy books from base/incoming if not already in libraryBooks
+  const absorbLegacyBook = (targetArray: UserBook[], legacyBook: any) => {
+    if (!legacyBook || !legacyBook.id) return;
+    const exists = targetArray.some((lb) => lb.id === legacyBook.id || lb.linkedBookId === legacyBook.id || lb.title?.toLowerCase() === legacyBook.title?.toLowerCase());
+    if (!exists) {
+      targetArray.push({
+        id: legacyBook.id,
+        title: legacyBook.title || 'Untitled Book',
+        author: legacyBook.author || 'Unknown Author',
+        isCurated: false,
+        isCustom: true,
+        pointsReward: 0,
+        pointsAwarded: 0,
+        status: (legacyBook.isFinished ? 'completed' : 'reading') as UserBookStatus,
+        totalAmount: legacyBook.totalPages || 200,
+        totalPages: legacyBook.totalPages || 200,
+        currentAmount: legacyBook.currentPage || 0,
+        currentPage: legacyBook.currentPage || 0,
+        unit: legacyBook.unit || 'pages',
+        targetFinishDate: legacyBook.targetFinishDate,
+        addedAt: legacyBook.createdAt || trustedNow().toISOString(),
+        dateCompleted: legacyBook.finishedAt,
+        completedAt: legacyBook.finishedAt,
+        reflection: legacyBook.reflection,
+      });
+    }
+  };
+
+  (baseState.books || []).forEach((b) => absorbLegacyBook(baseLib, b));
+  (incomingState.books || []).forEach((b) => absorbLegacyBook(incomingLib, b));
+
+  const libraryBooks = mergeEntityArrays(
+    baseLib,
+    incomingLib,
+    tombstoneSet,
+    (baseB: UserBook, incB: UserBook) => {
+      const baseUpdated = baseB.updatedAt;
+      const incUpdated = incB.updatedAt;
+
+      let primary: UserBook;
+      let secondary: UserBook;
+      let resolvedCurrentAmount: number;
+      let resolvedStatus: UserBookStatus;
+
+      if (baseUpdated && incUpdated) {
+        primary = incUpdated >= baseUpdated ? incB : baseB;
+        secondary = incUpdated >= baseUpdated ? baseB : incB;
+        resolvedCurrentAmount = primary.currentAmount ?? primary.currentPage ?? 0;
+        resolvedStatus = primary.status;
+      } else if (incUpdated && !baseUpdated) {
+        primary = incB;
+        secondary = baseB;
+        resolvedCurrentAmount = incB.currentAmount ?? incB.currentPage ?? 0;
+        resolvedStatus = incB.status;
+      } else if (baseUpdated && !incUpdated) {
+        primary = baseB;
+        secondary = incB;
+        resolvedCurrentAmount = baseB.currentAmount ?? baseB.currentPage ?? 0;
+        resolvedStatus = baseB.status;
+      } else {
+        // Fallback for legacy records that both predate updatedAt tracking:
+        const baseTime = baseB.addedAt || '';
+        const incTime = incB.addedAt || '';
+        primary = incTime >= baseTime ? incB : baseB;
+        secondary = incTime >= baseTime ? baseB : incB;
+        resolvedCurrentAmount = Math.max(
+          baseB.currentAmount ?? baseB.currentPage ?? 0,
+          incB.currentAmount ?? incB.currentPage ?? 0
+        );
+        resolvedStatus = (primary.status === 'completed' || secondary.status === 'completed')
+          ? 'completed'
+          : (primary.status === 'reading' || secondary.status === 'reading')
+          ? 'reading'
+          : (primary.status as UserBookStatus);
+      }
+
+      return {
+        ...secondary,
+        ...primary,
+        status: resolvedStatus,
+        currentAmount: resolvedCurrentAmount,
+        currentPage: resolvedCurrentAmount,
+        updatedAt: primary.updatedAt,
+        // Length comes from the same copy as unit and progress, so the three stay one set.
+        totalAmount: primary.totalAmount ?? primary.totalPages ?? secondary.totalAmount ?? secondary.totalPages,
+        totalPages: primary.totalPages ?? primary.totalAmount ?? secondary.totalPages ?? secondary.totalAmount,
+        targetFinishDate: incB.targetFinishDate ?? baseB.targetFinishDate,
+        dateStarted: incB.dateStarted ?? baseB.dateStarted ?? incB.startedAt ?? baseB.startedAt,
+        dateCompleted: incB.dateCompleted ?? baseB.dateCompleted ?? incB.completedAt ?? baseB.completedAt,
+        reflection: incB.reflection ?? baseB.reflection,
+      };
+    }
+  );
+
+  // 13. Social Plans & Follows
+  const improvementPlans = mergeEntityArrays(
+    baseState.improvementPlans || [],
+    incomingState.improvementPlans || [],
+    tombstoneSet,
+    (baseP: ImprovementPlan, incP: ImprovementPlan) => {
+      const baseStatus = baseP.syncStatus || 'synced';
+      const incStatus = incP.syncStatus || 'synced';
+
+      let primary: ImprovementPlan;
+      // Precedence: 'synced' always wins over 'pending' or 'failed'
+      if (incStatus === 'synced' && baseStatus !== 'synced') {
+        primary = incP;
+      } else if (baseStatus === 'synced' && incStatus !== 'synced') {
+        primary = baseP;
+      } else {
+        // Both are 'synced' or both are unconfirmed ('pending'/'failed'): fall back to timestamp
+        const baseTime = baseP.createdAt || '';
+        const incTime = incP.createdAt || '';
+        primary = incTime >= baseTime ? incP : baseP;
+      }
+
+      const notes = (primary.reflectionNotes || []).filter((n) => !n.id || !tombstoneSet.has(n.id));
+      return {
+        ...primary,
+        reflectionNotes: notes,
+      };
+    }
+  ).filter(
+    // Title-less entries are fragments of other users' plans that a cross-tab broadcast once
+    // wrote into this state ({ id, copyCount }); a real plan always has a title.
+    (p) => p.title != null
+  );
+
+  const followedPlans = mergeEntityArrays(
+    baseState.followedPlans || [],
+    incomingState.followedPlans || [],
+    tombstoneSet,
+    (baseF: UserPlanFollow, incF: UserPlanFollow) => {
+      const baseTime = baseF.createdAt || '';
+      const incTime = incF.createdAt || '';
+      const primary = incTime >= baseTime ? incF : baseF;
+      const notes = (primary.reflectionNotes || []).filter((n) => !n.id || !tombstoneSet.has(n.id));
+      return {
+        ...primary,
+        reflectionNotes: notes,
+      };
+    }
+  );
+
+  // 14. Partner invites, partnerships, challenges, notifications
+  const partnerInvites = mergeEntityArrays(
+    baseState.partnerInvites || [],
+    incomingState.partnerInvites || [],
+    tombstoneSet
+  );
+
+  const rawPartnerships = mergeEntityArrays(
+    baseState.partnerships || [],
+    incomingState.partnerships || [],
+    tombstoneSet
+  );
+
+  // Deduplicate partnerships by canonical user pair & username pair
+  const partnerPairMap = new Map<string, Partnership>();
+  for (const p of rawPartnerships) {
+    if (!p || (p.id && tombstoneSet.has(p.id))) continue;
+    const u1 = (p.user1Username || '').toLowerCase();
+    const u2 = (p.user2Username || '').toLowerCase();
+    const usernamePairKey = [u1, u2].sort().join(':::');
+
+    const id1 = p.user1Id || '';
+    const id2 = p.user2Id || '';
+    const idPairKey = id1 && id2 ? [id1, id2].sort().join(':::') : usernamePairKey;
+
+    const key = idPairKey || usernamePairKey || p.id;
+    const existing = partnerPairMap.get(key);
+    if (!existing) {
+      partnerPairMap.set(key, p);
+    } else {
+      const existingTime = existing.pairedAt ? new Date(existing.pairedAt).getTime() : 0;
+      const incomingTime = p.pairedAt ? new Date(p.pairedAt).getTime() : 0;
+      if (incomingTime >= existingTime) {
+        partnerPairMap.set(key, p);
+      }
+    }
+  }
+  const partnerships = Array.from(partnerPairMap.values());
+
+  const rawSharedChallenges = mergeEntityArrays(
+    baseState.sharedChallenges || [],
+    incomingState.sharedChallenges || [],
+    tombstoneSet,
+    (baseC: SharedChallenge, incC: SharedChallenge) => mergeSharedChallenge(baseC, incC)
+  );
+
+  // Deduplicate active challenges by (partnershipId + normalized title)
+  const challengeMap = new Map<string, SharedChallenge>();
+  for (const c of rawSharedChallenges) {
+    if (!c || (c.id && tombstoneSet.has(c.id))) continue;
+    const normTitle = (c.title || '').trim().toLowerCase();
+    const isSpecialActive = c.status === 'active';
+    const activeKey = isSpecialActive ? `ACTIVE:::${c.partnershipId}:::${normTitle}` : c.id;
+
+    const existing = challengeMap.get(activeKey);
+    if (!existing) {
+      challengeMap.set(activeKey, c);
+    } else {
+      challengeMap.set(activeKey, mergeSharedChallenge(existing, c));
+    }
+  }
+  const sharedChallenges = Array.from(challengeMap.values());
+
+  // Merge notifications with both ID and payload.dedupKey deduplication
+  const notifMap = new Map<string, AppNotification>();
+  const dedupKeyMap = new Map<string, string>(); // dedupKey -> id
+
+  const allNotifs = [...(baseState.notifications || []), ...(incomingState.notifications || [])];
+  for (const n of allNotifs) {
+    if (!n || !n.id || tombstoneSet.has(n.id)) continue;
+    const dedupKey = n.payload?.dedupKey as string | undefined;
+
+    if (dedupKey && dedupKeyMap.has(dedupKey)) {
+      const existingId = dedupKeyMap.get(dedupKey)!;
+      const existing = notifMap.get(existingId);
+      if (existing) {
+        // Keep the more recent one or preserve read state if one is read
+        const isRead = existing.read || n.read;
+        const newer = timeMs(n.createdAt) >= timeMs(existing.createdAt) ? n : existing;
+        notifMap.set(existingId, { ...newer, id: existingId, read: isRead });
+      }
+      continue;
+    }
+
+    const existing = notifMap.get(n.id);
+    if (!existing) {
+      notifMap.set(n.id, n);
+      if (dedupKey) dedupKeyMap.set(dedupKey, n.id);
+    } else {
+      const existingTime = timeMs(existing.createdAt);
+      const incomingTime = timeMs(n.createdAt);
+      const isRead = existing.read || n.read;
+      if (incomingTime >= existingTime) {
+        notifMap.set(n.id, { ...existing, ...n, read: isRead });
+      } else {
+        notifMap.set(n.id, { ...n, ...existing, read: isRead });
+      }
+    }
+  }
+
+  // Apply 30-day TTL + 50-item cap pruning
+  const thirtyDaysAgoMs = trustedNowMs() - 30 * 24 * 60 * 60 * 1000;
+  const notifications = Array.from(notifMap.values())
+    .filter((n) => {
+      // No readable time: kept, as before (never pruned as old).
+      const created = timeMs(n.createdAt);
+      return created === -Infinity || created >= thirtyDaysAgoMs;
+    })
+    .sort((a, b) => timeMs(b.createdAt) - timeMs(a.createdAt) || 0)
+    .slice(0, 50);
+
+  // 15. Leagues, Lessons, Trackers
+  const leagueArchives = mergeLeagueArchives(baseState.leagueArchives, incomingState.leagueArchives);
+
+  const readLessonIds = Array.from(
+    new Set([...(baseState.readLessonIds || []), ...(incomingState.readLessonIds || [])])
+  );
+
+  // 16. Time Tracker
+  // The blob no longer carries the time tracker (batch E): a side without it takes the
+  // other side's copy, never the defaults, so deleted default templates stay deleted.
+  const baseTT = baseState.timeTracker || incomingState.timeTracker || DEFAULT_TIME_TRACKER_STATE;
+  const incTT = incomingState.timeTracker || baseState.timeTracker || DEFAULT_TIME_TRACKER_STATE;
+
+  const mergedActivities = ensureDefaultActivities(
+    mergeEntityArrays(baseTT.activities || [], incTT.activities || [], tombstoneSet)
+  );
+
+  const mergedTemplates = mergeEntityArrays(
+    baseTT.templates || [],
+    incTT.templates || [],
+    tombstoneSet
+  );
+
+  // Days merge block by block (mergeTimeTrackerDays): a block removed on either side stays
+  // removed (deletedBlockIds), so a dirty boot no longer brings back blocks another device deleted,
+  // replaced or cleared. Ties keep the base copy. A merge that changes the base copy is stamped
+  // with the merge time so the result uploads and wins over the row it came from.
+  const dayDoc = (tt: TimeTrackerState, date: string): TimeTrackerDayDoc | null => {
+    const blocks = tt.dailyLogs?.[date];
+    const cleared = (tt.clearedDates || []).includes(date);
+    const meta = tt.dayMeta?.[date];
+    if (blocks === undefined && !cleared && !meta) return null;
+    return {
+      date,
+      ...(blocks !== undefined ? { blocks: blocks.filter((b) => b && !tombstoneSet.has(b.id)) } : {}),
+      ...(cleared ? { cleared: true } : {}),
+      ...(meta?.updatedAt ? { updatedAt: meta.updatedAt } : {}),
+      ...(meta?.deletedBlockIds?.length ? { deletedBlockIds: meta.deletedBlockIds } : {}),
+    };
+  };
+
+  const dailyLogsMap: Record<string, TimeTrackerBlock[]> = {};
+  const dayMetaMap: NonNullable<TimeTrackerState['dayMeta']> = {};
+  const clearedSet = new Set<string>();
+  const allDateKeys = new Set([
+    ...Object.keys(baseTT.dailyLogs || {}),
+    ...Object.keys(incTT.dailyLogs || {}),
+    ...(baseTT.clearedDates || []),
+    ...(incTT.clearedDates || []),
+    ...Object.keys(baseTT.dayMeta || {}),
+    ...Object.keys(incTT.dayMeta || {}),
+  ]);
+  const mergeStamp = trustedNow().toISOString();
+
+  for (const dateKey of allDateKeys) {
+    const baseDay = dayDoc(baseTT, dateKey);
+    const incDay = dayDoc(incTT, dateKey);
+    let day = baseDay && incDay ? mergeTimeTrackerDays(baseDay, incDay) : baseDay || incDay;
+    if (!day) continue;
+    if (baseDay && incDay && day !== baseDay && baseTT !== incTT) day = { ...day, updatedAt: mergeStamp };
+    if (day.blocks !== undefined) dailyLogsMap[dateKey] = day.blocks;
+    if (day.cleared) clearedSet.add(dateKey);
+    if (day.updatedAt || day.deletedBlockIds?.length) {
+      dayMetaMap[dateKey] = {
+        ...(day.updatedAt ? { updatedAt: day.updatedAt } : {}),
+        ...(day.deletedBlockIds?.length ? { deletedBlockIds: day.deletedBlockIds } : {}),
+      };
+    }
+  }
+
+  const mergedTimeTracker: TimeTrackerState = {
+    activities: mergedActivities,
+    templates: mergedTemplates,
+    dailyLogs: dailyLogsMap,
+    clearedDates: Array.from(clearedSet),
+    dayMeta: dayMetaMap,
+  };
+
+  const isIncomingGuest = incomingState.currentUser?.isAnonymous || (incomingState.currentUser as any)?.is_anonymous;
+  const isBasePermanent = baseState.currentUser && !baseState.currentUser.isAnonymous && !(baseState.currentUser as any)?.is_anonymous;
+  
+  // Parse lastUsernameChangeAt timestamps to guarantee the most recent update takes precedence
+  const baseTimeStr = baseState.currentUser?.lastUsernameChangeAt || (baseState.currentUser as any)?.last_username_change_at;
+  const incomingTimeStr = incomingState.currentUser?.lastUsernameChangeAt || (incomingState.currentUser as any)?.last_username_change_at;
+  const baseChangeTs = baseTimeStr ? new Date(baseTimeStr).getTime() : 0;
+  const incomingChangeTs = incomingTimeStr ? new Date(incomingTimeStr).getTime() : 0;
+
+  let currentUser = incomingState.currentUser || baseState.currentUser || null;
+  if (isIncomingGuest && isBasePermanent) {
+      currentUser = baseState.currentUser; // Upgraded permanent server identity wins
+  } else if (baseState.currentUser && incomingState.currentUser) {
+      if (incomingChangeTs > baseChangeTs) {
+          // Incoming user has a more recent username update
+          currentUser = {
+              ...baseState.currentUser,
+              ...incomingState.currentUser,
+              username: incomingState.currentUser.username || baseState.currentUser.username,
+              lastUsernameChangeAt: incomingState.currentUser.lastUsernameChangeAt || baseState.currentUser.lastUsernameChangeAt,
+          };
+      } else if (baseChangeTs > incomingChangeTs) {
+          // Base user has a more recent username update (e.g. fresh database fetch)
+          currentUser = {
+              ...incomingState.currentUser,
+              ...baseState.currentUser,
+              username: baseState.currentUser.username || incomingState.currentUser.username,
+              lastUsernameChangeAt: baseState.currentUser.lastUsernameChangeAt || incomingState.currentUser.lastUsernameChangeAt,
+          };
+      } else {
+          // baseChangeTs === incomingChangeTs (exact tie or both 0/missing)
+          if (
+            baseChangeTs > 0 &&
+            incomingChangeTs > 0 &&
+            baseState.currentUser?.username !== incomingState.currentUser?.username
+          ) {
+            console.warn(
+              `[stateMerger] Timestamp collision on lastUsernameChangeAt (${baseChangeTs}). Resolving tie using mergeContext: '${mergeContext}'`
+            );
+          }
+
+          if (mergeContext === 'writeSync') {
+            // writeSync: incoming represents the active user's local write intent; base is existing server JSON
+            currentUser = {
+              ...baseState.currentUser,
+              ...incomingState.currentUser,
+              username: incomingState.currentUser.username || baseState.currentUser.username,
+              lastUsernameChangeAt: incomingState.currentUser.lastUsernameChangeAt || baseState.currentUser.lastUsernameChangeAt,
+            };
+          } else {
+            // hydration: base represents the authoritative freshly fetched server state; incoming is in-memory state
+            currentUser = {
+              ...incomingState.currentUser,
+              ...baseState.currentUser,
+              username: baseState.currentUser.username || incomingState.currentUser.username,
+              lastUsernameChangeAt: baseState.currentUser.lastUsernameChangeAt || incomingState.currentUser.lastUsernameChangeAt,
+            };
+          }
+      }
+  }
+  
+  const resolvedUsername = currentUser?.username;
+  let username = resolvedUsername;
+  if (!username) {
+      if (incomingChangeTs > baseChangeTs) {
+          username = incomingState.username || baseState.username || 'Guest User';
+      } else if (baseChangeTs > incomingChangeTs) {
+          username = baseState.username || incomingState.username || 'Guest User';
+      } else {
+          if (mergeContext === 'writeSync') {
+            username = incomingState.username || baseState.username || 'Guest User';
+          } else {
+            username = baseState.username || incomingState.username || 'Guest User';
+          }
+      }
+  }
+
+  const isBaseTrackerTombstoned = Boolean(
+    baseState.addictionTracker?.id &&
+      (tombstoneSet.has(baseState.addictionTracker.id) ||
+        ((baseState.deletedEntityIds || []).includes(baseState.addictionTracker.id) &&
+          !(incomingState.restoredEntityIds || []).includes(baseState.addictionTracker.id) &&
+          !(baseState.restoredEntityIds || []).includes(baseState.addictionTracker.id)))
+  );
+
+  let addictionTracker = incomingState.addictionTracker !== undefined
+    ? incomingState.addictionTracker
+    : baseState.addictionTracker;
+
+  if (
+    !incomingState.addictionTracker &&
+    baseState.addictionTracker &&
+    !isBaseTrackerTombstoned
+  ) {
+    addictionTracker = baseState.addictionTracker;
+  }
+
+  if (baseState.addictionTracker && incomingState.addictionTracker && baseState.addictionTracker.id === incomingState.addictionTracker.id) {
+    const baseT = baseState.addictionTracker;
+    const incT = incomingState.addictionTracker;
+
+    const baseStartMs = new Date(baseT.startDate).getTime();
+    const incStartMs = new Date(incT.startDate).getTime();
+
+    // Pick winning side based on later startDate (tie -> incoming)
+    let winningSide = incT;
+    let resolvedStartDate = incT.startDate;
+    let resolvedMilestonesUnlocked: string[] = [];
+
+    if (!isNaN(baseStartMs) && !isNaN(incStartMs)) {
+      if (incStartMs > baseStartMs) {
+        winningSide = incT;
+        resolvedStartDate = incT.startDate;
+        resolvedMilestonesUnlocked = Array.isArray(incT.milestonesUnlocked) ? incT.milestonesUnlocked : [];
+      } else if (baseStartMs > incStartMs) {
+        winningSide = baseT;
+        resolvedStartDate = baseT.startDate;
+        resolvedMilestonesUnlocked = Array.isArray(baseT.milestonesUnlocked) ? baseT.milestonesUnlocked : [];
+      } else {
+        // Equal startDates (same streak): union milestonesUnlocked
+        winningSide = incT;
+        resolvedStartDate = incT.startDate;
+        resolvedMilestonesUnlocked = Array.from(
+          new Set([...(baseT.milestonesUnlocked || []), ...(incT.milestonesUnlocked || [])])
+        );
+      }
+    } else {
+      resolvedMilestonesUnlocked = Array.isArray(incT.milestonesUnlocked) ? incT.milestonesUnlocked : (baseT.milestonesUnlocked || []);
+    }
+
+    // 1. Union revokedAwardIds
+    const baseRevoked = baseT.revokedAwardIds || [];
+    const incRevoked = incT.revokedAwardIds || [];
+    const mergedRevokedIds = Array.from(new Set([...baseRevoked, ...incRevoked]));
+    const revokedSet = new Set(mergedRevokedIds);
+
+    // 2. Union awardedMilestones keyed by getAwardKey
+    const baseAwards = baseT.awardedMilestones || [];
+    const incAwards = incT.awardedMilestones || [];
+    const awardsMap = new Map<string, any>();
+
+    for (const a of [...baseAwards, ...incAwards]) {
+      if (a && a.milestone) {
+        const key = getAwardKey(a);
+        if (!awardsMap.has(key)) {
+          awardsMap.set(key, a);
+        }
+      }
+    }
+
+    // Exclude any awards whose key is in revokedSet (no !a.id bypass)
+    const finalAwards = Array.from(awardsMap.values()).filter(
+      (a) => !revokedSet.has(getAwardKey(a))
+    );
+
+    addictionTracker = {
+      id: winningSide.id,
+      title: winningSide.title || baseT.title || 'Sobriety',
+      createdAt: winningSide.createdAt || baseT.createdAt || trustedNow().toISOString(),
+      startDate: resolvedStartDate,
+      milestonesUnlocked: resolvedMilestonesUnlocked,
+      awardedMilestones: finalAwards,
+      revokedAwardIds: mergedRevokedIds,
+    };
+  }
+
+  return {
+    ...DEFAULT_STATE,
+    ...baseState,
+    ...incomingState,
+    currentUser,
+    username,
+    seasonId,
+    seasonPoints,
+    totalPoints,
+    pointsHistory,
+    habits,
+    journalEntries,
+    workouts,
+    books: [],
+    readingLogs,
+    skills,
+    skillLogs,
+    badHabits,
+    badHabitLogs,
+    addictionTracker,
+    cravingLogs,
+    focusLogs,
+    decisionLogs,
+    emotionLogs,
+    weeklyGoals,
+    goals,
+    projects,
+    tasks,
+    libraryBooks,
+    improvementPlans,
+    followedPlans,
+    partnerInvites,
+    partnership: incomingState.partnership !== undefined ? incomingState.partnership : baseState.partnership,
+    partnerships,
+    sharedChallenges,
+    notifications,
+    leagueArchives,
+    readLessonIds,
+    deletedEntityIds: postPointsDeletedEntityIds,
+    restoredEntityIds: mergedRestoredEntityIds,
+    timeTracker: mergedTimeTracker,
+    ...mergeThemePreference(baseState, incomingState),
+    rankCelebrated: mergeRankCelebrated(baseState.rankCelebrated, incomingState.rankCelebrated),
+    lastSeenRelease: mergeLastSeenRelease(baseState.lastSeenRelease, incomingState.lastSeenRelease),
+    // Per list, the later reorder wins (without this the final spread let incoming win whole).
+    listOrders: mergeEntityArrays(baseState.listOrders || [], incomingState.listOrders || [], tombstoneSet),
+    // Check-ins are only ever added (one per day): keep every day either side has.
+    recoveryCheckins: mergeEntityArrays(baseState.recoveryCheckins || [], incomingState.recoveryCheckins || [], tombstoneSet),
+  };
+}
+
+/**
+ * The theme between two copies of the settings: the later change (themeUpdatedAt) wins. With equal
+ * stamps (or none) and different values, base wins: every merge passes the server's or the loaded
+ * copy as base and this device's as incoming, and a device that changed its theme stamped it, so an
+ * unstamped difference here is another device's change (also an older app version's, which does not
+ * stamp). Before this, incoming always won, so each device kept and re-saved its own theme.
+ * Both sides are normalized first (an unstamped 'dark' is the old default: 'system').
+ */
+export function mergeThemePreference(
+  baseState: Pick<AppState, 'themePreference' | 'themeUpdatedAt'>,
+  incomingState: Pick<AppState, 'themePreference' | 'themeUpdatedAt'>
+): Pick<AppState, 'themePreference' | 'themeUpdatedAt'> {
+  const basePreference = normalizeThemePreference(baseState.themePreference, baseState.themeUpdatedAt);
+  const incomingPreference = normalizeThemePreference(incomingState.themePreference, incomingState.themeUpdatedAt);
+  const baseAt = timeMs(baseState.themeUpdatedAt);
+  const incomingAt = timeMs(incomingState.themeUpdatedAt);
+  const incomingWins = incomingPreference !== undefined && (basePreference === undefined || incomingAt > baseAt);
+  const themeUpdatedAt = incomingAt > baseAt ? incomingState.themeUpdatedAt : baseState.themeUpdatedAt ?? incomingState.themeUpdatedAt;
+  return {
+    themePreference: (incomingWins ? incomingPreference : basePreference) ?? 'system',
+    ...(themeUpdatedAt ? { themeUpdatedAt } : {}),
+  };
+}
+
+export function mergeAppState(
+  baseState: AppState,
+  incomingState: AppState,
+  mergeContext: MergeContext = 'hydration'
+): AppState {
+  return mergeAppStateInternal(baseState, incomingState, mergeContext);
+}
+
+/**
+ * The state a sign-in merges `loaded` (the account `userId` as just read) with: the state on
+ * screen, unless it is another account's. A tab that still holds an earlier account (hidden while
+ * someone else signed in elsewhere) would otherwise carry that account's items into this one and
+ * save them there; then the loaded state stands alone. A guest upgrading keeps the same id, and a
+ * signed-out state belongs to no account, so both are still merged.
+ */
+export function signInMergeBase(onScreen: AppState, loaded: AppState, userId: string): AppState {
+  const heldBy = onScreen.currentUser?.id;
+  return heldBy && heldBy !== userId ? loaded : onScreen;
+}
+
+export interface MergeGuardResult {
+  mergedState: AppState;
+  retainedState: AppState;
+  hasSuspiciousDrop: boolean;
+  watermarkCount: number;
+  droppedCount: number;
+  mergedCount: number;
+}
+
+/** Ids of every item in a top-level array of the state, and of the recovery tracker. */
+function topLevelItemIds(state: AppState): Set<string> {
+  const ids = new Set<string>();
+  for (const value of Object.values(state)) {
+    if (!Array.isArray(value)) continue;
+    for (const item of value) {
+      const id = (item as { id?: unknown } | null)?.id;
+      if (typeof id === 'string') ids.add(id);
+    }
+  }
+  if (state.addictionTracker?.id) ids.add(state.addictionTracker.id);
+  return ids;
+}
+
+/**
+ * The kept state of a suspicious drop, with the tombstones of the items it brings back lifted.
+ * Keeping those tombstones made every later merge drop the same items again, so "keep my
+ * data" asked again on each save and load and the kept items never reached the server.
+ */
+function withoutTombstonesFor(retained: AppState, merged: AppState): AppState {
+  const mergedIds = topLevelItemIds(merged);
+  const kept = new Set([...topLevelItemIds(retained)].filter((id) => !mergedIds.has(id)));
+  if (kept.size === 0) return retained;
+  return {
+    ...retained,
+    deletedEntityIds: (retained.deletedEntityIds || []).filter((id) => !kept.has(id)),
+  };
+}
+
+export function mergeAppStateWithGuardResult(
+  baseState: AppState,
+  incomingState: AppState,
+  watermark: UserDataWeight | undefined,
+  isHydrated: boolean = true
+): MergeGuardResult {
+  // Pass 1: standard hydration merge
+  const mergedState = mergeAppStateInternal(baseState, incomingState, 'hydration');
+
+  const mergedWeight = computeStateDataWeight(mergedState);
+  const mergedCount = mergedWeight.itemCount;
+  const watermarkCount = watermark?.itemCount ?? 0;
+  const droppedCount = Math.max(0, watermarkCount - mergedCount);
+
+  let hasSuspiciousDrop = false;
+
+  // Guard check: the thresholds of supabase.ts Check 2A. Unlike a save, tombstones earn no credit
+  // here: a device copy whose tombstones remove most of the server's items is what this catches.
+  if (watermark && watermark.itemCount > 0) {
+    const isFloorExempt = watermark.itemCount <= 3 && isHydrated;
+
+    if (!isFloorExempt) {
+      // Zero-out wipe: incoming merged is empty (0 items)
+      if (mergedCount === 0) {
+        hasSuspiciousDrop = true;
+      }
+      // Abnormal massive drop (>70% vanished at once on accounts with >= 3 items)
+      else if (watermark.itemCount >= 3 && mergedCount < Math.ceil(watermark.itemCount * 0.3)) {
+        hasSuspiciousDrop = true;
+      }
+    }
+  }
+
+  // Pass 2: only if suspicious drop detected, compute retainedState bypassing tombstones
+  const retainedState = hasSuspiciousDrop
+    ? withoutTombstonesFor(
+        mergeAppStateInternal(baseState, incomingState, 'hydration', { tombstoneSetOverride: new Set<string>() }),
+        mergedState
+      )
+    : mergedState;
+
+  return {
+    mergedState,
+    retainedState,
+    hasSuspiciousDrop,
+    watermarkCount,
+    droppedCount,
+    mergedCount,
+  };
+}
