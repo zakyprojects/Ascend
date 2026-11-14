@@ -1,0 +1,13 @@
+# Temporary config for a one-time full-repository CodeRabbit review.
+# Lives only on the cr-* review branches, never on main.
+language: en-US
+reviews:
+  profile: assertive
+  request_changes_workflow: false
+  high_level_summary: true
+  poem: false
+  auto_review:
+    enabled: true
+    drafts: false
+    base_branches:
+      - cr-base
