@@ -48,13 +48,13 @@ export function releaseNoteGroups(note: ReleaseNote): { key: ReleaseNoteGroupKey
 }
 
 export const RELEASE_NOTE: ReleaseNote | null = {
-  id: 2,
-  releasedAt: '2026-11-10T12:45:00+05:00',
-  title: "What's new in 1.3.0",
-  new: ['Choose System, Dark or Light in Settings. System follows your device.'],
-  improved: [
-    'Recovery lists tap-to-call helplines for Pakistan (Rescue 1122, Umang) and the US.',
-    'Reading shows the points before you save a log.',
+  id: 3,
+  releasedAt: '2026-11-14T10:00:00+05:00',
+  title: "What's new in 1.4.0",
+  new: [
+    'Focus sessions of 35 min or more get up to 2 breaks. Press Continue within 10 min after a break ends.',
+    "Recovery has a Slipped button. A reset now takes back today's check-in and its point.",
+    'A quote of the day on the Dashboard.',
   ],
-  fixed: ['Goals and projects show Achieved only when every part is done.'],
+  changed: ['Finishing a book earns 20 points. A bad-habit slip costs what a resist earns.'],
 };
