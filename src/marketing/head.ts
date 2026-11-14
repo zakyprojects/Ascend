@@ -83,7 +83,7 @@ const ICON_TAGS = [
   `<link rel="icon" type="image/svg+xml" href="/favicon.svg?v=5" />`,
   `<link rel="icon" type="image/png" sizes="192x192" href="/android-chrome-192x192.png?v=5" />`,
   `<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=5" />`,
-  `<link rel="manifest" href="/manifest.json?v=5" />`,
+  `<link rel="manifest" href="/manifest.json?v=6" />`,
 ];
 
 /** Captures in public/screens shown as the WebApplication's screenshots (dark theme). */
