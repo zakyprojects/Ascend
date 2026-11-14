@@ -104,7 +104,11 @@ interface LeaguesProps {
 export function Leagues({ store, onOpenAuth }: LeaguesProps) {
   const guide = useHowItWorks();
   const [activeLeague, setActiveLeague] = useState<LeagueType>('weekly');
-  const changeLeague = (id: string) => setActiveLeague(id as LeagueType);
+  const changeLeague = (id: string) => {
+    setActiveLeague(id as LeagueType);
+    // The same throttled refresh as opening the page: at most one request per 15 s, all three tables update.
+    void store.refreshLeagueStandings();
+  };
   const [openArchiveId, setOpenArchiveId] = useState<string | null>(null);
   const [selectedCompetitor, setSelectedCompetitor] = useState<LeagueCompetitor | null>(null);
   // Stats and past seasons are not in the league list: fetched when a member's profile opens.
